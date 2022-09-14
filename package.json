@@ -1,0 +1,19 @@
+{
+  "name": "patty",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "rodrigo butta",
+  "license": "ISC",
+  "dependencies": {
+    "@influxdata/influxdb-client": "^1.29.0",
+    "@influxdata/influxdb-client-apis": "^1.29.0",
+    "typescript": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^18.7.17"
+  }
+}
