@@ -3,6 +3,6 @@ import { testQuery } from './test-query';
 
 console.log('Influx test 1');
 
-// testLoad();
+testLoad();
 
-testQuery();
+// testQuery();
