@@ -8,6 +8,7 @@ import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
 import { esNativa } from '../lib/nativo';
 import { hayDatosDelTelefono } from '../lib/telefono';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
+import { Cuenta } from './Cuenta';
 import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
@@ -124,6 +125,7 @@ export function Mas() {
       </div>
 
       {!instalada() && !esNativa() ? <button className="btn ancho" onClick={instalar}>📲 Instalar Patty en el teléfono</button> : null}
+      <Cuenta />
       <button className="btn ancho" onClick={salir}>Salir ({usuario?.nombre})</button>
     </section>
   );

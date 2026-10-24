@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { RolUsuario } from 'shared';
 import { claveOk, hashClave } from '../auth/claves.js';
+import { verificarGoogle } from '../auth/google.js';
 import { exigirRol } from '../auth/sesion.js';
 import { filas, una, type Tx } from '../db/client.js';
 import { usuarios } from '../db/schema.js';
@@ -32,6 +33,14 @@ export async function crearUsuario(tx: Tx, d: Record<string, unknown>, rol: unkn
 }
 
 export const rutasUsuarios = new Hono<Env>()
+  // Vincular la cuenta de Google al usuario con el que se entró: queda su mail, y desde ahí puede entrar con Google.
+  .post('/yo/google', async (c) => {
+    const g = await verificarGoogle(texto((await cuerpo(c)).credential));
+    const otro = await una<{ id: number }>(c.var.db, sql`SELECT id FROM usuarios WHERE lower(email) = ${g.email} AND id <> ${c.var.usuario.id}`);
+    if (otro) throw new ErrorApi(`La cuenta ${g.email} ya es de otro usuario.`, 409);
+    await c.var.db.execute(sql`UPDATE usuarios SET email = ${g.email} WHERE id = ${c.var.usuario.id}`);
+    return c.json({ ok: true, email: g.email });
+  })
   .get('/', async (c) => {
     exigirRol(c.var.usuario, 'admin');
     return c.json(await filas(c.var.db, sql`SELECT id, usuario, nombre, email, rol, activo, creado FROM usuarios ORDER BY nombre`));
