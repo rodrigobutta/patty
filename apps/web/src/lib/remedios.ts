@@ -1,0 +1,197 @@
+// Los recordatorios de remedios en el teléfono: un aviso a la hora de cada toma y, si a la media hora no se marcó,
+// otro preguntando si se tomó. Desde el aviso se contesta sin abrir nada: "La tomé", "En 15 min" o "No la tomo".
+// Se programan para la próxima semana cada vez que se abre la app o cambia algo (Android aguanta unos 500 avisos
+// pendientes; con esto alcanza y sobra).
+import { LocalNotifications, type LocalNotificationSchema } from '@capacitor/local-notifications';
+import { useEffect } from 'react';
+import { dosisTexto, type Toma } from 'shared';
+import { api } from '../api';
+import { avisoExacto, crearCanales, idDeAviso, irAlDia, permisoAvisos } from './avisos';
+import { esNativa } from './nativo';
+
+const CLAVE_ACTIVOS = 'recordatorios-remedios';
+const CLAVE_PROGRAMADOS = 'avisos-remedios';
+const TIPO = 'TOMA';
+/** A la media hora sin marcar, se vuelve a preguntar. */
+const INSISTIR_MIN = 30;
+const POSPONER_MIN = 15;
+const EVENTO = 'patty-tomas';
+
+export const recordatoriosActivos = (): boolean => {
+  try {
+    return localStorage.getItem(CLAVE_ACTIVOS) !== 'no';
+  } catch {
+    return true;
+  }
+};
+
+export async function ponerRecordatorios(activos: boolean): Promise<boolean> {
+  try {
+    localStorage.setItem(CLAVE_ACTIVOS, activos ? 'si' : 'no');
+  } catch {
+    /* sin almacenamiento */
+  }
+  return programarRecordatorios();
+}
+
+/** Avisar que cambiaron las tomas (se marcó una, se creó un tratamiento): el Día se actualiza y se reprograma. */
+export function tomasCambiaron(): void {
+  window.dispatchEvent(new Event(EVENTO));
+  void programarRecordatorios();
+}
+
+export function useAlCambiarTomas(f: () => void): void {
+  useEffect(() => {
+    window.addEventListener(EVENTO, f);
+    return () => window.removeEventListener(EVENTO, f);
+  }, [f]);
+}
+
+interface Extra {
+  toma: { tratamiento_id: number; programada: string; remedio: string };
+}
+
+const idsDe = (t: Pick<Toma, 'tratamiento_id' | 'programada'>) => ({
+  aviso: idDeAviso(`toma|${t.tratamiento_id}|${t.programada}`),
+  insistir: idDeAviso(`toma|${t.tratamiento_id}|${t.programada}|2`),
+});
+
+const hhmm = (iso: string) => new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
+
+function leerProgramados(): number[] {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_PROGRAMADOS) ?? '[]') as number[];
+  } catch {
+    return [];
+  }
+}
+
+let tiposRegistrados = false;
+async function registrarTipos(): Promise<void> {
+  if (tiposRegistrados) return;
+  tiposRegistrados = true;
+  await LocalNotifications.registerActionTypes({
+    types: [
+      {
+        id: TIPO,
+        actions: [
+          { id: 'tomada', title: 'La tomé' },
+          { id: 'posponer', title: `En ${POSPONER_MIN} min` },
+          { id: 'salteada', title: 'No la tomo', destructive: true },
+        ],
+      },
+    ],
+  });
+}
+
+function aviso(id: number, at: Date, toma: Toma, titulo: string, cuerpo: string, exacta: boolean): LocalNotificationSchema {
+  return {
+    id,
+    title: titulo,
+    body: cuerpo,
+    schedule: { at, allowWhileIdle: true },
+    channelId: 'remedios',
+    actionTypeId: TIPO,
+    extra: { toma: { tratamiento_id: toma.tratamiento_id, programada: toma.programada, remedio: toma.remedio } } satisfies Extra,
+    isExactNotification: exacta,
+  };
+}
+
+let enCurso: Promise<boolean> | null = null;
+
+/** Vuelve a programar todos los avisos de remedios. Devuelve false si el teléfono no deja mandar avisos. */
+export function programarRecordatorios(): Promise<boolean> {
+  if (!esNativa()) return Promise.resolve(true);
+  // Si ya se está programando, se espera a que termine y se vuelve a hacer (puede haber cambiado algo en el medio).
+  const anterior = enCurso;
+  enCurso = (async () => {
+    await anterior?.catch(() => {});
+    try {
+      const viejos = leerProgramados();
+      if (viejos.length) await LocalNotifications.cancel({ notifications: viejos.map((id) => ({ id })) });
+      localStorage.setItem(CLAVE_PROGRAMADOS, '[]');
+      if (!recordatoriosActivos()) return true;
+      const tomas = await api<Toma[]>('GET', '/api/tratamientos/proximas?horas=168');
+      if (!tomas.length) return true;
+      if (!(await permisoAvisos())) return false;
+      await Promise.all([crearCanales(), registrarTipos()]);
+      const exacta = await avisoExacto();
+      const ahora = Date.now();
+      const lista: LocalNotificationSchema[] = [];
+      for (const t of tomas.slice(0, 200)) {
+        const ids = idsDe(t);
+        const cuando = Date.parse(t.programada);
+        const que = `${t.remedio}${t.dosis !== null || t.unidad ? ' ' + dosisTexto(t.dosis, t.unidad) : ''}`;
+        if (cuando > ahora + 5000) lista.push(aviso(ids.aviso, new Date(cuando), t, `💊 ${que}`, `Es la hora de la toma de las ${hhmm(t.programada)}.`, exacta));
+        const otra = cuando + INSISTIR_MIN * 60000;
+        if (otra > ahora + 5000) lista.push(aviso(ids.insistir, new Date(otra), t, `¿Tomaste ${t.remedio}?`, `La de las ${hhmm(t.programada)} todavía no está marcada.`, exacta));
+      }
+      if (lista.length) await LocalNotifications.schedule({ notifications: lista });
+      localStorage.setItem(CLAVE_PROGRAMADOS, JSON.stringify(lista.map((n) => n.id)));
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  return enCurso;
+}
+
+/** Marca una toma (desde el Día o desde el aviso) y saca sus avisos pendientes. */
+export async function marcarToma(t: Pick<Toma, 'tratamiento_id' | 'programada'>, estado: 'tomada' | 'salteada', inicio?: string): Promise<void> {
+  await api('POST', `/api/tratamientos/${t.tratamiento_id}/tomas`, { programada: t.programada, estado, inicio });
+  if (esNativa()) {
+    const ids = idsDe(t);
+    await LocalNotifications.cancel({ notifications: [{ id: ids.aviso }, { id: ids.insistir }] }).catch(() => {});
+  }
+  tomasCambiaron();
+}
+
+export async function desmarcarToma(t: Pick<Toma, 'tratamiento_id' | 'programada'>): Promise<void> {
+  await api('DELETE', `/api/tratamientos/${t.tratamiento_id}/tomas?programada=${encodeURIComponent(t.programada)}`);
+  tomasCambiaron();
+}
+
+async function posponer(n: LocalNotificationSchema, toma: Extra['toma']): Promise<void> {
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        ...n,
+        id: idDeAviso(`toma|${toma.tratamiento_id}|${toma.programada}|${Date.now()}`),
+        title: `💊 ${toma.remedio}`,
+        body: `Te lo recuerdo de nuevo: la toma de las ${hhmm(toma.programada)}.`,
+        schedule: { at: new Date(Date.now() + POSPONER_MIN * 60000), allowWhileIdle: true },
+        channelId: 'remedios',
+        actionTypeId: TIPO,
+        extra: { toma },
+        isExactNotification: await avisoExacto(),
+      },
+    ],
+  });
+}
+
+/** Al arrancar la app: programar los recordatorios y contestar lo que se toque en los avisos. */
+export function useRecordatorios(listo: boolean): void {
+  useEffect(() => {
+    if (!esNativa() || !listo) return;
+    void programarRecordatorios();
+    const h = LocalNotifications.addListener('localNotificationActionPerformed', (a) => {
+      const toma = (a.notification.extra as Extra | undefined)?.toma;
+      if (!toma) return;
+      if (a.actionId === 'tomada' || a.actionId === 'salteada') void marcarToma(toma, a.actionId).catch(() => {});
+      else if (a.actionId === 'posponer') void posponer(a.notification, toma).catch(() => {});
+      else irAlDia();
+    });
+    // Al volver a la app (después de días sin abrirla, o de marcar desde otro teléfono) se reprograma.
+    let ultima = Date.now();
+    const volver = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - ultima < 10 * 60000) return;
+      ultima = Date.now();
+      void programarRecordatorios();
+    };
+    document.addEventListener('visibilitychange', volver);
+    return () => {
+      void h.then((x) => x.remove());
+      document.removeEventListener('visibilitychange', volver);
+    };
+  }, [listo]);
+}

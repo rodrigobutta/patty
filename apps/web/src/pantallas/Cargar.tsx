@@ -1,12 +1,14 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
 import { useEffect, useRef, useState } from 'react';
-import { UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
+import { dosisTexto, frecuenciaTexto, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
 import { horaAhora, horaEn, hoyEn, instanteDelDia, nombreDia } from '../lib/fechas';
 import { Autocompletar } from '../ui/Autocompletar';
 import { escuchar, hayVoz, type Escucha } from '../lib/voz';
+import { tomasCambiaron } from '../lib/remedios';
+import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
 
 interface Elegido {
@@ -17,6 +19,21 @@ interface Elegido {
   unidad: string | null;
   /** Si ya se preguntó si lleva cantidad (los nuevos, todavía no). */
   cantidad_decidida: boolean;
+}
+
+/** Un remedio para adelante que propone la IA ("paracetamol cada 8 h por 5 días"): se guarda como tratamiento. */
+interface TratamientoPropuesto {
+  concepto_id: number | null;
+  concepto_nombre: string;
+  nuevo: boolean;
+  dosis: number | null;
+  unidad: string | null;
+  cada_horas: number | null;
+  horarios: string[];
+  inicio: string;
+  fin: string | null;
+  motivo: string | null;
+  dias: number | null;
 }
 
 interface Propuesta {
@@ -231,6 +248,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
   const [propuesta, setPropuesta] = useState<Propuesta[] | null>(null);
   const [dudas, setDudas] = useState<string[]>([]);
   const [quitar, setQuitar] = useState<Set<number>>(new Set());
+  const [remedios, setRemedios] = useState<TratamientoPropuesto[]>([]);
+  const [quitarRemedio, setQuitarRemedio] = useState<Set<number>>(new Set());
   const [estado, setEstado] = useState<'quieto' | 'escuchando' | 'transcribiendo' | 'ordenando' | 'guardando'>('quieto');
   const [error, setError] = useState('');
   const escucha = useRef<Escucha | null>(null);
@@ -239,11 +258,13 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
     setEstado('ordenando');
     setError('');
     try {
-      const r = await api<{ registros: Propuesta[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado, fecha });
+      const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado, fecha });
       setTexto(contado);
       setPropuesta(r.registros);
+      setRemedios(r.tratamientos ?? []);
       setDudas(r.dudas);
       setQuitar(new Set());
+      setQuitarRemedio(new Set());
       setRespuesta('');
     } catch (e) {
       setError((e as Error).message);
@@ -299,12 +320,23 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
   const guardar = async () => {
     setEstado('guardando');
     try {
+      // Primero los remedios: así, si dijo que ya tomó la primera, el registro cuenta como esa toma.
+      const nuevos = remedios.filter((_, i) => !quitarRemedio.has(i));
+      for (const t of nuevos) await api('POST', '/api/tratamientos', { ...t, persona_id: persona.id });
+      if (nuevos.length) tomasCambiaron();
       const lista = propuesta!.filter((_, i) => !quitar.has(i)).map((p) => ({ ...p, persona_id: persona.id }));
-      const hechos = await api<Registro[]>('POST', '/api/registros/varios', { registros: lista });
+      const hechos = lista.length ? await api<Registro[]>('POST', '/api/registros/varios', { registros: lista }) : [];
       void anotarClima(persona.id, lista.map((p) => p.inicio));
       const dias = [...new Set(hechos.map((h) => h.fecha))];
       const otroDia = dias.length === 1 && dias[0] !== fecha ? dias[0] : undefined;
-      festejar(otroDia ? `¡Anotadas ${lista.length} cosas en ${nombreDia(otroDia, persona.zona_horaria).toLowerCase()}!` : `¡Anotadas ${lista.length} cosas!`);
+      const recordar = nuevos.length ? ` Te aviso cada toma de ${nuevos.map((t) => t.concepto_nombre).join(' y ')} ⏰` : '';
+      festejar(
+        !lista.length
+          ? `¡Listo!${recordar}`
+          : otroDia
+            ? `¡Anotadas ${lista.length} cosas en ${nombreDia(otroDia, persona.zona_horaria).toLowerCase()}!${recordar}`
+            : `¡Anotadas ${lista.length} cosas!${recordar}`,
+      );
       alGuardar(otroDia);
     } catch (e) {
       setError((e as Error).message);
@@ -371,6 +403,26 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
             );
           })}
         </ul>
+        {remedios.length ? (
+          <>
+            <p className="suave chico">Recordatorios para programar:</p>
+            <ul className="lista">
+              {remedios.map((t, i) => (
+                <li key={i} className={`remedio-propuesto entra${quitarRemedio.has(i) ? ' tachado' : ''}`} style={{ ['--n' as string]: propuesta.length + i }}
+                  onClick={() => setQuitarRemedio((q) => { const n = new Set(q); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
+                  <span className="icono">⏰</span>
+                  <span>
+                    <strong>{t.concepto_nombre}</strong>
+                    {t.dosis !== null || t.unidad ? ` ${dosisTexto(t.dosis, t.unidad)}` : ''} · {frecuenciaTexto(t)}
+                    {t.dias ? ` por ${t.dias} ${t.dias === 1 ? 'día' : 'días'}` : t.cada_horas || t.horarios.length ? ', sin fecha de fin' : ''}
+                    {t.nuevo ? <span className="etiqueta">nuevo</span> : null}
+                    <span className="suave chico renglon-sub">{resumenTomas(t, persona.zona_horaria)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
         {dudas.length ? (
           <div className="nota-ia">
             {dudas.map((d) => <p key={d}>🤔 {d}</p>)}
@@ -380,9 +432,9 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
         ) : null}
         {error ? <p className="neg">{error}</p> : null}
         <div className="fila">
-          <button className="btn" onClick={() => { setPropuesta(null); setDudas([]); }} disabled={ocupado}>Volver</button>
-          <button className="btn primario" onClick={guardar} disabled={ocupado || estado === 'escuchando' || quitar.size === propuesta.length}>
-            {estado === 'guardando' ? 'Guardando…' : `Anotar ${propuesta.length - quitar.size}`}
+          <button className="btn" onClick={() => { setPropuesta(null); setRemedios([]); setDudas([]); }} disabled={ocupado}>Volver</button>
+          <button className="btn primario" onClick={guardar} disabled={ocupado || estado === 'escuchando' || quitar.size + quitarRemedio.size === propuesta.length + remedios.length}>
+            {estado === 'guardando' ? 'Guardando…' : `Anotar ${propuesta.length - quitar.size + remedios.length - quitarRemedio.size}`}
           </button>
         </div>
       </div>

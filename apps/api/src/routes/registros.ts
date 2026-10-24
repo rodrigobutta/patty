@@ -10,6 +10,7 @@ import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, minutosDelDia, sumarDias } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
 import { obtenerOCrearConcepto } from './conceptos.js';
+import { vincularToma } from './tratamientos.js';
 
 const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char(r.fecha, 'YYYY-MM-DD') AS fecha,
   r.valor, r.intensidad, r.unidad, r.nota, r.origen,
@@ -52,7 +53,13 @@ function valores(d: NuevoRegistro, c: Concepto, p: PersonaAcceso) {
   };
 }
 
-export async function guardarRegistro(tx: Tx, u: Usuario, d: NuevoRegistro, origen = 'manual'): Promise<Registro> {
+export async function guardarRegistro(
+  tx: Tx,
+  u: Usuario,
+  d: NuevoRegistro,
+  origen = 'manual',
+  opciones: { sinVincular?: boolean } = {},
+): Promise<Registro> {
   const p = await persona(tx, u, Number(d.persona_id), true);
   const c = await conceptoDe(tx, d, u);
   const [r] = await tx
@@ -60,7 +67,10 @@ export async function guardarRegistro(tx: Tx, u: Usuario, d: NuevoRegistro, orig
     .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id })
     .returning({ id: registros.id });
   await tx.execute(sql`UPDATE conceptos SET usos = usos + 1, ultimo_uso = now() WHERE id = ${c.id}`);
-  return (await una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${r.id}`))!;
+  const hecho = (await una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${r.id}`))!;
+  // Un remedio con tratamiento: cuenta como la toma programada más cercana.
+  if (!opciones.sinVincular) await vincularToma(tx, hecho);
+  return hecho;
 }
 
 async function propio(tx: Tx, u: Usuario, id: number) {

@@ -1,7 +1,7 @@
 // Carga en texto libre: "desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos.
 // No guarda nada: la app los muestra para que la persona los revise y después los manda a /api/registros/varios.
 import { sql } from 'drizzle-orm';
-import { normalizar, TIPOS_VALOR, type Categoria } from 'shared';
+import { frecuenciaTexto, normalizar, TIPOS_VALOR, type Categoria } from 'shared';
 import { filas, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -33,9 +33,29 @@ const ESQUEMA = {
         additionalProperties: false,
       },
     },
+    tratamientos: {
+      type: 'array',
+      description: 'Indicaciones de un remedio a tomar de ahora en adelante (para programar recordatorios)',
+      items: {
+        type: 'object',
+        properties: {
+          remedio: { type: 'string', description: 'Nombre corto del remedio. Si ya existe en la lista de medicación, exactamente ese.' },
+          dosis: nulo('number', 'Cuánto por toma (1, 500, 2)'),
+          unidad: nulo('string', 'Unidad de la dosis: comprimido, cápsula, mg, g, ml, gotas, sobre, cucharada, puff, UI'),
+          cada_horas: nulo('number', 'Cada cuántas horas (8 para "cada 8 horas", 24 para "una vez por día" sin hora fija)'),
+          horarios: { type: 'array', items: { type: 'string' }, description: 'Horas fijas del día, HH:MM ("todos los días a las 9" → ["09:00"]). Vacío si es cada tantas horas o cuando haga falta.' },
+          primera_fecha: { type: 'string', description: 'AAAA-MM-DD de la primera toma' },
+          primera_hora: { type: 'string', description: 'HH:MM de la primera toma. Si no se dijo, ahora (o la próxima hora fija).' },
+          dias: nulo('integer', 'Por cuántos días. null si es crónico o no se dijo hasta cuándo.'),
+          motivo: nulo('string', 'Para qué lo toma ("anginas"), si se dijo'),
+        },
+        required: ['remedio', 'dosis', 'unidad', 'cada_horas', 'horarios', 'primera_fecha', 'primera_hora', 'dias', 'motivo'],
+        additionalProperties: false,
+      },
+    },
     dudas: { type: 'array', items: { type: 'string' }, description: 'Lo que no quedó claro y conviene preguntar' },
   },
-  required: ['registros', 'dudas'],
+  required: ['registros', 'tratamientos', 'dudas'],
   additionalProperties: false,
 };
 
@@ -51,6 +71,17 @@ interface Respuesta {
     unidad: string | null;
     intensidad: number | null;
     nota: string | null;
+  }>;
+  tratamientos: Array<{
+    remedio: string;
+    dosis: number | null;
+    unidad: string | null;
+    cada_horas: number | null;
+    horarios: string[];
+    primera_fecha: string;
+    primera_hora: string;
+    dias: number | null;
+    motivo: string | null;
   }>;
   dudas: string[];
 }
@@ -71,6 +102,11 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, 
     tx,
     sql`SELECT id, categoria_id, nombre, nombre_norm FROM conceptos WHERE unido_a IS NULL ORDER BY usos DESC, id LIMIT 300`,
   );
+  const activos = await filas<{ remedio: string; cada_horas: number | null; horarios: string[] }>(
+    tx,
+    sql`SELECT c.nombre AS remedio, t.cada_horas, t.horarios FROM tratamientos t JOIN conceptos c ON c.id = t.concepto_id
+        WHERE t.persona_id = ${p.id} AND t.borrado IS NULL AND t.terminado IS NULL AND (t.fin IS NULL OR t.fin > now())`,
+  );
   const ahora = new Date();
   const hoy = fechaLocal(ahora, p.zona_horaria);
   const hora = minutosDelDia(ahora, p.zona_horaria);
@@ -86,6 +122,12 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, 
     'a la mañana 9:00, al mediodía 13:00, a la tarde 17:00, a la noche 21:00. Lo de la madrugada ("anoche a las 2") va con ' +
     'la fecha del calendario en que pasó (la del día siguiente). Si algo duró ("estuvimos 3 horas"), poné duracion_min en ' +
     'el registro de esa actividad o evento. ' +
+    'Si la persona cuenta una indicación de un remedio para adelante ("el médico me dijo paracetamol 1 g cada 8 horas por ' +
+    '5 días", "tomo vitamina D todos los días a las 9", "ibuprofeno si me duele"), va en tratamientos (así Patty le ' +
+    'recuerda cada toma). Si además dice que ya tomó una, también va como registro de medicación a esa hora, y la ' +
+    'primera toma del tratamiento es esa. Lo que tiene (anginas, gripe) puede ir como registro de molestia. No des ' +
+    'consejos médicos ni cambies dosis: anotá lo que dice. Si falta algo importante para recordarle (la dosis, cada ' +
+    'cuánto), preguntalo en dudas. ' +
     'Si al final hay aclaraciones (respuestas a tus preguntas), usalas para completar o corregir los registros: no los ' +
     'repitas, y no vuelvas a preguntar lo que ya se aclaró.';
   const consigna = [
@@ -97,14 +139,37 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, 
     ...cats.map((c) => `- ${c.clave}: ${c.nombre}, ${c.tipo_valor}`),
     'Conceptos que ya existen (categoría: nombre):',
     ...conocidos.map((c) => `- ${porCat.get(c.categoria_id)}: ${c.nombre}`),
+    ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     '',
     'Texto de la persona:',
     texto,
   ].join('\n');
   const r = await pedirJson<Respuesta>({ sistema, texto: consigna, esquema: ESQUEMA, esfuerzo: 'low', maxTokens: 8000 });
   const idCat = new Map(cats.map((c) => [c.clave, c.id]));
+  const medicacion = idCat.get('medicacion');
   return {
     dudas: r.dudas,
+    tratamientos: (r.tratamientos ?? [])
+      .filter((x) => x.remedio.trim() && /^\d{4}-\d{2}-\d{2}$/.test(x.primera_fecha) && /^\d{1,2}:\d{2}$/.test(x.primera_hora))
+      .map((x) => {
+        const existente = conocidos.find((c) => c.categoria_id === medicacion && c.nombre_norm === normalizar(x.remedio));
+        const inicio = localAInstante(x.primera_fecha, x.primera_hora.padStart(5, '0'), p.zona_horaria);
+        const horarios = x.cada_horas ? [] : x.horarios.filter((h) => /^\d{1,2}:\d{2}$/.test(h)).map((h) => h.padStart(5, '0'));
+        return {
+          persona_id: p.id,
+          concepto_id: existente?.id ?? null,
+          concepto_nombre: existente?.nombre ?? x.remedio.trim(),
+          nuevo: !existente,
+          dosis: x.dosis,
+          unidad: x.unidad,
+          cada_horas: x.cada_horas && x.cada_horas > 0 ? x.cada_horas : null,
+          horarios,
+          inicio: inicio.toISOString(),
+          fin: x.dias && x.dias > 0 ? new Date(inicio.getTime() + x.dias * 86400000).toISOString() : null,
+          motivo: x.motivo,
+          dias: x.dias,
+        };
+      }),
     registros: r.registros
       .filter((x) => idCat.has(x.categoria) && /^\d{4}-\d{2}-\d{2}$/.test(x.fecha) && /^\d{1,2}:\d{2}$/.test(x.hora))
       .map((x) => {

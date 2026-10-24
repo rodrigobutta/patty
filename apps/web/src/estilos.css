@@ -410,3 +410,36 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .ayuda summary { cursor: pointer; color: var(--suave); font-size: 14px; }
 .btn.suave-btn { background: none; color: var(--suave); }
 .borrar-chico { display: block; margin: 14px auto 0; padding: 6px 12px; background: none; border: 0; color: var(--rojo); font: inherit; font-size: 14px; cursor: pointer; }
+
+/* ---------- Remedios ---------- */
+.remedios-dia h3 { margin: 0 0 8px; }
+.tomas li.toma { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tomas li.toma .que { flex: 1; min-width: 140px; }
+.toma .estado-toma { display: block; font-size: 12px; color: var(--suave); }
+.toma .estado-toma.tomada { color: var(--verde); font-weight: 600; }
+.toma .estado-toma.atrasada, .toma .estado-toma.ahora { color: var(--ambar); font-weight: 600; }
+.toma .estado-toma.olvidada { color: var(--rojo); }
+.toma.atrasada, .toma.ahora { border-color: var(--ambar); }
+.toma.tomada, .toma.salteada { opacity: 0.7; }
+.toma.despues { opacity: 0.6; }
+.botones-toma { display: flex; gap: 6px; }
+.cuando-hace-falta { margin-top: 10px; }
+.renglon-sub { display: block; margin-top: 2px; }
+.tratamiento { display: flex; align-items: center; gap: 10px; }
+.tratamiento .que { flex: 1; }
+.columna-chica { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.terminados summary { cursor: pointer; color: var(--suave); font-size: 14px; margin: 8px 0; }
+.form-remedio { max-height: 92vh; overflow-y: auto; }
+.form-remedio .hoja-cabeza h3 { margin: 0; }
+.form-remedio .segmentos { margin-bottom: 12px; }
+.form-remedio .segmentos button { padding: 8px 6px; font-size: 14px; }
+.form-remedio input.corto { width: 76px; flex: none; }
+.form-remedio .fila { margin-top: 0; flex-wrap: nowrap; }
+.form-remedio .fila input { min-width: 0; }
+.form-remedio .chips { align-items: center; }
+.form-remedio .chip.chico { padding: 5px 10px; font-size: 13px; }
+.form-remedio .horario { display: inline-flex; align-items: center; gap: 2px; }
+.form-remedio .horario input { width: 120px; }
+.form-remedio .opcion input.corto { display: inline-block; width: 60px; padding: 6px 8px; margin: 0 4px; }
+.resumen-tomas { margin: 4px 0 10px; }
+.remedio-propuesto { cursor: pointer; }

@@ -1,7 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
+import { alPedirIrAlDia } from './lib/avisos';
 import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
+import { useRecordatorios } from './lib/remedios';
 import { pedirSentir } from './lib/sentir';
 import { useSalud } from './lib/salud';
 import { useDatosDelTelefono } from './lib/telefono';
@@ -35,6 +37,8 @@ export function App() {
   const cara = useCara(fase === 'listo' ? persona : null);
   useEncuesta();
   useIrAlDiaConElAviso(useCallback(() => setPestana('hoy'), []));
+  useRecordatorios(fase === 'listo');
+  useEffect(() => alPedirIrAlDia(() => setPestana('hoy')), []);
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;

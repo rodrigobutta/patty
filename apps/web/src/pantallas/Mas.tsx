@@ -7,12 +7,14 @@ import { climaActivado, ponerClima, ubicacion } from '../lib/clima';
 import { esIOS, instalada, instalarApp } from '../lib/instalar';
 import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
 import { esNativa } from '../lib/nativo';
+import { ponerRecordatorios, recordatoriosActivos } from '../lib/remedios';
 import { hayDatosDelTelefono } from '../lib/telefono';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { Cuenta } from './Cuenta';
 import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
+import { Remedios } from './Remedios';
 import { NuevaPersona } from './NuevaPersona';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
@@ -26,6 +28,11 @@ export function Mas() {
   const [error, setError] = useState('');
   const [clima, setClima] = useState(climaActivado());
   const [encuesta, setEncuesta] = useState(configEncuesta());
+  const [recordatorios, setRecordatorios] = useState(recordatoriosActivos());
+  const cambiarRecordatorios = async (si: boolean) => {
+    setRecordatorios(si);
+    if (!(await ponerRecordatorios(si))) setError('El teléfono no deja mandar avisos a Patty: habilitalos en los ajustes del teléfono.');
+  };
   const cambiarEncuesta = async (c: typeof encuesta) => {
     setEncuesta(c);
     if (!(await ponerEncuesta(c))) setError('El teléfono no deja mandar avisos a Patty: habilitalos en los ajustes del teléfono.');
@@ -67,7 +74,26 @@ export function Mas() {
       {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
       {persona && esNativa() ? <DatosSalud persona={persona} /> : null}
 
+      {persona ? (
+        <>
+          <h2 className="seccion">Remedios</h2>
+          <Remedios persona={persona} puedeEscribir={usuario?.rol !== 'lector'} />
+        </>
+      ) : null}
+
       <h2 className="seccion">Avisos</h2>
+      <div className="tarjeta">
+        <h3>💊 Recordatorios de remedios</h3>
+        <label className="opcion">
+          <input type="checkbox" checked={recordatorios} onChange={(e) => void cambiarRecordatorios(e.target.checked)} />
+          <span>Avisarme a la hora de cada toma, y otra vez a la media hora si no la marqué.</span>
+        </label>
+        <p className="suave chico">
+          {esNativa()
+            ? 'Desde el aviso contestás «La tomé», «En 15 min» o «No la tomo». En la pantalla bloqueada no se ve qué remedio es.'
+            : 'Los avisos llegan con la app de Android o iPhone. Acá, en el Día, ves las tomas de hoy para marcarlas.'}
+        </p>
+      </div>
       <div className="tarjeta">
         <h3>🌙 Encuesta de la noche</h3>
         <label className="opcion">

@@ -29,6 +29,13 @@
       "when": 1792863654072,
       "tag": "0003_cantidad_decidida",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792874945800,
+      "tag": "0004_remedios",
+      "breakpoints": true
     }
   ]
 }

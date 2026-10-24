@@ -3,6 +3,7 @@
 // Se configura por dispositivo en Más.
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { useEffect } from 'react';
+import { avisoExacto, permisoAvisos } from './avisos';
 import { esNativa } from './nativo';
 
 const CLAVE = 'encuesta';
@@ -37,15 +38,9 @@ export async function programarAviso(c: Config = configEncuesta()): Promise<bool
   try {
     await LocalNotifications.cancel({ notifications: [{ id: ID_AVISO }] });
     if (!c.activa) return true;
-    let permiso = await LocalNotifications.checkPermissions();
-    if (permiso.display !== 'granted') permiso = await LocalNotifications.requestPermissions();
-    if (permiso.display !== 'granted') return false;
+    if (!(await permisoAvisos())) return false;
     const [hour, minute] = c.hora.split(':').map(Number);
-    // Exacta si el teléfono ya lo permite (la app pide USE_EXACT_ALARM, que Android da solo al instalar); si no,
-    // aproximada: pedirla abriría Ajustes, y para esto unos minutos de diferencia no importan.
-    const exacta = await LocalNotifications.checkExactNotificationSetting()
-      .then((p) => p.exact_alarm === 'granted')
-      .catch(() => false);
+    const exacta = await avisoExacto();
     await LocalNotifications.schedule({
       notifications: [
         {

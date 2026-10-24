@@ -185,6 +185,21 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
 → la IA propone registros reusando los conceptos existentes (se le pasa el catálogo). No guarda nada: la persona revisa,
 saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), creando los conceptos nuevos.
 
+## Remedios y recordatorios
+
+- `tratamientos`: un remedio (concepto de Medicación) con dosis y unidad, y cómo se toma: `cada_horas` desde la primera
+  toma (`inicio`), o `horarios` fijos todos los días, o ninguno ("si hace falta", sin avisos). `fin` es hasta cuándo
+  (sin fin = crónico); `terminado` corta antes.
+- Las tomas programadas no se guardan: se calculan (`tomasEntre` en `shared`). En `tomas` queda solo lo que pasó con
+  cada una: tomada (con su registro de medicación, origen `recordatorio`, que entra a los patrones) o salteada. Una
+  que pasó sin fila es olvidada (después de `HORAS_PARA_OLVIDADA`; antes, atrasada).
+- Anotar el remedio a mano o contándolo cuenta como la toma programada más cercana (±3 h), así no queda olvidada.
+- Contarlo: la IA propone `tratamientos` además de registros ("paracetamol 1 g cada 8 h por 5 días"); la persona los
+  revisa antes de guardar. Patty no da consejos médicos ni cambia dosis.
+- Avisos (`lib/remedios.ts`, solo app nativa): se programan las tomas de la próxima semana al abrir la app y cuando
+  algo cambia; uno a la hora y otro a la media hora si no se marcó. Desde el aviso: "La tomé", "En 15 min", "No la
+  tomo". Canal de Android `remedios`, privado en la pantalla bloqueada. `lib/avisos.ts` tiene lo común para otros avisos.
+
 ## Usuarios y acceso
 
 - Usuarios con rol `admin`, `editor` o `lector`; el primero que entra (con clave o con Google) es administrador.

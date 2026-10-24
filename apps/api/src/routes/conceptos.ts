@@ -164,6 +164,7 @@ export const rutasConceptos = new Hono<Env>()
       ]);
       if (!a || !b) throw new ErrorApi('No existe.', 404);
       await tx.execute(sql`UPDATE registros SET concepto_id = ${en} WHERE concepto_id = ${id}`);
+      await tx.execute(sql`UPDATE tratamientos SET concepto_id = ${en} WHERE concepto_id = ${id}`);
       await tx.execute(sql`UPDATE mediciones m SET concepto_id = ${en} WHERE concepto_id = ${id}
                            AND NOT EXISTS (SELECT 1 FROM mediciones o WHERE o.persona_id = m.persona_id AND o.concepto_id = ${en}
                                            AND o.inicio = m.inicio AND o.fuente_id = m.fuente_id)`);

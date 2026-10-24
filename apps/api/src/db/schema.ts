@@ -274,6 +274,64 @@ export const puntos = pgTable(
   (t) => [uniqueIndex('puntos_persona_instante_idx').on(t.persona_id, t.instante), index('puntos_persona_fecha_idx').on(t.persona_id, t.fecha)],
 );
 
+// ---------- Remedios ----------
+
+/**
+ * Un remedio que la persona toma de forma programada ("paracetamol 1 g cada 8 horas por 5 días", "vitamina D todos
+ * los días a las 9") o cuando hace falta. De acá salen las tomas que se recuerdan con avisos del teléfono:
+ * - `cada_horas`: cada tantas horas desde `inicio` (la primera toma).
+ * - si no, `horarios`: todos los días a esas horas locales ("09:00", "21:00"), desde el día de `inicio`.
+ * - sin ninguno de los dos: cuando haga falta (no se recuerda; se anota con un toque).
+ * Cada toma tomada es un registro de medicación, así entra a los patrones como cualquier otra cosa.
+ */
+export const tratamientos = pgTable(
+  'tratamientos',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    concepto_id: integer('concepto_id')
+      .notNull()
+      .references(() => conceptos.id),
+    dosis: doublePrecision('dosis'),
+    unidad: text('unidad'),
+    cada_horas: doublePrecision('cada_horas'),
+    horarios: text('horarios').array().notNull().default(sql`'{}'::text[]`),
+    inicio: instante('inicio').notNull(),
+    /** Hasta cuándo (sin incluir). Sin fin: crónico, hasta que se termine a mano. */
+    fin: instante('fin'),
+    /** Por qué lo toma ("anginas"), si se dijo. */
+    motivo: text('motivo'),
+    nota: text('nota'),
+    /** Si se terminó antes (o se dejó, en los crónicos): desde ahí no hay más tomas. */
+    terminado: instante('terminado'),
+    creado_por: integer('creado_por').references(() => usuarios.id, { onDelete: 'set null' }),
+    creado: creado(),
+    borrado: instante('borrado'),
+  },
+  (t) => [index('tratamientos_persona_idx').on(t.persona_id)],
+);
+
+/**
+ * Lo que pasó con cada toma programada: se tomó (con su registro de medicación) o se salteó a propósito. Las que no
+ * tienen fila y ya pasaron son las olvidadas.
+ */
+export const tomas = pgTable(
+  'tomas',
+  {
+    id: idGrande(),
+    tratamiento_id: integer('tratamiento_id')
+      .notNull()
+      .references(() => tratamientos.id, { onDelete: 'cascade' }),
+    programada: instante('programada').notNull(),
+    estado: text('estado', { enum: ['tomada', 'salteada'] }).notNull(),
+    registro_id: bigint('registro_id', { mode: 'number' }).references(() => registros.id, { onDelete: 'set null' }),
+    creado: creado(),
+  },
+  (t) => [uniqueIndex('tomas_unica_idx').on(t.tratamiento_id, t.programada), index('tomas_registro_idx').on(t.registro_id)],
+);
+
 // ---------- Patrones ----------
 
 /** Cada vez que se corre el análisis de una persona. */

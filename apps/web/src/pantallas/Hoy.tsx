@@ -1,6 +1,7 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
+import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
@@ -14,6 +15,7 @@ import { Mascota } from '../mascota/Mascota';
 import { Cargar } from './Cargar';
 import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
+import { RemediosDelDia } from './RemediosDelDia';
 import { Caritas, esMalo, Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
@@ -117,6 +119,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       ]);
       setRegistros(r);
       setAutomaticos(a);
+      setVuelta((v) => v + 1);
       setError('');
     } catch (e) {
       setError((e as Error).message);
@@ -127,6 +130,9 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     setAutomaticos([]);
     void traer();
   }, [traer]);
+  // Una toma marcada desde el aviso del teléfono también se ve en el Día.
+  useAlCambiarTomas(traer);
+  const [vuelta, setVuelta] = useState(0);
 
   /** Borra (y sus partes, si es la tele). Devuelve false si al final no se quiso borrar. */
   const borrar = async (r: Registro): Promise<boolean> => {
@@ -206,6 +212,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       </div>
       <div className={`contenido-dia${direccion ? ` entra-${direccion}` : ''}`} key={fecha}>
       {error ? <p className="neg">{error}</p> : null}
+      <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
       {fecha === hoy ? (
         contestadoHacePoco ? (
           <button className="algo-puntual" onClick={() => setSintiendo({ momento: 'ahora', estado: null })}>

@@ -375,3 +375,124 @@ export interface ResultadoAnalisis {
   resumen: string | null;
   sugerencias: string[];
 }
+
+// ---------- Remedios ----------
+
+/**
+ * Un remedio que se toma de forma programada o cuando hace falta. `cada_horas` (cada 8 h desde la primera toma) o
+ * `horarios` (todos los días a las 9:00 y 21:00); sin ninguno, es "cuando haga falta" y no tiene recordatorios.
+ */
+export interface Tratamiento {
+  id: number;
+  persona_id: number;
+  concepto_id: number;
+  /** El nombre del remedio (su concepto de medicación). */
+  remedio: string;
+  dosis: number | null;
+  unidad: string | null;
+  cada_horas: number | null;
+  horarios: string[];
+  /** La primera toma (ISO). */
+  inicio: string;
+  /** Hasta cuándo, sin incluir (ISO); null si no tiene fin. */
+  fin: string | null;
+  motivo: string | null;
+  nota: string | null;
+  terminado: string | null;
+  /** Calculado: tomas programadas en total (null si no tiene fin o es cuando haga falta), tomadas, y la próxima. */
+  total: number | null;
+  tomadas: number;
+  proxima: string | null;
+  activo: boolean;
+}
+
+export interface NuevoTratamiento {
+  persona_id: number;
+  concepto_id?: number | null;
+  /** Nombre del remedio, si es nuevo (se crea en Medicación). */
+  concepto_nombre?: string;
+  dosis?: number | null;
+  unidad?: string | null;
+  cada_horas?: number | null;
+  horarios?: string[];
+  inicio: string;
+  fin?: string | null;
+  motivo?: string | null;
+  nota?: string | null;
+}
+
+/** Una toma programada y qué pasó con ella (null: todavía nada, o se olvidó). */
+export interface Toma {
+  tratamiento_id: number;
+  persona_id: number;
+  remedio: string;
+  dosis: number | null;
+  unidad: string | null;
+  programada: string;
+  estado: 'tomada' | 'salteada' | null;
+  /** Cuándo se tomó de verdad (el registro), si se tomó. */
+  tomada: string | null;
+}
+
+/** Las unidades de dosis que se ofrecen al cargar un remedio. */
+export const UNIDADES_DOSIS = ['comprimido', 'cápsula', 'mg', 'g', 'ml', 'gotas', 'sobre', 'cucharada', 'puff', 'UI'];
+
+/** Después de esto sin marcar, una toma se da por olvidada (antes está "atrasada": todavía se puede tomar). */
+export const HORAS_PARA_OLVIDADA = 3;
+
+/** "1 g", "2 comprimidos", "" */
+export function dosisTexto(dosis: number | null, unidad: string | null): string {
+  if (dosis === null) return unidad ?? '';
+  if (!unidad) return String(dosis);
+  const plural = dosis !== 1 && /^(comprimido|cápsula|sobre|cucharada|puff)$/.test(unidad) ? 's' : '';
+  return `${Number(dosis.toFixed(2))} ${unidad}${plural}`;
+}
+
+/** "cada 8 h", "a las 09:00 y 21:00", "cuando haga falta" */
+export function frecuenciaTexto(t: Pick<Tratamiento, 'cada_horas' | 'horarios'>): string {
+  if (t.cada_horas) return t.cada_horas === 24 ? 'una vez por día' : `cada ${Number(t.cada_horas.toFixed(1))} h`;
+  if (t.horarios.length) {
+    const h = [...t.horarios].sort();
+    return `todos los días a las ${h.length === 1 ? h[0] : h.slice(0, -1).join(', ') + ' y ' + h.at(-1)}`;
+  }
+  return 'cuando haga falta';
+}
+
+/**
+ * Las tomas programadas de un tratamiento entre dos instantes (incluye `desde`, excluye `hasta`). `localAInstante`
+ * convierte una fecha y hora locales de la persona en instante (la API y la web tienen cada una la suya).
+ */
+export function tomasEntre(
+  t: Pick<Tratamiento, 'cada_horas' | 'horarios' | 'inicio' | 'fin' | 'terminado'>,
+  desde: Date,
+  hasta: Date,
+  fechaLocal: (instante: Date) => string,
+  localAInstante: (fecha: string, hora: string) => Date,
+): Date[] {
+  const inicio = new Date(t.inicio).getTime();
+  const fines = [hasta.getTime(), t.fin ? new Date(t.fin).getTime() : Infinity, t.terminado ? new Date(t.terminado).getTime() : Infinity];
+  const fin = Math.min(...fines);
+  const piso = Math.max(desde.getTime(), inicio);
+  const salida: Date[] = [];
+  if (fin <= piso) return salida;
+  if (t.cada_horas && t.cada_horas > 0) {
+    const paso = t.cada_horas * 3600000;
+    for (let k = Math.max(0, Math.ceil((piso - inicio) / paso)); inicio + k * paso < fin && salida.length < 2000; k++) salida.push(new Date(inicio + k * paso));
+    return salida;
+  }
+  if (!t.horarios.length) return salida;
+  const horas = [...t.horarios].sort();
+  // Desde el día anterior (por las zonas horarias) hasta el último día del rango.
+  let dia = fechaLocal(new Date(piso - 86400000));
+  const ultimo = fechaLocal(new Date(fin));
+  for (let n = 0; dia <= ultimo && n < 400; n++) {
+    for (const h of horas) {
+      const x = localAInstante(dia, h).getTime();
+      if (x >= piso && x < fin) salida.push(new Date(x));
+    }
+    const d = new Date(dia + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    dia = d.toISOString().slice(0, 10);
+  }
+  return salida;
+}
