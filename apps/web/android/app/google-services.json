@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "262143530681",
+    "project_id": "patty-ec5d4",
+    "storage_bucket": "patty-ec5d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:262143530681:android:94a1583b8ff87a6ef0ad68",
+        "android_client_info": {
+          "package_name": "ar.patty.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB05YzQXNESz8QJBV4BgSoZnthvslHP61Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
