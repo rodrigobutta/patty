@@ -1,11 +1,12 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
 import { horaAhora, horaEn, instanteDelDia } from '../lib/fechas';
 import { Autocompletar } from '../ui/Autocompletar';
+import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { Tele } from './Tele';
 
 interface Elegido {
@@ -207,11 +208,37 @@ function TextoLibre({ persona, alGuardar }: { persona: Persona; alGuardar(): voi
   const [trabajando, setTrabajando] = useState(false);
   const [error, setError] = useState('');
 
-  const interpretar = async () => {
+  const [escuchando, setEscuchando] = useState(false);
+  const escucha = useRef<Escucha | null>(null);
+  /** Lo que ya estaba escrito antes de dictar: lo dictado se agrega a continuación. */
+  const previo = useRef('');
+
+  // Dictar: el texto va apareciendo mientras se habla y, al terminar, se ordena solo.
+  const dictar = async () => {
+    if (escuchando) return escucha.current?.parar();
+    setError('');
+    previo.current = texto.trim();
+    let dicho = '';
+    setEscuchando(true);
+    escucha.current = await escuchar(
+      (t) => {
+        dicho = t;
+        setTexto([previo.current, t].filter(Boolean).join(' '));
+      },
+      (err) => {
+        setEscuchando(false);
+        escucha.current = null;
+        if (err) setError(err);
+        else if (dicho.trim()) void interpretar([previo.current, dicho].filter(Boolean).join(' '));
+      },
+    );
+  };
+
+  const interpretar = async (contado = texto) => {
     setTrabajando(true);
     setError('');
     try {
-      const r = await api<{ registros: Propuesta[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto });
+      const r = await api<{ registros: Propuesta[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado });
       setPropuesta(r.registros);
       setDudas(r.dudas);
       setQuitar(new Set());
@@ -268,10 +295,16 @@ function TextoLibre({ persona, alGuardar }: { persona: Persona; alGuardar(): voi
   }
   return (
     <div className="valor">
-      <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
+      <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus={!hayVoz()}
         placeholder="Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»" />
+      {hayVoz() ? (
+        <button className={`microfono${escuchando ? ' escuchando' : ''}`} onClick={() => void dictar()} disabled={trabajando} aria-label={escuchando ? 'Terminar de dictar' : 'Dictar'}>
+          <span aria-hidden>🎙️</span>
+          {escuchando ? 'Te escucho… tocá para terminar' : 'Hablarle'}
+        </button>
+      ) : null}
       {error ? <p className="neg">{error}</p> : null}
-      <button className="btn primario ancho" onClick={interpretar} disabled={trabajando || !texto.trim()}>{trabajando ? 'Leyendo…' : 'Ordenarlo'}</button>
+      <button className="btn primario ancho" onClick={() => void interpretar()} disabled={trabajando || escuchando || !texto.trim()}>{trabajando ? 'Leyendo…' : 'Ordenarlo'}</button>
     </div>
   );
 }

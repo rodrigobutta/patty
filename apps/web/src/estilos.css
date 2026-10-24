@@ -224,7 +224,10 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
   .festejo { animation: festejo-fondo 1.9s steps(1) forwards; }
 }
 
-/* "¿Cómo te sentís?" ya contestado: queda una línea chica que se puede volver a abrir. */
-.ya-contestado { display: flex; align-items: center; gap: 10px; animation: aparece 0.4s ease; }
-.ya-contestado .que { flex: 1; }
-@keyframes aparece { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+/* Dictar en "Contarlo": el micrófono late mientras escucha. */
+.microfono { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 10px 0 4px; padding: 12px;
+  border-radius: 999px; border: 1px solid var(--acento); background: var(--acento-suave); color: var(--acento); font: inherit; font-weight: 700; cursor: pointer; }
+.microfono span { font-size: 20px; }
+.microfono.escuchando { background: var(--acento); color: var(--sobre-acento); animation: late 1.2s ease-in-out infinite; }
+@keyframes late { 0%, 100% { box-shadow: 0 0 0 0 rgb(107 79 187 / 0.45); } 50% { box-shadow: 0 0 0 10px rgb(107 79 187 / 0); } }
+.barra button.marca { background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer; }

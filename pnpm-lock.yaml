@@ -62,6 +62,9 @@ importers:
       '@capgo/background-geolocation':
         specifier: 8.4.14
         version: 8.4.14(@capacitor/core@8.5.3)
+      '@capgo/capacitor-speech-recognition':
+        specifier: 8.4.5
+        version: 8.4.5(@capacitor/core@8.5.3)
       react:
         specifier: 18.3.1
         version: 18.3.1
@@ -682,6 +685,11 @@ packages:
 
   '@capgo/background-geolocation@8.4.14':
     resolution: {integrity: sha512-cO+b51OjitO0qsAZnJvDgbc9CbbQG1off3vr/+Qky8ZRa9qvLR6FMwCqxx5BP8N3kFlVHKblqx0DVf3SSkI5GQ==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capgo/capacitor-speech-recognition@8.4.5':
+    resolution: {integrity: sha512-SqET+nhMdN4EYuHKvki3PzTdvEEiGE8X1PgqoFyKkh9eIHA8t7z98H00fkL7nVnwQnbMIqWajB9NHhvDg24E2Q==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -3913,6 +3921,10 @@ snapshots:
       '@capacitor/core': 8.5.3
 
   '@capgo/background-geolocation@8.4.14(@capacitor/core@8.5.3)':
+    dependencies:
+      '@capacitor/core': 8.5.3
+
+  '@capgo/capacitor-speech-recognition@8.4.5(@capacitor/core@8.5.3)':
     dependencies:
       '@capacitor/core': 8.5.3
 

@@ -1,4 +1,5 @@
 // Guardar "cómo me siento" (o "cómo me sentí en el día") y los síntomas que vengan con eso, todo junto.
+import { useEffect } from 'react';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, type Categoria, type EstadoAnimo, type Persona } from 'shared';
 import { api } from '../api';
 import { anotarClima } from './clima';
@@ -34,4 +35,14 @@ export async function guardarSentir(o: {
     ],
   });
   void anotarClima(o.persona.id, [inicio]);
+}
+
+const EVENTO = 'patty-sentir';
+/** Abrir "¿Cómo te sentís?" desde cualquier lado (tocando la mascota de arriba). */
+export const pedirSentir = () => window.dispatchEvent(new Event(EVENTO));
+export function useAlPedirSentir(abrir: () => void): void {
+  useEffect(() => {
+    window.addEventListener(EVENTO, abrir);
+    return () => window.removeEventListener(EVENTO, abrir);
+  }, [abrir]);
 }

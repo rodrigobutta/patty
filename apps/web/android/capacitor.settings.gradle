@@ -7,3 +7,6 @@ project(':capacitor-local-notifications').projectDir = new File('../../../node_m
 
 include ':capgo-background-geolocation'
 project(':capgo-background-geolocation').projectDir = new File('../../../node_modules/.pnpm/@capgo+background-geolocation@8.4.14_@capacitor+core@8.5.3/node_modules/@capgo/background-geolocation/android')
+
+include ':capgo-capacitor-speech-recognition'
+project(':capgo-capacitor-speech-recognition').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-speech-recognition@8.4.5_@capacitor+core@8.5.3/node_modules/@capgo/capacitor-speech-recognition/android')

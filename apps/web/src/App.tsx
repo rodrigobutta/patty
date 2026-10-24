@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
+import { pedirSentir } from './lib/sentir';
 import { useDatosDelTelefono } from './lib/telefono';
 import { useCara } from './mascota/cara';
 import { Festejo } from './mascota/Festejo';
@@ -39,10 +40,10 @@ export function App() {
   return (
     <div className="app">
       <header className="barra">
-        <span className="marca">
+        <button className="marca" onClick={() => { setPestana('hoy'); pedirSentir(); }} aria-label="Patty: contale cómo te sentís">
           {cara ? <Mascota cara={cara} tamano={34} /> : null}
           Patty
-        </span>
+        </button>
         {personas.length > 1 ? (
           <select className="persona" value={persona.id} onChange={(e) => elegirPersona(Number(e.target.value))} aria-label="Persona">
             {personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
