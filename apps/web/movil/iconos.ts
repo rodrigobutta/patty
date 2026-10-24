@@ -59,7 +59,15 @@ for (const cara of CARAS) {
 }
 writeFileSync(
   `${RES}/values/icono_fondo.xml`,
-  `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO}</color>\n</resources>\n`,
+  `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO}</color>\n    <color name="patty_acento">#6b4fbb</color>\n</resources>\n`,
 );
+
+// iPhone: un solo ícono de 1024, sin transparencia (Apple no la acepta): se pasa por JPEG con sips para sacarle el
+// canal alfa. En iPhone el ícono no cambia de cara (iOS avisa con un cartel cada vez que se cambia).
+const IOS = 'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png';
+png(svgMascota('feliz', { lado: 1024, fondo: FONDO, zona: 300 }), 1024, IOS);
+const jpg = path.join(tmp, 'icono-ios.jpg');
+execFileSync('sips', ['-s', 'format', 'jpeg', IOS, '--out', jpg], { stdio: 'ignore' });
+execFileSync('sips', ['-s', 'format', 'png', jpg, '--out', IOS], { stdio: 'ignore' });
 rmSync(tmp, { recursive: true, force: true });
 console.log('Íconos generados.');
