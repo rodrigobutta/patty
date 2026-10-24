@@ -12,7 +12,7 @@ const HORAS = [0.5, 1, 1.5, 2, 3, 4];
 const PREFIJO_CANAL = teleEnCanal('');
 
 export function Tele({ persona, fecha, alGuardar }: { persona: Persona; fecha: string; alGuardar(): void }) {
-  const { categorias, avisar } = useEstado();
+  const { categorias, festejar } = useEstado();
   const [tipo, setTipo] = useState<string | null>(null);
   const [horas, setHoras] = useState<number | null>(null);
   const [canal, setCanal] = useState('');
@@ -51,7 +51,7 @@ export function Tele({ persona, fecha, alGuardar }: { persona: Persona; fecha: s
         ],
       });
       void anotarClima(persona.id, [inicio]);
-      avisar(`Anotado: ${horas} h de ${tipo.toLowerCase()}${canal.trim() ? ` en ${canal.trim()}` : ''}`);
+      festejar(`¡Anotado! ${horas < 1 ? '30 min' : `${String(horas).replace('.', ',')} h`} de ${tipo.toLowerCase()}${canal.trim() ? ` en ${canal.trim()}` : ''}`);
       alGuardar();
     } catch (e) {
       setError((e as Error).message);

@@ -4,6 +4,7 @@ import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
 import { useDatosDelTelefono } from './lib/telefono';
 import { useCara } from './mascota/cara';
+import { Festejo } from './mascota/Festejo';
 import { Mascota } from './mascota/Mascota';
 import { useSeguirUbicacion } from './lib/ubicacion';
 import { Entrar } from './pantallas/Entrar';
@@ -62,6 +63,7 @@ export function App() {
         ))}
       </nav>
       {aviso ? <div className="aviso" role="status">{aviso}</div> : null}
+      <Festejo />
     </div>
   );
 }

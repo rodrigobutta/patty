@@ -2,6 +2,10 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Categoria, Persona, Sesion, Usuario } from 'shared';
 import { api, cuandoSePierdaLaSesion, guardarToken } from './api';
+import type { Cara } from './mascota/dibujo';
+
+/** El festejo de la mascota al anotar algo (ver Festejo.tsx). */
+export interface Festejo { id: number; texto: string; cara: Cara }
 
 export type Fase = 'arrancando' | 'entrar' | 'configurar' | 'listo' | 'error';
 
@@ -19,6 +23,10 @@ interface Estado {
   salir(): Promise<void>;
   aviso: string;
   avisar(t: string): void;
+  festejo: Festejo | null;
+  /** La mascota festeja (o acompaña, con otra cara) lo que se acaba de anotar. */
+  festejar(texto: string, cara?: Cara): void;
+  terminarFestejo(): void;
 }
 
 const Ctx = createContext<Estado | null>(null);
@@ -49,6 +57,14 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
     setAviso(t);
     setTimeout(() => setAviso((a) => (a === t ? '' : a)), 2500);
   }, []);
+
+  const [festejo, setFestejo] = useState<Festejo | null>(null);
+  const festejar = useCallback((texto: string, cara: Cara = 'feliz') => {
+    const id = Date.now();
+    setFestejo({ id, texto, cara });
+    setTimeout(() => setFestejo((f) => (f?.id === id ? null : f)), 1900);
+  }, []);
+  const terminarFestejo = useCallback(() => setFestejo(null), []);
 
   const recargar = useCallback(async () => {
     const [ps, cs] = await Promise.all([api<Persona[]>('GET', '/api/personas'), api<Categoria[]>('GET', '/api/conceptos/categorias')]);
@@ -100,7 +116,7 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
 
   const persona = personas.find((p) => p.id === personaId) ?? personas[0] ?? null;
   const valor: Estado = {
-    fase, error, sesion, usuario: sesion?.usuario ?? null, personas, persona, categorias, elegirPersona, recargar, entro, salir, aviso, avisar,
+    fase, error, sesion, usuario: sesion?.usuario ?? null, personas, persona, categorias, elegirPersona, recargar, entro, salir, aviso, avisar, festejo, festejar, terminarFestejo,
   };
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }

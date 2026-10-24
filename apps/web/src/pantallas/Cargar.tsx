@@ -32,7 +32,7 @@ interface Propuesta {
 }
 
 export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Persona; fecha: string; alGuardar(): void; alCerrar(): void }) {
-  const { categorias, sesion, avisar } = useEstado();
+  const { categorias, sesion, festejar } = useEstado();
   const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>('rapido');
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [elegido, setElegido] = useState<Elegido | null>(null);
@@ -64,7 +64,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Perso
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
-        <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { avisar(`Anotado: ${elegido.nombre}`); alGuardar(); }} />
+        <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { festejar(`¡Anotado! ${elegido.nombre}`); alGuardar(); }} />
       ) : (
         <>
           <div className="chips">
@@ -199,7 +199,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
 }
 
 function TextoLibre({ persona, alGuardar }: { persona: Persona; alGuardar(): void }) {
-  const { categorias, avisar } = useEstado();
+  const { categorias, festejar } = useEstado();
   const [texto, setTexto] = useState('');
   const [propuesta, setPropuesta] = useState<Propuesta[] | null>(null);
   const [dudas, setDudas] = useState<string[]>([]);
@@ -228,7 +228,7 @@ function TextoLibre({ persona, alGuardar }: { persona: Persona; alGuardar(): voi
       const lista = propuesta!.filter((_, i) => !quitar.has(i)).map((p) => ({ ...p, persona_id: persona.id }));
       await api('POST', '/api/registros/varios', { registros: lista });
       void anotarClima(persona.id, lista.map((p) => p.inicio));
-      avisar(`Anotadas ${lista.length} cosas`);
+      festejar(`¡Anotadas ${lista.length} cosas!`);
       alGuardar();
     } catch (e) {
       setError((e as Error).message);

@@ -13,6 +13,9 @@ import { Mascota } from '../mascota/Mascota';
 import { Cargar } from './Cargar';
 import { Caritas, esMalo, Sentir } from './Sentir';
 
+/** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar (queda una línea). */
+const HORAS_SIN_PREGUNTAR = 3;
+
 const ICONOS_FUENTE: Record<string, string> = { telefono: '📱', ubicacion: '📍', clima: '🌤️', reloj: '⌚' };
 
 const PEDIDOS: Record<Cara, string> = {
@@ -37,7 +40,7 @@ function detalle(r: Registro, tipo: string | undefined): string {
 }
 
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
-  const { categorias, avisar } = useEstado();
+  const { categorias, avisar, festejar } = useEstado();
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
   const [registros, setRegistros] = useState<Registro[] | null>(null);
   const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>([]);
@@ -47,6 +50,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
   const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
   const [error, setError] = useState('');
+  /** Volver a preguntar "¿cómo te sentís?" aunque se haya contestado hace poco. */
+  const [preguntarDeNuevo, setPreguntarDeNuevo] = useState(false);
   const hoy = hoyEn(persona.zona_horaria);
 
   const traer = useCallback(async () => {
@@ -110,13 +115,18 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     if (esMalo(e)) return setSintiendo({ momento, estado: e });
     try {
       await guardarSentir({ persona, categorias, momento, estado: e, fecha });
-      avisar(`Anotado: ${e.nombre.toLowerCase()}`);
+      festejar(`¡Qué bueno! Anotado: ${e.nombre.toLowerCase()}`);
+      setPreguntarDeNuevo(false);
       void traer();
       avisarAnotado();
     } catch (err) {
       setError((err as Error).message);
     }
   };
+
+  // Si contestó "cómo me siento" hace menos de 3 horas, la pregunta se achica a una línea (se puede volver a abrir).
+  const ultimoSentir = momento === 'ahora' ? registros?.filter((r) => r.concepto === COMO_ME_SIENTO).at(-1) : undefined;
+  const contestadoHacePoco = !preguntarDeNuevo && ultimoSentir && Date.now() - new Date(ultimoSentir.inicio).getTime() < HORAS_SIN_PREGUNTAR * 3600000;
 
   const tipoDe = (r: Registro) => categorias.find((c) => c.id === r.categoria_id);
 
@@ -129,10 +139,20 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       </div>
       {error ? <p className="neg">{error}</p> : null}
       {fecha === hoy ? (
-        <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
-          <h3>{momento === 'dia' ? '¿Cómo te sentiste hoy?' : '¿Cómo te sentís ahora?'}</h3>
-          <Caritas elegir={(e) => void sentir(e)} />
-        </div>
+        contestadoHacePoco && ultimoSentir?.intensidad != null ? (
+          <div className="tarjeta ya-contestado">
+            <span className="icono" aria-hidden>{estadoDe(ultimoSentir.intensidad).emoji}</span>
+            <span className="que">
+              {estadoDe(ultimoSentir.intensidad).nombre} <span className="suave chico">a las {horaEn(ultimoSentir.inicio, persona.zona_horaria)}</span>
+            </span>
+            <button className="btn chico" onClick={() => setPreguntarDeNuevo(true)}>¿Cambió algo?</button>
+          </div>
+        ) : (
+          <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
+            <h3>{momento === 'dia' ? '¿Cómo te sentiste hoy?' : '¿Cómo te sentís ahora?'}</h3>
+            <Caritas elegir={(e) => void sentir(e)} />
+          </div>
+        )
       ) : null}
       {registros === null ? (
         <p className="suave centro">…</p>
@@ -201,7 +221,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             estado={sintiendo.estado}
             fecha={fecha}
             alCerrar={() => setSintiendo(null)}
-            alGuardar={() => { setSintiendo(null); void traer(); avisarAnotado(); }}
+            alGuardar={() => { setSintiendo(null); setPreguntarDeNuevo(false); void traer(); avisarAnotado(); }}
           />
         </>
       ) : null}

@@ -32,7 +32,7 @@ export function Sentir({ persona, momento, estado: inicial, fecha, alGuardar, al
   alGuardar(): void;
   alCerrar(): void;
 }) {
-  const { categorias, avisar } = useEstado();
+  const { categorias, festejar } = useEstado();
   const [estado, setEstado] = useState<EstadoAnimo | null>(inicial);
   const [sintomas, setSintomas] = useState<string[]>(SINTOMAS_COMUNES);
   /** Cuánto le pasó cada síntoma elegido (índice en CUANTO). */
@@ -72,7 +72,7 @@ export function Sentir({ persona, momento, estado: inicial, fecha, alGuardar, al
     if (otro.trim()) lista.push({ nombre: otro.trim(), intensidad: CUANTO[1].intensidad });
     try {
       await guardarSentir({ persona, categorias, momento, estado: e, fecha, sintomas: lista, nota });
-      avisar(lista.length ? `Anotado: ${e.nombre.toLowerCase()}, con ${lista.length === 1 ? lista[0].nombre.toLowerCase() : `${lista.length} síntomas`}` : `Anotado: ${e.nombre.toLowerCase()}`);
+      festejar(esMalo(e) ? 'Gracias por contarme. Que se mejore pronto 💜' : `¡Qué bueno! Anotado: ${e.nombre.toLowerCase()}`, esMalo(e) ? 'espera' : 'feliz');
       alGuardar();
     } catch (err) {
       setError((err as Error).message);

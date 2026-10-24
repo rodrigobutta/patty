@@ -105,6 +105,9 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   preguntar; desde ahí, al anotarlo se pide "¿Cuántos vasos?".
 - En el Día, lo que llegó solo va en un renglón por fuente (teléfono, ubicación, clima) con lo principal
   (`resumenDelGrupo`); al tocarlo se abre con todo.
+- **Festejo** (`mascota/Festejo.tsx`, `festejar` en el estado): al anotar algo la mascota aparece un momento, salta
+  y suelta chispitas; si lo anotado es que la persona está mal, acompaña con otra cara. Después de contestar
+  "¿cómo te sentís ahora?" la pregunta queda achicada a una línea por 3 horas ("Bien a las 14:55 · ¿Cambió algo?").
 - **Tele** (pestaña «📺 Tele» al anotar, `pantallas/Tele.tsx`): tipo de contenido, cuánto tiempo y canal o plataforma
   (los ya usados primero). Se guardan tres duraciones en «Pantalla y redes»: «Tele» (total, con el detalle en la nota),
   «Tele: Noticias» y «Tele en TN», para que los patrones separen tipos y canales. En el Día se ve solo «Tele» y se
