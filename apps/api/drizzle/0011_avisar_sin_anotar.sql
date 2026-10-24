@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "avisar_sin_anotar" boolean DEFAULT true NOT NULL;

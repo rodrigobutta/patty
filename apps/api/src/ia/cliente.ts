@@ -29,6 +29,8 @@ export async function pedirJson<T>(opciones: {
   esquema: Record<string, unknown>;
   esfuerzo: 'low' | 'medium' | 'high';
   maxTokens?: number;
+  /** Fotos que acompañan el texto (por ejemplo, un plato de comida), en base64. */
+  imagenes?: Array<{ tipo: 'image/jpeg' | 'image/png' | 'image/webp'; datos: string }>;
 }): Promise<T> {
   if (!iaDisponible() && !clientePrueba) throw new ErrorApi('La IA no está configurada en este servidor (falta ANTHROPIC_API_KEY).', 503);
   const pedido = {
@@ -36,7 +38,17 @@ export async function pedirJson<T>(opciones: {
     max_tokens: opciones.maxTokens ?? 16000,
     system: opciones.sistema,
     output_config: { effort: opciones.esfuerzo, format: { type: 'json_schema' as const, schema: opciones.esquema } },
-    messages: [{ role: 'user' as const, content: opciones.texto }],
+    messages: [
+      {
+        role: 'user' as const,
+        content: opciones.imagenes?.length
+          ? [
+              ...opciones.imagenes.map((i) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: i.tipo, data: i.datos } })),
+              { type: 'text' as const, text: opciones.texto },
+            ]
+          : opciones.texto,
+      },
+    ],
   };
   let resp: Anthropic.Message;
   try {

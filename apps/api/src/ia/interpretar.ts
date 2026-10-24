@@ -94,8 +94,8 @@ const diaDeLaSemana = (fecha: string) =>
  * `referencia`: el día que la persona estaba mirando en la app al contarlo (AAAA-MM-DD). Si no dice cuándo pasó, es
  * ese día; si dice "ayer", "el sábado", "anoche", se cuenta desde hoy.
  */
-export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, referencia?: string) {
-  if (!texto) throw new ErrorApi('Escribí qué pasó.');
+export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, referencia?: string, imagen?: { tipo: 'image/jpeg' | 'image/png' | 'image/webp'; datos: string }) {
+  if (!texto && !imagen) throw new ErrorApi('Escribí qué pasó.');
   if (texto.length > 4000) throw new ErrorApi('El texto es muy largo (máximo 4000 letras).');
   const cats = await filas<Categoria>(tx, sql`SELECT * FROM categorias ORDER BY orden`);
   const conocidos = await filas<{ id: number; categoria_id: number; nombre: string; nombre_norm: string }>(
@@ -128,6 +128,10 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, 
     'primera toma del tratamiento es esa. Lo que tiene (anginas, gripe) puede ir como registro de molestia. No des ' +
     'consejos médicos ni cambies dosis: anotá lo que dice. Si falta algo importante para recordarle (la dosis, cada ' +
     'cuánto), preguntalo en dudas. ' +
+    'Si viene una foto, mirá qué se ve y anotalo: en un plato de comida, cada comida o ingrediente principal que se ' +
+    'reconozca (con una cantidad estimada si se puede, por ejemplo 2 empanadas, 1 vaso), una bebida, la caja de un ' +
+    'remedio (su nombre). La hora es ahora, salvo que el texto diga otra cosa. Si no se distingue bien qué es, ' +
+    'preguntalo en dudas en vez de inventar; si la foto no tiene nada para anotar, no propongas registros y decilo en dudas. ' +
     'Si al final hay aclaraciones (respuestas a tus preguntas), usalas para completar o corregir los registros: no los ' +
     'repitas, y no vuelvas a preguntar lo que ya se aclaró. Si alguna pregunta anterior quedó sin contestar, volvé a ' +
     'preguntarla mientras siga faltando algo que importa (sobre todo en remedios: dosis y cada cuánto o a qué hora; y ' +
@@ -144,10 +148,11 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, 
     ...conocidos.map((c) => `- ${porCat.get(c.categoria_id)}: ${c.nombre}`),
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     '',
+    ...(imagen ? ['La persona mandó una foto (arriba) para anotar.'] : []),
     'Texto de la persona:',
-    texto,
+    texto || '(sin texto: solo la foto)',
   ].join('\n');
-  const r = await pedirJson<Respuesta>({ sistema, texto: consigna, esquema: ESQUEMA, esfuerzo: 'low', maxTokens: 8000 });
+  const r = await pedirJson<Respuesta>({ sistema, texto: consigna, esquema: ESQUEMA, esfuerzo: 'low', maxTokens: 8000, imagenes: imagen ? [imagen] : undefined });
   const idCat = new Map(cats.map((c) => [c.clave, c.id]));
   const medicacion = idCat.get('medicacion');
   return {

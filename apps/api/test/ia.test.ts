@@ -62,3 +62,22 @@ describe('texto libre con IA', () => {
     expect(g.body.map((x: any) => x.fecha)).toEqual(['2026-10-23', '2026-10-23']);
   });
 });
+
+describe('foto', () => {
+  it('manda la imagen a la IA junto con el texto y propone registros', async () => {
+    const { ana, personaId } = await conAdmin();
+    const pedidos = falso({
+      registros: [{ categoria: 'comida', concepto: 'Milanesa', tipo_valor: 'evento', fecha: '2026-10-24', hora: '13:00', duracion_min: null, valor: null, unidad: null, intensidad: null, nota: 'con puré' }],
+      tratamientos: [],
+      dudas: [],
+    });
+    const imagen = Buffer.from('foto de prueba').toString('base64');
+    const r = await ana.post('/api/registros/foto', { persona_id: personaId, imagen: `data:image/jpeg;base64,${imagen}`, tipo: 'image/jpeg' });
+    expect(r.status).toBe(200);
+    expect(r.body.registros[0]).toMatchObject({ concepto_nombre: 'Milanesa', nota: 'con puré' });
+    const contenido = pedidos[0].messages[0].content;
+    expect(contenido[0]).toMatchObject({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imagen } });
+    expect(contenido[1].text).toContain('solo la foto');
+    expect((await ana.post('/api/registros/foto', { persona_id: personaId, imagen: '' })).status).toBe(400);
+  });
+});

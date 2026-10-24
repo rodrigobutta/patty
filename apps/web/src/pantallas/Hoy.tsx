@@ -73,7 +73,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   /** La fuente de datos automáticos que está abierta (se ve todo lo que llegó de ella). */
   const [abierto, setAbierto] = useState<string | null>(null);
   /** La hoja de anotar abierta: normal, o directo en "Contarlo" (el botón grande de hablarle). */
-  const [cargando, setCargando] = useState<false | 'normal' | 'contar'>(false);
+  const [cargando, setCargando] = useState<false | 'normal' | 'contar' | 'foto'>(false);
   /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
   const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
   const [error, setError] = useState('');
@@ -354,16 +354,19 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </>
       ) : null}
       {sesion?.ia ? (
-        <button className="contale" onClick={() => setCargando('contar')}>
-          <span aria-hidden>{hayVoz(sesion.voz) ? '🎙️' : '✍️'}</span>
-          Contale a Patty
-        </button>
+        <>
+          <button className="contale" onClick={() => setCargando('contar')}>
+            <span aria-hidden>{hayVoz(sesion.voz) ? '🎙️' : '✍️'}</span>
+            Contale a Patty
+          </button>
+          <button className="camara-flotante" onClick={() => setCargando('foto')} aria-label="Sacale una foto a lo que comiste">📷</button>
+        </>
       ) : null}
       <button className="fab" onClick={() => setCargando('normal')} aria-label="Anotar">＋</button>
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />
-          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} alCerrar={() => setCargando(false)} alGuardar={(otroDia) => { setCargando(false); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
+          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} foto={cargando === 'foto'} alCerrar={() => setCargando(false)} alGuardar={(otroDia) => { setCargando(false); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
         </>
       ) : null}
     </section>

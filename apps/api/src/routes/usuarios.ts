@@ -71,6 +71,17 @@ export const rutasUsuarios = new Hono<Env>()
     if (cambios.activo === false) await c.var.db.execute(sql`DELETE FROM sesiones WHERE usuario_id = ${id}`);
     return c.json({ ok: true });
   })
+  .get('/yo/preferencias', async (c) => {
+    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar FROM usuarios WHERE id = ${c.var.usuario.id}`));
+  })
+  .put('/yo/preferencias', async (c) => {
+    // {avisar_sin_anotar}: lo que cada uno elige de los avisos que manda el servidor.
+    const d = await cuerpo(c);
+    if (typeof d.avisar_sin_anotar === 'boolean') {
+      await c.var.db.execute(sql`UPDATE usuarios SET avisar_sin_anotar = ${d.avisar_sin_anotar} WHERE id = ${c.var.usuario.id}`);
+    }
+    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar FROM usuarios WHERE id = ${c.var.usuario.id}`));
+  })
   .post('/yo/clave', async (c) => {
     const d = await cuerpo(c);
     const f = await una<{ clave: string }>(c.var.db, sql`SELECT clave FROM usuarios WHERE id = ${c.var.usuario.id}`);

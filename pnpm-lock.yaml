@@ -50,6 +50,9 @@ importers:
       '@capacitor/android':
         specifier: 8.5.3
         version: 8.5.3(@capacitor/core@8.5.3)
+      '@capacitor/camera':
+        specifier: 8.2.5
+        version: 8.2.5(@capacitor/core@8.5.3)
       '@capacitor/core':
         specifier: 8.5.3
         version: 8.5.3
@@ -673,6 +676,11 @@ packages:
     resolution: {integrity: sha512-ilH4gSSz3DrketMkzDVAvY9JsWJ//rCQnECLTdcFRO7xXDogwAbUvQAnIAbiqefwV/D1xfjEL4Gw1MJXEcaA9g==}
     peerDependencies:
       '@capacitor/core': ^8.5.0
+
+  '@capacitor/camera@8.2.5':
+    resolution: {integrity: sha512-FPuwY7byjTlBjeUKm17eTjLCPhuqBPJqTF4N3JCQuymLn2FUgfu0SMSN6OUQvCiiz/EVJVyZ9Mmg5GEmDfFoIA==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
 
   '@capacitor/cli@8.5.3':
     resolution: {integrity: sha512-/G6xwna+p4GS3lthSdWN3OThCH2F85O0Ukdy8rv3oAXvgEMeyFgPEIA3PMAS++IkHwUuBYBAKOQJnZfcrh1n0w==}
@@ -3906,6 +3914,10 @@ snapshots:
       '@babel/helper-validator-identifier': 7.29.7
 
   '@capacitor/android@8.5.3(@capacitor/core@8.5.3)':
+    dependencies:
+      '@capacitor/core': 8.5.3
+
+  '@capacitor/camera@8.2.5(@capacitor/core@8.5.3)':
     dependencies:
       '@capacitor/core': 8.5.3
 

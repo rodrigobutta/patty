@@ -138,7 +138,7 @@ export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<numb
     sql`SELECT p.id, p.nombre, p.zona_horaria AS zona, pu.usuario_id, p.creado,
                (SELECT to_char(max(r.fecha), 'YYYY-MM-DD') FROM registros r WHERE r.persona_id = p.id AND r.borrado IS NULL) AS ultima
         FROM personas p JOIN persona_usuarios pu ON pu.persona_id = p.id AND pu.rol = 'dueno'
-        JOIN usuarios u ON u.id = pu.usuario_id AND u.activo
+        JOIN usuarios u ON u.id = pu.usuario_id AND u.activo AND u.avisar_sin_anotar
         WHERE EXISTS (SELECT 1 FROM dispositivos d WHERE d.usuario_id = pu.usuario_id)`,
   );
   let enviados = 0;

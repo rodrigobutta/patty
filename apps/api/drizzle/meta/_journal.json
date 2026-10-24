@@ -78,6 +78,13 @@
       "when": 1792884462004,
       "tag": "0010_instalaciones",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792885246052,
+      "tag": "0011_avisar_sin_anotar",
+      "breakpoints": true
     }
   ]
 }

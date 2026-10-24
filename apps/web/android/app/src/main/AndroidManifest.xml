@@ -92,6 +92,7 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <!-- Dictar: grabar desde la web (el permiso de micrófono lo pide la app al primer uso). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Para ver el nombre de las apps usadas (Android 11+ esconde las demás apps si no). -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />

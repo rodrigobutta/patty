@@ -40,6 +40,10 @@
 	<string>Patty lee de Salud tu sueño, pasos, pulso y más para buscar qué cosas se relacionan con cómo te sentís.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Patty no escribe en Salud.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Para sacarle una foto a tu plato (o a lo que quieras anotar) y que Patty se dé cuenta qué es.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Para elegir una foto de lo que comiste y que Patty la anote.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Para que puedas contarle tu día a Patty hablando.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

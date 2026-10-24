@@ -44,6 +44,8 @@ export const usuarios = pgTable(
     clave: text('clave').notNull(),
     rol: text('rol', { enum: ['admin', 'editor', 'lector'] }).notNull().default('editor'),
     activo: boolean('activo').notNull().default(true),
+    /** Si quiere el aviso de la tarde cuando no anotó nada en el día ("te extraño"). */
+    avisar_sin_anotar: boolean('avisar_sin_anotar').notNull().default(true),
     /** La última vez que usó la app (se actualiza cada tantos minutos, para la administración). */
     ultimo_acceso: instante('ultimo_acceso'),
     creado: creado(),

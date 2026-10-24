@@ -35,6 +35,20 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const [clima, setClima] = useState(climaActivado());
   const [encuesta, setEncuesta] = useState(configEncuesta());
   const [recordatorios, setRecordatorios] = useState(recordatoriosActivos());
+  // Se guarda en la cuenta (lo manda el servidor), no en el teléfono.
+  const [sinAnotar, setSinAnotar] = useState<boolean | null>(null);
+  useEffect(() => {
+    api<{ avisar_sin_anotar: boolean }>('GET', '/api/usuarios/yo/preferencias').then((r) => setSinAnotar(r.avisar_sin_anotar)).catch(() => setSinAnotar(true));
+  }, []);
+  const cambiarSinAnotar = async (si: boolean) => {
+    setSinAnotar(si);
+    try {
+      await api('PUT', '/api/usuarios/yo/preferencias', { avisar_sin_anotar: si });
+    } catch (e) {
+      setSinAnotar(!si);
+      setError((e as Error).message);
+    }
+  };
   const cambiarRecordatorios = async (si: boolean) => {
     setRecordatorios(si);
     if (!(await ponerRecordatorios(si))) setError('El teléfono no deja mandar avisos a Patty: habilitalos en los ajustes del teléfono.');
@@ -99,6 +113,14 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       ) : null}
 
       <h2 className="seccion">Avisos</h2>
+      <div className="tarjeta">
+        <h3>😢 Si no anoté nada</h3>
+        <label className="opcion">
+          <input type="checkbox" checked={sinAnotar ?? true} disabled={sinAnotar === null} onChange={(e) => void cambiarSinAnotar(e.target.checked)} />
+          <span>A las 19 h, si no anoté nada en el día, que Patty me lo recuerde.</span>
+        </label>
+        <p className="suave chico">Si pasa más de una semana sin anotar, el aviso llega una vez por semana.</p>
+      </div>
       <div className="tarjeta">
         <h3>💊 Recordatorios de remedios</h3>
         <label className="opcion">

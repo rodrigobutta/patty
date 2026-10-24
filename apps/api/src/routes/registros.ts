@@ -146,6 +146,17 @@ export const rutasRegistros = new Hono<Env>()
     });
     return c.json({ ok: true });
   })
+  .post('/foto', async (c) => {
+    // {persona_id, imagen (base64, JPEG/PNG/WebP), tipo, texto?, fecha?}: lo que se ve en la foto (un plato de comida,
+    // una bebida, un remedio) como registros propuestos, igual que contarlo. No guarda nada ni la foto.
+    const d = await cuerpo(c);
+    const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
+    const tipo = ['image/jpeg', 'image/png', 'image/webp'].includes(texto(d.tipo)) ? (texto(d.tipo) as 'image/jpeg') : 'image/jpeg';
+    const datos = texto(d.imagen).replace(/^data:[^;]+;base64,/, '');
+    if (!datos || !/^[A-Za-z0-9+/=]+$/.test(datos)) throw new ErrorApi('Falta la foto.');
+    if (datos.length > 7_000_000) throw new ErrorApi('La foto es muy grande.');
+    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined, { tipo, datos }));
+  })
   .post('/interpretar', async (c) => {
     // "Desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos, sin guardar.
     const d = await cuerpo(c);

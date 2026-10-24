@@ -6,6 +6,7 @@ import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
 import { horaAhora, horaEn, hoyEn, instanteDelDia, nombreDia } from '../lib/fechas';
 import { Autocompletar } from '../ui/Autocompletar';
+import { sacarFoto, type Foto } from '../lib/foto';
 import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
@@ -49,7 +50,7 @@ interface Propuesta {
   nota: string | null;
 }
 
-export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false }: {
+export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto = false }: {
   persona: Persona;
   fecha: string;
   /** `fechaGuardada`: si lo anotado quedó todo en otro día (contado en texto: "ayer a la noche…"), cuál. */
@@ -57,9 +58,11 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false }: 
   alCerrar(): void;
   /** Abrir directo en "Contarlo" y, si se puede, empezar a escuchar (el botón grande del Día). */
   contar?: boolean;
+  /** Abrir directo en "Contarlo" con la cámara (el botón de la foto del Día). */
+  foto?: boolean;
 }) {
   const { categorias, sesion, festejar } = useEstado();
-  const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>(contar ? 'texto' : 'rapido');
+  const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>(contar || foto ? 'texto' : 'rapido');
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [elegido, setElegido] = useState<Elegido | null>(null);
   const [pidiendoCategoria, setPidiendoCategoria] = useState<string | null>(null);
@@ -86,7 +89,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false }: 
       </div>
 
       {modo === 'texto' ? (
-        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar} />
+        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto} fotoAlAbrir={foto} />
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
@@ -229,12 +232,13 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
  * solo se ve el botón grande y lo que se escuchó; para escribir hay un enlace. Si Patty tiene dudas ("¿cuántas
  * porciones?"), se le contesta igual, hablando o escribiendo, y vuelve a ordenar todo con la aclaración.
  */
-function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
+function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAbrir = false }: {
   persona: Persona;
   /** El día que se estaba mirando: si no se dice cuándo pasó, es ese. */
   fecha: string;
   alGuardar(fechaGuardada?: string): void;
   dictarAlAbrir?: boolean;
+  fotoAlAbrir?: boolean;
 }) {
   const { categorias, festejar, sesion } = useEstado();
   const vozServidor = Boolean(sesion?.voz);
@@ -254,11 +258,33 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
   const [error, setError] = useState('');
   const escucha = useRef<Escucha | null>(null);
 
-  const interpretar = async (contado: string) => {
+  /** La foto que se mandó (se manda de nuevo con cada aclaración). */
+  const [foto, setFoto] = useState<Foto | null>(null);
+  const fotoRef = useRef<Foto | null>(null);
+  const tomarFoto = async () => {
+    setError('');
+    try {
+      const f = await sacarFoto();
+      if (!f) return;
+      fotoRef.current = f;
+      setFoto(f);
+      await interpretar(texto.trim(), f);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const interpretar = async (contado: string, fotoNueva?: Foto) => {
+    const foto = fotoNueva ?? fotoRef.current;
     setEstado('ordenando');
     setError('');
     try {
-      const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado, fecha });
+      // Con foto, va la foto con lo que se haya contado (y las aclaraciones); si no, solo el texto.
+      const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: string[] }>(
+        'POST',
+        foto ? '/api/registros/foto' : '/api/registros/interpretar',
+        foto ? { persona_id: persona.id, texto: contado, fecha, imagen: foto.datos, tipo: foto.tipo } : { persona_id: persona.id, texto: contado, fecha },
+      );
       setTexto(contado);
       setPropuesta(r.registros);
       setRemedios(r.tratamientos ?? []);
@@ -305,6 +331,14 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
       { servidor: vozServidor, alTranscribir: () => setEstado('transcribiendo') },
     );
   };
+
+  // Desde el botón de la cámara del Día: se abre la cámara apenas se abre.
+  const fotoPedida = useRef(false);
+  useEffect(() => {
+    if (!fotoAlAbrir || fotoPedida.current) return;
+    fotoPedida.current = true;
+    void tomarFoto();
+  });
 
   // Desde el botón grande del Día: se empieza a escuchar apenas se abre.
   const empezado = useRef(false);
@@ -362,6 +396,9 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
         </button>
         <p className="leyenda-voz">{leyenda}</p>
         {oido && (estado === 'escuchando' || estado === 'transcribiendo' || estado === 'ordenando') ? <blockquote className="oido">{oido}</blockquote> : null}
+        {!paraResponder ? (
+          <button className="btn foto-boton" onClick={() => void tomarFoto()} disabled={ocupado || estado === 'escuchando'}>📷 O mandale una foto (de tu plato, por ejemplo)</button>
+        ) : null}
         <button className="enlace" onClick={() => setModo('escribir')} disabled={estado === 'escuchando'}>✍️ Prefiero escribir</button>
       </div>
     ) : paraResponder ? (
@@ -375,6 +412,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
         <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
           placeholder="Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»" />
         <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? 'Ordenando…' : 'Ordenarlo'}</button>
+        <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}>📷 {texto.trim() ? 'Ordenarlo con una foto' : 'Mandale una foto'}</button>
         {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>🎙️ Prefiero hablar</button> : null}
       </>
     );
@@ -382,6 +420,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
   if (propuesta) {
     return (
       <div className="valor">
+        {foto ? <img className="foto-mandada" src={foto.url} alt="La foto que mandaste" /> : null}
         <p className="suave">Revisá y sacá lo que no va:</p>
         <ul className="lista">
           {propuesta.map((p, i) => {
@@ -442,6 +481,12 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
   }
   return (
     <div className="valor">
+      {foto && estado === 'ordenando' ? (
+        <div className="mirando-foto">
+          <img className="foto-mandada" src={foto.url} alt="La foto que mandaste" />
+          <p className="suave">👀 Mirando la foto…</p>
+        </div>
+      ) : null}
       {entrada(false)}
       {error ? <p className="neg">{error}</p> : null}
     </div>
