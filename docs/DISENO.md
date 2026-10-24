@@ -1,0 +1,111 @@
+# Patty: diseño
+
+Patty es una app para anotar el día de una persona (sueño, comidas, baño, actividad, llamadas, pantalla, clima, dolores,
+ánimo…) y descubrir qué cosas se relacionan: "cuando comés tomate, a los dos días te duele la cabeza".
+
+Está armada con la misma base que la app nueva de Quincho (Node + TypeScript + Postgres, React + Vite, login con
+usuario y clave o Google, roles, IA de Anthropic, Railway con Dockerfile, PWA que se actualiza sola), pero es una app
+aparte, con su propia base.
+
+## La idea central: conceptos y registros
+
+Todo lo que se anota es un **registro** de un **concepto**.
+
+- El **concepto** es el catálogo: `Tomate`, `Dolor de cabeza`, `Llamadas`, `Me levanté`, `Temperatura`. Pertenece a una
+  **categoría** (Comida, Dolores y molestias, …) y tiene un **tipo de valor**:
+
+  | tipo | qué se anota | ejemplo |
+  |---|---|---|
+  | `evento` | solo que pasó | comí tomate |
+  | `cantidad` | un número con unidad | 3 vasos de agua, 5 llamadas |
+  | `intensidad` | de 0 a 10 | dolor de cabeza 4 |
+  | `duracion` | minutos | caminé 30 min |
+  | `hora` | un momento del día | me levanté 7:10 |
+  | `medida` | un valor medido, en general de un sensor | 28 °C, 8000 pasos |
+
+- El **registro** es cada vez que pasó: persona, concepto, hora de inicio (y fin), valor o intensidad, nota.
+
+### El nombre es la clave para la persona, el id para la base
+
+- La persona escribe "tomat", "tomates" o "TOMÁTE" y Patty sugiere `Tomate`. Si no existe, lo crea ahí mismo
+  (`POST /api/conceptos` devuelve el existente si ya está: es idempotente).
+- Internamente cada concepto tiene un id entero y `nombre_norm` (sin tildes, minúsculas, espacios prolijos), único dentro
+  de su categoría. El autocompletar usa un índice de trigramas (`pg_trgm`) sobre `nombre_norm`, así encuentra prefijos,
+  palabras sueltas ("cabeza") y errores de tipeo ("dolr de cabesa"), ordenando por coincidencia y por cuánto se usa.
+- **Alias**: otros nombres del mismo concepto. Renombrar deja el nombre viejo como alias.
+- **Unir**: si quedaron dos nombres para lo mismo (`Tomate` y `Tomates`), se unen: los registros pasan al que queda y el
+  otro nombre queda como alias.
+- `padre_id` permite agrupar (`Tomate` dentro de `Verduras`) para que, más adelante, el análisis mire también el grupo.
+
+### El día de Patty va de 5 a 5
+
+"Me acosté a la 1:30" es de la noche anterior. Cada registro guarda el instante (`timestamptz`) y además su `fecha`:
+el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A los dos días" se cuenta en esos días.
+
+## Datos de relojes, teléfono y clima
+
+- Cada dispositivo es una **fuente** de una persona, con su propio token (se muestra una sola vez; se guarda el hash).
+- `POST /api/ingesta` con `Authorization: Bearer patty_…` y `{ "mediciones": [{ "concepto": "Pasos", "inicio": "…", "valor": 8123 }] }`.
+  El concepto se busca por nombre (o se crea como `medida`). Mandar lo mismo dos veces no duplica (clave única persona +
+  concepto + inicio + fuente: se actualiza el valor).
+- Las mediciones van a su propia tabla (`mediciones`), separada de lo anotado a mano, porque son muchas más filas.
+- Próximos pasos: un atajo de iOS (Atajos + Salud) y una app con Capacitor que lea Health Connect / HealthKit y el
+  tiempo de pantalla, y un servicio de clima que cargue temperatura y humedad por día según la ubicación.
+
+## Cómo se buscan los patrones
+
+1. La vista `serie_diaria` junta registros y mediciones en **una fila por persona, día y concepto** (veces, suma,
+   promedio, intensidad máxima, primera hora).
+2. El motor (`apps/api/src/patrones/motor.ts`, sin base de datos, probado con datos armados) arma **rasgos** por día:
+   - `presente`: ese día se anotó (comió tomate, le dolió la cabeza).
+   - `alto` / `bajo`: el valor del día está por encima / debajo de su mediana. Para medidas, horas (con la vuelta de la
+     medianoche resuelta: acostarse a la 1:00 es "más tarde" que a las 23:00) y para intensidades que se anotan casi
+     todos los días (energía, ánimo), donde "se anotó" no dice nada.
+   - Solo cuentan los días en que la persona anotó algo: un día sin anotaciones no es un día "sin tomate".
+3. Para cada par **causa → efecto** (según el rol de la categoría: comida o clima son causas, dolores y ánimo efectos,
+   sueño y baño las dos cosas) y cada desfase de 0 a 3 días arma la tabla de 2×2:
+   - `prob_con` = P(efecto en d+k | causa en d), `prob_sin` = P(efecto en d+k | sin causa en d), `lift` = cociente.
+   - `p_valor`: test exacto de Fisher de una cola.
+   - `q_valor`: corrección de Benjamini-Hochberg por la cantidad de pares probados (se prueban muchos: algunos salen por
+     azar). En la app, los de q ≤ 0,1 se muestran como patrones; el resto queda plegado como "posibles".
+   - Con desfase 0 (el mismo día) solo cuenta si la causa se anotó antes que el efecto.
+   - De cada par queda el mejor desfase, y de "acostarse tarde → menos energía" / "acostarse temprano → más energía"
+     queda uno solo.
+4. Con menos de 14 días anotados no se analiza.
+5. La **IA** (Claude, misma cuenta que Quincho) recibe los mejores 25 candidatos con sus números y devuelve, en JSON con
+   esquema: una explicación clara de cada uno con su plausibilidad (marca los que pueden ser casualidad o tener otra
+   explicación), un resumen y sugerencias de qué anotar o probar. Si no hay IA, queda un texto armado por el motor.
+6. Los hallazgos se guardan. La persona puede marcar "me pasa" o "no creo"; eso se respeta en los análisis siguientes.
+
+## Carga en texto libre
+
+`POST /api/registros/interpretar`: "me levanté 7:30, desayuné café con tostadas, a las 11 me dolió la cabeza, como un 4"
+→ la IA propone registros reusando los conceptos existentes (se le pasa el catálogo). No guarda nada: la persona revisa,
+saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), creando los conceptos nuevos.
+
+## Usuarios y acceso
+
+- Usuarios con rol `admin`, `editor` o `lector`; el primero que entra (con clave o con Google) es administrador.
+- **Personas**: de quién se anota. Cada usuario ve las personas a las que está asociado (`persona_usuarios`, con rol
+  `dueno`, `editor` o `lector`); los administradores ven todas.
+- Sesión con cookie en la web, y el mismo token como `Authorization: Bearer` para la app con Capacitor (que corre en
+  otro origen y no puede usar la cookie).
+
+## Estructura
+
+```
+apps/api        Hono + drizzle (Postgres). src/routes: una por área. src/patrones: el motor. src/ia: Claude.
+apps/web        React + Vite, PWA. Pensada primero para el teléfono: pestañas abajo, botón + para anotar.
+packages/shared Tipos y reglas comunes (categorías iniciales, tipos de valor, normalizar nombres).
+docs/           Este documento.
+```
+
+## Pendiente / ideas
+
+- Capacitor (iOS y Android) y lectura de Salud / Health Connect, tiempo de pantalla.
+- Clima automático por ubicación.
+- Usar `padre_id` (grupos) en el análisis: "verduras → …".
+- Combinaciones (tomate **y** poco sueño → dolor) y efectos de "dosis" (cuánto más café, más…).
+- Recordatorios para anotar (notificaciones) y carga por voz.
+- Modo sin conexión con cola de cambios, como Quincho.
+- Exportar los datos (CSV) y un respaldo descargable.

@@ -1,0 +1,80 @@
+// Entrar, salir, primer usuario y Google. Al entrar se devuelve también el token, para la app con Capacitor
+// (que no puede usar la cookie de otro dominio); la web usa la cookie.
+import { setTimeout as esperar } from 'node:timers/promises';
+import { randomBytes } from 'node:crypto';
+import { sql } from 'drizzle-orm';
+import { Hono } from 'hono';
+import type { Sesion } from 'shared';
+import { claveOk, hashClave } from '../auth/claves.js';
+import { verificarGoogle } from '../auth/google.js';
+import { cerrarSesion, cookieSesion, DURACION_SESION, iniciarSesion, usuarioDeToken } from '../auth/sesion.js';
+import { config } from '../config.js';
+import { una, type Tx } from '../db/client.js';
+import { usuarios } from '../db/schema.js';
+import { ErrorApi } from '../lib/errores.js';
+import { cuerpo, esHttps, texto, type C, type Env } from '../lib/http.js';
+import { iaDisponible } from '../ia/cliente.js';
+import { crearUsuario } from './usuarios.js';
+
+const hayUsuarios = async (tx: Tx) => Boolean(await una(tx, sql`SELECT 1 AS x FROM usuarios LIMIT 1`));
+
+async function conSesion(c: C, usuarioId: number) {
+  const token = await iniciarSesion(c.var.db, usuarioId);
+  c.header('Set-Cookie', cookieSesion(token, DURACION_SESION, esHttps(c)));
+  return c.json({ ok: true, token });
+}
+
+export const rutasSesion = new Hono<Env>()
+  .get('/sesion', async (c) => {
+    const s: Sesion = {
+      configurar: !(await hayUsuarios(c.var.db)),
+      usuario: await usuarioDeToken(c.var.db, c.var.token),
+      google: config.googleClientId ?? null,
+      ia: iaDisponible(),
+    };
+    return c.json(s);
+  })
+  .post('/configurar', async (c) => {
+    // El primer usuario es el administrador. El candado evita que dos pedidos simultáneos creen dos.
+    const id = await c.var.db.transaction(async (tx) => {
+      await tx.execute(sql`LOCK TABLE usuarios IN EXCLUSIVE MODE`);
+      if (await hayUsuarios(tx)) throw new ErrorApi('Ya hay usuarios creados.');
+      return (await crearUsuario(tx, await cuerpo(c), 'admin')).id;
+    });
+    return conSesion(c, id);
+  })
+  .post('/entrar', async (c) => {
+    const d = await cuerpo(c);
+    const fila = await una<{ id: number; clave: string }>(
+      c.var.db,
+      sql`SELECT id, clave FROM usuarios WHERE lower(usuario) = lower(${texto(d.usuario)}) AND activo LIMIT 1`,
+    );
+    if (!fila || !(await claveOk(d.clave, fila.clave))) {
+      await esperar(600);
+      throw new ErrorApi('Usuario o clave incorrectos.', 401);
+    }
+    return conSesion(c, fila.id);
+  })
+  .post('/entrar-google', async (c) => {
+    const g = await verificarGoogle(texto((await cuerpo(c)).credential));
+    const fila = await una<{ id: number }>(c.var.db, sql`SELECT id FROM usuarios WHERE lower(email) = ${g.email} AND activo LIMIT 1`);
+    if (fila) return conSesion(c, fila.id);
+    const id = await c.var.db.transaction(async (tx) => {
+      await tx.execute(sql`LOCK TABLE usuarios IN EXCLUSIVE MODE`);
+      if (await hayUsuarios(tx)) {
+        throw new ErrorApi(`La cuenta ${g.email} no tiene acceso. Pedile a un administrador que la agregue.`, 403);
+      }
+      // Primera vez: el primero que entra con Google queda como administrador.
+      const [n] = await tx
+        .insert(usuarios)
+        .values({ usuario: g.email, nombre: g.nombre, email: g.email, clave: await hashClave(randomBytes(16).toString('hex')), rol: 'admin' })
+        .returning({ id: usuarios.id });
+      return n.id;
+    });
+    return conSesion(c, id);
+  })
+  .post('/salir', async (c) => {
+    await cerrarSesion(c.var.db, c.var.token);
+    c.header('Set-Cookie', cookieSesion('', 0, esHttps(c)));
+    return c.json({ ok: true });
+  });
