@@ -221,12 +221,16 @@ function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Pe
   const escucha = useRef<Escucha | null>(null);
   /** Lo que ya estaba escrito antes de dictar: lo dictado se agrega a continuación. */
   const previo = useRef('');
+  /** El texto ya se ordenó: lo próximo que se dicte lo reemplaza en vez de sumarse (si no, se repetiría todo). */
+  const yaOrdenado = useRef(false);
 
   // Dictar: el texto va apareciendo mientras se habla y, al terminar, se ordena solo.
   const dictar = async () => {
     if (escuchando) return escucha.current?.parar();
     setError('');
-    previo.current = texto.trim();
+    previo.current = yaOrdenado.current ? '' : texto.trim();
+    yaOrdenado.current = false;
+    if (!previo.current) setTexto('');
     let dicho = '';
     setEscuchando(true);
     escucha.current = await escuchar(
@@ -260,6 +264,7 @@ function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Pe
       const r = await api<{ registros: Propuesta[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado });
       setPropuesta(r.registros);
       setDudas(r.dudas);
+      yaOrdenado.current = true;
       setQuitar(new Set());
     } catch (e) {
       setError((e as Error).message);
@@ -314,7 +319,7 @@ function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Pe
   }
   return (
     <div className="valor">
-      <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus={!hayVoz(vozServidor)}
+      <textarea rows={5} value={texto} onChange={(e) => { yaOrdenado.current = false; setTexto(e.target.value); }} autoFocus={!hayVoz(vozServidor)}
         placeholder="Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»" />
       {hayVoz(vozServidor) ? (
         <button className={`microfono${escuchando ? ' escuchando' : ''}`} onClick={() => void dictar()} disabled={trabajando || transcribiendo} aria-label={escuchando ? 'Terminar de dictar' : 'Dictar'}>
