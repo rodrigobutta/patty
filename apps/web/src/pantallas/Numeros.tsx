@@ -45,7 +45,7 @@ export function Numeros({ persona, alElegir }: { persona: Persona; alElegir(conc
       <div className="tarjeta">
         <p className="grande-numero"><strong>{e.dias_anotados}</strong> de {e.dias} días con algo anotado</p>
         <div className="barras-dias" aria-label="Cosas anotadas por día">
-          {barras.map((n, i) => <span key={i} style={{ height: `${(n / maxBarra) * 100}%`, ['--i' as string]: i }} className={n ? '' : 'vacio'} title={`${n}`} />)}
+          {barras.map((n, i) => <span key={i} style={{ height: `${(n / maxBarra) * 100}%`, ['--i' as string]: i }} className={n ? '' : 'cero'} title={`${n}`} />)}
         </div>
         <p className="suave chico eje"><span>hace {e.dias} días</span><span>hoy</span></p>
       </div>

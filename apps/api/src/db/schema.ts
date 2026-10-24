@@ -44,6 +44,8 @@ export const usuarios = pgTable(
     clave: text('clave').notNull(),
     rol: text('rol', { enum: ['admin', 'editor', 'lector'] }).notNull().default('editor'),
     activo: boolean('activo').notNull().default(true),
+    /** La última vez que usó la app (se actualiza cada tantos minutos, para la administración). */
+    ultimo_acceso: instante('ultimo_acceso'),
     creado: creado(),
   },
   (t) => [uniqueIndex('usuarios_email_idx').on(sql`lower(${t.email})`)],

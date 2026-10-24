@@ -520,7 +520,7 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .barras-dias { display: flex; align-items: flex-end; gap: 2px; height: 70px; }
 .barras-dias span { flex: 1; min-height: 3px; border-radius: 3px 3px 1px 1px; background: var(--acento);
   transform-origin: bottom; animation: crecer 0.6s cubic-bezier(.2, .9, .3, 1) backwards; animation-delay: calc(var(--i) * 12ms); }
-.barras-dias span.vacio { background: var(--acento-suave); }
+.barras-dias span.cero { background: var(--acento-suave); }
 .eje { display: flex; justify-content: space-between; margin: 4px 0 0; }
 @keyframes crecer { from { transform: scaleY(0); } }
 .ranking { list-style: none; padding: 0; margin: 0; }
@@ -569,3 +569,19 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .para-tomar { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: var(--ambar); color: #fff; font-weight: 700; }
 .remedios-dia.abierto .cabeza-plegable { margin-bottom: 8px; }
 .remedios-dia:not(.abierto) { padding-top: 12px; padding-bottom: 12px; }
+
+/* ---------- Administración ---------- */
+.admin-cabeza { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.admin-cabeza h2 { margin: 0; }
+.admin-tiles { margin-bottom: 12px; }
+@media (min-width: 700px) { .admin-tiles { grid-template-columns: repeat(4, 1fr); } }
+.admin-usuarios { margin-top: 12px; }
+.admin-usuarios li { align-items: flex-start; }
+.lista-simple { margin: 0 0 8px; padding-left: 0; list-style: none; font-size: 14px; }
+.lista-simple li { padding: 4px 0; }
+.lista-actividad { list-style: none; margin: 0; padding: 0; }
+.lista-actividad li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--borde); }
+.lista-actividad li:last-child { border-bottom: 0; }
+.lista-actividad .que { flex: 1; min-width: 0; }
+.admin-entrar { margin-top: 4px; }
+.admin-detalle .volver { margin-bottom: 8px; }

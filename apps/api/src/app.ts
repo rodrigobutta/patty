@@ -7,6 +7,7 @@ import { obtenerDb } from './db/client.js';
 import { tokenDePedido, usuarioDeToken } from './auth/sesion.js';
 import { codigoPg, ErrorApi } from './lib/errores.js';
 import type { Env } from './lib/http.js';
+import { rutasAdmin } from './routes/admin.js';
 import { rutasClima } from './routes/clima.js';
 import { rutasConceptos } from './routes/conceptos.js';
 import { rutasDispositivos } from './routes/dispositivos.js';
@@ -75,6 +76,7 @@ export function crearApp(): Hono<Env> {
     c.set('usuario', u);
     await next();
   });
+  api.route('/admin', rutasAdmin);
   api.route('/usuarios', rutasUsuarios);
   api.route('/personas', rutasPersonas);
   api.route('/conceptos', rutasConceptos);

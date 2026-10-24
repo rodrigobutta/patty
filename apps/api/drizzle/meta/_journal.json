@@ -64,6 +64,13 @@
       "when": 1792879542064,
       "tag": "0008_perfil",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792883532245,
+      "tag": "0009_ultimo_acceso",
+      "breakpoints": true
     }
   ]
 }

@@ -22,7 +22,7 @@ import { NuevaPersona } from './NuevaPersona';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
-export function Mas() {
+export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
   const [nueva, setNueva] = useState(false);
   const [perfil, setPerfil] = useState(false);
@@ -152,6 +152,10 @@ export function Mas() {
             </>
           ) : null}
         </div>
+      ) : null}
+
+      {usuario?.rol === 'admin' && alAdministrar ? (
+        <button className="btn ancho admin-entrar" onClick={alAdministrar}>🛠️ Administración: usuarios y actividad</button>
       ) : null}
 
       <h2 className="seccion">Tu cuenta</h2>

@@ -120,3 +120,26 @@ describe('perfil de la persona', () => {
     expect(perfilTexto(p, new Date('2026-10-24T12:00:00Z'))).toBe('mujer, 68 años, 1,60 m, 70,5 kg; condiciones: hipertensión, celiaquía');
   });
 });
+
+describe('administración', () => {
+  it('solo para administradores: resumen, usuarios, detalle y actividad', async () => {
+    const { hijo, mama } = await familia();
+    await mama.c.post('/api/registros', { persona_id: mama.personaId, concepto_nombre: 'Agua', categoria_id: 3 });
+    expect((await hijo.c.get('/api/admin/resumen')).status).toBe(403);
+    const { Cliente } = await import('./ayudas.js');
+    const ana = new Cliente();
+    await ana.post('/api/entrar', { usuario: 'ana', clave: 'secreta1' });
+    const r = (await ana.get('/api/admin/resumen')).body;
+    expect(r).toMatchObject({ usuarios: 3, registros_hoy: 1, telefonos_android: 2 });
+    expect(r.por_dia).toHaveLength(14);
+    const us = (await ana.get('/api/admin/usuarios')).body;
+    const marta = us.find((u: any) => u.usuario === 'marta');
+    expect(marta).toMatchObject({ personas: 1, registros: 1, telefonos: 'android' });
+    expect(marta.ultimo_acceso).toBeTruthy();
+    const d = (await ana.get(`/api/admin/usuarios/${marta.id}`)).body;
+    expect(d.personas[0]).toMatchObject({ nombre: 'Marta', registros: 1, dias: 1 });
+    expect(d.personas[0].por_dia).toHaveLength(14);
+    expect(d.ultimos[0]).toMatchObject({ concepto: 'Agua', persona: 'Marta' });
+    expect((await ana.get('/api/admin/actividad')).body[0]).toMatchObject({ concepto: 'Agua', usuario: 'Marta' });
+  });
+});

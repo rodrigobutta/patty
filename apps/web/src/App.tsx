@@ -13,6 +13,7 @@ import { useCara } from './mascota/cara';
 import { Festejo } from './mascota/Festejo';
 import { Mascota } from './mascota/Mascota';
 import { useSeguirUbicacion } from './lib/ubicacion';
+import { Admin } from './pantallas/Admin';
 import { Bienvenida, bienvenidaVista } from './pantallas/Bienvenida';
 import { Entrar } from './pantallas/Entrar';
 import { Hoy } from './pantallas/Hoy';
@@ -24,7 +25,7 @@ import { useProgreso } from './lib/progreso';
 import { avanceProgreso } from 'shared';
 import { ofrecerPerfil, Perfil } from './pantallas/Perfil';
 
-type Pestana = 'hoy' | 'patrones' | 'mas';
+type Pestana = 'hoy' | 'patrones' | 'mas' | 'admin';
 
 const PESTANAS: Array<{ id: Pestana; nombre: string }> = [
   { id: 'hoy', nombre: 'Día' },
@@ -34,7 +35,8 @@ const PESTANAS: Array<{ id: Pestana; nombre: string }> = [
 
 export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso, sesion, avisar, recargar } = useEstado();
-  const [pestana, setPestana] = useState<Pestana>('hoy');
+  // patty.today/#admin abre la administración directo (para mirarla en la compu).
+  const [pestana, setPestana] = useState<Pestana>(() => (location.hash === '#admin' ? 'admin' : 'hoy'));
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
   /** El paso opcional de datos de la persona (una vez, después de la bienvenida). */
   const [perfilListo, setPerfilListo] = useState(false);
@@ -106,7 +108,9 @@ export function App() {
         )}
       </header>
       <main>
-        {pestana === 'hoy' ? <Hoy persona={persona} cara={cara} /> : pestana === 'patrones' ? <Patrones persona={persona} progreso={progreso} /> : <Mas />}
+        {pestana === 'admin' && sesion?.usuario?.rol === 'admin' ? (
+          <Admin alVolver={() => { setPestana('mas'); if (location.hash) history.replaceState(null, '', location.pathname); }} />
+        ) : pestana === 'hoy' ? <Hoy persona={persona} cara={cara} /> : pestana === 'patrones' ? <Patrones persona={persona} progreso={progreso} /> : <Mas alAdministrar={() => setPestana('admin')} />}
       </main>
       <nav className="pestanas">
         {PESTANAS.map((p) => (
