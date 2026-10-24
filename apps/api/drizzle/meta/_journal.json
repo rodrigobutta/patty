@@ -15,6 +15,13 @@
       "when": 1792849732862,
       "tag": "0001_serie_diaria",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792854290028,
+      "tag": "0002_ubicacion",
+      "breakpoints": true
     }
   ]
 }

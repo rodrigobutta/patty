@@ -1,0 +1,265 @@
+// Ubicación y lugares con nombre.
+//   POST   /api/ubicacion            { persona_id, puntos: [{ lat, lon, instante?, precision? }] }   (la web, con sesión)
+//   POST   /api/ingesta/ubicacion    { lat, lon, instante? }   con el token de una fuente (un atajo del teléfono)
+//   GET    /api/ubicacion/dia?persona=1&fecha=2026-10-24      viajes, km y estadías del día
+//   DELETE /api/ubicacion?persona=1                           borra todos los puntos y lo calculado con ellos
+//   GET/POST /api/ubicacion/lugares, PUT/DELETE /api/ubicacion/lugares/:id
+// De los puntos se guarda solo uno cada vez que la persona se movió más de 1 km o entró o salió de un lugar (el
+// primero de cada día siempre). Con ellos se recalculan, por día, las mediciones de la fuente «Ubicación»: «Viajes»,
+// «Km recorridos» y una por cada estadía en un lugar (el concepto del lugar, con los minutos). Eso es lo que ve el motor.
+import { createHash, randomBytes } from 'node:crypto';
+import { sql } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { lugarDe, nombreLindo, normalizar, puntoNuevo, RADIO_LUGAR_M, type DiaUbicacion, type Lugar } from 'shared';
+import { filas, una, type Tx } from '../db/client.js';
+import { fuentes, lugares, mediciones, puntos } from '../db/schema.js';
+import { persona, type PersonaAcceso } from '../lib/acceso.js';
+import { ErrorApi } from '../lib/errores.js';
+import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas.js';
+import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
+import { resumirDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
+import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
+import { conceptoMedido } from './ingesta.js';
+
+export const NOMBRE_FUENTE = 'Ubicación';
+/** Los puntos (lo único con coordenadas) se borran solos pasado este tiempo; los resúmenes quedan. */
+export const DIAS_GUARDADOS = 90;
+
+type PersonaZona = Pick<PersonaAcceso, 'id' | 'zona_horaria'>;
+
+async function fuenteUbicacion(tx: Tx, personaId: number): Promise<number> {
+  const ya = await una<{ id: number }>(tx, sql`SELECT id FROM fuentes WHERE persona_id = ${personaId} AND tipo = 'ubicacion' AND nombre = ${NOMBRE_FUENTE}`);
+  if (ya) return ya.id;
+  const [f] = await tx
+    .insert(fuentes)
+    .values({ persona_id: personaId, tipo: 'ubicacion', nombre: NOMBRE_FUENTE, token_hash: createHash('sha256').update(randomBytes(32)).digest('hex') })
+    .returning({ id: fuentes.id });
+  return f.id;
+}
+
+function coordenada(v: unknown, campo: string, limite: number): number {
+  const n = numeroONulo(v, campo);
+  if (n === null || Math.abs(n) > limite) throw new ErrorApi(`${campo}: ubicación inválida.`);
+  return n;
+}
+
+/** ~11 m: alcanza para saber en qué lugar estaba y no guarda la ubicación exacta. */
+const redondear = (n: number) => Math.round(n * 10000) / 10000;
+
+const zonas = (tx: Tx, personaId: number) =>
+  filas<LugarZona & { concepto_id: number }>(tx, sql`SELECT id, lat, lon, radio_m, concepto_id FROM lugares WHERE persona_id = ${personaId}`);
+
+/** Vuelve a calcular las mediciones de ubicación de esos días a partir de los puntos que hay. */
+export async function recalcular(tx: Tx, p: PersonaZona, fechas: string[]): Promise<void> {
+  if (!fechas.length) return;
+  const fuenteId = await fuenteUbicacion(tx, p.id);
+  const ls = await zonas(tx, p.id);
+  const concepto = new Map(ls.map((l) => [l.id, l.concepto_id]));
+  const f = { id: fuenteId, persona_id: p.id, tipo: 'ubicacion', zona_horaria: p.zona_horaria };
+  const cache = new Map<string, number>();
+  const viajes = await conceptoMedido(tx, f, 'Viajes', 'lugar', 'viajes', cache);
+  const km = await conceptoMedido(tx, f, 'Km recorridos', 'lugar', 'km', cache);
+  await tx.execute(sql`DELETE FROM mediciones WHERE fuente_id = ${fuenteId} AND fecha IN ${fechas}`);
+  const delDia = await filas<{ fecha: string; instante: string; lat: number; lon: number }>(
+    tx,
+    sql`SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha, instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND fecha IN ${fechas}`,
+  );
+  const porDia = new Map<string, Punto[]>();
+  for (const x of delDia) {
+    let l = porDia.get(x.fecha);
+    if (!l) porDia.set(x.fecha, (l = []));
+    l.push({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon });
+  }
+  const valores: Array<typeof mediciones.$inferInsert> = [];
+  for (const [fecha, lista] of porDia) {
+    const r = resumirDia(lista, ls);
+    const base = { persona_id: p.id, fuente_id: fuenteId, fecha };
+    const comienzo = localAInstante(fecha, '05:00', p.zona_horaria).toISOString();
+    valores.push({ ...base, concepto_id: viajes, inicio: comienzo, valor: r.viajes, unidad: 'viajes' });
+    valores.push({ ...base, concepto_id: km, inicio: comienzo, valor: r.km, unidad: 'km' });
+    for (const e of r.estadias) {
+      valores.push({
+        ...base,
+        concepto_id: concepto.get(e.lugar_id)!,
+        inicio: new Date(e.llegada).toISOString(),
+        fin: new Date(e.salida).toISOString(),
+        valor: Math.round((e.salida - e.llegada) / 60000),
+        unidad: 'min',
+      });
+    }
+  }
+  if (valores.length) await tx.insert(mediciones).values(valores).onConflictDoNothing();
+  await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE id = ${fuenteId}`);
+}
+
+/** Todos los días que todavía tienen puntos (para cuando cambian los lugares). */
+async function recalcularTodo(tx: Tx, p: PersonaZona): Promise<void> {
+  const dias = await filas<{ fecha: string }>(tx, sql`SELECT DISTINCT to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${p.id}`);
+  await recalcular(tx, p, dias.map((d) => d.fecha));
+}
+
+/**
+ * Guarda los puntos que valen la pena (ver `puntoNuevo`) y recalcula sus días. Devuelve cuántos guardó y en qué lugar
+ * está el último punto recibido.
+ */
+export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): Promise<{ guardados: number; lugar: string | null }> {
+  if (lista.length > 500) throw new ErrorApi('Mandá hasta 500 puntos por vez.');
+  const ahora = Date.now();
+  const recibidos = (lista as Array<Record<string, unknown>>)
+    .map((x, i) => {
+      const t = leerInstante(x?.instante, `puntos[${i}].instante`);
+      const precision = numeroONulo(x?.precision, `puntos[${i}].precision`);
+      return {
+        instante: t,
+        dia: diaDePatty(t, p.zona_horaria),
+        lat: redondear(coordenada(x?.lat, `puntos[${i}].lat`, 90)),
+        lon: redondear(coordenada(x?.lon, `puntos[${i}].lon`, 180)),
+        precision: precision === null ? null : Math.round(precision),
+      };
+    })
+    .filter((x) => x.instante.getTime() > ahora - DIAS_GUARDADOS * 86400000 && x.instante.getTime() < ahora + 3600000)
+    .sort((a, b) => a.instante.getTime() - b.instante.getTime());
+  if (!recibidos.length) return { guardados: 0, lugar: null };
+
+  const ls = await filas<LugarZona & { nombre: string }>(
+    tx,
+    sql`SELECT l.id, l.lat, l.lon, l.radio_m, c.nombre FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.persona_id = ${p.id}`,
+  );
+  const previo = await una<{ instante: string; lat: number; lon: number }>(
+    tx,
+    sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante < ${recibidos[0].instante.toISOString()}
+        ORDER BY instante DESC LIMIT 1`,
+  );
+  let anterior = previo ? { lat: previo.lat, lon: previo.lon, dia: diaDePatty(new Date(previo.instante), p.zona_horaria) } : null;
+  const nuevos: Array<typeof puntos.$inferInsert> = [];
+  for (const x of recibidos) {
+    if (!puntoNuevo(anterior, x, ls)) continue;
+    nuevos.push({ persona_id: p.id, instante: x.instante.toISOString(), fecha: x.dia, lat: x.lat, lon: x.lon, precision_m: x.precision });
+    anterior = x;
+  }
+  const guardados = nuevos.length ? await tx.insert(puntos).values(nuevos).onConflictDoNothing().returning({ fecha: puntos.fecha }) : [];
+  await recalcular(tx, p, [...new Set(guardados.map((g) => g.fecha))]);
+  await tx.execute(sql`DELETE FROM puntos WHERE persona_id = ${p.id} AND instante < now() - make_interval(days => ${DIAS_GUARDADOS})`);
+  const ultimo = recibidos[recibidos.length - 1];
+  const lugar = lugarDe(ultimo, ls)?.nombre ?? null;
+  return { guardados: guardados.length, lugar };
+}
+
+const COLUMNAS_LUGAR = sql`l.id, l.persona_id, l.concepto_id, c.nombre, l.lat, l.lon, l.radio_m`;
+
+async function buscarLugar(tx: Tx, c: { var: Env['Variables'] }, id: number, escribir: boolean) {
+  const l = await una<Lugar>(tx, sql`SELECT ${COLUMNAS_LUGAR} FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.id = ${id}`);
+  if (!l) throw new ErrorApi('No existe ese lugar.', 404);
+  return { lugar: l, p: await persona(tx, c.var.usuario, l.persona_id, escribir) };
+}
+
+function radio(v: unknown): number {
+  const n = numeroONulo(v, 'radio_m') ?? RADIO_LUGAR_M;
+  if (n < 30 || n > 5000) throw new ErrorApi('El radio tiene que ser de 30 a 5000 metros.');
+  return Math.round(n);
+}
+
+export const rutasUbicacion = new Hono<Env>()
+  .post('/', async (c) => {
+    const d = await cuerpo(c);
+    const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
+    if (!Array.isArray(d.puntos)) throw new ErrorApi('Mandá una lista "puntos".');
+    const lista = d.puntos;
+    return c.json({ ok: true, ...(await c.var.db.transaction((tx) => guardarPuntos(tx, p, lista))) });
+  })
+  .get('/dia', async (c) => {
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const fecha = c.req.query('fecha');
+    const dia = esFecha(fecha) ? fecha : diaDePatty(new Date(), p.zona_horaria);
+    const ps = await filas<{ instante: string; lat: number; lon: number }>(
+      c.var.db,
+      sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia}`,
+    );
+    const ls = await filas<LugarZona & { nombre: string }>(
+      c.var.db,
+      sql`SELECT l.id, l.lat, l.lon, l.radio_m, c.nombre FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.persona_id = ${p.id}`,
+    );
+    const r = resumirDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), ls);
+    const nombre = new Map(ls.map((l) => [l.id, l.nombre]));
+    const res: DiaUbicacion = {
+      fecha: dia,
+      puntos: ps.length,
+      viajes: r.viajes,
+      km: r.km,
+      estadias: r.estadias.map((e) => ({
+        lugar_id: e.lugar_id,
+        lugar: nombre.get(e.lugar_id)!,
+        llegada: new Date(e.llegada).toISOString(),
+        salida: new Date(e.salida).toISOString(),
+        minutos: Math.round((e.salida - e.llegada) / 60000),
+      })),
+    };
+    return c.json(res);
+  })
+  .delete('/', async (c) => {
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), true);
+    await c.var.db.transaction(async (tx) => {
+      await tx.execute(sql`DELETE FROM puntos WHERE persona_id = ${p.id}`);
+      await tx.execute(sql`DELETE FROM mediciones WHERE fuente_id IN (SELECT id FROM fuentes WHERE persona_id = ${p.id} AND tipo = 'ubicacion')`);
+    });
+    return c.json({ ok: true });
+  })
+  .get('/lugares', async (c) => {
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    return c.json(
+      await filas<Lugar>(c.var.db, sql`SELECT ${COLUMNAS_LUGAR} FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.persona_id = ${p.id} ORDER BY c.nombre`),
+    );
+  })
+  .post('/lugares', async (c) => {
+    const d = await cuerpo(c);
+    const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
+    const nombre = texto(d.nombre);
+    if (!nombre) throw new ErrorApi('Poné un nombre para el lugar.');
+    const lat = coordenada(d.lat, 'lat', 90);
+    const lon = coordenada(d.lon, 'lon', 180);
+    const id = await c.var.db.transaction(async (tx) => {
+      const cat = await una<{ id: number }>(tx, sql`SELECT id FROM categorias WHERE clave = 'lugar'`);
+      const { concepto } = await obtenerOCrearConcepto(tx, { nombre, categoriaId: cat!.id, tipoValor: 'duracion', unidad: 'min', usuarioId: c.var.usuario.id });
+      const ya = await una(tx, sql`SELECT 1 FROM lugares WHERE persona_id = ${p.id} AND concepto_id = ${concepto.id}`);
+      if (ya) throw new ErrorApi(`Ya hay un lugar «${concepto.nombre}».`, 409);
+      const [l] = await tx
+        .insert(lugares)
+        .values({ persona_id: p.id, concepto_id: concepto.id, lat: redondear(lat), lon: redondear(lon), radio_m: radio(d.radio_m) })
+        .returning({ id: lugares.id });
+      await recalcularTodo(tx, p);
+      return l.id;
+    });
+    return c.json((await buscarLugar(c.var.db, c, id, false)).lugar, 201);
+  })
+  .put('/lugares/:id', async (c) => {
+    const id = idParam(c);
+    const d = await cuerpo(c);
+    await c.var.db.transaction(async (tx) => {
+      const { lugar, p } = await buscarLugar(tx, c, id, true);
+      const cambios: Partial<typeof lugares.$inferInsert> = {};
+      if (d.lat !== undefined || d.lon !== undefined) {
+        cambios.lat = redondear(coordenada(d.lat, 'lat', 90));
+        cambios.lon = redondear(coordenada(d.lon, 'lon', 180));
+      }
+      if (d.radio_m !== undefined) cambios.radio_m = radio(d.radio_m);
+      if (Object.keys(cambios).length) await tx.update(lugares).set(cambios).where(sql`id = ${id}`);
+      // El nombre es el del concepto: cambiarlo deja el viejo como alias, igual que al renombrar un concepto.
+      const nombre = nombreLindo(texto(d.nombre));
+      if (nombre && normalizar(nombre) !== normalizar(lugar.nombre)) {
+        await tx.execute(sql`UPDATE conceptos SET nombre = ${nombre}, nombre_norm = ${normalizar(nombre)} WHERE id = ${lugar.concepto_id}`);
+        await agregarAlias(tx, lugar.concepto_id, lugar.nombre);
+      }
+      if (Object.keys(cambios).length) await recalcularTodo(tx, p);
+    });
+    return c.json((await buscarLugar(c.var.db, c, id, false)).lugar);
+  })
+  .delete('/lugares/:id', async (c) => {
+    const id = idParam(c);
+    await c.var.db.transaction(async (tx) => {
+      const { p } = await buscarLugar(tx, c, id, true);
+      await tx.execute(sql`DELETE FROM lugares WHERE id = ${id}`);
+      // Las estadías de los días que todavía tienen puntos se van; las más viejas quedan en el historial.
+      await recalcularTodo(tx, p);
+    });
+    return c.json({ ok: true });
+  });

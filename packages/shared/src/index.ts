@@ -42,7 +42,8 @@ export const CATEGORIAS_INICIALES: CategoriaBase[] = [
   { clave: 'pantalla', nombre: 'Pantalla y redes', icono: '📱', rol: 'causa', tipo_valor: 'duracion', unidad: 'min', orden: 9 },
   { clave: 'medicacion', nombre: 'Medicación', icono: '💊', rol: 'causa', tipo_valor: 'cantidad', unidad: 'dosis', orden: 10 },
   { clave: 'clima', nombre: 'Clima', icono: '🌤️', rol: 'causa', tipo_valor: 'medida', unidad: null, orden: 11 },
-  { clave: 'otro', nombre: 'Otro', icono: '📝', rol: 'ambos', tipo_valor: 'evento', unidad: null, orden: 12 },
+  { clave: 'lugar', nombre: 'Lugares y salidas', icono: '📍', rol: 'causa', tipo_valor: 'duracion', unidad: 'min', orden: 12 },
+  { clave: 'otro', nombre: 'Otro', icono: '📝', rol: 'ambos', tipo_valor: 'evento', unidad: null, orden: 13 },
 ];
 
 /** Conceptos que conviene que existan desde el principio (los que van a llenar los relojes y el clima). */
@@ -57,6 +58,8 @@ export const CONCEPTOS_INICIALES: Array<{ categoria: string; nombre: string; tip
   { categoria: 'actividad', nombre: 'Pasos', tipo_valor: 'medida', unidad: 'pasos' },
   { categoria: 'comunicacion', nombre: 'Llamadas', tipo_valor: 'cantidad', unidad: null },
   { categoria: 'pantalla', nombre: 'Tiempo de pantalla', tipo_valor: 'medida', unidad: 'min' },
+  { categoria: 'lugar', nombre: 'Viajes', tipo_valor: 'medida', unidad: 'viajes' },
+  { categoria: 'lugar', nombre: 'Km recorridos', tipo_valor: 'medida', unidad: 'km' },
 ];
 
 /**
@@ -76,6 +79,52 @@ export function normalizar(texto: string): string {
 export function nombreLindo(texto: string): string {
   const t = texto.replace(/\s+/g, ' ').trim();
   return t ? t[0].toLocaleUpperCase('es') + t.slice(1) : t;
+}
+
+// ---------- Ubicación y lugares ----------
+
+/** Moverse más que esto desde el último punto guardado cuenta como un viaje (y se guarda un punto nuevo). */
+export const DISTANCIA_VIAJE_M = 1000;
+/** El radio con el que se crea un lugar: alcanza para una casa o un súper, con el error del GPS. */
+export const RADIO_LUGAR_M = 150;
+
+export interface Coordenadas {
+  lat: number;
+  lon: number;
+}
+
+/** Distancia en metros entre dos puntos (fórmula del haversine; para distancias cortas sobra). */
+export function distanciaMetros(a: Coordenadas, b: Coordenadas): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** El lugar con nombre en el que cae un punto (el más cercano, si caen varios radios), o null. */
+export function lugarDe<L extends Coordenadas & { id: number; radio_m: number }>(p: Coordenadas, lugares: L[]): L | null {
+  let mejor: L | null = null;
+  let dMejor = Infinity;
+  for (const l of lugares) {
+    const d = distanciaMetros(p, l);
+    if (d <= l.radio_m && d < dMejor) [mejor, dMejor] = [l, d];
+  }
+  return mejor;
+}
+
+/**
+ * Si vale la pena guardar un punto nuevo, comparado con el último guardado: es el primero del día, se movió más de
+ * DISTANCIA_VIAJE_M, o entró o salió de un lugar con nombre. Así no se guarda un punto cada vez que se abre la app.
+ */
+export function puntoNuevo<L extends Coordenadas & { id: number; radio_m: number }>(
+  anterior: (Coordenadas & { dia: string }) | null,
+  p: Coordenadas & { dia: string },
+  lugares: L[],
+): boolean {
+  if (!anterior || anterior.dia !== p.dia) return true;
+  if (distanciaMetros(anterior, p) >= DISTANCIA_VIAJE_M) return true;
+  return lugarDe(anterior, lugares)?.id !== lugarDe(p, lugares)?.id;
 }
 
 // ---------- Respuestas de la API ----------
@@ -153,6 +202,26 @@ export interface NuevoRegistro {
   intensidad?: number | null;
   unidad?: string | null;
   nota?: string | null;
+}
+
+/** Un lugar con nombre de una persona (Casa, Supermercado, Farmacia). Cada uno es un concepto de «Lugares y salidas». */
+export interface Lugar {
+  id: number;
+  persona_id: number;
+  concepto_id: number;
+  nombre: string;
+  lat: number;
+  lon: number;
+  radio_m: number;
+}
+
+/** Lo que dice la ubicación de un día: cuántos viajes, cuántos km y en qué lugares estuvo. */
+export interface DiaUbicacion {
+  fecha: string;
+  puntos: number;
+  viajes: number;
+  km: number;
+  estadias: Array<{ lugar_id: number; lugar: string; llegada: string; salida: string; minutos: number }>;
 }
 
 export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'descartado';

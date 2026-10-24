@@ -126,6 +126,29 @@ describe('buscarPatrones', () => {
     expect([`${primero.causa_modo}>${primero.efecto_modo}`]).toContain(primero.causa_modo === 'alto' ? 'alto>bajo' : 'bajo>alto');
     expect(res.candidatos.filter((c) => c.causa_id === 20 && c.efecto_id === 21)).toHaveLength(1);
   });
+  it('estar en un lugar → dolor al día siguiente; los días con solo ubicación no cuentan como anotados', () => {
+    const r = azar(3);
+    const conceptos: ConceptoInfo[] = [
+      { id: 20, nombre: 'Supermercado', tipo_valor: 'duracion', rol: 'causa' },
+      { id: 3, nombre: 'Café', tipo_valor: 'evento', rol: 'causa' },
+      { id: 10, nombre: 'Dolor de cabeza', tipo_valor: 'intensidad', rol: 'efecto' },
+    ];
+    const filas: FilaDiaria[] = [];
+    const sup: boolean[] = [];
+    for (let i = 0; i < 60; i++) {
+      const dia = sumarDias(DESDE, i);
+      const t = (h: number) => Date.parse(`${dia}T${String(h).padStart(2, '0')}:00:00Z`);
+      sup[i] = r() < 0.35;
+      if (sup[i]) filas.push({ fecha: dia, concepto_id: 20, veces: 1, suma: 40, promedio: 40, intensidad: null, primera: t(11), automatica: true });
+      if (i >= 40) continue; // los últimos 20 días solo hay ubicación: no se anotó nada a mano
+      filas.push({ fecha: dia, concepto_id: 3, veces: 1, suma: null, promedio: null, intensidad: null, primera: t(8) });
+      if (r() < (i >= 1 && sup[i - 1] ? 0.85 : 0.1)) filas.push({ fecha: dia, concepto_id: 10, veces: 1, suma: null, promedio: null, intensidad: 4, primera: t(15) });
+    }
+    const res = buscarPatrones(filas, conceptos, DESDE, sumarDias(DESDE, 59));
+    expect(res.dias_activos).toBe(40);
+    expect(res.candidatos[0]).toMatchObject({ causa_id: 20, causa_modo: 'presente', efecto_id: 10, desfase_dias: 1 });
+    expect(res.candidatos[0].q_valor).toBeLessThan(0.05);
+  });
 });
 
 describe('nombres de los rasgos', () => {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useEstado } from './estado';
+import { useSeguirUbicacion } from './lib/ubicacion';
 import { Entrar } from './pantallas/Entrar';
 import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
@@ -17,6 +18,7 @@ const PESTANAS: Array<{ id: Pestana; icono: string; nombre: string }> = [
 export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso } = useEstado();
   const [pestana, setPestana] = useState<Pestana>('hoy');
+  useSeguirUbicacion(fase === 'listo' ? persona?.id : undefined);
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;

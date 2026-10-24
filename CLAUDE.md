@@ -41,7 +41,7 @@ no comparte datos con Quincho. Si hace falta ver cómo se resolvió algo de la b
 ## Próximos pasos posibles
 
 Ver "Pendiente / ideas" en docs/DISENO.md. Lo más pedido por Rodrigo: app nativa con Capacitor que lea Salud /
-Health Connect y tiempo de pantalla. El clima automático por ubicación ya está (Open-Meteo, ver docs/DISENO.md).
+Health Connect y tiempo de pantalla. El clima automático por ubicación ya está (Open-Meteo), y también el seguimiento de ubicación con lugares con nombre y viajes (ver docs/DISENO.md).
 
 ## Cómo trabajar acá
 

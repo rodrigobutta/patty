@@ -5,6 +5,7 @@ import { useEstado } from '../estado';
 import { climaActivado, ponerClima, ubicacion } from '../lib/clima';
 import { esIOS, instalada, instalarApp } from '../lib/instalar';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
+import { Lugares } from './Lugares';
 import { NuevaPersona } from './NuevaPersona';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
@@ -79,6 +80,8 @@ export function Mas() {
         ) : null}
         {error ? <p className="neg">{error}</p> : null}
       </div>
+
+      {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
 
       <div className="tarjeta">
         <h3>Tema</h3>

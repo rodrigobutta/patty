@@ -188,7 +188,7 @@ export const fuentes = pgTable('fuentes', {
   persona_id: integer('persona_id')
     .notNull()
     .references(() => personas.id, { onDelete: 'cascade' }),
-  tipo: text('tipo', { enum: ['reloj', 'telefono', 'clima', 'otro'] }).notNull(),
+  tipo: text('tipo', { enum: ['reloj', 'telefono', 'clima', 'ubicacion', 'otro'] }).notNull(),
   nombre: text('nombre').notNull(),
   /** sha256 del token; el token se muestra una sola vez, al crear la fuente. */
   token_hash: text('token_hash').notNull().unique(),
@@ -222,6 +222,51 @@ export const mediciones = pgTable(
     uniqueIndex('mediciones_unica_idx').on(t.persona_id, t.concepto_id, t.inicio, t.fuente_id),
     index('mediciones_persona_fecha_idx').on(t.persona_id, t.fecha),
   ],
+);
+
+// ---------- Ubicación ----------
+
+/**
+ * Lugares con nombre de una persona (Casa, lo de mamá, Supermercado). Cada uno tiene su concepto en «Lugares y salidas»:
+ * las estadías se guardan como mediciones de ese concepto y así entran al análisis como cualquier causa.
+ */
+export const lugares = pgTable(
+  'lugares',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    concepto_id: integer('concepto_id')
+      .notNull()
+      .references(() => conceptos.id),
+    lat: doublePrecision('lat').notNull(),
+    lon: doublePrecision('lon').notNull(),
+    radio_m: integer('radio_m').notNull().default(150),
+    creado: creado(),
+  },
+  (t) => [index('lugares_persona_idx').on(t.persona_id), uniqueIndex('lugares_concepto_idx').on(t.persona_id, t.concepto_id)],
+);
+
+/**
+ * Por dónde anduvo la persona: un punto cada vez que se movió más de 1 km o entró o salió de un lugar. Es lo único que
+ * guarda coordenadas, redondeadas a ~10 m, y se borra solo a los 90 días; lo que queda son los resúmenes (mediciones).
+ */
+export const puntos = pgTable(
+  'puntos',
+  {
+    id: idGrande(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    instante: instante('instante').notNull(),
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    lat: doublePrecision('lat').notNull(),
+    lon: doublePrecision('lon').notNull(),
+    precision_m: integer('precision_m'),
+    creado: creado(),
+  },
+  (t) => [uniqueIndex('puntos_persona_instante_idx').on(t.persona_id, t.instante), index('puntos_persona_fecha_idx').on(t.persona_id, t.fecha)],
 );
 
 // ---------- Patrones ----------

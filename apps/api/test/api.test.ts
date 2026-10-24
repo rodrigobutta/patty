@@ -214,6 +214,76 @@ describe('clima automático', () => {
   });
 });
 
+describe('ubicación y lugares', () => {
+  // Anteayer al mediodía de Buenos Aires (15 h UTC), así la prueba no depende de a qué hora se corre.
+  const FECHA = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+  const hace = (min: number) => new Date(Date.parse(`${FECHA}T15:00:00Z`) - min * 60000).toISOString();
+
+  it('guarda un punto solo al moverse más de 1 km o cambiar de lugar, y calcula viajes y estadías', async () => {
+    const { ana, personaId } = await conAdmin();
+    const casa = await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'casa', lat: -34.6, lon: -58.4 });
+    expect(casa.status).toBe(201);
+    expect(casa.body).toMatchObject({ nombre: 'Casa', radio_m: 150 });
+    expect((await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Casa', lat: 0, lon: 0 })).status).toBe(409);
+    const sup = (await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Supermercado Coto', lat: -34.62, lon: -58.4, radio_m: 200 })).body;
+
+    const r = await ana.post('/api/ubicacion', {
+      persona_id: personaId,
+      puntos: [
+        { lat: -34.600012345, lon: -58.4, instante: hace(50) },
+        { lat: -34.6003, lon: -58.4, instante: hace(45) }, // sigue en casa: no se guarda
+        { lat: -34.6201, lon: -58.4001, instante: hace(30) }, // el súper
+        { lat: -34.6, lon: -58.4, instante: hace(5) }, // de vuelta
+      ],
+    });
+    expect(r.body).toMatchObject({ ok: true, guardados: 3, lugar: 'Casa' });
+    // Lo mismo otra vez no agrega nada.
+    expect((await ana.post('/api/ubicacion', { persona_id: personaId, puntos: [{ lat: -34.6, lon: -58.4, instante: hace(5) }] })).body.guardados).toBe(0);
+
+    const dia = (await ana.get(`/api/ubicacion/dia?persona=${personaId}&fecha=${FECHA}`)).body;
+    expect(dia).toMatchObject({ fecha: FECHA, puntos: 3, viajes: 2, km: 4.5 });
+    expect(dia.estadias.map((e: any) => [e.lugar, e.minutos])).toEqual([['Casa', 20], ['Supermercado Coto', 25], ['Casa', 0]]);
+
+    const { obtenerDb } = await import('../src/db/client.js');
+    const { sql } = await import('drizzle-orm');
+    const db = obtenerDb();
+    // Las coordenadas se guardan redondeadas (~10 m).
+    expect([...(await db.execute(sql`SELECT lat FROM puntos ORDER BY instante LIMIT 1`))][0]).toEqual({ lat: -34.6 });
+    const med = async () =>
+      [...(await db.execute(sql`SELECT c.nombre, m.valor, cat.clave AS categoria FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id
+          JOIN categorias cat ON cat.id = c.categoria_id ORDER BY m.inicio, c.nombre`))].map((x: any) => `${x.categoria}:${x.nombre}=${x.valor}`);
+    expect(await med()).toEqual(['lugar:Km recorridos=4.5', 'lugar:Viajes=2', 'lugar:Casa=20', 'lugar:Supermercado Coto=25', 'lugar:Casa=0']);
+
+    // Al cambiar los lugares se recalcula: sin el súper, las estadías en casa quedan y la del súper se va.
+    expect((await ana.del(`/api/ubicacion/lugares/${sup.id}`)).status).toBe(200);
+    expect(await med()).toEqual(['lugar:Km recorridos=4.5', 'lugar:Viajes=2', 'lugar:Casa=20', 'lugar:Casa=0']);
+    // Renombrar un lugar renombra su concepto.
+    const ren = await ana.put(`/api/ubicacion/lugares/${casa.body.id}`, { nombre: 'Mi casa', radio_m: 300 });
+    expect(ren.body).toMatchObject({ nombre: 'Mi casa', radio_m: 300 });
+
+    // Borrar el historial: se van los puntos y lo calculado; los lugares quedan.
+    expect((await ana.del(`/api/ubicacion?persona=${personaId}`)).status).toBe(200);
+    expect(await med()).toEqual([]);
+    expect((await ana.get(`/api/ubicacion/lugares?persona=${personaId}`)).body.map((l: any) => l.nombre)).toEqual(['Mi casa']);
+  });
+
+  it('un atajo del teléfono manda la ubicación con el token de una fuente', async () => {
+    const { ana, personaId } = await conAdmin();
+    const f = await ana.post(`/api/personas/${personaId}/fuentes`, { tipo: 'telefono', nombre: 'Atajo iPhone' });
+    const atajo = new Cliente();
+    atajo.headers.Authorization = `Bearer ${f.body.token}`;
+    expect((await atajo.post('/api/ingesta/ubicacion', { lat: -34.6, lon: -58.4 })).body).toMatchObject({ ok: true, guardados: 1, lugar: null });
+    expect((await new Cliente().post('/api/ingesta/ubicacion', { lat: -34.6, lon: -58.4 })).status).toBe(401);
+    expect((await atajo.post('/api/ingesta/ubicacion', { lat: 100, lon: 0 })).status).toBe(400);
+  });
+
+  it('solo quien puede anotar a la persona', async () => {
+    const { personaId } = await conAdmin();
+    const otro = new Cliente();
+    expect((await otro.post('/api/ubicacion', { persona_id: personaId, puntos: [] })).status).toBe(401);
+  });
+});
+
 describe('análisis de patrones', () => {
   it('de punta a punta: encuentra el patrón, lo guarda y respeta lo que confirma la persona', async () => {
     const { ana, personaId, categorias } = await conAdmin();
@@ -241,6 +311,34 @@ describe('análisis de patrones', () => {
     const otra = await ana.post('/api/analisis', { persona_id: personaId, desde, hasta: sumarDias(desde, 44), ia: false });
     expect(otra.body.hallazgos[0]).toMatchObject({ id: h.id, estado: 'confirmado' });
     expect((await ana.get(`/api/hallazgos?persona=${personaId}`)).body[0].estado).toBe('confirmado');
+  });
+
+  it('ir a un lugar con nombre entra como causa: «Supermercado → dolor de cabeza al día siguiente»', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const cafe = (await ana.post('/api/conceptos', { nombre: 'Café', categoria_id: categorias.bebida })).body.concepto.id;
+    const dolor = (await ana.post('/api/conceptos', { nombre: 'Dolor de cabeza', categoria_id: categorias.sintoma })).body.concepto.id;
+    await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Casa', lat: -34.6, lon: -58.4 });
+    await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Supermercado', lat: -34.62, lon: -58.4 });
+    // Los puntos se guardan hasta 90 días: 40 días que terminan anteayer.
+    const hasta = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    const desde = sumarDias(hasta, -39);
+    const alSuper = (i: number) => i % 3 === 0;
+    for (let i = 0; i < 40; i++) {
+      const dia = sumarDias(desde, i);
+      await ana.post('/api/registros', { persona_id: personaId, concepto_id: cafe, inicio: `${dia}T11:00:00Z`, valor: 1 });
+      const puntos = [{ lat: -34.6, lon: -58.4, instante: `${dia}T12:00:00Z` }];
+      if (alSuper(i)) puntos.push({ lat: -34.62, lon: -58.4, instante: `${dia}T14:00:00Z` }, { lat: -34.6, lon: -58.4, instante: `${dia}T15:00:00Z` });
+      await ana.post('/api/ubicacion', { persona_id: personaId, puntos });
+      if ((i >= 1 && alSuper(i - 1)) || i === 10) {
+        await ana.post('/api/registros', { persona_id: personaId, concepto_id: dolor, inicio: `${dia}T21:00:00Z`, intensidad: 3 });
+      }
+    }
+    const r = await ana.post('/api/analisis', { persona_id: personaId, desde, hasta, ia: false });
+    expect(r.body.dias).toBe(40);
+    // En estos datos ir al súper es lo único que suma viajes y km: los tres salen igual de fuertes.
+    const h = r.body.hallazgos.find((x: any) => x.causa === 'Supermercado');
+    expect(h).toMatchObject({ causa_modo: 'presente', efecto: 'Dolor de cabeza', desfase_dias: 1 });
+    expect(h.q_valor).toBeLessThan(0.01);
   });
 
   it('con pocos días avisa que falta', async () => {

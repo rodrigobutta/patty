@@ -49,12 +49,27 @@ export const rutasPatrones = new Hono<Env>()
             WHERE persona_id = ${p.id} AND fecha BETWEEN ${desde} AND ${hasta} AND borrado IS NULL`,
       )).map((f) => `${f.fecha}|${f.concepto_id}`),
     );
-    const datos: FilaDiaria[] = serie.map((f) => ({
-      ...f,
-      suma: f.suma === null ? null : Number(f.suma),
-      promedio: f.promedio === null ? null : Number(f.promedio),
-      primera: manuales.has(`${f.fecha}|${f.concepto_id}`) && f.primera ? new Date(f.primera).getTime() : null,
-    }));
+    // Las llegadas a un lugar sí tienen hora con sentido ("fui al súper a las 11, me dolió la cabeza a las 15"), pero
+    // no hacen que el día cuente como anotado.
+    const llegadas = new Set(
+      (await filas<{ fecha: string; concepto_id: number }>(
+        db,
+        sql`SELECT DISTINCT to_char(m.fecha, 'YYYY-MM-DD') AS fecha, m.concepto_id FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id
+            JOIN lugares l ON l.concepto_id = m.concepto_id AND l.persona_id = m.persona_id
+            WHERE m.persona_id = ${p.id} AND f.tipo = 'ubicacion' AND m.fecha BETWEEN ${desde} AND ${hasta}`,
+      )).map((f) => `${f.fecha}|${f.concepto_id}`),
+    );
+    const datos: FilaDiaria[] = serie.map((f) => {
+      const clave = `${f.fecha}|${f.concepto_id}`;
+      const conHora = (manuales.has(clave) || llegadas.has(clave)) && f.primera;
+      return {
+        ...f,
+        suma: f.suma === null ? null : Number(f.suma),
+        promedio: f.promedio === null ? null : Number(f.promedio),
+        primera: conHora ? new Date(f.primera!).getTime() : null,
+        automatica: !manuales.has(clave) && llegadas.has(clave),
+      };
+    });
     const conceptos = await filas<ConceptoInfo>(
       db,
       sql`SELECT c.id, c.nombre, c.tipo_valor, k.rol FROM conceptos c JOIN categorias k ON k.id = c.categoria_id

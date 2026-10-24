@@ -24,7 +24,14 @@ export interface FilaDiaria {
   intensidad: number | null;
   /** primera vez que se anotó ese día (ms); null para las mediciones resumidas */
   primera: number | null;
+  /**
+   * Vino solo, sin que la persona anote nada (la llegada a un lugar, por ejemplo): tiene hora, pero ese día no cuenta
+   * como "día anotado". Si contara, un día en que solo hubo ubicación parecería un día sin dolores.
+   */
+  automatica?: boolean;
 }
+
+const anotada = (f: FilaDiaria) => f.primera !== null && !f.automatica;
 
 export interface ConceptoInfo {
   id: number;
@@ -146,7 +153,7 @@ function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, 
   for (const f of filas) {
     const i = diasEntre(desde, f.fecha);
     if (i < 0 || i >= n || !conceptos.has(f.concepto_id)) continue;
-    if (f.primera !== null) activo[i] = 1;
+    if (anotada(f)) activo[i] = 1;
     let l = porConcepto.get(f.concepto_id);
     if (!l) porConcepto.set(f.concepto_id, (l = []));
     l.push(f);
@@ -209,7 +216,7 @@ export function buscarPatrones(
   const n = diasEntre(desde, hasta) + 1;
   const conceptos = new Map(conceptosLista.map((c) => [c.id, c]));
   const rasgos = armarRasgos(filas, conceptos, desde, n);
-  const diasActivos = new Set(filas.filter((f) => f.primera !== null).map((f) => f.fecha)).size;
+  const diasActivos = new Set(filas.filter(anotada).map((f) => f.fecha)).size;
   if (diasActivos < DIAS_MINIMOS) return { candidatos: [], pares_evaluados: 0, dias: n, dias_activos: diasActivos };
 
   const causas = rasgos.filter((r) => r.concepto.rol !== 'efecto');

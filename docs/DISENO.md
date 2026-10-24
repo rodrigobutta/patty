@@ -55,6 +55,23 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   «Clima automático» de la persona (se crea sola). Una lectura por hora y persona: si ya está, no se vuelve a pedir. Lo
   anotado hace más de 48 h no lleva clima (la ubicación de ahora no dice dónde estaba). La ubicación no se guarda y a
   Open-Meteo va con 2 decimales (~1 km). Se apaga por dispositivo en Más.
+- **Ubicación y lugares** (apagado por defecto, se prende por dispositivo en Más):
+  - Con Patty abierta, la web sigue la ubicación (`watchPosition`, se corta al ocultarse) y manda un punto a
+    `POST /api/ubicacion` solo si es el primero del día, si se movió más de 1 km o si entró o salió de un lugar con
+    nombre (`puntoNuevo`, en shared; la API vuelve a filtrar). Una PWA **no puede** seguir la ubicación con la app
+    cerrada o la pantalla apagada (ni iOS ni Android lo permiten). Para eso: un atajo del teléfono (iPhone: Atajos →
+    Automatización «al llegar / al salir») que manda `{ lat, lon }` a `POST /api/ingesta/ubicacion` con el token de una
+    fuente, y más adelante la app nativa con ubicación en segundo plano.
+  - Tabla `puntos`: coordenadas redondeadas a 4 decimales (~11 m), se borran solas a los 90 días.
+  - Tabla `lugares` (Casa, Supermercado…: centro y radio, 150 m de entrada). Cada lugar es un concepto de la categoría
+    «Lugares y salidas» (rol causa, tipo duración).
+  - Con los puntos de cada día se recalculan las mediciones de la fuente «Ubicación»: «Viajes» (tramos de más de 1 km),
+    «Km recorridos» (en línea recta entre puntos) y una por estadía en un lugar (concepto del lugar, minutos, con la
+    hora de llegada). Al crear, mover o borrar un lugar se recalculan todos los días que todavía tienen puntos.
+    Lógica pura en `apps/api/src/ubicacion/resumen.ts`.
+  - En el motor, las estadías tienen hora (para el orden dentro del día) pero son `automatica`: un día con solo
+    ubicación no cuenta como día anotado (si no, parecería un día sin dolores).
+  - Borrar el historial (Más) borra puntos y lo calculado; los lugares quedan.
 - Próximos pasos: un atajo de iOS (Atajos + Salud) y una app con Capacitor que lea Health Connect / HealthKit y el
   tiempo de pantalla.
 
@@ -114,3 +131,5 @@ docs/           Este documento.
 - Recordatorios para anotar (notificaciones) y carga por voz.
 - Modo sin conexión con cola de cambios, como Quincho.
 - Exportar los datos (CSV) y un respaldo descargable.
+- Más cosas automáticas: horas de luz y fase lunar (sin pedir nada), calidad del aire y polen (Open-Meteo Air Quality,
+  gratis, con la misma ubicación del clima), sugerir lugares a partir de dónde se repiten los puntos.
