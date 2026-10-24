@@ -11,5 +11,8 @@ project(':capgo-background-geolocation').projectDir = new File('../../../node_mo
 include ':capgo-capacitor-health'
 project(':capgo-capacitor-health').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-health@8.11.12_@capacitor+core@8.5.3/node_modules/@capgo/capacitor-health/android')
 
+include ':capgo-capacitor-social-login'
+project(':capgo-capacitor-social-login').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-social-login@8.7.5_@capacitor+core@8.5.3/node_modules/@capgo/capacitor-social-login/android')
+
 include ':capgo-capacitor-speech-recognition'
 project(':capgo-capacitor-speech-recognition').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-speech-recognition@8.4.5_@capacitor+core@8.5.3/node_modules/@capgo/capacitor-speech-recognition/android')

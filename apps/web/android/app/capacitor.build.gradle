@@ -12,6 +12,7 @@ dependencies {
     implementation project(':capacitor-local-notifications')
     implementation project(':capgo-background-geolocation')
     implementation project(':capgo-capacitor-health')
+    implementation project(':capgo-capacitor-social-login')
     implementation project(':capgo-capacitor-speech-recognition')
 
 }

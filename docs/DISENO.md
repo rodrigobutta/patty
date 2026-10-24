@@ -108,6 +108,12 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
 - **Festejo** (`mascota/Festejo.tsx`, `festejar` en el estado): al anotar algo la mascota aparece un momento, salta
   y suelta chispitas; si lo anotado es que la persona está mal, acompaña con otra cara. Después de contestar
   "¿cómo te sentís ahora?" la pregunta desaparece del Día por 3 horas; tocando la mascota de arriba se abre cuando sea.
+- **Entrada y bienvenida**: la pantalla de entrar tiene al búho saludando con un globito, fondo con burbujas y cosas
+  que flotan. La primera vez en cada dispositivo, después de entrar, hay una bienvenida de 3 pasos
+  (`pantallas/Bienvenida.tsx`). **Google**: en la web, Google Identity Services; en la app nativa el botón web no anda,
+  así que usa el inicio de sesión del teléfono (`@capgo/capacitor-social-login`) con el mismo ID de cliente web
+  (`GOOGLE_CLIENT_ID`); además, en Google Cloud hace falta un cliente OAuth de tipo Android (paquete `ar.patty.app` y
+  la SHA-1 de la firma) y el origen de Railway en el cliente web.
 - **Contarlo con la voz**: si hay micrófono, solo el botón grande y lo que se escuchó (con un enlace "Prefiero
   escribir"). Si Patty tiene dudas ("¿cuántas porciones?"), se le contesta igual, hablando o escribiendo: la respuesta
   se suma al relato como "Aclaración" y se vuelve a ordenar todo.

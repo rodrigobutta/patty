@@ -9,6 +9,7 @@ import { useCara } from './mascota/cara';
 import { Festejo } from './mascota/Festejo';
 import { Mascota } from './mascota/Mascota';
 import { useSeguirUbicacion } from './lib/ubicacion';
+import { Bienvenida, bienvenidaVista } from './pantallas/Bienvenida';
 import { Entrar } from './pantallas/Entrar';
 import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
@@ -26,6 +27,7 @@ const PESTANAS: Array<{ id: Pestana; icono: string; nombre: string }> = [
 export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso } = useEstado();
   const [pestana, setPestana] = useState<Pestana>('hoy');
+  const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
   useSeguirUbicacion(fase === 'listo' ? persona?.id : undefined);
   useDatosDelTelefono(fase === 'listo' ? persona?.id : undefined);
   useSalud(fase === 'listo' ? persona?.id : undefined);
@@ -37,6 +39,7 @@ export function App() {
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;
   if (fase === 'entrar' || fase === 'configurar') return <Entrar configurar={fase === 'configurar'} />;
+  if (bienvenida) return <Bienvenida alTerminar={() => setBienvenida(false)} />;
   if (!persona) return <NuevaPersona primera />;
 
   return (

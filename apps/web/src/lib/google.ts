@@ -1,4 +1,8 @@
-// Acceder con Google (Google Identity Services, botón en ventana emergente).
+// Acceder con Google. En la web, con Google Identity Services (botón en ventana emergente). En la app nativa ese botón
+// no anda (Google no deja iniciar sesión dentro de una vista web), así que se usa el inicio de sesión del teléfono
+// (plugin de Capgo, con el mismo ID de cliente web): devuelve el mismo tipo de credencial y la API la verifica igual.
+import { SocialLogin } from '@capgo/capacitor-social-login';
+import { esNativa } from './nativo';
 import { temaOscuro } from './tema';
 
 interface GoogleId {
@@ -19,4 +23,19 @@ export async function montarGoogle(el: HTMLElement | null, clientId: string, alE
   if (!el || !g) return;
   g.initialize({ client_id: clientId, callback: r => alEntrar(r.credential), ux_mode: 'popup' });
   g.renderButton(el, { theme: temaOscuro() ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: 'es' });
+}
+
+export const googleNativo = () => esNativa();
+
+let iniciado: string | null = null;
+/** En la app nativa: abre la elección de cuenta de Google del teléfono y devuelve la credencial (ID token). */
+export async function entrarConGoogleNativo(clientId: string): Promise<string> {
+  if (iniciado !== clientId) {
+    await SocialLogin.initialize({ google: { webClientId: clientId } });
+    iniciado = clientId;
+  }
+  const r = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
+  const token = (r.result as { idToken?: string | null }).idToken;
+  if (!token) throw new Error('Google no devolvió la cuenta. Probá de nuevo.');
+  return token;
 }
