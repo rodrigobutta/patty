@@ -108,6 +108,8 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
 - **Festejo** (`mascota/Festejo.tsx`, `festejar` en el estado): al anotar algo la mascota aparece un momento, salta
   y suelta chispitas; si lo anotado es que la persona está mal, acompaña con otra cara. Después de contestar
   "¿cómo te sentís ahora?" la pregunta desaparece del Día por 3 horas; tocando la mascota de arriba se abre cuando sea.
+- **Editar** (`pantallas/Editar.tsx`): tocando algo del Día se cambia la hora, la cantidad o los minutos, la intensidad
+  (o la carita) y la nota; el concepto no (se borra y se anota de nuevo). La tele mueve sus partes juntas.
 - En el Día, con la IA andando, el botón grande **«Contale a Patty»** abre "Contarlo" y empieza a escuchar al toque.
 - **Dictar** en "Contarlo" (`lib/voz.ts`): en la app nativa con el reconocimiento de voz del teléfono
   (`@capgo/capacitor-speech-recognition`, permiso de micrófono), en el navegador con Web Speech si lo hay. El texto

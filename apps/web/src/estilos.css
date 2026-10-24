@@ -243,3 +243,8 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 @media (min-width: 640px) { .contale { right: auto; width: 320px; } }
 /* Que lo último del Día no quede tapado por los botones de abajo. */
 .dia { padding-bottom: 96px; }
+
+/* Lo anotado se toca para cambiarlo. */
+.lista li.tocable { cursor: pointer; }
+.lista li.tocable:active { background: var(--acento-suave); }
+.carita.activa { border-color: var(--acento); background: var(--acento-suave); }

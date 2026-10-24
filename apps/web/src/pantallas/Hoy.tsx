@@ -12,6 +12,7 @@ import { avisarAnotado } from '../mascota/cara';
 import type { Cara } from '../mascota/dibujo';
 import { Mascota } from '../mascota/Mascota';
 import { Cargar } from './Cargar';
+import { Editar } from './Editar';
 import { Caritas, esMalo, Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
@@ -52,6 +53,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
   const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
   const [error, setError] = useState('');
+  /** Lo anotado que se está cambiando (al tocarlo). */
+  const [editando, setEditando] = useState<Registro | null>(null);
   const hoy = hoyEn(persona.zona_horaria);
 
   const traer = useCallback(async () => {
@@ -167,7 +170,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           {registros.filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio)).map((r) => {
             const cat = tipoDe(r);
             return (
-              <li key={r.id} onContextMenu={(e) => { e.preventDefault(); void borrar(r); }}>
+              <li key={r.id} className="tocable" onClick={() => setEditando(r)} onContextMenu={(e) => { e.preventDefault(); void borrar(r); }}>
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
                 <span className="icono">{cat?.icono}</span>
                 <span className="que">
@@ -175,7 +178,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                   {detalle(r, cat?.tipo_valor) ? <span className="valor-chip">{detalle(r, cat?.tipo_valor)}</span> : null}
                   {r.nota ? <span className="suave chico"> — {r.nota}</span> : null}
                 </span>
-                <button className="btn-icono chico" onClick={() => borrar(r)} aria-label={`Borrar ${r.concepto}`}>🗑</button>
+                <button className="btn-icono chico" onClick={(e) => { e.stopPropagation(); void borrar(r); }} aria-label={`Borrar ${r.concepto}`}>🗑</button>
               </li>
             );
           })}
@@ -210,6 +213,18 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             ))}
           </ul>
         </div>
+      ) : null}
+      {editando ? (
+        <>
+          <div className="velo" onClick={() => setEditando(null)} />
+          <Editar
+            persona={persona}
+            registro={editando}
+            partes={partesDe(editando, registros ?? [])}
+            alCerrar={() => setEditando(null)}
+            alGuardar={() => { setEditando(null); void traer(); }}
+          />
+        </>
       ) : null}
       {sintiendo ? (
         <>
