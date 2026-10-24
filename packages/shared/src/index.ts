@@ -158,6 +158,20 @@ export interface Categoria extends CategoriaBase {
   id: number;
 }
 
+/** Lo que llegó solo en un día (teléfono, ubicación, clima, reloj), resumido por fuente y concepto. */
+export interface DatoAutomatico {
+  fuente: string;
+  tipo_fuente: string;
+  concepto: string;
+  categoria_id: number;
+  unidad: string | null;
+  /** Cuántas mediciones hubo (el clima, una por hora; los resúmenes del teléfono, una por día). */
+  cantidad: number;
+  suma: number;
+  minimo: number;
+  maximo: number;
+}
+
 export interface Concepto {
   id: number;
   categoria_id: number;

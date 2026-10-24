@@ -144,6 +144,14 @@ describe('ingesta desde dispositivos', () => {
     const malo = new Cliente();
     malo.headers.Authorization = 'Bearer patty_' + createHash('sha256').update('x').digest('hex');
     expect((await malo.post('/api/ingesta', lote)).status).toBe(401);
+
+    // Lo que llegó solo se ve en el día, resumido por fuente y concepto.
+    const dia = await ana.get(`/api/registros/automaticos?persona=${personaId}&fecha=2026-10-24`);
+    expect(dia.body).toEqual([
+      expect.objectContaining({ fuente: 'Reloj', tipo_fuente: 'reloj', concepto: 'Pasos', cantidad: 1, suma: 8123 }),
+      expect.objectContaining({ fuente: 'Reloj', concepto: 'Pulso en reposo', unidad: 'lpm', suma: 61, minimo: 61, maximo: 61 }),
+    ]);
+    expect((await ana.get(`/api/registros/automaticos?persona=${personaId}&fecha=2026-10-23`)).body).toEqual([]);
   });
 });
 

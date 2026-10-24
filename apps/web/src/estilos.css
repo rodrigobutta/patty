@@ -157,3 +157,9 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .barras div { isolation: isolate; } .barras span { z-index: -1; }
 .posibles { margin-bottom: 12px; }
 .posibles summary { cursor: pointer; padding: 12px 4px; color: var(--suave); font-weight: 600; }
+
+/* Lo que llegó solo en el día (teléfono, ubicación, clima), debajo de lo anotado. */
+.automatico { margin-top: 12px; padding: 12px 16px; }
+.automatico h3 { margin: 0 0 4px; font-weight: 600; }
+.automatico .lista li { padding: 6px 0; }
+.automatico .que { flex: 1; }

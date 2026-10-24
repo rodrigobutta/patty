@@ -1,8 +1,9 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
 import { useCallback, useEffect, useState } from 'react';
-import type { Persona, Registro } from 'shared';
+import type { DatoAutomatico, Persona, Registro } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
+import { agruparAutomaticos } from '../lib/automatico';
 import { hoyEn, horaEn, nombreDia, sumarDias } from '../lib/fechas';
 import { Cargar } from './Cargar';
 
@@ -17,13 +18,19 @@ export function Hoy({ persona }: { persona: Persona }) {
   const { categorias, avisar } = useEstado();
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
   const [registros, setRegistros] = useState<Registro[] | null>(null);
+  const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
   const hoy = hoyEn(persona.zona_horaria);
 
   const traer = useCallback(async () => {
     try {
-      setRegistros(await api<Registro[]>('GET', `/api/registros?persona=${persona.id}&desde=${fecha}`));
+      const [r, a] = await Promise.all([
+        api<Registro[]>('GET', `/api/registros?persona=${persona.id}&desde=${fecha}`),
+        api<DatoAutomatico[]>('GET', `/api/registros/automaticos?persona=${persona.id}&fecha=${fecha}`).catch(() => []),
+      ]);
+      setRegistros(r);
+      setAutomaticos(a);
       setError('');
     } catch (e) {
       setError((e as Error).message);
@@ -31,6 +38,7 @@ export function Hoy({ persona }: { persona: Persona }) {
   }, [persona.id, fecha]);
   useEffect(() => {
     setRegistros(null);
+    setAutomaticos([]);
     void traer();
   }, [traer]);
 
@@ -77,6 +85,20 @@ export function Hoy({ persona }: { persona: Persona }) {
           })}
         </ul>
       )}
+      {agruparAutomaticos(automaticos).map((g) => (
+        <div key={g.fuente} className="tarjeta automatico">
+          <h3 className="chico suave">{g.fuente}</h3>
+          <ul className="lista">
+            {g.lineas.map((l) => (
+              <li key={l.concepto}>
+                <span className="icono">{categorias.find((c) => c.id === l.categoria_id)?.icono}</span>
+                <span className="que">{l.concepto}</span>
+                <span className="valor-chip">{l.valor}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
       <button className="fab" onClick={() => setCargando(true)} aria-label="Anotar">＋</button>
       {cargando ? (
         <>

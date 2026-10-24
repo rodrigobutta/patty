@@ -1,7 +1,7 @@
 // Lo que se anota de cada persona. Un registro es "este concepto, a esta hora, con este valor".
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import type { Concepto, NuevoRegistro, Registro, Usuario } from 'shared';
+import type { Concepto, DatoAutomatico, NuevoRegistro, Registro, Usuario } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { registros } from '../db/schema.js';
 import { interpretarTexto } from '../ia/interpretar.js';
@@ -83,6 +83,22 @@ export const rutasRegistros = new Hono<Env>()
         sql`SELECT ${COLUMNAS} FROM registros r
             WHERE r.persona_id = ${p.id} AND r.fecha BETWEEN ${desde} AND ${hasta} AND r.borrado IS NULL
             ORDER BY r.inicio, r.id`,
+      ),
+    );
+  })
+  .get('/automaticos', async (c) => {
+    // ?persona=1&fecha=AAAA-MM-DD: lo que llegó solo ese día (teléfono, ubicación, clima, reloj), por fuente y concepto.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const fecha = esFecha(c.req.query('fecha')) ? c.req.query('fecha')! : diaDePatty(new Date(), p.zona_horaria);
+    return c.json(
+      await filas<DatoAutomatico>(
+        c.var.db,
+        sql`SELECT f.nombre AS fuente, f.tipo AS tipo_fuente, c.nombre AS concepto, c.categoria_id, max(m.unidad) AS unidad,
+                   count(*)::int AS cantidad, sum(m.valor)::float AS suma, min(m.valor)::float AS minimo, max(m.valor)::float AS maximo
+            FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id JOIN conceptos c ON c.id = m.concepto_id
+            WHERE m.persona_id = ${p.id} AND m.fecha = ${fecha}
+            GROUP BY f.id, f.nombre, f.tipo, c.id, c.nombre, c.categoria_id
+            ORDER BY f.tipo, sum(m.valor) DESC`,
       ),
     );
   })

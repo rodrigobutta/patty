@@ -1,0 +1,33 @@
+import type { DatoAutomatico } from 'shared';
+import { agruparAutomaticos, duracion, valorAutomatico } from './automatico';
+
+const dato = (d: Partial<DatoAutomatico>): DatoAutomatico => ({
+  fuente: 'App de Android', tipo_fuente: 'telefono', concepto: 'x', categoria_id: 1, unidad: null, cantidad: 1, suma: 0, minimo: 0, maximo: 0, ...d,
+});
+
+describe('datos automáticos del día', () => {
+  it('los minutos se leen como horas y minutos', () => {
+    expect(duracion(45)).toBe('45 min');
+    expect(duracion(120)).toBe('2 h');
+    expect(duracion(192.4)).toBe('3 h 12 min');
+    expect(valorAutomatico(dato({ unidad: 'min', suma: 75 }))).toBe('1 h 15 min');
+    expect(valorAutomatico(dato({ suma: 5 }))).toBe('5');
+  });
+
+  it('del clima muestra el rango del día, y de la lluvia el total', () => {
+    expect(valorAutomatico(dato({ tipo_fuente: 'clima', unidad: '°C', cantidad: 3, suma: 54, minimo: 14.2, maximo: 21.66 }))).toBe('14,2–21,7 °C');
+    expect(valorAutomatico(dato({ tipo_fuente: 'clima', unidad: 'mm', cantidad: 3, suma: 2.5, minimo: 0, maximo: 2 }))).toBe('2,5 mm');
+  });
+
+  it('agrupa por fuente: primero el teléfono, al final el clima', () => {
+    const g = agruparAutomaticos([
+      dato({ fuente: 'Clima automático', tipo_fuente: 'clima', concepto: 'Humedad', unidad: '%', suma: 60, minimo: 60, maximo: 60 }),
+      dato({ concepto: 'Tiempo de pantalla', categoria_id: 9, unidad: 'min', suma: 200 }),
+      dato({ concepto: 'Llamadas', categoria_id: 8, suma: 4 }),
+    ]);
+    expect(g.map((x) => [x.fuente, x.lineas.map((l) => `${l.concepto}: ${l.valor}`)])).toEqual([
+      ['App de Android', ['Llamadas: 4', 'Tiempo de pantalla: 3 h 20 min']],
+      ['Clima automático', ['Humedad: 60 %']],
+    ]);
+  });
+});

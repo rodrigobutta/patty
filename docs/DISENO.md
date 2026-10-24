@@ -87,6 +87,8 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     mucho cada 30 min) manda los últimos 7 días calendario a `POST /api/ingesta`: «Tiempo de pantalla», «Uso de
     <app>» (si pasó 5 min en el día), «Llamadas», «Llamadas perdidas», «Minutos en llamadas». Mandar de nuevo un día
     actualiza el valor.
+- En el Día, debajo de lo anotado, se ve lo que llegó solo ese día (`GET /api/registros/automaticos`): un grupo por
+  fuente y una línea por concepto (el clima, rango del día; la lluvia, el total; los minutos, en horas y minutos).
 - Próximos pasos: leer Health Connect / HealthKit (pasos, sueño, pulso) desde la app nativa.
 
 ## Cómo se buscan los patrones

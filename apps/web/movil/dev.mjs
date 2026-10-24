@@ -4,7 +4,7 @@
 //   node movil/dev.mjs ios              simulador de iPhone
 //   node movil/dev.mjs android --wifi   teléfono en la misma red que la Mac (sin cable)
 // Vite usa el puerto 5173 (o PUERTO_WEB) y manda /api a API_PROXY, como `pnpm dev:web`.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
 
 const PUERTO = Number(process.env.PUERTO_WEB) || 5173;
@@ -43,5 +43,15 @@ const args = ['exec', 'cap', 'run', plataforma, '--live-reload', '--host', host,
 if (plataforma === 'android' && !porWifi) args.push('--forwardPorts', `${PUERTO}:${PUERTO}`);
 correr('pnpm', args).on('exit', (codigo) => {
   if (codigo) terminar();
+  // Por las dudas, el "adb reverse" a mano en cada dispositivo conectado (si adb se reinició, Capacitor no lo deja).
+  if (plataforma === 'android' && !porWifi) {
+    const adb = process.env.ANDROID_HOME ? `${process.env.ANDROID_HOME}/platform-tools/adb` : 'adb';
+    spawnSync(adb, ['reverse', `tcp:${PUERTO}`, `tcp:${PUERTO}`]);
+    const lista = spawnSync(adb, ['devices'], { encoding: 'utf8' }).stdout.split('\n').slice(1);
+    for (const l of lista) {
+      const [id, estado] = l.trim().split(/\s+/);
+      if (estado === 'device') spawnSync(adb, ['-s', id, 'reverse', `tcp:${PUERTO}`, `tcp:${PUERTO}`]);
+    }
+  }
   console.log(`\nPatty abierta en ${plataforma} contra http://${host}:${PUERTO}. Ctrl+C para cortar.`);
 });
