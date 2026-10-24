@@ -37,6 +37,8 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     // Para que el ícono de la mascota cambie de cara aunque Patty no se abra (MascotaPlugin).
     implementation "androidx.work:work-runtime:2.10.5"
+    // Para AvisosPushService (la misma versión que usa el plugin de push).
+    implementation "com.google.firebase:firebase-messaging:25.0.1"
     // WorkManager usa ListenableFuture de Guava; el plugin de salud deja una versión vacía de esa clase.
     implementation "com.google.guava:guava:33.3.1-android"
     implementation project(':capacitor-android')

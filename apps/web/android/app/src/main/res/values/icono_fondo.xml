@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="icono_fondo">#efeafc</color>
+    <color name="patty_acento">#6b4fbb</color>
 </resources>

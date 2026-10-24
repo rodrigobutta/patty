@@ -1,0 +1,74 @@
+package ar.patty.app;
+
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
+import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
+import com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin;
+import com.google.firebase.messaging.FirebaseMessagingService;
+import com.google.firebase.messaging.RemoteMessage;
+import java.util.Map;
+
+/**
+ * Recibe los avisos push y los muestra siempre. Firebase solo los muestra solo si la app está en segundo plano, y
+ * Patty casi nunca lo está para Android: el seguimiento de ubicación la deja "en primer plano" todo el tiempo, y
+ * entonces el aviso le llega a la app, que sin la pantalla abierta no lo mostraba. Reemplaza al servicio del plugin
+ * (ver AndroidManifest) y le sigue pasando el token nuevo.
+ */
+public class AvisosPushService extends FirebaseMessagingService {
+
+    @Override
+    public void onMessageReceived(@NonNull RemoteMessage m) {
+        RemoteMessage.Notification n = m.getNotification();
+        Map<String, String> datos = m.getData();
+        String titulo = n != null && n.getTitle() != null ? n.getTitle() : datos.get("titulo");
+        String cuerpo = n != null && n.getBody() != null ? n.getBody() : datos.get("cuerpo");
+        if (titulo == null && cuerpo == null) return;
+        String canal = n != null && n.getChannelId() != null ? n.getChannelId() : "avisos";
+
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm.getNotificationChannel(canal) == null) {
+            boolean remedios = "remedios".equals(canal);
+            NotificationChannel c = new NotificationChannel(
+                canal,
+                remedios ? "Remedios" : "Avisos",
+                remedios ? NotificationManager.IMPORTANCE_HIGH : NotificationManager.IMPORTANCE_DEFAULT
+            );
+            c.setLockscreenVisibility(NotificationCompat.VISIBILITY_PRIVATE);
+            nm.createNotificationChannel(c);
+        }
+
+        // Tocarlo abre la app (en el Día).
+        Intent abrir = new Intent(this, MainActivity.class);
+        abrir.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        for (Map.Entry<String, String> e : datos.entrySet()) abrir.putExtra(e.getKey(), e.getValue());
+        int id = (int) (System.currentTimeMillis() & 0x7fffffff);
+        PendingIntent pi = PendingIntent.getActivity(this, id, abrir, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder b = new NotificationCompat.Builder(this, canal)
+            .setSmallIcon(R.drawable.ic_stat_patty)
+            .setColor(0xFF6B4FBB)
+            .setContentTitle(titulo)
+            .setContentText(cuerpo)
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(cuerpo))
+            .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pi);
+        try {
+            nm.notify(id, b.build());
+        } catch (SecurityException e) {
+            // Sin permiso de avisos: no hay nada que hacer.
+        }
+    }
+
+    @Override
+    public void onNewToken(@NonNull String token) {
+        super.onNewToken(token);
+        PushNotificationsPlugin.onNewToken(token);
+    }
+}
