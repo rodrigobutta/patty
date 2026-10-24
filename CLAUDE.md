@@ -1,0 +1,53 @@
+# Patty: memoria del proyecto para Claude
+
+Leé esto antes de trabajar. El diseño técnico completo está en [docs/DISENO.md](docs/DISENO.md) y cómo correrlo en
+[README.md](README.md); acá va el contexto que no sale del código.
+
+## Qué pidió Rodrigo (pedido original, 2026-10-24)
+
+Una app donde cada día se anota todo lo que hizo una persona: horarios de levantarse y acostarse, comidas, idas al baño,
+clima, temperatura, humedad, actividades bien tipificadas, cantidad de llamadas, dolores y molestias con su intensidad,
+etc. ("luego vemos más cosas"). Con eso Patty, usando IA (la misma conexión con Anthropic que la app de Quincho), busca
+patrones y relaciones entre cosas: "si comés tomate, a los dos días te duele la cabeza levemente". El nombre viene de
+*patterns* / patrones.
+
+Requisitos que marcó:
+- Pensada desde ya como **app móvil**. En el futuro tiene que leer métricas de relojes y del teléfono (actividad,
+  tiempo de pantalla, uso de redes, etc.).
+- Carga **muy sencilla**, con categorías. Al escribir, si la cosa ya existe se sugiere; si no, se crea ahí mismo.
+- El **nombre (label) es la clave a nivel humano**, pero internamente no: ids y un índice que permita búsquedas
+  inteligentes y rápidas.
+
+## De dónde sale
+
+Se armó a partir de la reescritura en TypeScript de la app de gastos de obra del quincho
+(`~/quincho/easy-project-plan-next`, repo `rodrigobutta/easy-project-plan`): misma base de login (usuario/clave y
+Google), roles, IA de Anthropic, PWA y despliegue en Railway con Dockerfile. Es una app **aparte**, con su propia base;
+no comparte datos con Quincho. Si hace falta ver cómo se resolvió algo de la base, mirar ese repo.
+
+## Estado (2026-10-24)
+
+- Primera versión completa en un solo commit ("Patty: primera versión"), subida a
+  `git@github.com:rodrigobutta/patty.git`, rama `main`. El repo tenía un proyecto viejo sin relación (telegraf/mqtt) que
+  se pisó a pedido de Rodrigo; quedó una rama local `respaldo-repo-viejo` en `~/patty` (no subida).
+- Carpeta local: `~/patty` en la Mac de Rodrigo (Node 24, pnpm 10.12, Postgres local en /usr/local/bin). La base local
+  `patty` todavía no se creó.
+- Typecheck y tests de la web pasan. Los de la API necesitan `createdb patty_test`.
+- **Railway todavía no está armado**: falta crear el servicio con este repo, el plugin de Postgres, `PORT=8000` y
+  `ANTHROPIC_API_KEY` (la misma cuenta que Quincho). Lo crea Rodrigo.
+
+## Próximos pasos posibles
+
+Ver "Pendiente / ideas" en docs/DISENO.md. Lo más pedido por Rodrigo: app nativa con Capacitor que lea Salud /
+Health Connect y tiempo de pantalla, y clima automático por ubicación.
+
+## Cómo trabajar acá
+
+- Todo en **español rioplatense** (voseo): textos de la interfaz, nombres en el código (`registros`, `conceptos`,
+  `diaDePatty`), comentarios, docs y mensajes de commit. Los commits describen el cambio para una persona, no para un
+  programador (ej: "Al cargar una compra sugiere cancelar presupuestos parecidos").
+- La interfaz es primero para el teléfono: pestañas abajo, botón + para anotar, tema claro/oscuro.
+- Cambios en la base: editar `apps/api/src/db/schema.ts` y `pnpm --filter api db:generate` (las migraciones se aplican
+  al arrancar la API).
+- Antes de dar algo por terminado: `pnpm typecheck` y `pnpm test`.
+- Modelo de IA por defecto: el más nuevo de Claude (hoy `claude-opus-5-5`), con salida estructurada en JSON.
