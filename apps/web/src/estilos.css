@@ -253,8 +253,13 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .puntuales { margin-top: 12px; }
 .puntuales .rotulo { margin: 0 0 6px; }
 .puntuales input { margin-top: 6px; }
-.cuanto-puntual { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.cuanto-puntual .btn { flex: 1; min-width: 0; padding-left: 8px; padding-right: 8px; }
+.cuanto-puntual { margin-top: 12px; padding: 12px; border-radius: var(--radio); border: 2px solid var(--acento); background: var(--acento-suave);
+  animation: aparece-cuanto 0.3s cubic-bezier(.2, .9, .3, 1); }
+.cuanto-puntual .pregunta-cuanto { margin: 0 0 8px; font-size: 16px; }
+.cuanto-puntual .botones-cuanto { display: flex; gap: 8px; }
+.cuanto-puntual > .suave { margin: 8px 0 0; text-align: center; }
+@keyframes aparece-cuanto { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+.cuanto-puntual .btn { flex: 1; min-width: 0; padding-left: 8px; padding-right: 8px; min-height: 48px; font-size: 16px; }
 .algo-puntual { display: block; width: 100%; margin: 0 0 12px; padding: 10px 14px; text-align: left; border-radius: 14px;
   border: 1px dashed var(--borde); background: none; color: var(--suave); font: inherit; font-size: 14px; cursor: pointer; }
 .dia-propuesta { display: block; font-size: 11px; font-weight: 700; color: var(--acento); }

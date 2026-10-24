@@ -20,6 +20,12 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
   useEffect(() => {
     if (elegido === 'dolor') panel.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [elegido]);
+  // Y lo mismo con "¿cuánto?": es lo que guarda, no puede quedar fuera de la vista.
+  const cuanto = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (elegido && elegido !== 'dolor' && elegido !== 'otro') cuanto.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    else if (dolor && dolor !== 'otro') cuanto.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [elegido, dolor]);
   const sintoma = categorias.find((c) => c.clave === 'sintoma');
 
   const guardar = async (nombre: string, intensidad: number, cuanto: string) => {
@@ -81,11 +87,16 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
         <input value={otro} onChange={(e) => setOtro(e.target.value)} placeholder={dolor === 'otro' ? 'ej: dolor de rodilla, sinusitis, herpes' : 'ej: con frío en los pies, con ganas de salir'} autoFocus />
       ) : null}
       {elegido && (elegido !== 'dolor' || dolor) ? (
-        <div className="cuanto-puntual">
-          <span className="suave chico">¿Cuánto?</span>
-          {CUANTO.map((c) => (
-            <button key={c.nombre} className="btn" disabled={!nombreElegido} onClick={() => nombreElegido && void guardar(nombreElegido, c.intensidad, c.nombre)}>{c.nombre}</button>
-          ))}
+        <div className="cuanto-puntual" ref={cuanto}>
+          <p className="pregunta-cuanto">
+            {nombreElegido ? <>¿Cuánto? <strong>{nombreElegido}</strong></> : 'Escribí qué, y después ¿cuánto?'}
+          </p>
+          <div className="botones-cuanto">
+            {CUANTO.map((c) => (
+              <button key={c.nombre} className="btn primario" disabled={!nombreElegido} onClick={() => nombreElegido && void guardar(nombreElegido, c.intensidad, c.nombre)}>{c.nombre}</button>
+            ))}
+          </div>
+          <p className="suave chico">Tocá uno para anotarlo.</p>
         </div>
       ) : null}
       {error ? <p className="neg">{error}</p> : null}
