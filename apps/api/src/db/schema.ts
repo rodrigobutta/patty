@@ -332,6 +332,34 @@ export const tomas = pgTable(
   (t) => [uniqueIndex('tomas_unica_idx').on(t.tratamiento_id, t.programada), index('tomas_registro_idx').on(t.registro_id)],
 );
 
+// ---------- Avisos push ----------
+
+/**
+ * Los teléfonos con la app instalada, para mandarles avisos push (Firebase). `avisos_hasta`: hasta cuándo ese teléfono
+ * ya tiene programados por su cuenta los recordatorios de remedios; después de eso, los manda el servidor.
+ */
+export const dispositivos = pgTable(
+  'dispositivos',
+  {
+    id: id(),
+    usuario_id: integer('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    token: text('token').notNull().unique(),
+    plataforma: text('plataforma').notNull(),
+    avisos_hasta: instante('avisos_hasta'),
+    creado: creado(),
+    actualizado: instante('actualizado').notNull().defaultNow(),
+  },
+  (t) => [index('dispositivos_usuario_idx').on(t.usuario_id)],
+);
+
+/** Los avisos que ya mandó el servidor (para no mandar dos veces el mismo). Se limpian solos a los 30 días. */
+export const avisosEnviados = pgTable('avisos_enviados', {
+  clave: text('clave').primaryKey(),
+  enviado: creado(),
+});
+
 // ---------- Patrones ----------
 
 /** Cada vez que se corre el análisis de una persona. */

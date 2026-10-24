@@ -199,6 +199,10 @@ saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), crea
 - Avisos (`lib/remedios.ts`, solo app nativa): se programan las tomas de la próxima semana al abrir la app y cuando
   algo cambia; uno a la hora y otro a la media hora si no se marcó. Desde el aviso: "La tomé", "En 15 min", "No la
   tomo". Canal de Android `remedios`, privado en la pantalla bloqueada. `lib/avisos.ts` tiene lo común para otros avisos.
+- Push (Firebase, `push/`): la app registra su token en `dispositivos` con `avisos_hasta` (hasta cuándo programó sus
+  propios recordatorios). Cada minuto el servidor revisa las tomas y manda por push solo las que el teléfono no tiene
+  (un crónico y más de una semana sin abrir la app). Necesita `FIREBASE_SERVICE_ACCOUNT` en el servidor y
+  `google-services.json` en `apps/web/android/app`; sin eso, todo sigue andando sin push.
 
 ## Usuarios y acceso
 

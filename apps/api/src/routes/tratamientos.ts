@@ -16,11 +16,11 @@ import { guardarRegistro } from './registros.js';
 /** Una toma anotada a mano (o contada) cuenta para la programada más cercana dentro de este margen. */
 const MARGEN_VINCULAR_H = 3;
 
-type Fila = Omit<Tratamiento, 'total' | 'tomadas' | 'proxima' | 'activo'> & { zona: string };
+export type Fila = Omit<Tratamiento, 'total' | 'tomadas' | 'proxima' | 'activo'> & { zona: string };
 
-const COLUMNAS = sql`t.id, t.persona_id, t.concepto_id, c.nombre AS remedio, t.dosis, t.unidad, t.cada_horas, t.horarios,
+export const COLUMNAS = sql`t.id, t.persona_id, t.concepto_id, c.nombre AS remedio, t.dosis, t.unidad, t.cada_horas, t.horarios,
   t.inicio, t.fin, t.motivo, t.nota, t.terminado, p.zona_horaria AS zona`;
-const DESDE = sql`FROM tratamientos t JOIN conceptos c ON c.id = t.concepto_id JOIN personas p ON p.id = t.persona_id`;
+export const DESDE = sql`FROM tratamientos t JOIN conceptos c ON c.id = t.concepto_id JOIN personas p ON p.id = t.persona_id`;
 
 const iso = (v: string | null) => (v ? new Date(v).toISOString() : null);
 
@@ -160,7 +160,7 @@ export async function vincularToma(tx: Tx, r: Registro): Promise<void> {
 }
 
 /** Las tomas de varios tratamientos entre dos instantes, con lo que pasó con cada una. */
-async function tomasDe(tx: Tx, lista: Fila[], desde: Date, hasta: Date): Promise<Toma[]> {
+export async function tomasDe(tx: Tx, lista: Fila[], desde: Date, hasta: Date): Promise<Toma[]> {
   if (!lista.length) return [];
   const ids = lista.map((t) => t.id);
   const hechas = await filas<{ tratamiento_id: number; programada: string; estado: 'tomada' | 'salteada'; tomada: string | null }>(

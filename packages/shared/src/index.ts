@@ -146,6 +146,8 @@ export interface Sesion {
   ia: boolean;
   /** Si el servidor pasa audio a texto (lo que se dicta); si no, el teléfono usa su propio reconocedor. */
   voz: boolean;
+  /** Si el servidor puede mandar avisos push (Firebase configurado). */
+  push: boolean;
 }
 
 export interface Persona {

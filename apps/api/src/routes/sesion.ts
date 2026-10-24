@@ -14,6 +14,7 @@ import { usuarios } from '../db/schema.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, esHttps, texto, type C, type Env } from '../lib/http.js';
 import { vozDisponible } from './voz.js';
+import { pushDisponible } from '../push/firebase.js';
 import { iaDisponible } from '../ia/cliente.js';
 import { crearUsuario } from './usuarios.js';
 
@@ -33,6 +34,7 @@ export const rutasSesion = new Hono<Env>()
       google: config.googleClientId ?? null,
       ia: iaDisponible(),
       voz: vozDisponible(),
+      push: pushDisponible(),
     };
     return c.json(s);
   })

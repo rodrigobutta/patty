@@ -29,6 +29,10 @@ export const config = {
   get openaiApiKey() {
     return env('OPENAI_API_KEY');
   },
+  /** Opcional: la cuenta de servicio de Firebase (el JSON entero), para mandar avisos push a los teléfonos. */
+  get firebaseServiceAccount() {
+    return env('FIREBASE_SERVICE_ACCOUNT');
+  },
   get googleClientId() {
     return env('GOOGLE_CLIENT_ID');
   },

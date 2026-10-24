@@ -1,6 +1,7 @@
 // Estado general: sesión, personas, categorías y la persona que se está anotando.
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Categoria, Persona, Sesion, Usuario } from 'shared';
+import { olvidarDispositivo } from './lib/push';
 import { api, cuandoSePierdaLaSesion, guardarToken } from './api';
 import type { Cara } from './mascota/dibujo';
 
@@ -100,6 +101,7 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
   );
 
   const salir = useCallback(async () => {
+    await olvidarDispositivo();
     await api('POST', '/api/salir').catch(() => {});
     guardarToken(null);
     setFase('entrar');

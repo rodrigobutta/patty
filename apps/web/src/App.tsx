@@ -3,6 +3,7 @@ import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { alPedirIrAlDia } from './lib/avisos';
 import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
+import { usePush } from './lib/push';
 import { useRecordatorios } from './lib/remedios';
 import { pedirSentir } from './lib/sentir';
 import { useSalud } from './lib/salud';
@@ -27,7 +28,7 @@ const PESTANAS: Array<{ id: Pestana; icono: string; nombre: string }> = [
 ];
 
 export function App() {
-  const { fase, error, persona, personas, elegirPersona, aviso } = useEstado();
+  const { fase, error, persona, personas, elegirPersona, aviso, sesion } = useEstado();
   const [pestana, setPestana] = useState<Pestana>('hoy');
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
   useSeguirUbicacion(fase === 'listo' ? persona?.id : undefined);
@@ -38,6 +39,7 @@ export function App() {
   useEncuesta();
   useIrAlDiaConElAviso(useCallback(() => setPestana('hoy'), []));
   useRecordatorios(fase === 'listo');
+  usePush(fase === 'listo', Boolean(sesion?.push));
   useEffect(() => alPedirIrAlDia(() => setPestana('hoy')), []);
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;

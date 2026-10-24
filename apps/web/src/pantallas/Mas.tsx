@@ -20,7 +20,7 @@ import { NuevaPersona } from './NuevaPersona';
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
 export function Mas() {
-  const { persona, personas, elegirPersona, usuario, salir } = useEstado();
+  const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
   const [nueva, setNueva] = useState(false);
   const [tema, setTema] = useState<Tema>(temaActual());
   const [fuentes, setFuentes] = useState<Fuente[]>([]);
@@ -88,6 +88,11 @@ export function Mas() {
           <input type="checkbox" checked={recordatorios} onChange={(e) => void cambiarRecordatorios(e.target.checked)} />
           <span>Avisarme a la hora de cada toma, y otra vez a la media hora si no la marqué.</span>
         </label>
+        {esNativa() && sesion?.push ? (
+          <button className="btn chico" onClick={() => void api<{ enviados: number }>('POST', '/api/dispositivos/probar').then((r) => avisar(r.enviados ? 'Te mandé un aviso de prueba' : 'No llegó: revisá los permisos de avisos')).catch((e: Error) => setError(e.message))}>
+            🔔 Mandarme un aviso de prueba
+          </button>
+        ) : null}
         <p className="suave chico">
           {esNativa()
             ? 'Desde el aviso contestás «La tomé», «En 15 min» o «No la tomo». En la pantalla bloqueada no se ve qué remedio es.'

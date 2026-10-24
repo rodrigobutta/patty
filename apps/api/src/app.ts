@@ -9,6 +9,7 @@ import { codigoPg, ErrorApi } from './lib/errores.js';
 import type { Env } from './lib/http.js';
 import { rutasClima } from './routes/clima.js';
 import { rutasConceptos } from './routes/conceptos.js';
+import { rutasDispositivos } from './routes/dispositivos.js';
 import { rutasIngesta } from './routes/ingesta.js';
 import { rutasPatrones } from './routes/patrones.js';
 import { rutasPersonas } from './routes/personas.js';
@@ -80,6 +81,7 @@ export function crearApp(): Hono<Env> {
   api.route('/clima', rutasClima);
   api.route('/ubicacion', rutasUbicacion);
   api.route('/voz', rutasVoz);
+  api.route('/dispositivos', rutasDispositivos);
   api.route('/', rutasPatrones);
   api.all('*', () => {
     throw new ErrorApi('Ruta desconocida.', 404);

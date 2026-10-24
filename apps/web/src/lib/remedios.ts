@@ -8,6 +8,7 @@ import { dosisTexto, type Toma } from 'shared';
 import { api } from '../api';
 import { avisoExacto, crearCanales, idDeAviso, irAlDia, permisoAvisos } from './avisos';
 import { esNativa } from './nativo';
+import { avisosProgramadosHasta } from './push';
 
 const CLAVE_ACTIVOS = 'recordatorios-remedios';
 const CLAVE_PROGRAMADOS = 'avisos-remedios';
@@ -15,6 +16,8 @@ const TIPO = 'TOMA';
 /** A la media hora sin marcar, se vuelve a preguntar. */
 const INSISTIR_MIN = 30;
 const POSPONER_MIN = 15;
+/** Cuánto para adelante se programan los avisos en el teléfono (después, los manda el servidor por push). */
+const HORAS = 168;
 const EVENTO = 'patty-tomas';
 
 export const recordatoriosActivos = (): boolean => {
@@ -110,9 +113,17 @@ export function programarRecordatorios(): Promise<boolean> {
       const viejos = leerProgramados();
       if (viejos.length) await LocalNotifications.cancel({ notifications: viejos.map((id) => ({ id })) });
       localStorage.setItem(CLAVE_PROGRAMADOS, '[]');
-      if (!recordatoriosActivos()) return true;
-      const tomas = await api<Toma[]>('GET', '/api/tratamientos/proximas?horas=168');
-      if (!tomas.length) return true;
+      // Con los recordatorios apagados en este teléfono, el servidor tampoco le manda.
+      if (!recordatoriosActivos()) {
+        avisosProgramadosHasta(new Date('9999-12-31T00:00:00Z'));
+        return true;
+      }
+      const tomas = await api<Toma[]>('GET', `/api/tratamientos/proximas?horas=${HORAS}`);
+      const hasta = new Date(Date.now() + HORAS * 3600000);
+      if (!tomas.length) {
+        avisosProgramadosHasta(hasta);
+        return true;
+      }
       if (!(await permisoAvisos())) return false;
       await Promise.all([crearCanales(), registrarTipos()]);
       const exacta = await avisoExacto();
@@ -128,6 +139,8 @@ export function programarRecordatorios(): Promise<boolean> {
       }
       if (lista.length) await LocalNotifications.schedule({ notifications: lista });
       localStorage.setItem(CLAVE_PROGRAMADOS, JSON.stringify(lista.map((n) => n.id)));
+      // Si se cortó en 200, el servidor se ocupa de lo que siga.
+      avisosProgramadosHasta(tomas.length > 200 ? new Date(tomas[199].programada) : hasta);
       return true;
     } catch {
       return false;

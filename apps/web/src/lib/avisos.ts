@@ -30,6 +30,7 @@ let canales: Promise<void> | null = null;
 export function crearCanales(): Promise<void> {
   canales ??= (async () => {
     try {
+      await LocalNotifications.createChannel({ id: 'avisos', name: 'Avisos', description: 'Novedades de Patty', importance: 4, visibility: 0 });
       await LocalNotifications.createChannel({
         id: 'remedios',
         name: 'Remedios',

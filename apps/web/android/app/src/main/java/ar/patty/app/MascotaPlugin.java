@@ -43,6 +43,19 @@ public class MascotaPlugin extends Plugin {
         WorkManager.getInstance(getContext()).enqueueUniquePeriodicWork("mascota", ExistingPeriodicWorkPolicy.KEEP, trabajo);
     }
 
+    /**
+     * Si esta compilación de la app trae Firebase (google-services.json): sin eso, registrarse para avisos push hace
+     * que la app se cierre, así que la web lo pregunta antes.
+     */
+    @PluginMethod
+    public void hayFirebase(PluginCall call) {
+        Context c = getContext();
+        int id = c.getResources().getIdentifier("google_app_id", "string", c.getPackageName());
+        com.getcapacitor.JSObject r = new com.getcapacitor.JSObject();
+        r.put("si", id != 0);
+        call.resolve(r);
+    }
+
     @PluginMethod
     public void anotado(PluginCall call) {
         String ultima = call.getString("ultima");
