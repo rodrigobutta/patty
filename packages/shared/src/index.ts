@@ -222,6 +222,40 @@ export const ESTADOS_PUNTUALES: Array<{ nombre: string; emoji: string }> = [
   { nombre: 'Con calor', emoji: '🥵' },
 ];
 
+/**
+ * "Con dolor" en «¿Algo puntual?»: qué duele, o qué malestar común es. Se anotan en «Dolores y molestias» (efecto),
+ * con cuánto, para que Patty busque qué los causa.
+ */
+export const DOLORES: Array<{ nombre: string; emoji: string }> = [
+  { nombre: 'Dolor de cabeza', emoji: '🤕' },
+  { nombre: 'Dolor de garganta', emoji: '🗣️' },
+  { nombre: 'Dolor de panza', emoji: '🫃' },
+  { nombre: 'Dolor de espalda', emoji: '🔙' },
+  { nombre: 'Dolor de cuello', emoji: '🦒' },
+  { nombre: 'Dolor de cuerpo', emoji: '🧍' },
+  { nombre: 'Dolor de articulaciones', emoji: '🦴' },
+  { nombre: 'Dolor de piernas', emoji: '🦵' },
+  { nombre: 'Dolor de muelas', emoji: '🦷' },
+  { nombre: 'Dolor de oído', emoji: '👂' },
+  { nombre: 'Dolor de ojos', emoji: '👁️' },
+  { nombre: 'Dolor de pecho', emoji: '💔' },
+  { nombre: 'Dolor menstrual', emoji: '🩸' },
+];
+export const MALESTARES: Array<{ nombre: string; emoji: string }> = [
+  { nombre: 'Migraña', emoji: '⚡' },
+  { nombre: 'Fiebre', emoji: '🌡️' },
+  { nombre: 'Resfrío', emoji: '🤧' },
+  { nombre: 'Gripe', emoji: '🤒' },
+  { nombre: 'Tos', emoji: '😷' },
+  { nombre: 'Congestión', emoji: '👃' },
+  { nombre: 'Náuseas', emoji: '🤢' },
+  { nombre: 'Diarrea', emoji: '🚽' },
+  { nombre: 'Acidez', emoji: '🔥' },
+  { nombre: 'Mareo', emoji: '💫' },
+  { nombre: 'Alergia', emoji: '🌼' },
+  { nombre: 'Contractura', emoji: '💪' },
+];
+
 /** Cuánto le pasó cada síntoma: se guarda como intensidad. */
 export const CUANTO = [
   { nombre: 'Poco', intensidad: 3 },

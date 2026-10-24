@@ -254,7 +254,7 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .puntuales .rotulo { margin: 0 0 6px; }
 .puntuales input { margin-top: 6px; }
 .cuanto-puntual { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.cuanto-puntual .btn { flex: 1; }
+.cuanto-puntual .btn { flex: 1; min-width: 0; padding-left: 8px; padding-right: 8px; }
 .algo-puntual { display: block; width: 100%; margin: 0 0 12px; padding: 10px 14px; text-align: left; border-radius: 14px;
   border: 1px dashed var(--borde); background: none; color: var(--suave); font: inherit; font-size: 14px; cursor: pointer; }
 .dia-propuesta { display: block; font-size: 11px; font-weight: 700; color: var(--acento); }
@@ -449,3 +449,6 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
   border-radius: var(--radio); background: var(--acento-suave); color: var(--texto); font-size: 14px; }
 .supervision .invitacion p { margin: 0 0 4px; }
 .supervision .fila input { min-width: 0; }
+.que-duele { margin-top: 10px; padding: 10px; border-radius: var(--radio); background: var(--acento-suave); }
+.que-duele .rotulo { margin: 4px 0 6px; }
+.que-duele .rotulo:not(:first-child) { margin-top: 10px; }
