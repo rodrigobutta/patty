@@ -60,3 +60,12 @@ describe('el renglón de resumen de cada fuente', () => {
     expect(resumenDelGrupo(clima)).toBe('máx 21,5 °C · 6 h de sol · sin lluvia');
   });
 });
+
+describe('horas del reloj', () => {
+  it('muestra las horas de dormir y despertar como reloj, también las de la madrugada', async () => {
+    const { reloj } = await import('./automatico');
+    expect(reloj(23.5)).toBe('23:30');
+    expect(reloj(25)).toBe('01:00');
+    expect(reloj(7.25)).toBe('07:15');
+  });
+});

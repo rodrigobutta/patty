@@ -20,9 +20,15 @@ export function duracion(minutos: number): string {
   return m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`;
 }
 
+/** 23,5 → "23:30"; 25 → "01:00" (las horas de la madrugada se guardan como 24 + hora). */
+export function reloj(horas: number): string {
+  const m = Math.round(horas * 60) % (24 * 60);
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
 export function valorAutomatico(d: DatoAutomatico): string {
   const conUnidad = (n: number) =>
-    d.unidad === 'min' ? duracion(n) : d.unidad === 'h' ? duracion(n * 60) : `${numero(n)}${d.unidad ? ' ' + d.unidad : ''}`;
+    d.unidad === 'min' ? duracion(n) : d.unidad === 'h' ? duracion(n * 60) : d.unidad === 'hora' ? reloj(n) : `${numero(n)}${d.unidad ? ' ' + d.unidad : ''}`;
   // Del clima, el rango del día; lo que se acumula (lluvia, minutos de sol), el total.
   if (d.tipo_fuente === 'clima' && d.unidad !== 'mm' && d.unidad !== 'min' && d.cantidad > 1) {
     return d.minimo === d.maximo ? conUnidad(d.minimo) : `${numero(d.minimo)}–${conUnidad(d.maximo)}`;
@@ -56,6 +62,11 @@ const DESTACADOS: Record<string, Array<[string, (v: string) => string]>> = {
   telefono: [
     ['Tiempo de pantalla', (v) => `${v} de pantalla`],
     ['Llamadas', (v) => `${v} ${v === '1' ? 'llamada' : 'llamadas'}`],
+  ],
+  reloj: [
+    ['Pasos', (v) => `${v}`],
+    ['Horas de sueño', (v) => `${v} de sueño`],
+    ['Pulso en reposo', (v) => `${v} en reposo`],
   ],
   ubicacion: [
     ['Viajes', (v) => v],

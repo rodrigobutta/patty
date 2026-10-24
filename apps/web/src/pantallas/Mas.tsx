@@ -8,6 +8,7 @@ import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
 import { esNativa } from '../lib/nativo';
 import { hayDatosDelTelefono } from '../lib/telefono';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
+import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
 import { NuevaPersona } from './NuevaPersona';
@@ -111,6 +112,7 @@ export function Mas() {
 
       {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
       {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
+      {persona && esNativa() ? <DatosSalud persona={persona} /> : null}
 
       <div className="tarjeta">
         <h3>Tema</h3>

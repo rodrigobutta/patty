@@ -3,6 +3,7 @@ import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
 import { pedirSentir } from './lib/sentir';
+import { useSalud } from './lib/salud';
 import { useDatosDelTelefono } from './lib/telefono';
 import { useCara } from './mascota/cara';
 import { Festejo } from './mascota/Festejo';
@@ -27,6 +28,7 @@ export function App() {
   const [pestana, setPestana] = useState<Pestana>('hoy');
   useSeguirUbicacion(fase === 'listo' ? persona?.id : undefined);
   useDatosDelTelefono(fase === 'listo' ? persona?.id : undefined);
+  useSalud(fase === 'listo' ? persona?.id : undefined);
   useClimaDeLasUltimasHoras(fase === 'listo' ? persona?.id : undefined);
   const cara = useCara(fase === 'listo' ? persona : null);
   useEncuesta();
