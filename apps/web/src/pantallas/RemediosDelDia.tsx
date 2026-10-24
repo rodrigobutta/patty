@@ -8,6 +8,8 @@ import { useEstado } from '../estado';
 import { horaEn } from '../lib/fechas';
 import { desmarcarToma, marcarToma, tomasCambiaron, useAlCambiarTomas } from '../lib/remedios';
 
+const CLAVE_ABIERTO = 'remedios-abierto';
+
 /** Cuánto antes de la hora ya se ofrece marcarla. */
 const ANTES_MIN = 60;
 
@@ -42,6 +44,14 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
   const [tomas, setTomas] = useState<Toma[]>([]);
   const [cuandoHaceFalta, setCuandoHaceFalta] = useState<Tratamiento[]>([]);
   const [ocupado, setOcupado] = useState<string | null>(null);
+  // Plegado de entrada (lo central de Patty es contar el día): se recuerda si se dejó abierto.
+  const [abierto, setAbierto] = useState(() => {
+    try {
+      return localStorage.getItem(CLAVE_ABIERTO) === 'si';
+    } catch {
+      return false;
+    }
+  });
   const puede = usuario?.rol !== 'lector';
 
   const traer = useCallback(async () => {
@@ -110,13 +120,30 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
 
   const tomadas = tomas.filter((t) => t.estado === 'tomada').length;
   const vencidas = tomas.filter((t) => Date.parse(t.programada) <= ahora).length;
+  const paraTomar = tomas.filter((t) => ['ahora', 'atrasada'].includes(situacion(t, ahora))).length;
+  const proxima = tomas.find((t) => situacion(t, ahora) === 'despues');
+  const cambiarAbierto = () => {
+    setAbierto(!abierto);
+    try {
+      localStorage.setItem(CLAVE_ABIERTO, abierto ? 'no' : 'si');
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
 
   return (
-    <div className="tarjeta remedios-dia">
-      <h3>
-        💊 Remedios
-        {tomas.length ? <span className="suave chico"> · {tomadas} de {fecha === hoy ? vencidas || tomas.length : tomas.length} tomadas</span> : null}
-      </h3>
+    <div className={`tarjeta remedios-dia${abierto ? ' abierto' : ''}`}>
+      <button className="cabeza-plegable" onClick={cambiarAbierto} aria-expanded={abierto}>
+        <span className="titulo-plegable">💊 Remedios</span>
+        <span className="suave chico resumen-plegable">
+          {paraTomar ? <span className="para-tomar">{paraTomar} para tomar</span> : null}
+          {tomas.length ? `${tomadas} de ${fecha === hoy ? vencidas || tomas.length : tomas.length} tomadas` : 'cuando haga falta'}
+          {proxima && !paraTomar ? ` · próxima ${horaEn(proxima.programada, persona.zona_horaria)}` : ''}
+        </span>
+        <span className="suave" aria-hidden>{abierto ? '▴' : '▾'}</span>
+      </button>
+      {abierto ? (
+      <>
       <ul className="lista tomas">
         {tomas.map((t) => {
           const s = situacion(t, ahora);
@@ -155,6 +182,8 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
             </button>
           ))}
         </div>
+      ) : null}
+      </>
       ) : null}
     </div>
   );

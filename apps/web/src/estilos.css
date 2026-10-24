@@ -563,3 +563,9 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .columnas.semana { margin-top: 4px; }
 .calendario + .tarjeta h3:not(:first-child) { margin-top: 18px; }
 @media (prefers-reduced-motion: reduce) { .barras-dias span, .ranking li, .barra-ranking span, .columna-barra span, .dia-cal.paso { animation: none; } }
+.cabeza-plegable { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.titulo-plegable { font-weight: 700; }
+.resumen-plegable { flex: 1; text-align: right; }
+.para-tomar { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: var(--ambar); color: #fff; font-weight: 700; }
+.remedios-dia.abierto .cabeza-plegable { margin-bottom: 8px; }
+.remedios-dia:not(.abierto) { padding-top: 12px; padding-bottom: 12px; }

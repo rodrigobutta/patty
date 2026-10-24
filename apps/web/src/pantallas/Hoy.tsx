@@ -229,7 +229,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           <button className="btn chico" onClick={() => setAvisandole(true)}>📣 Avisarle</button>
         </div>
       ) : null}
-      <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
       {/* "¿Cómo te sentís?" lo contesta cada uno: no se muestra en el día de alguien que se supervisa. */}
       {fecha === hoy && !persona.supervisada ? (
         contestadoHacePoco ? (
@@ -244,6 +243,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           </div>
         )
       ) : null}
+      <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
       {registros === null ? (
         <ul className="lista esqueleto" aria-label="Cargando">
           {[0, 1, 2].map((i) => <li key={i}><span className="brillo hora" /><span className="brillo icono" /><span className="brillo que" /></li>)}
