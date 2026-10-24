@@ -34,7 +34,8 @@ export async function entrarConGoogleNativo(clientId: string): Promise<string> {
     await SocialLogin.initialize({ google: { webClientId: clientId } });
     iniciado = clientId;
   }
-  const r = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
+  // Sin pedir scopes: con eso ya devuelve el ID token con el mail (pedir scopes extra en Android exige tocar la MainActivity).
+  const r = await SocialLogin.login({ provider: 'google', options: {} });
   const token = (r.result as { idToken?: string | null }).idToken;
   if (!token) throw new Error('Google no devolvió la cuenta. Probá de nuevo.');
   return token;
