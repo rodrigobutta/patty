@@ -43,7 +43,10 @@ export const rutasVoz = new Hono<Env>().post('/', async (c) => {
     throw new ErrorApi('No se pudo pasar el audio a texto. Probá de nuevo.', 502);
   }
   if (!r.ok) {
-    console.error('Voz: OpenAI respondió', r.status, (await r.text()).slice(0, 500));
+    const detalle = (await r.text()).slice(0, 500);
+    console.error('Voz: OpenAI respondió', r.status, detalle);
+    if (detalle.includes('insufficient_quota')) throw new ErrorApi('El servicio para pasar audio a texto se quedó sin saldo: hay que cargar crédito en OpenAI.', 503);
+    if (r.status === 429) throw new ErrorApi('El servicio para pasar audio a texto está saturado. Probá de nuevo en un rato.', 503);
     throw new ErrorApi(`No se pudo pasar el audio a texto (${r.status}).`, 502);
   }
   const { text } = (await r.json()) as { text?: string };
