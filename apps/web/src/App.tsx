@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { useDatosDelTelefono } from './lib/telefono';
+import { useCara } from './mascota/cara';
+import { Mascota } from './mascota/Mascota';
 import { useSeguirUbicacion } from './lib/ubicacion';
 import { Entrar } from './pantallas/Entrar';
 import { Hoy } from './pantallas/Hoy';
@@ -23,6 +25,7 @@ export function App() {
   useSeguirUbicacion(fase === 'listo' ? persona?.id : undefined);
   useDatosDelTelefono(fase === 'listo' ? persona?.id : undefined);
   useClimaDeLasUltimasHoras(fase === 'listo' ? persona?.id : undefined);
+  const cara = useCara(fase === 'listo' ? persona : null);
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;
@@ -32,7 +35,10 @@ export function App() {
   return (
     <div className="app">
       <header className="barra">
-        <span className="marca">Patty</span>
+        <span className="marca">
+          {cara ? <Mascota cara={cara} tamano={34} /> : null}
+          Patty
+        </span>
         {personas.length > 1 ? (
           <select className="persona" value={persona.id} onChange={(e) => elegirPersona(Number(e.target.value))} aria-label="Persona">
             {personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -42,7 +48,7 @@ export function App() {
         )}
       </header>
       <main>
-        {pestana === 'hoy' ? <Hoy persona={persona} /> : pestana === 'patrones' ? <Patrones persona={persona} /> : <Mas />}
+        {pestana === 'hoy' ? <Hoy persona={persona} cara={cara} /> : pestana === 'patrones' ? <Patrones persona={persona} /> : <Mas />}
       </main>
       <nav className="pestanas">
         {PESTANAS.map((p) => (

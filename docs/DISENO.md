@@ -92,6 +92,13 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     actualiza el valor.
 - En el Día, debajo de lo anotado, se ve lo que llegó solo ese día (`GET /api/registros/automaticos`): un grupo por
   fuente y una línea por concepto (el clima, rango del día; la lluvia, el total; los minutos, en horas y minutos).
+- **Mascota** (`apps/web/src/mascota`): un búho dibujado en SVG (`dibujo.ts`; también hay carpincho y zorro, se
+  elige con `ANIMAL`) con tres caras: contenta si se anotó algo a mano hoy, esperando si lo último fue ayer o
+  anteayer, triste si pasaron más días (`caraSegun`). Va en la barra y grande en el día vacío. En Android el ícono del
+  teléfono cambia de cara como el de Duolingo: un `activity-alias` por cara en el manifiesto y `MascotaPlugin.java`
+  deja prendido el que toca (al salir de la app y cada 2 h con WorkManager, aunque no se abra). En iPhone, por ahora,
+  solo adentro de la app (cambiar el ícono muestra un aviso del sistema cada vez). Los íconos (web y Android) salen
+  del mismo dibujo con `pnpm movil:iconos` (usa Google Chrome sin ventana).
 - Próximos pasos: leer Health Connect / HealthKit (pasos, sueño, pulso) desde la app nativa.
 
 ## Cómo se buscan los patrones
@@ -144,7 +151,7 @@ docs/           Este documento.
 
 ## Pendiente / ideas
 
-- Lectura de Salud / Health Connect desde la app nativa; íconos propios de la app nativa (hoy los de Capacitor).
+- Lectura de Salud / Health Connect desde la app nativa; íconos alternativos de la mascota en iPhone.
 - Usar `padre_id` (grupos) en el análisis: "verduras → …".
 - Combinaciones (tomate **y** poco sueño → dolor) y efectos de "dosis" (cuánto más café, más…).
 - Recordatorios para anotar (notificaciones) y carga por voz.

@@ -5,7 +5,16 @@ import { api } from '../api';
 import { useEstado } from '../estado';
 import { agruparAutomaticos } from '../lib/automatico';
 import { hoyEn, horaEn, nombreDia, sumarDias } from '../lib/fechas';
+import { avisarAnotado } from '../mascota/cara';
+import type { Cara } from '../mascota/dibujo';
+import { Mascota } from '../mascota/Mascota';
 import { Cargar } from './Cargar';
+
+const PEDIDOS: Record<Cara, string> = {
+  feliz: '',
+  espera: '¿Cómo va el día? Contame algo y me pongo contenta.',
+  triste: 'Hace días que no me contás nada… Anotá algo, aunque sea a qué hora te levantaste.',
+};
 
 function detalle(r: Registro, tipo: string | undefined): string {
   if (r.intensidad !== null) return `${r.intensidad}/10`;
@@ -14,7 +23,7 @@ function detalle(r: Registro, tipo: string | undefined): string {
   return `${Number(r.valor.toFixed(2))}${r.unidad ? ' ' + r.unidad : ''}`;
 }
 
-export function Hoy({ persona }: { persona: Persona }) {
+export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
   const { categorias, avisar } = useEstado();
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
   const [registros, setRegistros] = useState<Registro[] | null>(null);
@@ -46,6 +55,7 @@ export function Hoy({ persona }: { persona: Persona }) {
     if (!confirm(`¿Borrar «${r.concepto}» de las ${horaEn(r.inicio, persona.zona_horaria)}?`)) return;
     await api('DELETE', `/api/registros/${r.id}`);
     avisar('Borrado');
+    avisarAnotado();
     void traer();
   };
 
@@ -63,7 +73,9 @@ export function Hoy({ persona }: { persona: Persona }) {
         <p className="suave centro">…</p>
       ) : registros.length === 0 ? (
         <div className="vacio">
+          {fecha === hoy && cara ? <Mascota cara={cara} tamano={120} className="grande" /> : null}
           <p>Nada anotado {fecha === hoy ? 'todavía hoy' : 'este día'}.</p>
+          {fecha === hoy && cara && PEDIDOS[cara] ? <p>{PEDIDOS[cara]}</p> : null}
           <p className="suave">Tocá ＋ para anotar a qué hora te levantaste, qué comiste, cómo te sentiste…</p>
         </div>
       ) : (
@@ -103,7 +115,7 @@ export function Hoy({ persona }: { persona: Persona }) {
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />
-          <Cargar persona={persona} fecha={fecha} alCerrar={() => setCargando(false)} alGuardar={() => { setCargando(false); void traer(); }} />
+          <Cargar persona={persona} fecha={fecha} alCerrar={() => setCargando(false)} alGuardar={() => { setCargando(false); void traer(); avisarAnotado(); }} />
         </>
       ) : null}
     </section>

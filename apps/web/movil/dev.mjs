@@ -39,19 +39,19 @@ for (let i = 0; i < 60; i++) {
   }
 }
 
+// El "adb reverse" a mano en cada dispositivo conectado (Capacitor a veces no lo deja, por ejemplo si adb se reinició).
+if (plataforma === 'android' && !porWifi) {
+  const adb = process.env.ANDROID_HOME ? `${process.env.ANDROID_HOME}/platform-tools/adb` : 'adb';
+  const lista = spawnSync(adb, ['devices'], { encoding: 'utf8' }).stdout.split('\n').slice(1);
+  for (const l of lista) {
+    const [id, estado] = l.trim().split(/\s+/);
+    if (estado === 'device') spawnSync(adb, ['-s', id, 'reverse', `tcp:${PUERTO}`, `tcp:${PUERTO}`]);
+  }
+}
+
 const args = ['exec', 'cap', 'run', plataforma, '--live-reload', '--host', host, '--port', String(PUERTO), ...extra];
 if (plataforma === 'android' && !porWifi) args.push('--forwardPorts', `${PUERTO}:${PUERTO}`);
 correr('pnpm', args).on('exit', (codigo) => {
   if (codigo) terminar();
-  // Por las dudas, el "adb reverse" a mano en cada dispositivo conectado (si adb se reinició, Capacitor no lo deja).
-  if (plataforma === 'android' && !porWifi) {
-    const adb = process.env.ANDROID_HOME ? `${process.env.ANDROID_HOME}/platform-tools/adb` : 'adb';
-    spawnSync(adb, ['reverse', `tcp:${PUERTO}`, `tcp:${PUERTO}`]);
-    const lista = spawnSync(adb, ['devices'], { encoding: 'utf8' }).stdout.split('\n').slice(1);
-    for (const l of lista) {
-      const [id, estado] = l.trim().split(/\s+/);
-      if (estado === 'device') spawnSync(adb, ['-s', id, 'reverse', `tcp:${PUERTO}`, `tcp:${PUERTO}`]);
-    }
-  }
   console.log(`\nPatty abierta en ${plataforma} contra http://${host}:${PUERTO}. Ctrl+C para cortar.`);
 });

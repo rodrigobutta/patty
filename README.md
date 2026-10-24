@@ -44,6 +44,8 @@ pnpm movil:dev:ios                    # simulador de iPhone
 # La app "de verdad", apuntando a Railway (la que queda instalada en el teléfono)
 pnpm movil:android
 pnpm movil:ios
+# Volver a generar los íconos (web y Android) después de tocar el dibujo de la mascota
+pnpm movil:iconos
 # Abrir el proyecto en Android Studio / Xcode (para firmar, ver logs, etc.)
 pnpm movil:abrir:android
 pnpm movil:abrir:ios

@@ -14,7 +14,8 @@
     "movil:dev:android": "node movil/dev.mjs android",
     "movil:dev:ios": "node movil/dev.mjs ios",
     "movil:abrir:android": "cap open android",
-    "movil:abrir:ios": "cap open ios"
+    "movil:abrir:ios": "cap open ios",
+    "movil:iconos": "pnpm --filter api exec tsx ../web/movil/iconos.ts"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
