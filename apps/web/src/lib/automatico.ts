@@ -31,6 +31,8 @@ export function agruparAutomaticos(datos: DatoAutomatico[]): GrupoAutomatico[] {
   }
   const pos = (t: string) => (ORDEN.indexOf(t) + 1 || ORDEN.length + 1);
   // Dentro de cada fuente, juntas las de la misma categoría (pantalla, llamadas…); la API ya las manda de mayor a menor.
-  for (const g of grupos.values()) g.lineas.sort((a, b) => a.categoria_id - b.categoria_id);
+  // El clima, siempre en el mismo orden.
+  const clima = (c: string) => ['Temperatura', 'Humedad', 'Lluvia', 'Presión'].indexOf(c);
+  for (const g of grupos.values()) g.lineas.sort((a, b) => a.categoria_id - b.categoria_id || clima(a.concepto) - clima(b.concepto));
   return [...grupos.values()].sort((a, b) => pos(a.tipo) - pos(b.tipo));
 }

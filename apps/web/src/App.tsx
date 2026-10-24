@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useEstado } from './estado';
+import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { useDatosDelTelefono } from './lib/telefono';
 import { useSeguirUbicacion } from './lib/ubicacion';
 import { Entrar } from './pantallas/Entrar';
@@ -21,6 +22,7 @@ export function App() {
   const [pestana, setPestana] = useState<Pestana>('hoy');
   useSeguirUbicacion(fase === 'listo' ? persona?.id : undefined);
   useDatosDelTelefono(fase === 'listo' ? persona?.id : undefined);
+  useClimaDeLasUltimasHoras(fase === 'listo' ? persona?.id : undefined);
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;

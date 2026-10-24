@@ -1,5 +1,5 @@
 import { afterEach, vi } from 'vitest';
-import { anotarClima, climaActivado, ponerClima } from './clima';
+import { anotarClima, climaActivado, horasRecientes, ponerClima } from './clima';
 
 function conUbicacion(coords: { latitude: number; longitude: number } | null) {
   Object.defineProperty(navigator, 'geolocation', {
@@ -44,5 +44,14 @@ describe('clima automático', () => {
     ponerClima(true);
     await expect(anotarClima(3, [])).resolves.toBeUndefined(); // el servidor falló: se ignora
     expect(f).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('clima de las últimas horas', () => {
+  it('pide cada hora desde hace 47 horas hasta la actual (48 en total)', () => {
+    const h = horasRecientes(Date.parse('2026-10-24T16:50:58Z'));
+    expect(h).toHaveLength(48);
+    expect(h[0]).toBe('2026-10-22T17:00:00.000Z');
+    expect(h[47]).toBe('2026-10-24T16:00:00.000Z');
   });
 });
