@@ -158,6 +158,51 @@ export interface Categoria extends CategoriaBase {
   id: number;
 }
 
+/**
+ * Cómo se siente la persona: en el momento (botón del Día) o cómo se sintió en el día (la encuesta de la noche).
+ * Se guardan como intensidad de 1 a 10 (más alto, mejor) en «Ánimo y energía»: así el motor compara días buenos y
+ * malos. Si es mal o muy mal, además se anotan los síntomas con su intensidad.
+ */
+export const COMO_ME_SIENTO = 'Cómo me siento';
+export const COMO_ME_SENTI = 'Cómo me sentí en el día';
+
+export interface EstadoAnimo { clave: 'muy_bien' | 'bien' | 'mal' | 'muy_mal'; nombre: string; emoji: string; intensidad: number }
+
+export const ESTADOS: EstadoAnimo[] = [
+  { clave: 'muy_bien', nombre: 'Muy bien', emoji: '😄', intensidad: 10 },
+  { clave: 'bien', nombre: 'Bien', emoji: '🙂', intensidad: 7 },
+  { clave: 'mal', nombre: 'Mal', emoji: '😕', intensidad: 4 },
+  { clave: 'muy_mal', nombre: 'Muy mal', emoji: '😣', intensidad: 1 },
+];
+
+/** El estado más cercano a una intensidad anotada (por si se cargó a mano otro número). */
+export function estadoDe(intensidad: number): EstadoAnimo {
+  return ESTADOS.reduce((a, b) => (Math.abs(b.intensidad - intensidad) < Math.abs(a.intensidad - intensidad) ? b : a));
+}
+
+/** Lo que más seguido se pregunta cuando alguien se siente mal (se suman los síntomas que ya anotó). */
+export const SINTOMAS_COMUNES = [
+  'Dolor de cabeza',
+  'Dolor de huesos',
+  'Dolor de articulaciones',
+  'Dolor de panza',
+  'Descompuesto',
+  'Náuseas',
+  'Cansancio',
+  'Mareo',
+  'Dolor de espalda',
+  'Ansiedad',
+  'Tristeza',
+  'Congestión',
+];
+
+/** Cuánto le pasó cada síntoma: se guarda como intensidad. */
+export const CUANTO = [
+  { nombre: 'Poco', intensidad: 3 },
+  { nombre: 'Bastante', intensidad: 6 },
+  { nombre: 'Mucho', intensidad: 9 },
+];
+
 /** Lo que llegó solo en un día (teléfono, ubicación, clima, reloj), resumido por fuente y concepto. */
 export interface DatoAutomatico {
   fuente: string;

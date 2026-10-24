@@ -99,6 +99,14 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     actualiza el valor.
 - En el Día, debajo de lo anotado, se ve lo que llegó solo ese día (`GET /api/registros/automaticos`): un grupo por
   fuente y una línea por concepto (el clima, rango del día; la lluvia, el total; los minutos, en horas y minutos).
+- **¿Cómo te sentís?** (arriba del Día, `pantallas/Sentir.tsx`, `lib/sentir.ts`): cuatro caritas (muy bien, bien,
+  mal, muy mal) que se guardan como «Cómo me siento» en Ánimo con intensidad 10, 7, 4 y 1 (más alto, mejor: el motor
+  compara días buenos y malos). Muy bien y bien se guardan al toque; mal y muy mal preguntan qué pasa: síntomas (los
+  que ya usó la persona y `SINTOMAS_COMUNES`), cada uno poco, bastante o mucho (intensidad 3, 6, 9), y otra cosa.
+- **Encuesta de la noche** (`lib/encuesta.ts`): «Cómo me sentí en el día», con lo mismo. Hora configurable por
+  dispositivo en Más (22:00 por defecto). En la app nativa llega un aviso del teléfono (`@capacitor/local-notifications`,
+  alarma exacta gracias a `USE_EXACT_ALARM`); desde esa hora hasta las 5, si no se contestó, el Día la muestra y la
+  abre sola la primera vez (así anda aunque el aviso se toque agrupado o en la web, que no tiene avisos).
 - **Mascota** (`apps/web/src/mascota`): un búho dibujado en SVG (`dibujo.ts`; también hay carpincho y zorro, se
   elige con `ANIMAL`) con tres caras: contenta si se anotó algo a mano hoy, esperando si lo último fue ayer o
   anteayer, triste si pasaron más días (`caraSegun`). Va en la barra y grande en el día vacío. En Android el ícono del

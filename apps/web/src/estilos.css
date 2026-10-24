@@ -171,3 +171,15 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .vacio .mascota.grande { display: block; margin: 0 auto 12px; animation: respira 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
 @keyframes respira { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04) rotate(-1.5deg); } }
 @media (prefers-reduced-motion: reduce) { .vacio .mascota.grande { animation: none; } }
+
+/* "¿Cómo te sentís?": cuatro caritas grandes arriba del Día, y la hoja de síntomas. */
+.como-te-sentis h3 { margin: 0 0 10px; font-size: 16px; }
+.como-te-sentis.encuesta { border-color: var(--acento); background: var(--acento-suave); }
+.caritas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.carita { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: 14px;
+  border: 1px solid var(--borde); background: var(--panel); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.carita .emoji { font-size: 30px; line-height: 1; }
+.carita:active { transform: scale(0.96); }
+.sentir .caritas { margin: 8px 0 4px; }
+.sintomas { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+.sintomas .cuanto { font-weight: 700; }

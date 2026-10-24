@@ -1,0 +1,118 @@
+// "¿Cómo te sentís?": muy bien, bien, mal o muy mal, en el momento o del día entero (la encuesta de la noche). Si es
+// mal o muy mal, se pregunta qué pasa y cuánto (dolor de cabeza mucho, descompuesto poco…) y eso queda anotado como
+// síntomas con su intensidad, para que Patty pueda buscar qué vino antes.
+import { useEffect, useState } from 'react';
+import { CUANTO, ESTADOS, SINTOMAS_COMUNES, type Concepto, type EstadoAnimo, type Persona } from 'shared';
+import { api } from '../api';
+import { useEstado } from '../estado';
+import { guardarSentir, type Momento } from '../lib/sentir';
+
+/** Los cuatro botones. Muy bien y bien se guardan al toque; mal y muy mal abren la pregunta de qué pasa. */
+export function Caritas({ elegir }: { elegir(e: EstadoAnimo): void }) {
+  return (
+    <div className="caritas">
+      {ESTADOS.map((e) => (
+        <button key={e.clave} className={`carita ${e.clave}`} onClick={() => elegir(e)}>
+          <span className="emoji" aria-hidden>{e.emoji}</span>
+          {e.nombre}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export const esMalo = (e: EstadoAnimo) => e.clave === 'mal' || e.clave === 'muy_mal';
+
+export function Sentir({ persona, momento, estado: inicial, fecha, alGuardar, alCerrar }: {
+  persona: Persona;
+  momento: Momento;
+  /** Si ya se eligió en el Día; si no (al abrir desde el aviso), se pregunta primero. */
+  estado: EstadoAnimo | null;
+  fecha: string;
+  alGuardar(): void;
+  alCerrar(): void;
+}) {
+  const { categorias, avisar } = useEstado();
+  const [estado, setEstado] = useState<EstadoAnimo | null>(inicial);
+  const [sintomas, setSintomas] = useState<string[]>(SINTOMAS_COMUNES);
+  /** Cuánto le pasó cada síntoma elegido (índice en CUANTO). */
+  const [elegidos, setElegidos] = useState<Map<string, number>>(new Map());
+  const [otro, setOtro] = useState('');
+  const [nota, setNota] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState('');
+  const sintoma = categorias.find((c) => c.clave === 'sintoma');
+
+  // Primero los síntomas que la persona ya usó, después los comunes.
+  useEffect(() => {
+    if (!sintoma) return;
+    api<Concepto[]>('GET', `/api/conceptos/buscar?categoria=${sintoma.id}&limite=12`)
+      .then((propios) => {
+        const nombres = propios.map((c) => c.nombre);
+        setSintomas([...nombres, ...SINTOMAS_COMUNES.filter((s) => !nombres.some((n) => n.toLowerCase() === s.toLowerCase()))]);
+      })
+      .catch(() => {});
+  }, [sintoma]);
+
+  /** Tocar un síntoma: poco → bastante → mucho → se saca. */
+  const tocar = (s: string) =>
+    setElegidos((m) => {
+      const n = new Map(m);
+      const i = n.get(s);
+      if (i === undefined) n.set(s, 0);
+      else if (i < CUANTO.length - 1) n.set(s, i + 1);
+      else n.delete(s);
+      return n;
+    });
+
+  const guardar = async (e: EstadoAnimo) => {
+    setGuardando(true);
+    setError('');
+    const lista = [...elegidos.entries()].map(([nombre, i]) => ({ nombre, intensidad: CUANTO[i].intensidad }));
+    if (otro.trim()) lista.push({ nombre: otro.trim(), intensidad: CUANTO[1].intensidad });
+    try {
+      await guardarSentir({ persona, categorias, momento, estado: e, fecha, sintomas: lista, nota });
+      avisar(lista.length ? `Anotado: ${e.nombre.toLowerCase()}, con ${lista.length === 1 ? lista[0].nombre.toLowerCase() : `${lista.length} síntomas`}` : `Anotado: ${e.nombre.toLowerCase()}`);
+      alGuardar();
+    } catch (err) {
+      setError((err as Error).message);
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="hoja sentir" role="dialog" aria-label="Cómo te sentís">
+      <div className="hoja-cabeza">
+        <h3>{estado ? `${estado.emoji} ${estado.nombre}` : momento === 'dia' ? '¿Cómo te sentiste hoy?' : '¿Cómo te sentís?'}</h3>
+        <button className="btn-icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
+      </div>
+      {!estado ? (
+        <Caritas elegir={(e) => (esMalo(e) ? setEstado(e) : void guardar(e))} />
+      ) : (
+        <>
+          <p>
+            {momento === 'dia' ? '¿Qué te pasó hoy?' : '¿Qué te pasa?'}{' '}
+            <span className="suave chico">Tocá una vez para poco, dos para bastante, tres para mucho.</span>
+          </p>
+          <div className="sintomas">
+            {sintomas.map((s) => {
+              const i = elegidos.get(s);
+              return (
+                <button key={s} className={`chip${i !== undefined ? ' activa' : ''}`} onClick={() => tocar(s)}>
+                  {s}
+                  {i !== undefined ? <span className="cuanto"> · {CUANTO[i].nombre.toLowerCase()}</span> : null}
+                </button>
+              );
+            })}
+          </div>
+          <label>Otra cosa<input value={otro} onChange={(e) => setOtro(e.target.value)} placeholder="Ej: me picaban los ojos" /></label>
+          <label>Nota (opcional)<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="lo que quieras agregar" /></label>
+          <button className="btn primario ancho" disabled={guardando} onClick={() => void guardar(estado)}>
+            {guardando ? 'Guardando…' : 'Guardar'}
+          </button>
+        </>
+      )}
+      {error ? <p className="neg">{error}</p> : null}
+    </div>
+  );
+}

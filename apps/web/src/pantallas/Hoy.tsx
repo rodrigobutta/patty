@@ -1,6 +1,8 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
 import { useCallback, useEffect, useState } from 'react';
-import type { DatoAutomatico, Persona, Registro } from 'shared';
+import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
+import { guardarSentir, type Momento } from '../lib/sentir';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { agruparAutomaticos } from '../lib/automatico';
@@ -9,6 +11,7 @@ import { avisarAnotado } from '../mascota/cara';
 import type { Cara } from '../mascota/dibujo';
 import { Mascota } from '../mascota/Mascota';
 import { Cargar } from './Cargar';
+import { Caritas, esMalo, Sentir } from './Sentir';
 
 const PEDIDOS: Record<Cara, string> = {
   feliz: '',
@@ -17,6 +20,10 @@ const PEDIDOS: Record<Cara, string> = {
 };
 
 function detalle(r: Registro, tipo: string | undefined): string {
+  if (r.intensidad !== null && (r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI)) {
+    const e = estadoDe(r.intensidad);
+    return `${e.emoji} ${e.nombre}`;
+  }
   if (r.intensidad !== null) return `${r.intensidad}/10`;
   if (r.valor === null || tipo === 'hora') return '';
   if (tipo === 'duracion') return `${r.valor} min`;
@@ -29,6 +36,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const [registros, setRegistros] = useState<Registro[] | null>(null);
   const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>([]);
   const [cargando, setCargando] = useState(false);
+  /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
+  const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
   const [error, setError] = useState('');
   const hoy = hoyEn(persona.zona_horaria);
 
@@ -59,6 +68,48 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     void traer();
   };
 
+  // Tocar el aviso de la noche abre la encuesta del día de hoy.
+  useAlTocarAviso(
+    useCallback(() => {
+      setFecha(hoyEn(persona.zona_horaria));
+      setSintiendo({ momento: 'dia', estado: null });
+    }, [persona.zona_horaria]),
+  );
+
+  // A la noche (desde la hora de la encuesta), si todavía no se contestó, se pregunta por el día entero.
+  const [, setVisto] = useState(0);
+  useEffect(() => {
+    const f = () => document.visibilityState === 'visible' && setVisto((n) => n + 1);
+    document.addEventListener('visibilitychange', f);
+    return () => document.removeEventListener('visibilitychange', f);
+  }, []);
+  const yaContestoElDia = registros?.some((r) => r.concepto === COMO_ME_SENTI) ?? false;
+  const momento: Momento = fecha === hoy && esHoraDeEncuesta() && !yaContestoElDia ? 'dia' : 'ahora';
+  // La primera vez que se abre Patty a esa hora sin haber contestado, la encuesta se abre sola (una vez por día):
+  // así funciona aunque el aviso se toque agrupado con otros, o se abra la app sin tocarlo.
+  useEffect(() => {
+    if (momento !== 'dia' || registros === null || sintiendo) return;
+    const clave = `encuesta-abierta-${hoy}`;
+    try {
+      if (localStorage.getItem(clave)) return;
+      localStorage.setItem(clave, '1');
+    } catch {
+      return;
+    }
+    setSintiendo({ momento: 'dia', estado: null });
+  });
+  const sentir = async (e: EstadoAnimo) => {
+    if (esMalo(e)) return setSintiendo({ momento, estado: e });
+    try {
+      await guardarSentir({ persona, categorias, momento, estado: e, fecha });
+      avisar(`Anotado: ${e.nombre.toLowerCase()}`);
+      void traer();
+      avisarAnotado();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
   const tipoDe = (r: Registro) => categorias.find((c) => c.id === r.categoria_id);
 
   return (
@@ -69,6 +120,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         <button className="btn-icono" onClick={() => setFecha(sumarDias(fecha, 1))} disabled={fecha >= hoy} aria-label="Día siguiente">›</button>
       </div>
       {error ? <p className="neg">{error}</p> : null}
+      {fecha === hoy ? (
+        <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
+          <h3>{momento === 'dia' ? '¿Cómo te sentiste hoy?' : '¿Cómo te sentís ahora?'}</h3>
+          <Caritas elegir={(e) => void sentir(e)} />
+        </div>
+      ) : null}
       {registros === null ? (
         <p className="suave centro">…</p>
       ) : registros.length === 0 ? (
@@ -111,6 +168,19 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           </ul>
         </div>
       ))}
+      {sintiendo ? (
+        <>
+          <div className="velo" onClick={() => setSintiendo(null)} />
+          <Sentir
+            persona={persona}
+            momento={sintiendo.momento}
+            estado={sintiendo.estado}
+            fecha={fecha}
+            alCerrar={() => setSintiendo(null)}
+            alGuardar={() => { setSintiendo(null); void traer(); avisarAnotado(); }}
+          />
+        </>
+      ) : null}
       <button className="fab" onClick={() => setCargando(true)} aria-label="Anotar">＋</button>
       {cargando ? (
         <>

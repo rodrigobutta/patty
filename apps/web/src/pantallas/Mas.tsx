@@ -4,6 +4,7 @@ import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
 import { climaActivado, ponerClima, ubicacion } from '../lib/clima';
 import { esIOS, instalada, instalarApp } from '../lib/instalar';
+import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
 import { esNativa } from '../lib/nativo';
 import { hayDatosDelTelefono } from '../lib/telefono';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
@@ -21,6 +22,11 @@ export function Mas() {
   const [token, setToken] = useState<{ nombre: string; token: string } | null>(null);
   const [error, setError] = useState('');
   const [clima, setClima] = useState(climaActivado());
+  const [encuesta, setEncuesta] = useState(configEncuesta());
+  const cambiarEncuesta = async (c: typeof encuesta) => {
+    setEncuesta(c);
+    if (!(await ponerEncuesta(c))) setError('El teléfono no deja mandar avisos a Patty: habilitalos en los ajustes del teléfono.');
+  };
 
   useEffect(() => {
     if (persona) api<Fuente[]>('GET', `/api/personas/${persona.id}/fuentes`).then(setFuentes).catch(() => {});
@@ -82,6 +88,25 @@ export function Mas() {
           </div>
         ) : null}
         {error ? <p className="neg">{error}</p> : null}
+      </div>
+
+      <div className="tarjeta">
+        <h3>Encuesta de la noche</h3>
+        <label className="opcion">
+          <input type="checkbox" checked={encuesta.activa} onChange={(e) => void cambiarEncuesta({ ...encuesta, activa: e.target.checked })} />
+          <span>Preguntarme cómo me sentí en el día.</span>
+        </label>
+        {encuesta.activa ? (
+          <label>
+            A las
+            <input type="time" value={encuesta.hora} onChange={(e) => e.target.value && void cambiarEncuesta({ ...encuesta, hora: e.target.value })} />
+          </label>
+        ) : null}
+        <p className="suave chico">
+          {esNativa()
+            ? 'Llega un aviso a esa hora; si no lo contestás, el Día te lo vuelve a preguntar hasta las 5 de la mañana.'
+            : 'Desde esa hora, el Día te pregunta cómo te sentiste. Con la app de Android o iPhone, además, llega un aviso.'}
+        </p>
       </div>
 
       {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}

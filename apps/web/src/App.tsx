@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
+import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
 import { useDatosDelTelefono } from './lib/telefono';
 import { useCara } from './mascota/cara';
 import { Mascota } from './mascota/Mascota';
@@ -26,6 +27,8 @@ export function App() {
   useDatosDelTelefono(fase === 'listo' ? persona?.id : undefined);
   useClimaDeLasUltimasHoras(fase === 'listo' ? persona?.id : undefined);
   const cara = useCara(fase === 'listo' ? persona : null);
+  useEncuesta();
+  useIrAlDiaConElAviso(useCallback(() => setPestana('hoy'), []));
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;

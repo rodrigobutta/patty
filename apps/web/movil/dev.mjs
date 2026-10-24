@@ -39,14 +39,19 @@ for (let i = 0; i < 60; i++) {
   }
 }
 
-// El "adb reverse" a mano en cada dispositivo conectado (Capacitor a veces no lo deja, por ejemplo si adb se reinició).
-if (plataforma === 'android' && !porWifi) {
+// El "adb reverse" a mano en cada dispositivo conectado, y de nuevo cada pocos segundos: si adb se reinicia (Capacitor
+// lo hace cuando tarda en contestar) se pierde, y la app queda en "Sin conexión".
+function asegurarReverse() {
   const adb = process.env.ANDROID_HOME ? `${process.env.ANDROID_HOME}/platform-tools/adb` : 'adb';
-  const lista = spawnSync(adb, ['devices'], { encoding: 'utf8' }).stdout.split('\n').slice(1);
+  const lista = spawnSync(adb, ['devices'], { encoding: 'utf8' }).stdout?.split('\n').slice(1) ?? [];
   for (const l of lista) {
     const [id, estado] = l.trim().split(/\s+/);
     if (estado === 'device') spawnSync(adb, ['-s', id, 'reverse', `tcp:${PUERTO}`, `tcp:${PUERTO}`]);
   }
+}
+if (plataforma === 'android' && !porWifi) {
+  asegurarReverse();
+  setInterval(asegurarReverse, 5000);
 }
 
 const args = ['exec', 'cap', 'run', plataforma, '--live-reload', '--host', host, '--port', String(PUERTO), ...extra];
