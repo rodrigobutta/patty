@@ -128,12 +128,14 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     void traer();
   }, [traer]);
 
-  const borrar = async (r: Registro) => {
-    if (!confirm(`¿Borrar «${r.concepto}» de las ${horaEn(r.inicio, persona.zona_horaria)}?`)) return;
+  /** Borra (y sus partes, si es la tele). Devuelve false si al final no se quiso borrar. */
+  const borrar = async (r: Registro): Promise<boolean> => {
+    if (!confirm(`¿Borrar «${r.concepto}» de las ${horaEn(r.inicio, persona.zona_horaria)}?`)) return false;
     for (const x of [r, ...partesDe(r, registros ?? [])]) await api('DELETE', `/api/registros/${x.id}`);
     avisar('Borrado');
     avisarAnotado();
     void traer();
+    return true;
   };
 
   // Tocar el aviso de la noche abre la encuesta del día de hoy.
@@ -198,10 +200,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         <button className="btn-icono" onClick={() => irA(-1)} aria-label="Día anterior">‹</button>
         <div className="titulo-dia" key={fecha}>
           <h2>{nombreDia(fecha, persona.zona_horaria)}</h2>
-          <p className="suave chico">
-            {fechaLarga(fecha)}
-            {registros?.length ? ` · ${registros.filter((r) => !esParteDeTele(r)).length} anotadas` : ''}
-          </p>
+          <p className="suave chico">{fechaLarga(fecha)}</p>
         </div>
         <button className="btn-icono" onClick={() => irA(1)} disabled={fecha >= hoy} aria-label="Día siguiente">›</button>
       </div>
@@ -257,7 +256,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                   {detalle(r, cat?.tipo_valor) ? <span className="valor-chip">{detalle(r, cat?.tipo_valor)}</span> : null}
                   {r.nota ? <span className="suave chico"> — {r.nota}</span> : null}
                 </span>
-                <button className="btn-icono chico" onClick={(e) => { e.stopPropagation(); void borrar(r); }} aria-label={`Borrar ${r.concepto}`}>🗑</button>
               </li>
               </Fragment>
             );
@@ -305,6 +303,9 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             partes={partesDe(editando, registros ?? [])}
             alCerrar={() => setEditando(null)}
             alGuardar={() => { setEditando(null); void traer(); }}
+            alBorrar={async () => {
+              if (await borrar(editando)) setEditando(null);
+            }}
           />
         </>
       ) : null}

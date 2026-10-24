@@ -1,22 +1,26 @@
 // Cambiar algo ya anotado: la hora, la cantidad o los minutos, la intensidad (o cómo te sentías) y la nota. Lo que
 // fue (el concepto) no se cambia acá: para eso se borra y se anota de nuevo.
 import { useState } from 'react';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTADOS, estadoDe, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS, ESTADOS_PUNTUALES, estadoDe, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { horaEn, instanteDelDia } from '../lib/fechas';
 
-export function Editar({ persona, registro: r, partes, alGuardar, alCerrar }: {
+export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBorrar }: {
   persona: Persona;
   registro: Registro;
   /** Los que van con este y se mueven juntos (la tele: tipo y canal). */
   partes: Registro[];
   alGuardar(): void;
   alCerrar(): void;
+  /** Borrarlo (pregunta antes). */
+  alBorrar(): Promise<void>;
 }) {
   const { categorias, avisar } = useEstado();
   const cat = categorias.find((c) => c.id === r.categoria_id);
   const esSentir = r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI;
+  /** "Con sueño" y compañía: poco, bastante o mucho en vez de 0 a 10. */
+  const esPuntual = ESTADOS_PUNTUALES.some((e) => e.nombre === r.concepto);
   const [hora, setHora] = useState(horaEn(r.inicio, persona.zona_horaria));
   const [valor, setValor] = useState(r.valor === null ? '' : String(r.valor));
   const [intensidad, setIntensidad] = useState<number | null>(r.intensidad);
@@ -72,6 +76,12 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar }: {
               </button>
             ))}
           </div>
+        ) : esPuntual ? (
+          <div className="segmentos ancho">
+            {CUANTO.map((c) => (
+              <button key={c.nombre} className={intensidad !== null && Math.abs(intensidad - c.intensidad) <= 1 ? 'activa' : ''} onClick={() => setIntensidad(c.intensidad)}>{c.nombre}</button>
+            ))}
+          </div>
         ) : llevaIntensidad ? (
           <fieldset className="escala">
             <legend>Intensidad</legend>
@@ -91,6 +101,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar }: {
         <label>Nota<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="detalle, lugar, con quién…" /></label>
         {error ? <p className="neg">{error}</p> : null}
         <button className="btn primario ancho" disabled={guardando} onClick={() => void guardar()}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
+        <button className="borrar-chico" disabled={guardando} onClick={() => void alBorrar()}>🗑 Borrar</button>
       </div>
     </div>
   );
