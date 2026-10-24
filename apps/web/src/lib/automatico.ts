@@ -1,10 +1,13 @@
 // Cómo se muestra en el Día lo que llegó solo (teléfono, ubicación, reloj, clima): un grupo por fuente, una línea por
-// concepto. El clima viene una vez por hora, así que se muestra el rango del día (la lluvia, el total).
+// concepto. El clima viene una vez por hora, así que se muestra el rango del día (la lluvia y el sol, el total).
 import type { DatoAutomatico } from 'shared';
 
 export interface GrupoAutomatico { fuente: string; tipo: string; lineas: Array<{ concepto: string; categoria_id: number; valor: string }> }
 
 const ORDEN = ['telefono', 'ubicacion', 'reloj', 'clima', 'otro'];
+const ORDEN_CLIMA = ['Temperatura', 'Sensación térmica', 'Humedad', 'Punto de rocío', 'Lluvia', 'Nubosidad', 'Minutos de sol',
+  'Índice UV', 'Radiación solar', 'Viento', 'Ráfagas', 'Presión', 'Visibilidad', 'Calidad del aire', 'PM2.5', 'PM10', 'Ozono',
+  'Dióxido de nitrógeno'];
 
 const numero = (n: number) => Number(n.toFixed(1)).toLocaleString('es-AR');
 
@@ -16,7 +19,8 @@ export function duracion(minutos: number): string {
 
 export function valorAutomatico(d: DatoAutomatico): string {
   const conUnidad = (n: number) => (d.unidad === 'min' ? duracion(n) : `${numero(n)}${d.unidad ? ' ' + d.unidad : ''}`);
-  if (d.tipo_fuente === 'clima' && d.unidad !== 'mm' && d.cantidad > 1) {
+  // Del clima, el rango del día; lo que se acumula (lluvia, minutos de sol), el total.
+  if (d.tipo_fuente === 'clima' && d.unidad !== 'mm' && d.unidad !== 'min' && d.cantidad > 1) {
     return d.minimo === d.maximo ? conUnidad(d.minimo) : `${numero(d.minimo)}–${conUnidad(d.maximo)}`;
   }
   return conUnidad(d.suma);
@@ -32,7 +36,7 @@ export function agruparAutomaticos(datos: DatoAutomatico[]): GrupoAutomatico[] {
   const pos = (t: string) => (ORDEN.indexOf(t) + 1 || ORDEN.length + 1);
   // Dentro de cada fuente, juntas las de la misma categoría (pantalla, llamadas…); la API ya las manda de mayor a menor.
   // El clima, siempre en el mismo orden.
-  const clima = (c: string) => ['Temperatura', 'Humedad', 'Lluvia', 'Presión'].indexOf(c);
+  const clima = (c: string) => ORDEN_CLIMA.indexOf(c);
   for (const g of grupos.values()) g.lineas.sort((a, b) => a.categoria_id - b.categoria_id || clima(a.concepto) - clima(b.concepto));
   return [...grupos.values()].sort((a, b) => pos(a.tipo) - pos(b.tipo));
 }

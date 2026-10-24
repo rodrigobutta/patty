@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { api } from '../api';
 
 const CLAVE = 'clima';
-const ULTIMO = 'clima-ultimo';
+const ULTIMO = 'clima-completado';
 const CADA_MS = 60 * 60000;
 const HORAS_ATRAS = 47;
 

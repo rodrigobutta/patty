@@ -1,13 +1,13 @@
 // El clima automático: cuando alguien anota algo, el teléfono manda dónde está y acá se guarda el clima de esa hora
-// (temperatura, humedad, lluvia y presión, de Open-Meteo) como mediciones de la fuente "Clima automático" de la persona.
+// (temperatura, sensación, humedad, lluvia, presión, viento, nubes, UV, sol y calidad del aire, de Open-Meteo) como mediciones de la fuente "Clima automático" de la persona.
 //   POST /api/clima   { "persona_id": 1, "lat": -34.6, "lon": -58.4, "inicios": ["2026-10-24T14:20:00-03:00"] }
-// Como mucho una lectura por hora y por persona: si ya está, no se vuelve a pedir. La ubicación no se guarda.
+// Como mucho una lectura por hora y por persona: si ya está completa, no se vuelve a pedir. La ubicación no se guarda.
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { filas, una, type Tx } from '../db/client.js';
 import { fuentes, mediciones } from '../db/schema.js';
-import { climaPorHora, comienzoDeHora } from '../clima/openMeteo.js';
+import { climaPorHora, comienzoDeHora, MINIMO_POR_HORA } from '../clima/openMeteo.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, leerInstante } from '../lib/fechas.js';
@@ -55,8 +55,9 @@ export const rutasClima = new Hono<Env>().post('/', async (c) => {
   const orden = [...horas.values()].sort((a, b) => a.getTime() - b.getTime());
   const ya = await filas<{ inicio: string }>(
     c.var.db,
-    sql`SELECT DISTINCT inicio FROM mediciones WHERE fuente_id = ${fuenteId}
-        AND inicio BETWEEN ${orden[0].toISOString()} AND ${orden[orden.length - 1].toISOString()}`,
+    sql`SELECT inicio FROM mediciones WHERE fuente_id = ${fuenteId}
+        AND inicio BETWEEN ${orden[0].toISOString()} AND ${orden[orden.length - 1].toISOString()}
+        GROUP BY inicio HAVING count(*) >= ${MINIMO_POR_HORA}`,
   );
   for (const r of ya) horas.delete(new Date(r.inicio).getTime());
   if (!horas.size) return c.json({ ok: true, nuevas: 0 });

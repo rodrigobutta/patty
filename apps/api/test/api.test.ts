@@ -169,8 +169,11 @@ describe('clima automático', () => {
       const time: string[] = [];
       for (let t = desde; t <= hasta; t += 3600000) time.push(new Date(t).toISOString().slice(0, 13) + ':00');
       const n = (v: number | null) => time.map(() => v);
+      const hourly = url.hostname.startsWith('air-quality')
+        ? { time, us_aqi: n(42) }
+        : { time, temperature_2m: n(21.4), relative_humidity_2m: n(68), precipitation: n(0.2), surface_pressure: n(null), wind_speed_10m: n(12), cloud_cover: n(50), visibility: n(24000), sunshine_duration: n(1800) };
       return new Response(
-        JSON.stringify({ hourly: { time, temperature_2m: n(21.4), relative_humidity_2m: n(68), precipitation: n(0.2), surface_pressure: n(null) } }),
+        JSON.stringify({ hourly }),
         { headers: { 'Content-Type': 'application/json' } },
       );
     });
@@ -183,18 +186,18 @@ describe('clima automático', () => {
     const hace10 = new Date(Date.now() - 10 * 60000).toISOString();
     const r = await ana.post('/api/clima', { persona_id: personaId, lat: -34.60372, lon: -58.38159, inicios: [hace10, hace10] });
     expect(r.status).toBe(200);
-    expect(r.body.nuevas).toBe(3); // la presión vino vacía: no se guarda
-    expect(pedidos).toHaveLength(1);
+    expect(r.body.nuevas).toBe(8); // la presión vino vacía: no se guarda
+    expect(pedidos.map((u) => u.hostname)).toEqual(['api.open-meteo.com', 'air-quality-api.open-meteo.com']);
     expect(pedidos[0].searchParams.get('latitude')).toBe('-34.60');
     expect(pedidos[0].searchParams.get('longitude')).toBe('-58.38');
 
     // Otra cosa anotada en la misma hora: ya está, no se vuelve a consultar.
     expect((await ana.post('/api/clima', { persona_id: personaId, lat: -34.6, lon: -58.4, inicios: [hace10] })).body.nuevas).toBe(0);
-    expect(pedidos).toHaveLength(1);
+    expect(pedidos).toHaveLength(2);
     // Lo anotado hace días no lleva clima (la ubicación de ahora no sirve).
     const viejo = new Date(Date.now() - 5 * 86400000).toISOString();
     expect((await ana.post('/api/clima', { persona_id: personaId, lat: -34.6, lon: -58.4, inicios: [viejo] })).body.nuevas).toBe(0);
-    expect(pedidos).toHaveLength(1);
+    expect(pedidos).toHaveLength(2);
 
     const { obtenerDb } = await import('../src/db/client.js');
     const { sql } = await import('drizzle-orm');
@@ -204,9 +207,14 @@ describe('clima automático', () => {
           ORDER BY c.nombre`,
     );
     expect([...m]).toEqual([
+      { nombre: 'Calidad del aire', categoria: 'clima', valor: 42, unidad: 'AQI', fuente: 'Clima automático' },
       { nombre: 'Humedad', categoria: 'clima', valor: 68, unidad: '%', fuente: 'Clima automático' },
       { nombre: 'Lluvia', categoria: 'clima', valor: 0.2, unidad: 'mm', fuente: 'Clima automático' },
+      { nombre: 'Minutos de sol', categoria: 'clima', valor: 30, unidad: 'min', fuente: 'Clima automático' },
+      { nombre: 'Nubosidad', categoria: 'clima', valor: 50, unidad: '%', fuente: 'Clima automático' },
       { nombre: 'Temperatura', categoria: 'clima', valor: 21.4, unidad: '°C', fuente: 'Clima automático' },
+      { nombre: 'Viento', categoria: 'clima', valor: 12, unidad: 'km/h', fuente: 'Clima automático' },
+      { nombre: 'Visibilidad', categoria: 'clima', valor: 24, unidad: 'km', fuente: 'Clima automático' },
     ]);
     // Entra en el día de la persona, como lo demás que se anota.
     const dia = await ana.get(`/api/personas/${personaId}/fuentes`);

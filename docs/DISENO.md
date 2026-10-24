@@ -52,7 +52,9 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
 - **Clima automático**: cada vez que se anota algo, y al abrir Patty (como mucho una vez por hora, todas las horas de
   las últimas 48), el teléfono pide su ubicación y llama a `POST /api/clima`
   (`persona_id`, `lat`, `lon`, `inicios`). La API le pide a [Open-Meteo](https://open-meteo.com) (gratis, sin clave) el
-  clima de cada hora y guarda Temperatura, Humedad, Lluvia (mm) y Presión (hPa) como mediciones de la fuente
+  clima de cada hora y guarda Temperatura, Sensación térmica, Humedad, Punto de rocío, Lluvia (mm), Presión (hPa), Nubosidad, Viento, Ráfagas,
+  Índice UV, Visibilidad, Radiación solar, Minutos de sol y, de la API de aire, Calidad del aire (AQI), PM2.5, PM10,
+  Ozono y Dióxido de nitrógeno como mediciones de la fuente
   «Clima automático» de la persona (se crea sola). Una lectura por hora y persona: si ya está, no se vuelve a pedir. Lo
   anotado hace más de 48 h no lleva clima (la ubicación de ahora no dice dónde estaba). La ubicación no se guarda y a
   Open-Meteo va con 2 decimales (~1 km). Se apaga por dispositivo en Más.

@@ -17,6 +17,7 @@ describe('datos automáticos del día', () => {
   it('del clima muestra el rango del día, y de la lluvia el total', () => {
     expect(valorAutomatico(dato({ tipo_fuente: 'clima', unidad: '°C', cantidad: 3, suma: 54, minimo: 14.2, maximo: 21.66 }))).toBe('14,2–21,7 °C');
     expect(valorAutomatico(dato({ tipo_fuente: 'clima', unidad: 'mm', cantidad: 3, suma: 2.5, minimo: 0, maximo: 2 }))).toBe('2,5 mm');
+    expect(valorAutomatico(dato({ tipo_fuente: 'clima', unidad: 'min', cantidad: 3, suma: 150, minimo: 30, maximo: 60 }))).toBe('2 h 30 min');
   });
 
   it('agrupa por fuente: primero el teléfono, al final el clima', () => {

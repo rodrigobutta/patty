@@ -63,7 +63,7 @@ export function Mas() {
             setClima(e.target.checked);
             if (e.target.checked) void ubicacion(); // para que el teléfono pida el permiso ahora y no al anotar
           }} />
-          <span>Anotar el clima solo (temperatura, humedad, lluvia y presión) cada vez que cargo algo, con la ubicación de este teléfono.</span>
+          <span>Anotar el clima solo (temperatura, sensación, humedad, lluvia, viento, nubes, sol, UV, presión y calidad del aire) de cada hora, con la ubicación de este teléfono.</span>
         </label>
         <ul className="lista">
           {fuentes.map((f) => <li key={f.id}>{f.nombre}<span className="suave chico"> · {f.ultimo_uso ? `último dato ${new Date(f.ultimo_uso).toLocaleString('es-AR')}` : 'sin datos todavía'}</span></li>)}
