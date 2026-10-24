@@ -17,6 +17,10 @@ const config: CapacitorConfig = {
   },
   android: { backgroundColor: '#f6f4fb' },
   ios: { backgroundColor: '#f6f4fb', contentInset: 'never' },
+  plugins: {
+    // En iPhone, que los avisos push se vean también con la app abierta.
+    PushNotifications: { presentationOptions: ['badge', 'sound', 'alert'] },
+  },
 };
 
 export default config;

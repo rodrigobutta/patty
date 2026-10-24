@@ -59,8 +59,10 @@ export async function olvidarDispositivo(): Promise<void> {
   if (token) await api('DELETE', `/api/dispositivos?token=${encodeURIComponent(token)}`).catch(() => {});
 }
 
+/** Si se puede registrar para push: en iPhone siempre (va por APNs); en Android, si la compilación trae Firebase. */
 async function hayFirebase(): Promise<boolean> {
-  if (plataforma() !== 'android') return false; // en iPhone falta configurar APNs
+  if (plataforma() === 'ios') return true;
+  if (plataforma() !== 'android') return false;
   return Mascota.hayFirebase()
     .then((r) => r.si)
     .catch(() => false);
@@ -83,11 +85,16 @@ export function usePush(listo: boolean, servidorManda: boolean): void {
       );
       quitar.push(
         PushNotifications.addListener('registration', (t) => {
-          guardar(CLAVE_TOKEN, t.value);
+          // En iPhone es el token de APNs: el servidor lo reconoce por el prefijo y lo manda directo a Apple.
+          guardar(CLAVE_TOKEN, plataforma() === 'ios' ? `ios:${t.value}` : t.value);
           void mandarDispositivo();
         }),
         PushNotifications.addListener('registrationError', (e) => console.warn('Push: no se pudo registrar', e.error)),
-        PushNotifications.addListener('pushNotificationActionPerformed', () => irAlDia()),
+        // En iPhone el toque llega por acá (en Android, por AvisosPushService → avisoTocado).
+        PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
+          irAlDia();
+          if (plataforma() === 'ios') window.dispatchEvent(new CustomEvent(EVENTO_ABRIR, { detail: (a.notification.data ?? {}) as Record<string, string> }));
+        }),
       );
       await crearCanales();
       if (await permisoAvisos()) await PushNotifications.register();

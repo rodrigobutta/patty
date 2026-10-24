@@ -3,6 +3,7 @@
 // solo crypto de Node y fetch.
 import { createSign } from 'node:crypto';
 import { config } from '../config.js';
+import { appleDisponible, enviarAvisoApple } from './apple.js';
 
 interface Cuenta {
   project_id: string;
@@ -22,7 +23,8 @@ function cuenta(): Cuenta | null {
   }
 }
 
-export const pushDisponible = (): boolean => cuenta() !== null;
+/** Si el servidor puede mandar avisos push a algún teléfono (Android con Firebase, iPhone con APNs). */
+export const pushDisponible = (): boolean => cuenta() !== null || appleDisponible();
 
 const b64 = (x: string | Buffer) => Buffer.from(x).toString('base64url');
 
@@ -68,9 +70,13 @@ export const usarEnvioPrueba = (f: typeof enviarPrueba) => {
   enviarPrueba = f;
 };
 
-/** Manda un aviso a un teléfono. "invalido": el token ya no sirve (se desinstaló la app) y hay que olvidarlo. */
+/**
+ * Manda un aviso a un teléfono. "invalido": el token ya no sirve (se desinstaló la app) y hay que olvidarlo. Los
+ * iPhone (tokens "ios:…") van directo por APNs; los Android, por Firebase.
+ */
 export async function enviarAviso(token: string, a: Aviso): Promise<'ok' | 'invalido' | 'error'> {
   if (enviarPrueba) return enviarPrueba(token, a);
+  if (token.startsWith('ios:')) return enviarAvisoApple(token.slice(4), a);
   const c = cuenta();
   if (!c) return 'error';
   try {

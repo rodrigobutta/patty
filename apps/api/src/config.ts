@@ -33,6 +33,20 @@ export const config = {
   get firebaseServiceAccount() {
     return env('FIREBASE_SERVICE_ACCOUNT');
   },
+  /** Opcional: para avisos push al iPhone (clave .p8 de Apple Developer, su id y el id del equipo). */
+  get apnsKeyId() {
+    return env('APNS_KEY_ID');
+  },
+  get apnsTeamId() {
+    return env('APNS_TEAM_ID');
+  },
+  get apnsKey() {
+    return env('APNS_KEY');
+  },
+  /** Las apps instaladas desde Xcode usan el APNs de prueba (sandbox); las de TestFlight y la App Store, el normal. */
+  get apnsSandbox() {
+    return env('APNS_SANDBOX') === '1';
+  },
   get googleClientId() {
     return env('GOOGLE_CLIENT_ID');
   },
