@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { agruparAutomaticos, duracion, resumenDelGrupo } from '../lib/automatico';
@@ -13,6 +13,7 @@ import type { Cara } from '../mascota/dibujo';
 import { Mascota } from '../mascota/Mascota';
 import { Cargar } from './Cargar';
 import { Editar } from './Editar';
+import { Puntuales } from './Puntuales';
 import { Caritas, esMalo, Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
@@ -34,6 +35,10 @@ function detalle(r: Registro, tipo: string | undefined): string {
   if (r.intensidad !== null && (r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI)) {
     const e = estadoDe(r.intensidad);
     return `${e.emoji} ${e.nombre}`;
+  }
+  // "Con sueño" y compañía se anotan como poco, bastante o mucho: se muestran igual.
+  if (r.intensidad !== null && ESTADOS_PUNTUALES.some((e) => e.nombre === r.concepto)) {
+    return CUANTO.reduce((a, b) => (Math.abs(b.intensidad - r.intensidad!) < Math.abs(a.intensidad - r.intensidad!) ? b : a)).nombre.toLowerCase();
   }
   if (r.intensidad !== null) return `${r.intensidad}/10`;
   if (r.valor === null || tipo === 'hora') return '';
@@ -149,10 +154,15 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       </div>
       {error ? <p className="neg">{error}</p> : null}
       {fecha === hoy ? (
-        contestadoHacePoco ? null : (
+        contestadoHacePoco ? (
+          <button className="algo-puntual" onClick={() => setSintiendo({ momento: 'ahora', estado: null })}>
+            😴 ¿Algo puntual? Con sueño, con hambre, con energía…
+          </button>
+        ) : (
           <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
             <h3>{momento === 'dia' ? '¿Cómo te sentiste hoy?' : '¿Cómo te sentís ahora?'}</h3>
             <Caritas elegir={(e) => void sentir(e)} />
+            {momento === 'ahora' ? <Puntuales persona={persona} alGuardar={() => { void traer(); avisarAnotado(); }} /> : null}
           </div>
         )
       ) : null}

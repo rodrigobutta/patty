@@ -123,6 +123,9 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   mal, muy mal) que se guardan como «Cómo me siento» en Ánimo con intensidad 10, 7, 4 y 1 (más alto, mejor: el motor
   compara días buenos y malos). Muy bien y bien se guardan al toque; mal y muy mal preguntan qué pasa: síntomas (los
   que ya usó la persona y `SINTOMAS_COMUNES`), cada uno poco, bastante o mucho (intensidad 3, 6, 9), y otra cosa.
+- **Algo puntual** (`pantallas/Puntuales.tsx`): debajo de las caritas, estados que no son bien ni mal (con sueño, con
+  hambre, con energía, con pesadez, con ansiedad…, `ESTADOS_PUNTUALES`, u otro escrito) con poco, bastante o mucho
+  (intensidad 3, 6, 9) en Ánimo. Si la pregunta está escondida, queda una línea "¿Algo puntual?" que abre la hoja.
 - **Encuesta de la noche** (`lib/encuesta.ts`): «Cómo me sentí en el día», con lo mismo. Hora configurable por
   dispositivo en Más (22:00 por defecto). En la app nativa llega un aviso del teléfono (`@capacitor/local-notifications`,
   alarma exacta gracias a `USE_EXACT_ALARM`); desde esa hora hasta las 5, si no se contestó, el Día la muestra y la

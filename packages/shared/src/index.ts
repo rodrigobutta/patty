@@ -198,6 +198,24 @@ export const SINTOMAS_COMUNES = [
   'Congestión',
 ];
 
+/**
+ * Cosas puntuales que no son "bien" ni "mal" (después de comer, "tengo sueño"): se anotan al toque en «Ánimo y
+ * energía» con cuánto (poco, bastante, mucho), así Patty puede ver qué vino antes.
+ */
+export const ESTADOS_PUNTUALES: Array<{ nombre: string; emoji: string }> = [
+  { nombre: 'Con sueño', emoji: '😴' },
+  { nombre: 'Con energía', emoji: '⚡' },
+  { nombre: 'Con hambre', emoji: '🍽️' },
+  { nombre: 'Con pesadez', emoji: '🫃' },
+  { nombre: 'Con ansiedad', emoji: '😰' },
+  { nombre: 'Con estrés', emoji: '😤' },
+  { nombre: 'Con calma', emoji: '😌' },
+  { nombre: 'Con desgano', emoji: '🫠' },
+  { nombre: 'De mal humor', emoji: '😠' },
+  { nombre: 'Con frío', emoji: '🥶' },
+  { nombre: 'Con calor', emoji: '🥵' },
+];
+
 /** Cuánto le pasó cada síntoma: se guarda como intensidad. */
 export const CUANTO = [
   { nombre: 'Poco', intensidad: 3 },

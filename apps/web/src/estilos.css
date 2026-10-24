@@ -248,3 +248,12 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .lista li.tocable { cursor: pointer; }
 .lista li.tocable:active { background: var(--acento-suave); }
 .carita.activa { border-color: var(--acento); background: var(--acento-suave); }
+
+/* "¿Algo puntual?" (con sueño, con hambre…): debajo de las caritas. */
+.puntuales { margin-top: 12px; }
+.puntuales .rotulo { margin: 0 0 6px; }
+.puntuales input { margin-top: 6px; }
+.cuanto-puntual { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.cuanto-puntual .btn { flex: 1; }
+.algo-puntual { display: block; width: 100%; margin: 0 0 12px; padding: 10px 14px; text-align: left; border-radius: 14px;
+  border: 1px dashed var(--borde); background: none; color: var(--suave); font: inherit; font-size: 14px; cursor: pointer; }

@@ -6,6 +6,7 @@ import { CUANTO, ESTADOS, SINTOMAS_COMUNES, type Concepto, type EstadoAnimo, typ
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { guardarSentir, type Momento } from '../lib/sentir';
+import { Puntuales } from './Puntuales';
 
 /** Los cuatro botones. Muy bien y bien se guardan al toque; mal y muy mal abren la pregunta de qué pasa. */
 export function Caritas({ elegir }: { elegir(e: EstadoAnimo): void }) {
@@ -87,7 +88,10 @@ export function Sentir({ persona, momento, estado: inicial, fecha, alGuardar, al
         <button className="btn-icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
       </div>
       {!estado ? (
-        <Caritas elegir={(e) => (esMalo(e) ? setEstado(e) : void guardar(e))} />
+        <>
+          <Caritas elegir={(e) => (esMalo(e) ? setEstado(e) : void guardar(e))} />
+          {momento === 'ahora' ? <Puntuales persona={persona} alGuardar={alGuardar} /> : null}
+        </>
       ) : (
         <>
           <p>
