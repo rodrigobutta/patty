@@ -5,6 +5,8 @@ import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { esNativa } from './nativo';
 
 const IDIOMA = 'es-AR';
+const SIN_RECONOCEDOR =
+  'No llegó nada del micrófono. Si pasa siempre, al teléfono le falta el reconocimiento de voz de Google: instalá «Servicios de voz de Google» (Speech Services by Google) desde Play Store y probá de nuevo. Mientras tanto podés usar el micrófono del teclado.';
 
 interface ReconocimientoWeb {
   lang: string;
@@ -40,17 +42,23 @@ export async function escuchar(alTexto: (t: string) => void, alTerminar: (error?
       return { parar: () => {} };
     }
     let terminado = false;
+    let algo = false;
     const fin = (error?: string) => {
       if (terminado) return;
       terminado = true;
       void parcial.then((h) => h.remove());
       void estado.then((h) => h.remove());
       void fallo.then((h) => h.remove());
-      alTerminar(error);
+      // Si se cortó sin que llegara nada, casi siempre es que el teléfono no tiene un reconocedor de voz que ande
+      // (pasa en teléfonos sin los servicios de voz de Google: el que queda por defecto no transcribe).
+      alTerminar(error ?? (algo ? undefined : SIN_RECONOCEDOR));
     };
     const parcial = SpeechRecognition.addListener('partialResults', (e) => {
       const t = e.accumulatedText ?? e.matches?.[0];
-      if (t) alTexto(t);
+      if (t) {
+        algo = true;
+        alTexto(t);
+      }
     });
     const estado = SpeechRecognition.addListener('listeningState', (e) => {
       if (e.state === 'stopped') fin();
