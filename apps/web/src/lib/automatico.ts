@@ -50,3 +50,32 @@ export function agruparAutomaticos(todos: DatoAutomatico[]): GrupoAutomatico[] {
   for (const g of grupos.values()) g.lineas.sort((a, b) => a.categoria_id - b.categoria_id || clima(a.concepto) - clima(b.concepto));
   return [...grupos.values()].sort((a, b) => pos(a.tipo) - pos(b.tipo));
 }
+
+/** Lo que se lee en el renglón de cada fuente, sin abrirla: lo más importante, en una línea. */
+const DESTACADOS: Record<string, Array<[string, (v: string) => string]>> = {
+  telefono: [
+    ['Tiempo de pantalla', (v) => `${v} de pantalla`],
+    ['Llamadas', (v) => `${v} ${v === '1' ? 'llamada' : 'llamadas'}`],
+  ],
+  ubicacion: [
+    ['Viajes', (v) => v],
+    ['Km recorridos', (v) => v],
+  ],
+  clima: [
+    ['Temperatura máxima', (v) => `máx ${v}`],
+    ['Nubosidad de día', (v) => `${v} de nubes`],
+    ['Horas de sol', (v) => `${v} de sol`],
+    ['Lluvia del día', (v) => (v.startsWith('0 ') ? 'sin lluvia' : `${v} de lluvia`)],
+  ],
+};
+
+export function resumenDelGrupo(g: GrupoAutomatico): string {
+  const valor = new Map(g.lineas.map((l) => [l.concepto, l.valor]));
+  const partes = (DESTACADOS[g.tipo] ?? [])
+    .filter(([c]) => valor.has(c))
+    .map(([c, f]) => f(valor.get(c)!));
+  // Clima por hora (sin resumen del día todavía) y fuentes sin destacados: las primeras dos líneas.
+  const r = partes.length ? partes : g.lineas.slice(0, 2).map((l) => `${l.concepto} ${l.valor}`);
+  const resto = g.lineas.length - (partes.length || r.length);
+  return r.join(' · ') + (resto > 0 && !partes.length ? ` · y ${resto} más` : '');
+}

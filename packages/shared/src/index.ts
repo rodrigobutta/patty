@@ -223,8 +223,20 @@ export interface Concepto {
   nombre: string;
   tipo_valor: TipoValor;
   unidad: string | null;
+  /** Si ya se preguntó si lleva cantidad (ver UNIDADES_SUGERIDAS). */
+  cantidad_decidida: boolean;
   usos: number;
 }
+
+/**
+ * En estas categorías, la primera vez que se anota un concepto se pregunta si lleva cantidad y en qué unidad
+ * ("huevos revueltos": unidades; "coca": vasos o litros). Lo elegido queda en el concepto para las próximas veces.
+ */
+export const UNIDADES_SUGERIDAS: Record<string, string[]> = {
+  comida: ['unidades', 'porciones', 'platos', 'gramos'],
+  bebida: ['vasos', 'tazas', 'latas', 'botellas', 'litros'],
+  medicacion: ['pastillas', 'dosis', 'gotas'],
+};
 
 /** Una sugerencia del autocompletar: el concepto y por qué coincidió. */
 export interface Sugerencia extends Concepto {

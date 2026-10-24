@@ -5,13 +5,15 @@ import { guardarSentir, type Momento } from '../lib/sentir';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
-import { agruparAutomaticos } from '../lib/automatico';
+import { agruparAutomaticos, resumenDelGrupo } from '../lib/automatico';
 import { hoyEn, horaEn, nombreDia, sumarDias } from '../lib/fechas';
 import { avisarAnotado } from '../mascota/cara';
 import type { Cara } from '../mascota/dibujo';
 import { Mascota } from '../mascota/Mascota';
 import { Cargar } from './Cargar';
 import { Caritas, esMalo, Sentir } from './Sentir';
+
+const ICONOS_FUENTE: Record<string, string> = { telefono: '📱', ubicacion: '📍', clima: '🌤️', reloj: '⌚' };
 
 const PEDIDOS: Record<Cara, string> = {
   feliz: '',
@@ -35,6 +37,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
   const [registros, setRegistros] = useState<Registro[] | null>(null);
   const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>([]);
+  /** La fuente de datos automáticos que está abierta (se ve todo lo que llegó de ella). */
+  const [abierto, setAbierto] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
   const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
@@ -154,20 +158,36 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           })}
         </ul>
       )}
-      {agruparAutomaticos(automaticos).map((g) => (
-        <div key={g.fuente} className="tarjeta automatico">
-          <h3 className="chico suave">{g.fuente}</h3>
+      {automaticos.length ? (
+        <div className="tarjeta automatico">
+          <h3 className="chico suave">Llegó solo</h3>
           <ul className="lista">
-            {g.lineas.map((l) => (
-              <li key={l.concepto}>
-                <span className="icono">{categorias.find((c) => c.id === l.categoria_id)?.icono}</span>
-                <span className="que">{l.concepto}</span>
-                <span className="valor-chip">{l.valor}</span>
+            {agruparAutomaticos(automaticos).map((g) => (
+              <li key={g.fuente} className="grupo-auto">
+                <button className="renglon-auto" onClick={() => setAbierto(abierto === g.fuente ? null : g.fuente)} aria-expanded={abierto === g.fuente}>
+                  <span className="icono">{ICONOS_FUENTE[g.tipo] ?? '📊'}</span>
+                  <span className="que">
+                    {g.fuente}
+                    <span className="suave chico resumen-auto">{resumenDelGrupo(g)}</span>
+                  </span>
+                  <span className="suave" aria-hidden>{abierto === g.fuente ? '▴' : '▾'}</span>
+                </button>
+                {abierto === g.fuente ? (
+                  <ul className="detalle-auto">
+                    {g.lineas.map((l) => (
+                      <li key={l.concepto}>
+                        <span className="icono">{categorias.find((c) => c.id === l.categoria_id)?.icono}</span>
+                        <span className="que">{l.concepto}</span>
+                        <span className="valor-chip">{l.valor}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             ))}
           </ul>
         </div>
-      ))}
+      ) : null}
       {sintiendo ? (
         <>
           <div className="velo" onClick={() => setSintiendo(null)} />

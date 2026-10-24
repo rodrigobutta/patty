@@ -9,7 +9,7 @@ import { categorias, conceptoAlias, conceptos } from '../db/schema.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 
-const COLUMNAS = sql`c.id, c.categoria_id, c.nombre, c.tipo_valor, c.unidad, c.usos`;
+const COLUMNAS = sql`c.id, c.categoria_id, c.nombre, c.tipo_valor, c.unidad, c.cantidad_decidida, c.usos`;
 const escaparLike = (s: string) => s.replace(/[%_\\]/g, '\\$&');
 
 export async function buscarConceptos(
@@ -139,6 +139,8 @@ export const rutasConceptos = new Hono<Env>()
         if (!TIPOS_VALOR.includes(d.tipo_valor as TipoValor)) throw new ErrorApi('Tipo de valor inválido.');
         cambios.tipo_valor = d.tipo_valor as TipoValor;
       }
+      // Elegir si lleva cantidad (o decir que no) cierra la pregunta para siempre.
+      if (d.tipo_valor !== undefined || d.cantidad_decidida === true) cambios.cantidad_decidida = true;
       await tx.update(conceptos).set(cambios).where(sql`id = ${id}`);
       if (cambios.nombre_norm && cambios.nombre_norm !== normalizar(antes.nombre)) await agregarAlias(tx, id, antes.nombre);
     });

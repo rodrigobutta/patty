@@ -22,6 +22,13 @@
       "when": 1792854290028,
       "tag": "0002_ubicacion",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792863654072,
+      "tag": "0003_cantidad_decidida",
+      "breakpoints": true
     }
   ]
 }

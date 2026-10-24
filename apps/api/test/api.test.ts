@@ -118,6 +118,19 @@ describe('registros', () => {
   });
 });
 
+describe('cantidad de un concepto', () => {
+  it('se pregunta una vez: al elegir la unidad (o decir que no) queda decidido', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const r = await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Huevos revueltos', categoria_id: categorias.comida, valor: 2, unidad: 'unidades' });
+    expect(r.status).toBe(201);
+    let c = (await ana.get(`/api/conceptos/buscar?q=huevos`)).body[0];
+    expect(c).toMatchObject({ nombre: 'Huevos revueltos', cantidad_decidida: false });
+    c = (await ana.put(`/api/conceptos/${r.body.concepto_id}`, { tipo_valor: 'cantidad', unidad: 'unidades' })).body;
+    expect(c).toMatchObject({ tipo_valor: 'cantidad', unidad: 'unidades', cantidad_decidida: true });
+    expect(r.body).toMatchObject({ valor: 2, unidad: 'unidades' });
+  });
+});
+
 describe('ingesta desde dispositivos', () => {
   it('con el token de la fuente, sin duplicar si se manda dos veces', async () => {
     const { ana, personaId } = await conAdmin();

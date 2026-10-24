@@ -1,0 +1,1 @@
+ALTER TABLE "conceptos" ADD COLUMN "cantidad_decidida" boolean DEFAULT false NOT NULL;

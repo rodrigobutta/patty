@@ -1,5 +1,5 @@
 import type { DatoAutomatico } from 'shared';
-import { agruparAutomaticos, duracion, valorAutomatico } from './automatico';
+import { agruparAutomaticos, duracion, resumenDelGrupo, valorAutomatico } from './automatico';
 
 const dato = (d: Partial<DatoAutomatico>): DatoAutomatico => ({
   fuente: 'App de Android', tipo_fuente: 'telefono', concepto: 'x', categoria_id: 1, unidad: null, cantidad: 1, suma: 0, minimo: 0, maximo: 0, ...d,
@@ -43,5 +43,20 @@ describe('el clima del día', () => {
     expect(g.map((x) => [x.fuente, x.lineas.map((l) => `${l.concepto}: ${l.valor}`)])).toEqual([
       ['Clima del día', ['Temperatura máxima: 20 °C', 'Horas de sol: 2 h 30 min']],
     ]);
+  });
+});
+
+describe('el renglón de resumen de cada fuente', () => {
+  it('dice lo principal en una línea', () => {
+    const [tel, clima] = agruparAutomaticos([
+      dato({ concepto: 'Tiempo de pantalla', categoria_id: 9, unidad: 'min', suma: 200 }),
+      dato({ concepto: 'Uso de Instagram', categoria_id: 9, unidad: 'min', suma: 60 }),
+      dato({ concepto: 'Llamadas', categoria_id: 8, suma: 4 }),
+      dato({ fuente: 'Clima del día', tipo_fuente: 'clima', concepto: 'Temperatura máxima', unidad: '°C', suma: 21.5 }),
+      dato({ fuente: 'Clima del día', tipo_fuente: 'clima', concepto: 'Lluvia del día', unidad: 'mm', suma: 0 }),
+      dato({ fuente: 'Clima del día', tipo_fuente: 'clima', concepto: 'Horas de sol', unidad: 'h', suma: 6 }),
+    ]);
+    expect(resumenDelGrupo(tel)).toBe('3 h 20 min de pantalla · 4 llamadas');
+    expect(resumenDelGrupo(clima)).toBe('máx 21,5 °C · 6 h de sol · sin lluvia');
   });
 });

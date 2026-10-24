@@ -1,6 +1,6 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
 import { useState } from 'react';
-import type { Categoria, Concepto, Persona, TipoValor } from 'shared';
+import { UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
@@ -13,6 +13,8 @@ interface Elegido {
   categoria: Categoria;
   tipo_valor: TipoValor;
   unidad: string | null;
+  /** Si ya se preguntó si lleva cantidad (los nuevos, todavía no). */
+  cantidad_decidida: boolean;
 }
 
 interface Propuesta {
@@ -37,12 +39,12 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Perso
 
   const elegir = (c: Concepto) => {
     const cat = categorias.find((k) => k.id === c.categoria_id)!;
-    setElegido({ concepto_id: c.id, nombre: c.nombre, categoria: cat, tipo_valor: c.tipo_valor, unidad: c.unidad });
+    setElegido({ concepto_id: c.id, nombre: c.nombre, categoria: cat, tipo_valor: c.tipo_valor, unidad: c.unidad, cantidad_decidida: c.cantidad_decidida });
   };
   const crear = (nombre: string, cat: Categoria | null = categoria) => {
     if (!cat) return setPidiendoCategoria(nombre);
     setPidiendoCategoria(null);
-    setElegido({ nombre, categoria: cat, tipo_valor: cat.tipo_valor, unidad: cat.unidad });
+    setElegido({ nombre, categoria: cat, tipo_valor: cat.tipo_valor, unidad: cat.unidad, cantidad_decidida: false });
   };
 
   return (
@@ -84,21 +86,56 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Perso
   );
 }
 
-function Valor({ persona, fecha, elegido, alVolver, alGuardar }: { persona: Persona; fecha: string; elegido: Elegido; alVolver(): void; alGuardar(): void }) {
+/**
+ * La primera vez que se anota algo de comida, bebida o medicación: ¿lleva cantidad, y en qué unidad? ("huevos
+ * revueltos": unidades; "coca": vasos o litros). Se responde una vez y queda en el concepto.
+ */
+function PreguntaCantidad({ elegido, alElegir }: { elegido: Elegido; alElegir(unidad: string | null): void }) {
+  const [otra, setOtra] = useState('');
+  const unidades = UNIDADES_SUGERIDAS[elegido.categoria.clave] ?? [];
+  const verbo = elegido.categoria.clave === 'bebida' ? 'tomaste' : elegido.categoria.clave === 'medicacion' ? 'tomaste' : 'comiste';
+  return (
+    <div className="tarjeta pregunta-cantidad">
+      <p>¿Querés anotar cuánto {verbo} de «{elegido.nombre}»? Te lo pregunto solo esta vez.</p>
+      <div className="chips envolver">
+        {unidades.map((u) => <button key={u} className="chip" onClick={() => alElegir(u)}>En {u}</button>)}
+        <button className="chip" onClick={() => alElegir(null)}>No, solo que {elegido.categoria.clave === 'bebida' ? 'lo tomé' : 'lo comí'}</button>
+      </div>
+      <label>
+        Otra unidad
+        <span className="fila">
+          <input value={otra} onChange={(e) => setOtra(e.target.value)} placeholder="ej: rodajas, cucharadas" />
+          <button className="btn" disabled={!otra.trim()} onClick={() => alElegir(otra.trim().toLowerCase())}>Usar</button>
+        </span>
+      </label>
+    </div>
+  );
+}
+
+function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { persona: Persona; fecha: string; elegido: Elegido; alVolver(): void; alGuardar(): void }) {
   const [hora, setHora] = useState(horaAhora(persona.zona_horaria));
   const [intensidad, setIntensidad] = useState<number | null>(null);
   const [valor, setValor] = useState('');
   const [nota, setNota] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [elegido, setElegido] = useState(inicial);
+  /** Lo que se contestó a "¿lleva cantidad?" en esta carga (se guarda en el concepto al anotar). */
+  const [decision, setDecision] = useState<{ unidad: string | null } | null>(null);
+  const preguntar = !elegido.cantidad_decidida && !decision && elegido.categoria.clave in UNIDADES_SUGERIDAS;
   const t = elegido.tipo_valor;
+
+  const decidir = (unidad: string | null) => {
+    setDecision({ unidad });
+    setElegido((e) => (unidad ? { ...e, tipo_valor: 'cantidad', unidad } : { ...e, tipo_valor: 'evento', unidad: null }));
+  };
 
   const guardar = async () => {
     if (t === 'intensidad' && intensidad === null) return setError('Elegí la intensidad.');
     setEnviando(true);
     const inicio = instanteDelDia(fecha, hora, persona.zona_horaria);
     try {
-      await api('POST', '/api/registros', {
+      const r = await api<Registro>('POST', '/api/registros', {
         persona_id: persona.id,
         concepto_id: elegido.concepto_id,
         concepto_nombre: elegido.concepto_id ? undefined : elegido.nombre,
@@ -106,8 +143,13 @@ function Valor({ persona, fecha, elegido, alVolver, alGuardar }: { persona: Pers
         inicio,
         intensidad,
         valor: valor === '' ? null : Number(valor.replace(',', '.')),
+        unidad: elegido.unidad,
         nota: nota || null,
       });
+      // Lo que se contestó queda para las próximas veces (si es nuevo, recién ahora tiene id).
+      if (decision) {
+        await api('PUT', `/api/conceptos/${r.concepto_id}`, decision.unidad ? { tipo_valor: 'cantidad', unidad: decision.unidad } : { tipo_valor: 'evento', unidad: null });
+      }
       void anotarClima(persona.id, [inicio]);
       alGuardar();
     } catch (e) {
@@ -119,7 +161,8 @@ function Valor({ persona, fecha, elegido, alVolver, alGuardar }: { persona: Pers
   return (
     <div className="valor">
       <button className="volver" onClick={alVolver}>‹ {elegido.categoria.icono} {elegido.nombre}{elegido.concepto_id ? '' : ' (nuevo)'}</button>
-      {t === 'intensidad' ? (
+      {preguntar ? <PreguntaCantidad elegido={elegido} alElegir={decidir} /> : null}
+      {preguntar ? null : t === 'intensidad' ? (
         <fieldset className="escala">
           <legend>Intensidad</legend>
           {Array.from({ length: 11 }, (_, i) => (
@@ -128,9 +171,9 @@ function Valor({ persona, fecha, elegido, alVolver, alGuardar }: { persona: Pers
           <div className="escala-pie suave chico"><span>nada</span><span>insoportable</span></div>
         </fieldset>
       ) : null}
-      {t === 'cantidad' || t === 'medida' || t === 'duracion' ? (
+      {!preguntar && (t === 'cantidad' || t === 'medida' || t === 'duracion') ? (
         <label>
-          {t === 'duracion' ? 'Minutos' : `Cantidad${elegido.unidad ? ` (${elegido.unidad})` : ''}`}
+          {t === 'duracion' ? 'Minutos' : elegido.unidad ? `¿${elegido.unidad.endsWith('os') ? 'Cuántos' : 'Cuántas'} ${elegido.unidad}?` : 'Cantidad'}
           <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} autoFocus />
           {t === 'duracion' ? (
             <div className="chips">{[10, 15, 30, 45, 60, 90].map((m) => <button key={m} className="chip" onClick={() => setValor(String(m))}>{m}</button>)}</div>
@@ -139,10 +182,14 @@ function Valor({ persona, fecha, elegido, alVolver, alGuardar }: { persona: Pers
           ) : null}
         </label>
       ) : null}
-      <label>{t === 'hora' ? 'Hora' : 'Cuándo'}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
-      <label>Nota (opcional)<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="detalle, lugar, con quién…" /></label>
+      {preguntar ? null : (
+        <>
+          <label>{t === 'hora' ? 'Hora' : 'Cuándo'}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
+          <label>Nota (opcional)<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="detalle, lugar, con quién…" /></label>
+        </>
+      )}
       {error ? <p className="neg">{error}</p> : null}
-      <button className="btn primario ancho" onClick={guardar} disabled={enviando}>Anotar</button>
+      {preguntar ? null : <button className="btn primario ancho" onClick={guardar} disabled={enviando}>Anotar</button>}
     </div>
   );
 }

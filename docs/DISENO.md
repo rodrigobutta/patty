@@ -99,6 +99,12 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     actualiza el valor.
 - En el Día, debajo de lo anotado, se ve lo que llegó solo ese día (`GET /api/registros/automaticos`): un grupo por
   fuente y una línea por concepto (el clima, rango del día; la lluvia, el total; los minutos, en horas y minutos).
+- **Cantidades**: la primera vez que se anota un concepto de comida, bebida o medicación se pregunta si lleva cantidad
+  y en qué unidad (`UNIDADES_SUGERIDAS`: unidades, porciones, vasos, litros, pastillas… u otra). Lo elegido queda en
+  el concepto (`tipo_valor` cantidad + `unidad`, o evento si dijo que no) y `cantidad_decidida` evita volver a
+  preguntar; desde ahí, al anotarlo se pide "¿Cuántos vasos?".
+- En el Día, lo que llegó solo va en un renglón por fuente (teléfono, ubicación, clima) con lo principal
+  (`resumenDelGrupo`); al tocarlo se abre con todo.
 - **¿Cómo te sentís?** (arriba del Día, `pantallas/Sentir.tsx`, `lib/sentir.ts`): cuatro caritas (muy bien, bien,
   mal, muy mal) que se guardan como «Cómo me siento» en Ánimo con intensidad 10, 7, 4 y 1 (más alto, mejor: el motor
   compara días buenos y malos). Muy bien y bien se guardan al toque; mal y muy mal preguntan qué pasa: síntomas (los

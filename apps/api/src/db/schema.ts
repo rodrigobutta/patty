@@ -115,6 +115,11 @@ export const conceptos = pgTable(
     nombre_norm: text('nombre_norm').notNull(),
     tipo_valor: text('tipo_valor', { enum: ['evento', 'cantidad', 'intensidad', 'duracion', 'hora', 'medida'] }).notNull(),
     unidad: text('unidad'),
+    /**
+     * Si ya se le preguntó a la persona si este concepto lleva cantidad ("¿cuántos huevos?", "¿cuántos vasos?"). Se
+     * pregunta una vez, la primera vez que se anota algo de comida, bebida o medicación.
+     */
+    cantidad_decidida: boolean('cantidad_decidida').notNull().default(false),
     /** Para agrupar: "Tomate" dentro de "Verduras". El análisis puede mirar el grupo además del concepto. */
     padre_id: integer('padre_id'),
     /** Si se unió con otro (dos nombres para lo mismo), a cuál. Sus registros pasan al otro. */
