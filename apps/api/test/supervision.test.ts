@@ -136,7 +136,13 @@ describe('administración', () => {
     const marta = us.find((u: any) => u.usuario === 'marta');
     expect(marta).toMatchObject({ personas: 1, registros: 1, telefonos: 'android' });
     expect(marta.ultimo_acceso).toBeTruthy();
+    const estado = { instalacion: 'abc123abc123', plataforma: 'android', permisos: { avisos: 'si', ubicacion: 'en_uso', uso_apps: 'no', llamadas: 'si', salud: 0 }, activos: { ubicacion: true }, ultimos: {} };
+    expect((await mama.c.post('/api/dispositivos/estado', estado)).status).toBe(200);
+    expect((await mama.c.post('/api/dispositivos/estado', { ...estado, instalacion: 'x' })).status).toBe(400);
+    const marta2 = (await ana.get('/api/admin/usuarios')).body.find((u: any) => u.usuario === 'marta');
+    expect(marta2.instalacion).toMatchObject({ plataforma: 'android', estado: { permisos: { avisos: 'si', ubicacion: 'en_uso' } } });
     const d = (await ana.get(`/api/admin/usuarios/${marta.id}`)).body;
+    expect(d.instalaciones[0].estado.activos).toEqual({ ubicacion: true });
     expect(d.personas[0]).toMatchObject({ nombre: 'Marta', registros: 1, dias: 1 });
     expect(d.personas[0].por_dia).toHaveLength(14);
     expect(d.ultimos[0]).toMatchObject({ concepto: 'Agua', persona: 'Marta' });

@@ -16,6 +16,7 @@ import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
 import { Perfil } from './Perfil';
+import { Permisos } from './Permisos';
 import { Remedios } from './Remedios';
 import { Supervision } from './Supervision';
 import { NuevaPersona } from './NuevaPersona';
@@ -26,6 +27,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
   const [nueva, setNueva] = useState(false);
   const [perfil, setPerfil] = useState(false);
+  const [permisos, setPermisos] = useState(false);
   const [tema, setTema] = useState<Tema>(temaActual());
   const [fuentes, setFuentes] = useState<Fuente[]>([]);
   const [token, setToken] = useState<{ nombre: string; token: string } | null>(null);
@@ -63,6 +65,17 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   return (
     <section className="mas">
       <h2 className="seccion">Lo que Patty junta sola</h2>
+      {esNativa() && persona ? (
+        <>
+          <button className="btn ancho" onClick={() => setPermisos(true)}>🔐 Revisar los permisos de este teléfono</button>
+          {permisos ? (
+            <>
+              <div className="velo" onClick={() => setPermisos(false)} />
+              <Permisos persona={persona} alTerminar={() => setPermisos(false)} />
+            </>
+          ) : null}
+        </>
+      ) : null}
       <div className="tarjeta">
         <h3>🌤️ Clima</h3>
         <label className="opcion">

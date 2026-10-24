@@ -370,6 +370,25 @@ export const avisosEnviados = pgTable('avisos_enviados', {
   enviado: creado(),
 });
 
+/**
+ * Cómo está cada instalación de la app (teléfono o navegador): qué permisos dio y qué tiene prendido. La manda la app
+ * al abrirse; la mira la administración para saber si cada uno pudo configurar todo.
+ */
+export const instalaciones = pgTable(
+  'instalaciones',
+  {
+    id: text('id').primaryKey(),
+    usuario_id: integer('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    plataforma: text('plataforma').notNull(),
+    estado: jsonb('estado').notNull(),
+    creado: creado(),
+    actualizado: instante('actualizado').notNull().defaultNow(),
+  },
+  (t) => [index('instalaciones_usuario_idx').on(t.usuario_id)],
+);
+
 // ---------- Supervisión ----------
 
 /**

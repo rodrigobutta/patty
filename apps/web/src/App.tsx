@@ -24,6 +24,8 @@ import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
 import { useProgreso } from './lib/progreso';
 import { avanceProgreso } from 'shared';
 import { ofrecerPerfil, Perfil } from './pantallas/Perfil';
+import { ofrecerPermisos, Permisos } from './pantallas/Permisos';
+import { useReportarEstado } from './lib/estadoTelefono';
 
 type Pestana = 'hoy' | 'patrones' | 'mas' | 'admin';
 
@@ -40,6 +42,8 @@ export function App() {
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
   /** El paso opcional de datos de la persona (una vez, después de la bienvenida). */
   const [perfilListo, setPerfilListo] = useState(false);
+  /** Y el de permisos (avisos, ubicación, teléfono, salud), una vez por teléfono. */
+  const [permisosListo, setPermisosListo] = useState(false);
   // Lo que junta solo el teléfono (ubicación, llamadas, reloj, clima) va siempre a la persona propia, aunque se esté
   // mirando el día de alguien que se supervisa.
   const propia = personas.find((p) => p.propia) ?? (persona && !persona.supervisada ? persona : undefined);
@@ -52,6 +56,7 @@ export function App() {
   useEncuesta(fase === 'listo');
   useIrAlDiaConElAviso(useCallback(() => setPestana('hoy'), []));
   useRecordatorios(fase === 'listo');
+  useReportarEstado(fase === 'listo');
   const progreso = useProgreso(fase === 'listo' ? persona?.id : undefined);
   const avance = progreso ? avanceProgreso(progreso) : { avance: 0, nivel: 0 };
   usePush(fase === 'listo', Boolean(sesion?.push));
@@ -83,6 +88,14 @@ export function App() {
   if (fase === 'entrar' || fase === 'configurar') return <Entrar configurar={fase === 'configurar'} />;
   if (bienvenida) return <Bienvenida alTerminar={() => setBienvenida(false)} />;
   if (!persona) return <NuevaPersona primera />;
+  if (!permisosListo && ofrecerPermisos() && (perfilListo || !ofrecerPerfil(persona))) {
+    return (
+      <div className="bienvenida perfil-paso">
+        <Mascota cara="feliz" tamano={90} className="saluda" />
+        <Permisos persona={propia ?? persona} bienvenida alTerminar={() => setPermisosListo(true)} />
+      </div>
+    );
+  }
   if (!perfilListo && ofrecerPerfil(persona)) {
     return (
       <div className="bienvenida perfil-paso">

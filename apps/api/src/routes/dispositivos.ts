@@ -22,6 +22,18 @@ export const rutasDispositivos = new Hono<Env>()
         avisos_hasta = EXCLUDED.avisos_hasta, actualizado = now()`);
     return c.json({ ok: true });
   })
+  .post('/estado', async (c) => {
+    // {instalacion, plataforma, permisos, activos, ultimos}: cómo está configurada la app en este dispositivo.
+    const d = await cuerpo(c);
+    const id = texto(d.instalacion);
+    if (!/^[a-f0-9]{8,64}$/.test(id)) throw new ErrorApi('Instalación inválida.');
+    const plataforma = ['android', 'ios', 'web'].includes(texto(d.plataforma)) ? texto(d.plataforma) : 'web';
+    const estado = { permisos: d.permisos ?? {}, activos: d.activos ?? {}, ultimos: d.ultimos ?? {} };
+    if (JSON.stringify(estado).length > 4000) throw new ErrorApi('Estado demasiado grande.');
+    await c.var.db.execute(sql`INSERT INTO instalaciones (id, usuario_id, plataforma, estado) VALUES (${id}, ${c.var.usuario.id}, ${plataforma}, ${JSON.stringify(estado)}::jsonb)
+      ON CONFLICT (id) DO UPDATE SET usuario_id = EXCLUDED.usuario_id, plataforma = EXCLUDED.plataforma, estado = EXCLUDED.estado, actualizado = now()`);
+    return c.json({ ok: true });
+  })
   .delete('/', async (c) => {
     // ?token=: al salir de la cuenta, ese teléfono deja de recibir avisos.
     await c.var.db.execute(sql`DELETE FROM dispositivos WHERE token = ${texto(c.req.query('token'))} AND usuario_id = ${c.var.usuario.id}`);

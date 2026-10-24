@@ -38,6 +38,39 @@ interface FilaUsuario {
   telefonos: string | null;
   supervisa: number;
   supervisado: number;
+  instalacion: Instalacion | null;
+}
+
+interface Instalacion {
+  plataforma: string;
+  estado: {
+    permisos: { avisos?: string; ubicacion?: string; uso_apps?: string; llamadas?: string; salud?: number | string };
+    activos: Record<string, boolean>;
+    ultimos: { telefono?: string | null; salud?: string | null };
+  };
+  creado?: string;
+  actualizado: string;
+}
+
+/** Los permisos de un dispositivo en chips: verde lo dado, ámbar a medias, gris lo que falta. */
+function ChipsPermisos({ i }: { i: Instalacion }) {
+  const p = i.estado.permisos ?? {};
+  const a = i.estado.activos ?? {};
+  const chips: Array<[string, 'si' | 'medio' | 'no' | null]> = [
+    ['🔔 avisos', p.avisos === 'si' ? 'si' : p.avisos === 'no_aplica' ? null : 'no'],
+    [p.ubicacion === 'siempre' ? '📍 ubicación siempre' : p.ubicacion === 'en_uso' ? '📍 ubicación solo abierta' : '📍 ubicación', p.ubicacion === 'siempre' ? 'si' : p.ubicacion === 'en_uso' ? 'medio' : 'no'],
+    ['📱 uso de apps', p.uso_apps === 'no_aplica' || p.uso_apps === undefined ? null : p.uso_apps === 'si' ? 'si' : 'no'],
+    ['📞 llamadas', p.llamadas === 'no_aplica' || p.llamadas === undefined ? null : p.llamadas === 'si' ? 'si' : 'no'],
+    [typeof p.salud === 'number' && p.salud > 0 ? `⌚ salud (${p.salud} datos)` : '⌚ salud', p.salud === 'no_aplica' ? null : typeof p.salud === 'number' && p.salud > 0 ? 'si' : 'no'],
+    ['🚀 push', a.push ? 'si' : i.plataforma === 'web' ? null : 'no'],
+  ];
+  const prendidos = Object.entries(a).filter(([k, v]) => v && k !== 'push').map(([k]) => k);
+  return (
+    <span className="chips-permisos">
+      {chips.filter(([, e]) => e !== null).map(([t, e]) => <span key={t} className={`chip-permiso ${e}`}>{t}</span>)}
+      {prendidos.length ? <span className="suave chico renglon-sub">prendido en Patty: {prendidos.join(', ')}</span> : null}
+    </span>
+  );
 }
 
 interface Registro {
@@ -74,6 +107,7 @@ interface Detalle {
   }>;
   ultimos: Registro[];
   telefonos: Array<{ plataforma: string; avisos_hasta: string | null; creado: string; actualizado: string }>;
+  instalaciones: Instalacion[];
   tratamientos: Array<{ id: number; remedio: string; dosis: number | null; unidad: string | null; cada_horas: number | null; horarios: string[]; fin: string | null; terminado: string | null; persona: string }>;
   supervisiones: Array<{ estado: string; relacion: string; otro: string }>;
 }
@@ -223,6 +257,7 @@ function VistaUsuarios({ alElegir }: { alElegir(id: number): void }) {
                   {u.supervisa ? ` · supervisa a ${u.supervisa}` : ''}
                   {u.supervisado ? ' · supervisado' : ''}
                 </span>
+                {u.instalacion ? <ChipsPermisos i={u.instalacion} /> : <span className="suave chico renglon-sub">todavía no abrió la app con esta versión</span>}
               </span>
               <span className="columna-chica">
                 {u.rol !== 'editor' ? <span className="etiqueta">{u.rol === 'admin' ? 'admin' : 'solo mira'}</span> : null}
@@ -300,6 +335,23 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
           <p className="suave chico eje"><span>hace 14 días</span><span>hoy</span></p>
         </div>
       ))}
+
+      {d.instalaciones.length ? (
+        <div className="tarjeta">
+          <h3>Cómo tiene configurada la app</h3>
+          {d.instalaciones.map((i, n) => (
+            <div key={n} className="instalacion">
+              <p className="chico">
+                <strong>{i.plataforma === 'ios' ? '🍎 iPhone' : i.plataforma === 'android' ? '🤖 Android' : '🌐 Navegador'}</strong>
+                <span className="suave"> · visto {hace(i.actualizado)}</span>
+                {i.estado.ultimos?.telefono ? <span className="suave"> · mandó uso del teléfono {hace(i.estado.ultimos.telefono)}</span> : null}
+                {i.estado.ultimos?.salud ? <span className="suave"> · mandó salud {hace(i.estado.ultimos.salud)}</span> : null}
+              </p>
+              <ChipsPermisos i={i} />
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {d.telefonos.length || d.tratamientos.length || d.supervisiones.length ? (
         <div className="tarjeta">

@@ -585,3 +585,23 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .lista-actividad .que { flex: 1; min-width: 0; }
 .admin-entrar { margin-top: 4px; }
 .admin-detalle .volver { margin-bottom: 8px; }
+
+/* ---------- Permisos ---------- */
+.lista-permisos { list-style: none; padding: 0; margin: 8px 0 12px; }
+.lista-permisos li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--borde); }
+.lista-permisos li:last-child { border-bottom: 0; }
+.lista-permisos .que { flex: 1; min-width: 0; }
+.icono-permiso { font-size: 26px; width: 34px; text-align: center; }
+.lista-permisos li.listo .icono-permiso { filter: none; }
+.tilde { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--verde); color: #fff; font-weight: 700;
+  animation: pop 0.35s cubic-bezier(.2, 1.4, .4, 1); }
+.nota-permiso { color: var(--ambar); }
+.todo-listo { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px; border-radius: var(--radio); background: var(--acento-suave); font-weight: 600; }
+.chips-permisos { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip-permiso { padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--borde); }
+.chip-permiso.si { background: color-mix(in srgb, var(--verde) 15%, transparent); border-color: var(--verde); color: var(--verde); }
+.chip-permiso.medio { background: color-mix(in srgb, var(--ambar) 15%, transparent); border-color: var(--ambar); color: var(--ambar); }
+.chip-permiso.no { color: var(--suave); text-decoration: line-through; opacity: 0.8; }
+.instalacion { padding: 6px 0; border-bottom: 1px solid var(--borde); }
+.instalacion:last-child { border-bottom: 0; }
+.instalacion p { margin: 0; }

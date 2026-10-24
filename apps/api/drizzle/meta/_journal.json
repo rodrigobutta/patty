@@ -71,6 +71,13 @@
       "when": 1792883532245,
       "tag": "0009_ultimo_acceso",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792884462004,
+      "tag": "0010_instalaciones",
+      "breakpoints": true
     }
   ]
 }

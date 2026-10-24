@@ -53,6 +53,8 @@ export const rutasAdmin = new Hono<Env>()
                    (SELECT count(*) FROM registros r WHERE r.creado_por = u.id AND r.borrado IS NULL AND r.creado > now() - interval '7 days')::int AS registros_semana,
                    (SELECT max(r.creado) FROM registros r WHERE r.creado_por = u.id) AS ultimo_registro,
                    (SELECT string_agg(DISTINCT d.plataforma, ',') FROM dispositivos d WHERE d.usuario_id = u.id) AS telefonos,
+                   (SELECT json_build_object('plataforma', i.plataforma, 'estado', i.estado, 'actualizado', i.actualizado)
+                      FROM instalaciones i WHERE i.usuario_id = u.id ORDER BY (i.plataforma <> 'web') DESC, i.actualizado DESC LIMIT 1) AS instalacion,
                    (SELECT count(*) FROM supervisiones s WHERE s.supervisor_id = u.id AND s.estado = 'aceptada')::int AS supervisa,
                    (SELECT count(*) FROM supervisiones s WHERE s.supervisado_id = u.id AND s.estado = 'aceptada')::int AS supervisado
             FROM usuarios u ORDER BY u.ultimo_acceso DESC NULLS LAST, u.nombre`,
@@ -83,6 +85,7 @@ export const rutasAdmin = new Hono<Env>()
           WHERE r.creado_por = ${id} AND r.borrado IS NULL ORDER BY r.creado DESC LIMIT 40`,
     );
     const telefonos = await filas(db, sql`SELECT plataforma, avisos_hasta, creado, actualizado FROM dispositivos WHERE usuario_id = ${id} ORDER BY actualizado DESC`);
+    const instalaciones = await filas(db, sql`SELECT plataforma, estado, creado, actualizado FROM instalaciones WHERE usuario_id = ${id} ORDER BY actualizado DESC`);
     const tratamientos = await filas(
       db,
       sql`SELECT t.id, c.nombre AS remedio, t.dosis, t.unidad, t.cada_horas, t.horarios, t.inicio, t.fin, t.terminado, p.nombre AS persona
@@ -96,7 +99,7 @@ export const rutasAdmin = new Hono<Env>()
           FROM supervisiones s JOIN usuarios o ON o.id = CASE WHEN s.supervisor_id = ${id} THEN s.supervisado_id ELSE s.supervisor_id END
           WHERE s.supervisor_id = ${id} OR s.supervisado_id = ${id}`,
     );
-    return c.json({ usuario: u, personas, ultimos, telefonos, tratamientos, supervisiones });
+    return c.json({ usuario: u, personas, ultimos, telefonos, instalaciones, tratamientos, supervisiones });
   })
   .get('/actividad', async (c) => {
     // Lo último que se anotó en toda la app (de todos), para ver en vivo cómo se usa.
