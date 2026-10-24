@@ -33,8 +33,10 @@ no comparte datos con Quincho. Si hace falta ver cómo se resolvió algo de la b
 - Carpeta local: `~/patty` en la Mac de Rodrigo (Node 24, pnpm 10.12, Postgres local en /usr/local/bin). La base local
   `patty` todavía no se creó.
 - Typecheck y tests de la web pasan. Los de la API necesitan `createdb patty_test`.
-- **Railway todavía no está armado**: falta crear el servicio con este repo, el plugin de Postgres, `PORT=8000` y
-  `ANTHROPIC_API_KEY` (la misma cuenta que Quincho). Lo crea Rodrigo.
+- **Railway (2026-10-24)**: proyecto `patty` en la cuenta de Rodrigo (rbutta@gmail.com, plan hobby), servicios `web`
+  (repo `rodrigobutta/patty`, rama `main`, se redespliega con cada push) y `Postgres`. Variables de `web`: `PORT=8000`,
+  `DATABASE_URL=${{Postgres.DATABASE_URL}}`. URL: https://web-production-4c7d8.up.railway.app. `ANTHROPIC_API_KEY`
+  queda para que la cargue Rodrigo (la misma de Quincho, proyecto `easy-project-plan-next`, servicio `app`).
 
 ## Próximos pasos posibles
 
