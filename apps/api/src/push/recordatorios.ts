@@ -116,6 +116,51 @@ export async function revisarDiasSinAnotar(db: Db, ahora = new Date()): Promise<
   return enviados;
 }
 
+/** A esta hora (de la persona), si no anotó nada en el día, Patty le pide que le cuente (con la cara triste). */
+const HORA_TE_EXTRANO = '19:00';
+
+/** Lo que dice el aviso según cuántos días lleva sin anotar (y su nombre, para que suene a Patty). */
+export function avisoTeExtrano(nombre: string, diasSin: number | null): { titulo: string; cuerpo: string } {
+  const pila = nombre.split(' ')[0];
+  if (diasSin === null) return { titulo: '😢 ¿Arrancamos?', cuerpo: `${pila}, todavía no me contaste nada. Empezá por algo fácil: ¿a qué hora te levantaste hoy?` };
+  if (diasSin <= 1) return { titulo: '😢 Hoy no me contaste nada', cuerpo: `${pila}, ¿qué comiste, cómo dormiste, cómo te sentís? Con un toque alcanza.` };
+  if (diasSin <= 3) return { titulo: `😢 Hace ${diasSin} días que no sé de vos`, cuerpo: '¿Me contás cómo venís? Aunque sea una cosa, así no pierdo el hilo.' };
+  return { titulo: '😢 Te extraño', cuerpo: `Hace ${diasSin} días que no anotás nada. Cuando quieras, contale a Patty cómo estás.` };
+}
+
+/**
+ * A la tarde, a quien no anotó nada en el día: un aviso con la cara triste del búho para que cuente algo. Los primeros
+ * días, todos los días; después de una semana sin anotar, uno por semana (para no cansar).
+ */
+export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<number> {
+  const personas = await filas<{ id: number; nombre: string; zona: string; usuario_id: number; ultima: string | null; creado: string }>(
+    db,
+    sql`SELECT p.id, p.nombre, p.zona_horaria AS zona, pu.usuario_id, p.creado,
+               (SELECT to_char(max(r.fecha), 'YYYY-MM-DD') FROM registros r WHERE r.persona_id = p.id AND r.borrado IS NULL) AS ultima
+        FROM personas p JOIN persona_usuarios pu ON pu.persona_id = p.id AND pu.rol = 'dueno'
+        JOIN usuarios u ON u.id = pu.usuario_id AND u.activo
+        WHERE EXISTS (SELECT 1 FROM dispositivos d WHERE d.usuario_id = pu.usuario_id)`,
+  );
+  let enviados = 0;
+  for (const p of personas) {
+    const hoy = fechaLocal(ahora, p.zona);
+    const desde = localAInstante(hoy, HORA_TE_EXTRANO, p.zona).getTime();
+    if (ahora.getTime() < desde || ahora.getTime() > desde + TOLERANCIA_MIN * 60000) continue;
+    const dia = diaDePatty(ahora, p.zona);
+    if (p.ultima && p.ultima >= dia) continue;
+    const diasSin = p.ultima ? Math.round((Date.parse(dia) - Date.parse(p.ultima)) / 86400000) : null;
+    // Recién creada (hoy) y sin nada: todavía no molestamos.
+    if (diasSin === null && Date.now() - Date.parse(p.creado) < 12 * 3600000) continue;
+    if (diasSin !== null && diasSin > 7 && diasSin % 7 !== 0) continue;
+    const { titulo, cuerpo } = avisoTeExtrano(p.nombre, diasSin);
+    const lista = await filas<Dispositivo>(db, sql`SELECT id, token, avisos_hasta FROM dispositivos WHERE usuario_id = ${p.usuario_id}`);
+    for (const d of lista) {
+      if (await avisarUnaVez(db, d, `teextrano|${p.id}|${dia}`, { titulo, cuerpo, datos: { tipo: 'te_extrano', cara: 'triste', persona_id: String(p.id) } })) enviados++;
+    }
+  }
+  return enviados;
+}
+
 /** Arranca la revisión de cada minuto (si hay Firebase configurado). */
 export function arrancarRecordatorios(db: Db): void {
   if (!pushDisponible()) {
@@ -127,6 +172,7 @@ export function arrancarRecordatorios(db: Db): void {
     try {
       await revisarTomas(db);
       await revisarDiasSinAnotar(db);
+      await revisarTeExtrano(db);
       // Una vez por día, lo viejo se borra.
       if (vueltas++ % 1440 === 0) await db.execute(sql`DELETE FROM avisos_enviados WHERE enviado < now() - interval '30 days'`);
     } catch (e) {

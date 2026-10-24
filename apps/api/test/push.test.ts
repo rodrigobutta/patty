@@ -38,3 +38,29 @@ describe('avisos push de remedios', () => {
     expect(await revisarTomas(db, new Date('2026-10-09T12:31:00.000Z'))).toBe(0);
   });
 });
+
+describe('aviso de "te extraño"', () => {
+  it('a las 19 de la persona, si no anotó nada en el día, con la cara triste; una vez', async () => {
+    const { revisarTeExtrano, avisoTeExtrano } = await import('../src/push/recordatorios.js');
+    const { ana, personaId, categorias } = await conAdmin();
+    const enviados: Array<{ token: string; a: Aviso }> = [];
+    usarEnvioPrueba(async (token, a) => {
+      enviados.push({ token, a });
+      return 'ok';
+    });
+    await ana.post('/api/dispositivos', { token: 'tel-ana', plataforma: 'android' });
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Agua', categoria_id: categorias.bebida, inicio: '2026-10-20T15:00:00.000Z' });
+    const db = obtenerDb();
+    // 19:00 en Buenos Aires = 22:00 UTC. El 22 no anotó nada: hace 2 días.
+    expect(await revisarTeExtrano(db, new Date('2026-10-22T22:01:00.000Z'))).toBe(1);
+    expect(await revisarTeExtrano(db, new Date('2026-10-22T22:03:00.000Z'))).toBe(0);
+    expect(enviados[0].a).toMatchObject({ titulo: '😢 Hace 2 días que no sé de vos', datos: { tipo: 'te_extrano', cara: 'triste' } });
+    // fuera de hora, nada
+    expect(await revisarTeExtrano(db, new Date('2026-10-23T15:00:00.000Z'))).toBe(0);
+    // si anotó ese día, nada
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Agua', categoria_id: categorias.bebida, inicio: '2026-10-23T15:00:00.000Z' });
+    expect(await revisarTeExtrano(db, new Date('2026-10-23T22:01:00.000Z'))).toBe(0);
+    expect(avisoTeExtrano('Rodrigo Butta', 1).titulo).toBe('😢 Hoy no me contaste nada');
+    expect(avisoTeExtrano('Rodrigo', 9).titulo).toBe('😢 Te extraño');
+  });
+});

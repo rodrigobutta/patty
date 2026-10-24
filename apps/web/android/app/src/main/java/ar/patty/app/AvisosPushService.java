@@ -63,6 +63,15 @@ public class AvisosPushService extends FirebaseMessagingService {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pi);
+        // Con la cara del búho al costado (por ejemplo, triste en "hoy no me contaste nada").
+        String cara = datos.get("cara");
+        if (cara != null && cara.matches("feliz|espera|triste")) {
+            int res = getResources().getIdentifier("icono_" + cara + "_frente", "mipmap", getPackageName());
+            if (res != 0) {
+                android.graphics.Bitmap img = android.graphics.BitmapFactory.decodeResource(getResources(), res);
+                if (img != null) b.setLargeIcon(img);
+            }
+        }
         // Una invitación a supervisar se contesta desde el aviso: abre la app con la respuesta y la web la manda.
         if ("supervision".equals(datos.get("tipo")) && datos.get("supervision_id") != null) {
             b.addAction(0, "Aceptar", conAccion(datos, "aceptar", id, id + 1));
