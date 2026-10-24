@@ -108,6 +108,11 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
 - **Festejo** (`mascota/Festejo.tsx`, `festejar` en el estado): al anotar algo la mascota aparece un momento, salta
   y suelta chispitas; si lo anotado es que la persona está mal, acompaña con otra cara. Después de contestar
   "¿cómo te sentís ahora?" la pregunta desaparece del Día por 3 horas; tocando la mascota de arriba se abre cuando sea.
+- **Días anteriores**: "Contarlo" entiende "ayer", "el sábado a la noche", "anoche a las 2" y duraciones ("estuvimos 3
+  horas"), y si se abre mirando otro día, eso es lo que se toma por defecto (`fecha` en `/api/registros/interpretar`).
+  La propuesta muestra el día si no es el que se mira, y al guardar el Día salta a ese día.
+- **El Día** se puede recorrer deslizando de costado; lo anotado va como línea de tiempo por partes del día (mañana,
+  tarde, noche), entra animado y mientras carga hay renglones que brillan.
 - **Editar** (`pantallas/Editar.tsx`): tocando algo del Día se cambia la hora, la cantidad o los minutos, la intensidad
   (o la carita) y la nota; el concepto no (se borra y se anota de nuevo). La tele mueve sus partes juntas.
 - En el Día, con la IA andando, el botón grande **«Contale a Patty»** abre "Contarlo" y empieza a escuchar al toque.

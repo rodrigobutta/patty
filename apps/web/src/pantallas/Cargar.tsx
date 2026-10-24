@@ -4,7 +4,7 @@ import { UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type R
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
-import { horaAhora, horaEn, instanteDelDia } from '../lib/fechas';
+import { horaAhora, horaEn, hoyEn, instanteDelDia, nombreDia } from '../lib/fechas';
 import { Autocompletar } from '../ui/Autocompletar';
 import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { Tele } from './Tele';
@@ -35,7 +35,8 @@ interface Propuesta {
 export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false }: {
   persona: Persona;
   fecha: string;
-  alGuardar(): void;
+  /** `fechaGuardada`: si lo anotado quedó todo en otro día (contado en texto: "ayer a la noche…"), cuál. */
+  alGuardar(fechaGuardada?: string): void;
   alCerrar(): void;
   /** Abrir directo en "Contarlo" y, si se puede, empezar a escuchar (el botón grande del Día). */
   contar?: boolean;
@@ -68,7 +69,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false }: 
       </div>
 
       {modo === 'texto' ? (
-        <TextoLibre persona={persona} alGuardar={alGuardar} dictarAlAbrir={contar} />
+        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar} />
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
@@ -206,7 +207,13 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
   );
 }
 
-function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Persona; alGuardar(): void; dictarAlAbrir?: boolean }) {
+function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
+  persona: Persona;
+  /** El día que se estaba mirando: si no se dice cuándo pasó, es ese. */
+  fecha: string;
+  alGuardar(fechaGuardada?: string): void;
+  dictarAlAbrir?: boolean;
+}) {
   const { categorias, festejar, sesion } = useEstado();
   const vozServidor = Boolean(sesion?.voz);
   const [transcribiendo, setTranscribiendo] = useState(false);
@@ -261,7 +268,7 @@ function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Pe
     setTrabajando(true);
     setError('');
     try {
-      const r = await api<{ registros: Propuesta[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado });
+      const r = await api<{ registros: Propuesta[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado, fecha });
       setPropuesta(r.registros);
       setDudas(r.dudas);
       yaOrdenado.current = true;
@@ -273,14 +280,19 @@ function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Pe
     }
   };
 
+  /** El día de Patty (de 5 a 5) de un instante, para mostrar si lo propuesto va a otro día. */
+  const diaDe = (inicio: string) => hoyEn(persona.zona_horaria, new Date(inicio));
+
   const guardar = async () => {
     setTrabajando(true);
     try {
       const lista = propuesta!.filter((_, i) => !quitar.has(i)).map((p) => ({ ...p, persona_id: persona.id }));
-      await api('POST', '/api/registros/varios', { registros: lista });
+      const hechos = await api<Registro[]>('POST', '/api/registros/varios', { registros: lista });
       void anotarClima(persona.id, lista.map((p) => p.inicio));
-      festejar(`¡Anotadas ${lista.length} cosas!`);
-      alGuardar();
+      const dias = [...new Set(hechos.map((h) => h.fecha))];
+      const otroDia = dias.length === 1 && dias[0] !== fecha ? dias[0] : undefined;
+      festejar(otroDia ? `¡Anotadas ${lista.length} cosas en ${nombreDia(otroDia, persona.zona_horaria).toLowerCase()}!` : `¡Anotadas ${lista.length} cosas!`);
+      alGuardar(otroDia);
     } catch (e) {
       setError((e as Error).message);
       setTrabajando(false);
@@ -296,7 +308,10 @@ function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Pe
             const cat = categorias.find((c) => c.id === p.categoria_id);
             return (
               <li key={i} className={quitar.has(i) ? 'tachado' : ''} onClick={() => setQuitar((q) => { const n = new Set(q); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
-                <span className="hora">{horaEn(p.inicio, persona.zona_horaria)}</span>
+                <span className="hora">
+                  {diaDe(p.inicio) !== fecha ? <span className="dia-propuesta">{nombreDia(diaDe(p.inicio), persona.zona_horaria)}</span> : null}
+                  {horaEn(p.inicio, persona.zona_horaria)}
+                </span>
                 <span className="icono">{cat?.icono}</span>
                 <span>
                   {p.concepto_nombre}

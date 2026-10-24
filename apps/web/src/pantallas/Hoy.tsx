@@ -1,5 +1,5 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
@@ -31,6 +31,21 @@ const PEDIDOS: Record<Cara, string> = {
 const esParteDeTele = (r: Registro) => r.concepto.startsWith(teleDeTipo('')) || r.concepto.startsWith(teleEnCanal(''));
 const partesDe = (r: Registro, todos: Registro[]) => (r.concepto === TELE ? todos.filter((o) => esParteDeTele(o) && o.inicio === r.inicio) : []);
 
+/** En qué parte del día pasó algo (el día de Patty empieza a las 5). */
+const FRANJAS = [
+  { desde: 5, nombre: 'Mañana', emoji: '🌅' },
+  { desde: 12, nombre: 'Tarde', emoji: '☀️' },
+  { desde: 19, nombre: 'Noche', emoji: '🌙' },
+];
+function franja(inicio: string, zona: string) {
+  const h = Number(horaEn(inicio, zona).slice(0, 2));
+  return h < 5 ? FRANJAS[2] : [...FRANJAS].reverse().find((f) => h >= f.desde)!;
+}
+
+/** "sábado 24 de octubre" */
+const fechaLarga = (fecha: string) =>
+  new Intl.DateTimeFormat('es-AR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(fecha + 'T12:00:00Z'));
+
 function detalle(r: Registro, tipo: string | undefined): string {
   if (r.intensidad !== null && (r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI)) {
     const e = estadoDe(r.intensidad);
@@ -61,6 +76,27 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   /** Lo anotado que se está cambiando (al tocarlo). */
   const [editando, setEditando] = useState<Registro | null>(null);
   const hoy = hoyEn(persona.zona_horaria);
+  /** Para la animación al cambiar de día: de qué lado entra el nuevo. */
+  const [direccion, setDireccion] = useState<'atras' | 'adelante' | null>(null);
+  const irA = (dias: number) => {
+    const nueva = sumarDias(fecha, dias);
+    if (nueva > hoy) return;
+    setDireccion(dias < 0 ? 'atras' : 'adelante');
+    setFecha(nueva);
+  };
+  // Deslizar el dedo de costado cambia de día (como pasar páginas).
+  const toque = useRef<{ x: number; y: number } | null>(null);
+  const empezarToque = (e: React.TouchEvent) => {
+    toque.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const terminarToque = (e: React.TouchEvent) => {
+    const t = toque.current;
+    toque.current = null;
+    if (!t || cargando || sintiendo || editando) return;
+    const dx = e.changedTouches[0].clientX - t.x;
+    const dy = e.changedTouches[0].clientY - t.y;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 50) irA(dx > 0 ? -1 : 1);
+  };
 
   const traer = useCallback(async () => {
     try {
@@ -146,12 +182,19 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const tipoDe = (r: Registro) => categorias.find((c) => c.id === r.categoria_id);
 
   return (
-    <section className="dia">
+    <section className="dia" onTouchStart={empezarToque} onTouchEnd={terminarToque}>
       <div className="navdia">
-        <button className="btn-icono" onClick={() => setFecha(sumarDias(fecha, -1))} aria-label="Día anterior">‹</button>
-        <h2>{nombreDia(fecha, persona.zona_horaria)}</h2>
-        <button className="btn-icono" onClick={() => setFecha(sumarDias(fecha, 1))} disabled={fecha >= hoy} aria-label="Día siguiente">›</button>
+        <button className="btn-icono" onClick={() => irA(-1)} aria-label="Día anterior">‹</button>
+        <div className="titulo-dia" key={fecha}>
+          <h2>{nombreDia(fecha, persona.zona_horaria)}</h2>
+          <p className="suave chico">
+            {fechaLarga(fecha)}
+            {registros?.length ? ` · ${registros.filter((r) => !esParteDeTele(r)).length} anotadas` : ''}
+          </p>
+        </div>
+        <button className="btn-icono" onClick={() => irA(1)} disabled={fecha >= hoy} aria-label="Día siguiente">›</button>
       </div>
+      <div className={`contenido-dia${direccion ? ` entra-${direccion}` : ''}`} key={fecha}>
       {error ? <p className="neg">{error}</p> : null}
       {fecha === hoy ? (
         contestadoHacePoco ? (
@@ -167,20 +210,30 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         )
       ) : null}
       {registros === null ? (
-        <p className="suave centro">…</p>
+        <ul className="lista esqueleto" aria-label="Cargando">
+          {[0, 1, 2].map((i) => <li key={i}><span className="brillo hora" /><span className="brillo icono" /><span className="brillo que" /></li>)}
+        </ul>
       ) : registros.length === 0 ? (
         <div className="vacio">
           {fecha === hoy && cara ? <Mascota cara={cara} tamano={120} className="grande" /> : null}
           <p>Nada anotado {fecha === hoy ? 'todavía hoy' : 'este día'}.</p>
           {fecha === hoy && cara && PEDIDOS[cara] ? <p>{PEDIDOS[cara]}</p> : null}
-          <p className="suave">Tocá ＋ para anotar a qué hora te levantaste, qué comiste, cómo te sentiste…</p>
+          <p className="suave">
+            {fecha === hoy
+              ? 'Tocá ＋ para anotar a qué hora te levantaste, qué comiste, cómo te sentiste…'
+              : '¿Te acordás de algo? Contáselo a Patty o tocá ＋: queda anotado en este día.'}
+          </p>
         </div>
       ) : (
         <ul className="lista linea">
-          {registros.filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio)).map((r) => {
+          {registros.filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio)).map((r, i, todos) => {
             const cat = tipoDe(r);
+            const f = franja(r.inicio, persona.zona_horaria);
+            const nuevaFranja = i === 0 || franja(todos[i - 1].inicio, persona.zona_horaria) !== f;
             return (
-              <li key={r.id} className="tocable" onClick={() => setEditando(r)} onContextMenu={(e) => { e.preventDefault(); void borrar(r); }}>
+              <Fragment key={r.id}>
+                {nuevaFranja ? <li className="franja" aria-hidden><span>{f.emoji}</span> {f.nombre}</li> : null}
+              <li className="tocable entra" style={{ ['--n' as string]: Math.min(i, 12) }} onClick={() => setEditando(r)} onContextMenu={(e) => { e.preventDefault(); void borrar(r); }}>
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
                 <span className="icono">{cat?.icono}</span>
                 <span className="que">
@@ -190,6 +243,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                 </span>
                 <button className="btn-icono chico" onClick={(e) => { e.stopPropagation(); void borrar(r); }} aria-label={`Borrar ${r.concepto}`}>🗑</button>
               </li>
+              </Fragment>
             );
           })}
         </ul>
@@ -249,6 +303,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           />
         </>
       ) : null}
+      </div>
       {sesion?.ia ? (
         <button className="contale" onClick={() => setCargando('contar')}>
           <span aria-hidden>{hayVoz(sesion.voz) ? '🎙️' : '✍️'}</span>
@@ -259,7 +314,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />
-          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} alCerrar={() => setCargando(false)} alGuardar={() => { setCargando(false); void traer(); avisarAnotado(); }} />
+          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} alCerrar={() => setCargando(false)} alGuardar={(otroDia) => { setCargando(false); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
         </>
       ) : null}
     </section>

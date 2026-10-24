@@ -140,5 +140,5 @@ export const rutasRegistros = new Hono<Env>()
     // "Desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos, sin guardar.
     const d = await cuerpo(c);
     const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
-    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto)));
+    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined));
   });

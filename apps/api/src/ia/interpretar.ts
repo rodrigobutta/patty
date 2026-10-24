@@ -55,7 +55,15 @@ interface Respuesta {
   dudas: string[];
 }
 
-export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string) {
+/** El día de la semana de una fecha AAAA-MM-DD, en castellano (para que entienda "el sábado"). */
+const diaDeLaSemana = (fecha: string) =>
+  new Intl.DateTimeFormat('es-AR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${fecha}T12:00:00Z`));
+
+/**
+ * `referencia`: el día que la persona estaba mirando en la app al contarlo (AAAA-MM-DD). Si no dice cuándo pasó, es
+ * ese día; si dice "ayer", "el sábado", "anoche", se cuenta desde hoy.
+ */
+export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, referencia?: string) {
   if (!texto) throw new ErrorApi('Escribí qué pasó.');
   if (texto.length > 4000) throw new ErrorApi('El texto es muy largo (máximo 4000 letras).');
   const cats = await filas<Categoria>(tx, sql`SELECT * FROM categorias ORDER BY orden`);
@@ -72,9 +80,17 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string) 
     'Convertís lo que la persona escribe, en castellano rioplatense, en registros tipificados. ' +
     'Reusá los conceptos existentes cuando correspondan (mismo nombre exacto) y creá nombres nuevos cortos y genéricos ' +
     '("Tomate", no "un tomate en la ensalada"; el detalle va en la nota). Un registro por cada cosa: "café con tostadas" son dos. ' +
-    'No inventes cosas que no se dijeron.';
+    'No inventes cosas que no se dijeron. ' +
+    'Cada registro va en el día y la hora en que pasó, aunque se cuente después: "ayer", "anteayer", "el sábado", ' +
+    '"anoche", "el lunes a la mañana" se calculan desde hoy. Si no se dice la hora, usá una razonable según el momento: ' +
+    'a la mañana 9:00, al mediodía 13:00, a la tarde 17:00, a la noche 21:00. Lo de la madrugada ("anoche a las 2") va con ' +
+    'la fecha del calendario en que pasó (la del día siguiente). Si algo duró ("estuvimos 3 horas"), poné duracion_min en ' +
+    'el registro de esa actividad o evento.';
   const consigna = [
-    `Hoy es ${hoy} y son las ${String(Math.floor(hora / 60)).padStart(2, '0')}:${String(hora % 60).padStart(2, '0')} para ${p.nombre}.`,
+    `Hoy es ${diaDeLaSemana(hoy)} ${hoy} y son las ${String(Math.floor(hora / 60)).padStart(2, '0')}:${String(hora % 60).padStart(2, '0')} para ${p.nombre}.`,
+    ...(referencia && referencia !== hoy
+      ? [`La persona está mirando el día ${diaDeLaSemana(referencia)} ${referencia} en la app: si no dice cuándo pasó algo, es ese día.`]
+      : []),
     'Categorías (clave: nombre, tipo de valor habitual):',
     ...cats.map((c) => `- ${c.clave}: ${c.nombre}, ${c.tipo_valor}`),
     'Conceptos que ya existen (categoría: nombre):',

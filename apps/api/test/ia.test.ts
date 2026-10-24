@@ -44,4 +44,21 @@ describe('texto libre con IA', () => {
     expect(g.status).toBe(201);
     expect((await ana.get(`/api/registros?persona=${personaId}&desde=2026-10-24`)).body.map((x: any) => x.origen)).toEqual(['ia', 'ia']);
   });
+
+  it('lo de otro día va a ese día, con la duración; y sabe qué día se estaba mirando', async () => {
+    const { ana, personaId } = await conAdmin();
+    const pedidos = falso({
+      registros: [
+        { categoria: 'otro', concepto: 'Cumpleaños', tipo_valor: 'duracion', fecha: '2026-10-23', hora: '21:00', duracion_min: 180, valor: null, unidad: null, intensidad: null, nota: null },
+        { categoria: 'comida', concepto: 'Pizza', tipo_valor: 'evento', fecha: '2026-10-23', hora: '21:30', duracion_min: null, valor: null, unidad: null, intensidad: null, nota: null },
+      ],
+      dudas: [],
+    });
+    const r = await ana.post('/api/registros/interpretar', { persona_id: personaId, texto: 'ayer a la noche fui a un cumpleaños, comí pizza y estuvimos 3 horas', fecha: '2026-10-22' });
+    expect(r.body.registros[0]).toMatchObject({ concepto_nombre: 'Cumpleaños', inicio: '2026-10-24T00:00:00.000Z', fin: '2026-10-24T03:00:00.000Z', valor: 180 });
+    expect(pedidos[0].messages[0].content).toContain('está mirando el día');
+    expect(pedidos[0].messages[0].content).toMatch(/2026-10-22/);
+    const g = await ana.post('/api/registros/varios', { registros: r.body.registros });
+    expect(g.body.map((x: any) => x.fecha)).toEqual(['2026-10-23', '2026-10-23']);
+  });
 });

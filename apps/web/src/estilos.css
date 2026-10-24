@@ -257,3 +257,59 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .cuanto-puntual .btn { flex: 1; }
 .algo-puntual { display: block; width: 100%; margin: 0 0 12px; padding: 10px 14px; text-align: left; border-radius: 14px;
   border: 1px dashed var(--borde); background: none; color: var(--suave); font: inherit; font-size: 14px; cursor: pointer; }
+.dia-propuesta { display: block; font-size: 11px; font-weight: 700; color: var(--acento); }
+
+/* ---------- Día: más cuidado ---------- */
+.navdia { margin-bottom: 14px; }
+.titulo-dia { text-align: center; animation: aparece-suave 0.3s ease; }
+.titulo-dia h2 { font-size: 26px; letter-spacing: -0.02em; }
+.titulo-dia p { margin: 2px 0 0; }
+.titulo-dia p::first-letter { text-transform: uppercase; }
+.navdia .btn-icono { width: 40px; height: 40px; border-radius: 50%; transition: background 0.15s; }
+.navdia .btn-icono:active:not(:disabled) { background: var(--acento-suave); }
+
+/* Al cambiar de día, el contenido entra del lado que corresponde. */
+.contenido-dia.entra-atras { animation: entra-desde-izq 0.28s cubic-bezier(.2, .8, .3, 1); }
+.contenido-dia.entra-adelante { animation: entra-desde-der 0.28s cubic-bezier(.2, .8, .3, 1); }
+@keyframes entra-desde-izq { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes entra-desde-der { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes aparece-suave { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Lo anotado: una línea de tiempo por partes del día, que entra de a uno. */
+.lista.linea { position: relative; }
+.lista.linea li.franja { background: none; border: 0; padding: 14px 4px 6px; margin: 0; cursor: default; font-size: 13px; font-weight: 700;
+  color: var(--suave); text-transform: uppercase; letter-spacing: 0.06em; gap: 6px; }
+.lista.linea li.franja:first-child { padding-top: 2px; }
+.lista.linea li.entra { animation: entra-fila 0.35s cubic-bezier(.2, .8, .3, 1) backwards; animation-delay: calc(var(--n, 0) * 35ms); }
+@keyframes entra-fila { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+.lista.linea li.tocable { transition: transform 0.12s ease, box-shadow 0.15s ease; box-shadow: 0 1px 0 rgb(0 0 0 / 0.02); }
+.lista.linea li.tocable:active { transform: scale(0.985); }
+.lista.linea .icono { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--acento-suave); font-size: 18px; flex: none; }
+
+/* Mientras carga: renglones que brillan. */
+.lista.esqueleto li { cursor: default; }
+.brillo { display: block; height: 14px; border-radius: 7px;
+  background: linear-gradient(90deg, var(--borde) 0%, var(--acento-suave) 50%, var(--borde) 100%); background-size: 200% 100%;
+  animation: brillo 1.2s linear infinite; }
+.brillo.hora { width: 40px; min-width: 40px; }
+.brillo.icono { width: 34px; height: 34px; border-radius: 50%; }
+.brillo.que { flex: 1; }
+@keyframes brillo { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Tarjetas y botones: que respondan al toque. */
+.tarjeta { animation: aparece-suave 0.3s ease backwards; }
+.btn, .chip, .carita, .fab, .contale, .microfono, .renglon-auto { transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease; }
+.btn:active:not(:disabled), .chip:active, .carita:active, .renglon-auto:active { transform: scale(0.96); }
+.fab:active, .contale:active { transform: scale(0.94); }
+.fab, .contale { animation: sube-boton 0.4s cubic-bezier(.2, 1.3, .4, 1) backwards; }
+.contale { animation-delay: 0.05s; }
+@keyframes sube-boton { from { opacity: 0; transform: translateY(24px) scale(0.9); } to { opacity: 1; transform: none; } }
+.velo { animation: aparece-velo 0.2s ease; }
+@keyframes aparece-velo { from { opacity: 0; } to { opacity: 1; } }
+.hoja { animation: subir 0.28s cubic-bezier(.2, .9, .3, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .contenido-dia, .titulo-dia, .lista.linea li.entra, .tarjeta, .fab, .contale, .velo, .hoja { animation: none !important; }
+  .brillo { animation: none; }
+}
+.valor-chip { white-space: nowrap; display: inline-block; }

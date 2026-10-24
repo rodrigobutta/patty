@@ -3,8 +3,9 @@
 /** El día de Patty arranca a las 5: a la 1 de la mañana todavía es "hoy" el día anterior (igual que en la API). */
 export const HORA_INICIO_DIA = 5;
 
-export function hoyEn(zona: string): string {
-  const antes = new Date(Date.now() - HORA_INICIO_DIA * 3600000);
+/** El día de Patty (empieza a las 5) en la zona: el de ahora, o el de `cuando`. */
+export function hoyEn(zona: string, cuando: Date = new Date()): string {
+  const antes = new Date(cuando.getTime() - HORA_INICIO_DIA * 3600000);
   return new Intl.DateTimeFormat('en-CA', { timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit' }).format(antes);
 }
 
