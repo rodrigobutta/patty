@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cerrarDb } from '../src/db/client.js';
 import { sumarDias } from '../src/lib/fechas.js';
 import { baseLimpia, Cliente, conAdmin } from './ayudas.js';
@@ -144,6 +144,73 @@ describe('ingesta desde dispositivos', () => {
     const malo = new Cliente();
     malo.headers.Authorization = 'Bearer patty_' + createHash('sha256').update('x').digest('hex');
     expect((await malo.post('/api/ingesta', lote)).status).toBe(401);
+  });
+});
+
+describe('clima automático', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** Open-Meteo de mentira: devuelve las horas pedidas con valores fijos y cuenta las consultas. */
+  function openMeteo() {
+    const pedidos: URL[] = [];
+    vi.stubGlobal('fetch', async (u: string) => {
+      const url = new URL(u);
+      pedidos.push(url);
+      const desde = Date.parse(url.searchParams.get('start_hour') + ':00Z');
+      const hasta = Date.parse(url.searchParams.get('end_hour') + ':00Z');
+      const time: string[] = [];
+      for (let t = desde; t <= hasta; t += 3600000) time.push(new Date(t).toISOString().slice(0, 13) + ':00');
+      const n = (v: number | null) => time.map(() => v);
+      return new Response(
+        JSON.stringify({ hourly: { time, temperature_2m: n(21.4), relative_humidity_2m: n(68), precipitation: n(0.2), surface_pressure: n(null) } }),
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+    });
+    return pedidos;
+  }
+
+  it('guarda temperatura, humedad y lluvia de la hora, una sola vez por hora, sin guardar la ubicación', async () => {
+    const { ana, personaId } = await conAdmin();
+    const pedidos = openMeteo();
+    const hace10 = new Date(Date.now() - 10 * 60000).toISOString();
+    const r = await ana.post('/api/clima', { persona_id: personaId, lat: -34.60372, lon: -58.38159, inicios: [hace10, hace10] });
+    expect(r.status).toBe(200);
+    expect(r.body.nuevas).toBe(3); // la presión vino vacía: no se guarda
+    expect(pedidos).toHaveLength(1);
+    expect(pedidos[0].searchParams.get('latitude')).toBe('-34.60');
+    expect(pedidos[0].searchParams.get('longitude')).toBe('-58.38');
+
+    // Otra cosa anotada en la misma hora: ya está, no se vuelve a consultar.
+    expect((await ana.post('/api/clima', { persona_id: personaId, lat: -34.6, lon: -58.4, inicios: [hace10] })).body.nuevas).toBe(0);
+    expect(pedidos).toHaveLength(1);
+    // Lo anotado hace días no lleva clima (la ubicación de ahora no sirve).
+    const viejo = new Date(Date.now() - 5 * 86400000).toISOString();
+    expect((await ana.post('/api/clima', { persona_id: personaId, lat: -34.6, lon: -58.4, inicios: [viejo] })).body.nuevas).toBe(0);
+    expect(pedidos).toHaveLength(1);
+
+    const { obtenerDb } = await import('../src/db/client.js');
+    const { sql } = await import('drizzle-orm');
+    const m = await obtenerDb().execute(
+      sql`SELECT c.nombre, cat.clave AS categoria, m.valor, m.unidad, f.nombre AS fuente FROM mediciones m
+          JOIN conceptos c ON c.id = m.concepto_id JOIN categorias cat ON cat.id = c.categoria_id JOIN fuentes f ON f.id = m.fuente_id
+          ORDER BY c.nombre`,
+    );
+    expect([...m]).toEqual([
+      { nombre: 'Humedad', categoria: 'clima', valor: 68, unidad: '%', fuente: 'Clima automático' },
+      { nombre: 'Lluvia', categoria: 'clima', valor: 0.2, unidad: 'mm', fuente: 'Clima automático' },
+      { nombre: 'Temperatura', categoria: 'clima', valor: 21.4, unidad: '°C', fuente: 'Clima automático' },
+    ]);
+    // Entra en el día de la persona, como lo demás que se anota.
+    const dia = await ana.get(`/api/personas/${personaId}/fuentes`);
+    expect(dia.body.map((f: any) => f.nombre)).toEqual(['Clima automático']);
+  });
+
+  it('valida la ubicación, el permiso y avisa si el servicio falla', async () => {
+    const { ana, personaId } = await conAdmin();
+    expect((await ana.post('/api/clima', { persona_id: personaId, lat: 200, lon: 0 })).status).toBe(400);
+    vi.stubGlobal('fetch', async () => new Response('caído', { status: 503 }));
+    expect((await ana.post('/api/clima', { persona_id: personaId, lat: -34.6, lon: -58.4 })).status).toBe(502);
+    expect((await new Cliente().post('/api/clima', { persona_id: personaId, lat: -34.6, lon: -58.4 })).status).toBe(401);
   });
 });
 

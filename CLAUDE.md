@@ -32,7 +32,7 @@ no comparte datos con Quincho. Si hace falta ver cómo se resolvió algo de la b
   se pisó a pedido de Rodrigo; quedó una rama local `respaldo-repo-viejo` en `~/patty` (no subida).
 - Carpeta local: `~/patty` en la Mac de Rodrigo (Node 24, pnpm 10.12, Postgres local en /usr/local/bin). La base local
   `patty` todavía no se creó.
-- Typecheck y tests de la web pasan. Los de la API necesitan `createdb patty_test`.
+- Typecheck y tests pasan. La base de pruebas `patty_test` ya está creada en la Mac.
 - **Railway (2026-10-24)**: proyecto `patty` en la cuenta de Rodrigo (rbutta@gmail.com, plan hobby), servicios `web`
   (repo `rodrigobutta/patty`, rama `main`, se redespliega con cada push) y `Postgres`. Variables de `web`: `PORT=8000`,
   `DATABASE_URL=${{Postgres.DATABASE_URL}}`. URL: https://web-production-4c7d8.up.railway.app. `ANTHROPIC_API_KEY`
@@ -41,7 +41,7 @@ no comparte datos con Quincho. Si hace falta ver cómo se resolvió algo de la b
 ## Próximos pasos posibles
 
 Ver "Pendiente / ideas" en docs/DISENO.md. Lo más pedido por Rodrigo: app nativa con Capacitor que lea Salud /
-Health Connect y tiempo de pantalla, y clima automático por ubicación.
+Health Connect y tiempo de pantalla. El clima automático por ubicación ya está (Open-Meteo, ver docs/DISENO.md).
 
 ## Cómo trabajar acá
 

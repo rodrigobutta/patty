@@ -49,8 +49,14 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   El concepto se busca por nombre (o se crea como `medida`). Mandar lo mismo dos veces no duplica (clave única persona +
   concepto + inicio + fuente: se actualiza el valor).
 - Las mediciones van a su propia tabla (`mediciones`), separada de lo anotado a mano, porque son muchas más filas.
+- **Clima automático**: cada vez que se anota algo en la web, el teléfono pide su ubicación y llama a `POST /api/clima`
+  (`persona_id`, `lat`, `lon`, `inicios`). La API le pide a [Open-Meteo](https://open-meteo.com) (gratis, sin clave) el
+  clima de cada hora y guarda Temperatura, Humedad, Lluvia (mm) y Presión (hPa) como mediciones de la fuente
+  «Clima automático» de la persona (se crea sola). Una lectura por hora y persona: si ya está, no se vuelve a pedir. Lo
+  anotado hace más de 48 h no lleva clima (la ubicación de ahora no dice dónde estaba). La ubicación no se guarda y a
+  Open-Meteo va con 2 decimales (~1 km). Se apaga por dispositivo en Más.
 - Próximos pasos: un atajo de iOS (Atajos + Salud) y una app con Capacitor que lea Health Connect / HealthKit y el
-  tiempo de pantalla, y un servicio de clima que cargue temperatura y humedad por día según la ubicación.
+  tiempo de pantalla.
 
 ## Cómo se buscan los patrones
 
@@ -103,7 +109,6 @@ docs/           Este documento.
 ## Pendiente / ideas
 
 - Capacitor (iOS y Android) y lectura de Salud / Health Connect, tiempo de pantalla.
-- Clima automático por ubicación.
 - Usar `padre_id` (grupos) en el análisis: "verduras → …".
 - Combinaciones (tomate **y** poco sueño → dolor) y efectos de "dosis" (cuánto más café, más…).
 - Recordatorios para anotar (notificaciones) y carga por voz.

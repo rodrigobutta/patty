@@ -15,14 +15,14 @@ import { obtenerOCrearConcepto } from './conceptos.js';
 
 const CATEGORIA_POR_FUENTE: Record<string, string> = { reloj: 'actividad', telefono: 'pantalla', clima: 'clima', otro: 'otro' };
 
-interface Fuente {
+export interface Fuente {
   id: number;
   persona_id: number;
   tipo: string;
   zona_horaria: string;
 }
 
-async function conceptoMedido(tx: Tx, f: Fuente, nombre: string, categoria: string, unidad: string | null, cache: Map<string, number>) {
+export async function conceptoMedido(tx: Tx, f: Fuente, nombre: string, categoria: string, unidad: string | null, cache: Map<string, number>) {
   const clave = `${normalizar(nombre)}|${categoria}`;
   const ya = cache.get(clave);
   if (ya) return ya;

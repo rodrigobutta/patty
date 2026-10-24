@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { Categoria, Concepto, Persona, TipoValor } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
+import { anotarClima } from '../lib/clima';
 import { horaAhora, horaEn, instanteDelDia } from '../lib/fechas';
 import { Autocompletar } from '../ui/Autocompletar';
 
@@ -95,17 +96,19 @@ function Valor({ persona, fecha, elegido, alVolver, alGuardar }: { persona: Pers
   const guardar = async () => {
     if (t === 'intensidad' && intensidad === null) return setError('Elegí la intensidad.');
     setEnviando(true);
+    const inicio = instanteDelDia(fecha, hora, persona.zona_horaria);
     try {
       await api('POST', '/api/registros', {
         persona_id: persona.id,
         concepto_id: elegido.concepto_id,
         concepto_nombre: elegido.concepto_id ? undefined : elegido.nombre,
         categoria_id: elegido.categoria.id,
-        inicio: instanteDelDia(fecha, hora, persona.zona_horaria),
+        inicio,
         intensidad,
         valor: valor === '' ? null : Number(valor.replace(',', '.')),
         nota: nota || null,
       });
+      void anotarClima(persona.id, [inicio]);
       alGuardar();
     } catch (e) {
       setError((e as Error).message);
@@ -173,6 +176,7 @@ function TextoLibre({ persona, alGuardar }: { persona: Persona; alGuardar(): voi
     try {
       const lista = propuesta!.filter((_, i) => !quitar.has(i)).map((p) => ({ ...p, persona_id: persona.id }));
       await api('POST', '/api/registros/varios', { registros: lista });
+      void anotarClima(persona.id, lista.map((p) => p.inicio));
       avisar(`Anotadas ${lista.length} cosas`);
       alGuardar();
     } catch (e) {

@@ -7,6 +7,7 @@ import { obtenerDb } from './db/client.js';
 import { tokenDePedido, usuarioDeToken } from './auth/sesion.js';
 import { codigoPg, ErrorApi } from './lib/errores.js';
 import type { Env } from './lib/http.js';
+import { rutasClima } from './routes/clima.js';
 import { rutasConceptos } from './routes/conceptos.js';
 import { rutasIngesta } from './routes/ingesta.js';
 import { rutasPatrones } from './routes/patrones.js';
@@ -72,6 +73,7 @@ export function crearApp(): Hono<Env> {
   api.route('/personas', rutasPersonas);
   api.route('/conceptos', rutasConceptos);
   api.route('/registros', rutasRegistros);
+  api.route('/clima', rutasClima);
   api.route('/', rutasPatrones);
   api.all('*', () => {
     throw new ErrorApi('Ruta desconocida.', 404);

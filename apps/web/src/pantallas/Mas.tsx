@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
+import { climaActivado, ponerClima, ubicacion } from '../lib/clima';
 import { esIOS, instalada, instalarApp } from '../lib/instalar';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { NuevaPersona } from './NuevaPersona';
@@ -15,6 +16,7 @@ export function Mas() {
   const [fuentes, setFuentes] = useState<Fuente[]>([]);
   const [token, setToken] = useState<{ nombre: string; token: string } | null>(null);
   const [error, setError] = useState('');
+  const [clima, setClima] = useState(climaActivado());
 
   useEffect(() => {
     if (persona) api<Fuente[]>('GET', `/api/personas/${persona.id}/fuentes`).then(setFuentes).catch(() => {});
@@ -51,6 +53,14 @@ export function Mas() {
         <p className="suave chico">
           Cada dispositivo manda sus datos (pasos, pulso, tiempo de pantalla, temperatura) a <code>{(API_BASE || location.origin) + '/api/ingesta'}</code> con su propio token.
         </p>
+        <label className="opcion">
+          <input type="checkbox" checked={clima} onChange={(e) => {
+            ponerClima(e.target.checked);
+            setClima(e.target.checked);
+            if (e.target.checked) void ubicacion(); // para que el teléfono pida el permiso ahora y no al anotar
+          }} />
+          <span>Anotar el clima solo (temperatura, humedad, lluvia y presión) cada vez que cargo algo, con la ubicación de este teléfono.</span>
+        </label>
         <ul className="lista">
           {fuentes.map((f) => <li key={f.id}>{f.nombre}<span className="suave chico"> · {f.ultimo_uso ? `último dato ${new Date(f.ultimo_uso).toLocaleString('es-AR')}` : 'sin datos todavía'}</span></li>)}
         </ul>

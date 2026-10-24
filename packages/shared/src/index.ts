@@ -52,6 +52,8 @@ export const CONCEPTOS_INICIALES: Array<{ categoria: string; nombre: string; tip
   { categoria: 'sueno', nombre: 'Siesta', tipo_valor: 'duracion', unidad: 'min' },
   { categoria: 'clima', nombre: 'Temperatura', tipo_valor: 'medida', unidad: '°C' },
   { categoria: 'clima', nombre: 'Humedad', tipo_valor: 'medida', unidad: '%' },
+  { categoria: 'clima', nombre: 'Lluvia', tipo_valor: 'medida', unidad: 'mm' },
+  { categoria: 'clima', nombre: 'Presión', tipo_valor: 'medida', unidad: 'hPa' },
   { categoria: 'actividad', nombre: 'Pasos', tipo_valor: 'medida', unidad: 'pasos' },
   { categoria: 'comunicacion', nombre: 'Llamadas', tipo_valor: 'cantidad', unidad: null },
   { categoria: 'pantalla', nombre: 'Tiempo de pantalla', tipo_valor: 'medida', unidad: 'min' },
