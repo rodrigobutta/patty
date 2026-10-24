@@ -510,3 +510,56 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .niveles li.actual .punto { border-color: var(--acento); color: var(--acento); animation: latir 1.6s ease-in-out infinite; }
 @keyframes latir { 0%, 100% { box-shadow: 0 0 0 0 var(--acento-suave); } 50% { box-shadow: 0 0 0 6px var(--acento-suave); } }
 @media (prefers-reduced-motion: reduce) { .rueda .orbita-datos, .centro-rueda .mascota, .niveles li.actual .punto { animation: none; } }
+
+/* ---------- Números y buscador ---------- */
+.subvistas { margin-bottom: 12px; position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 3; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); }
+.subvistas button { padding: 9px 6px; font-size: 14px; }
+.numeros > .segmentos { margin-bottom: 12px; }
+.grande-numero { margin: 0 0 10px; font-size: 16px; }
+.grande-numero strong { font-size: 30px; color: var(--acento); }
+.barras-dias { display: flex; align-items: flex-end; gap: 2px; height: 70px; }
+.barras-dias span { flex: 1; min-height: 3px; border-radius: 3px 3px 1px 1px; background: var(--acento);
+  transform-origin: bottom; animation: crecer 0.6s cubic-bezier(.2, .9, .3, 1) backwards; animation-delay: calc(var(--i) * 12ms); }
+.barras-dias span.vacio { background: var(--acento-suave); }
+.eje { display: flex; justify-content: space-between; margin: 4px 0 0; }
+@keyframes crecer { from { transform: scaleY(0); } }
+.ranking { list-style: none; padding: 0; margin: 0; }
+.ranking li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--borde); cursor: pointer;
+  animation: entra-desde-der 0.4s ease backwards; animation-delay: calc(var(--i) * 40ms); }
+.ranking li:last-child { border-bottom: 0; }
+.ranking .que { flex: 1; min-width: 0; }
+.barra-ranking { display: block; height: 6px; margin-top: 4px; border-radius: 999px; background: var(--acento-suave); overflow: hidden; }
+.barra-ranking span { display: block; height: 100%; border-radius: 999px; background: var(--acento); animation: crecer-x 0.8s ease backwards; transform-origin: left; }
+@keyframes crecer-x { from { transform: scaleX(0); } }
+.ranking .cifra { text-align: right; display: flex; flex-direction: column; font-size: 14px; white-space: nowrap; }
+.caritas-barras, .columnas { display: flex; justify-content: space-around; align-items: flex-end; gap: 6px; }
+.caritas-barras > div, .columnas > * { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; background: none; border: 0; padding: 0; font: inherit; color: inherit; }
+.columna-barra { width: 70%; max-width: 34px; height: 80px; display: flex; align-items: flex-end; border-radius: 8px; background: var(--acento-suave); overflow: hidden; }
+.columna-barra span { width: 100%; border-radius: 8px; background: var(--acento); animation: crecer 0.7s cubic-bezier(.2, .9, .3, 1) backwards; transform-origin: bottom; }
+.columnas > .actual .columna-barra span { background: #e58bb4; }
+.caritas-barras .emoji { font-size: 22px; }
+.mosaico { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mosaico .tarjeta { margin: 0; }
+.dato { display: flex; flex-direction: column; gap: 2px; }
+.dato .icono-dato { font-size: 26px; }
+.dato strong { font-size: 17px; }
+.buscar .resultados { margin-top: 8px; }
+.buscar .chips { margin-top: 10px; }
+.resumen-busqueda { display: flex; gap: 12px; align-items: center; }
+.resumen-busqueda h3 { margin: 0; }
+.resumen-busqueda p { margin: 2px 0 0; }
+.icono-grande { font-size: 40px; }
+.cabeza-mes { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.grilla-mes { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; animation: aparece-cuanto 0.3s ease; }
+.dia-semana { text-align: center; font-size: 12px; color: var(--suave); font-weight: 700; }
+.dia-cal { aspect-ratio: 1; border: 0; border-radius: 10px; background: none; color: var(--suave); font: inherit; font-size: 14px; cursor: default; }
+.dia-cal.paso { cursor: pointer; color: var(--sobre-acento); font-weight: 700;
+  background: color-mix(in srgb, var(--acento) calc(var(--fuerza) * 100%), var(--acento-suave));
+  animation: pop 0.35s cubic-bezier(.2, 1.4, .4, 1) backwards; animation-delay: calc(var(--i) * 10ms); }
+.dia-cal.futuro { opacity: 0.35; }
+.dia-cal.elegido { outline: 3px solid #e58bb4; outline-offset: 1px; }
+@keyframes pop { from { transform: scale(0.4); opacity: 0; } }
+.detalle-dia { text-align: center; margin: 10px 0 0; text-transform: none; }
+.columnas.semana { margin-top: 4px; }
+.calendario + .tarjeta h3:not(:first-child) { margin-top: 18px; }
+@media (prefers-reduced-motion: reduce) { .barras-dias span, .ranking li, .barra-ranking span, .columna-barra span, .dia-cal.paso { animation: none; } }

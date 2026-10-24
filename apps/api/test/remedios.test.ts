@@ -158,3 +158,26 @@ describe('progreso hacia los patrones', () => {
     expect(avanceProgreso({ ...p, dias: 90, dias_efecto: 30 })).toMatchObject({ nivel: 3, avance: 1, siguiente: null });
   });
 });
+
+describe('estadísticas', () => {
+  it('lo que más se anotó, ánimo, sueño y los días de un concepto para el calendario', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const hoy = new Date();
+    const hace = (d: number, h = 15) => new Date(hoy.getTime() - d * 86400000).toISOString().slice(0, 10) + `T${String(h).padStart(2, '0')}:00:00.000Z`;
+    const huevo = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Huevo', categoria_id: categorias.comida, inicio: hace(1), valor: 2, unidad: 'unidades' })).body;
+    await ana.post('/api/registros', { persona_id: personaId, concepto_id: huevo.concepto_id, inicio: hace(3), valor: 1, unidad: 'unidades' });
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Dolor de cabeza', categoria_id: categorias.sintoma, inicio: hace(2), intensidad: 6 });
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Cómo me siento', categoria_id: categorias.animo, inicio: hace(2), intensidad: 7 });
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Me acosté', categoria_id: categorias.sueno, inicio: hace(2, 3) }); // 00:00 AR
+    const e = (await ana.get(`/api/estadisticas?persona=${personaId}&dias=30`)).body;
+    expect(e.dias_anotados).toBeGreaterThanOrEqual(3);
+    expect(e.top[0]).toMatchObject({ concepto: 'Huevo', dias: 2, veces: 2, suma: 3 });
+    expect(e.top.some((t: any) => t.concepto === 'Cómo me siento')).toBe(false);
+    expect(e.animo).toEqual([7]);
+    expect(e.dolores).toMatchObject([{ concepto: 'Dolor de cabeza', dias: 1 }]);
+    expect(e.sueno.acoste).toBe(0);
+    const s = (await ana.get(`/api/estadisticas/concepto?persona=${personaId}&concepto=${huevo.concepto_id}`)).body;
+    expect(s.concepto.nombre).toBe('Huevo');
+    expect(s.dias.map((d: any) => d.suma)).toEqual([1, 2]);
+  });
+});

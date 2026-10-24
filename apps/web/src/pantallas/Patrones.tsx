@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { avanceProgreso, nombreRasgo, type Hallazgo, type Persona, type Progreso, type ResultadoAnalisis } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
+import { Buscar } from './Buscar';
+import { Numeros } from './Numeros';
 import { RuedaProgreso } from './RuedaProgreso';
 
 const Q_FIRME = 0.1;
@@ -14,6 +16,9 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const [ultimo, setUltimo] = useState<Pick<ResultadoAnalisis, 'resumen' | 'sugerencias'> | null>(null);
   const [analizando, setAnalizando] = useState(false);
   const [error, setError] = useState('');
+  /** La sub-vista: los patrones, los números, o el buscador (con lo que se eligió desde los números). */
+  const [vista, setVista] = useState<'patrones' | 'numeros' | 'buscar'>('patrones');
+  const [buscado, setBuscado] = useState<number | null>(null);
 
   const traer = useCallback(async () => {
     const [h, a] = await Promise.all([
@@ -69,8 +74,32 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   );
 
   const listo = progreso ? avanceProgreso(progreso).nivel > 0 : true;
+  const pestanas = (
+    <div className="segmentos ancho subvistas">
+      <button className={vista === 'patrones' ? 'activa' : ''} onClick={() => setVista('patrones')}>✨ Patrones</button>
+      <button className={vista === 'numeros' ? 'activa' : ''} onClick={() => setVista('numeros')}>📊 Números</button>
+      <button className={vista === 'buscar' ? 'activa' : ''} onClick={() => setVista('buscar')}>🔎 Buscar</button>
+    </div>
+  );
+  if (vista === 'numeros') {
+    return (
+      <section className="patrones">
+        {pestanas}
+        <Numeros persona={persona} alElegir={(id) => { setBuscado(id); setVista('buscar'); }} />
+      </section>
+    );
+  }
+  if (vista === 'buscar') {
+    return (
+      <section className="patrones">
+        {pestanas}
+        <Buscar persona={persona} conceptoInicial={buscado} />
+      </section>
+    );
+  }
   return (
     <section className="patrones">
+      {pestanas}
       {progreso ? <div className="tarjeta">{<RuedaProgreso progreso={progreso} />}</div> : null}
       <div className="tarjeta">
         <h2>Patrones de {persona.nombre}</h2>

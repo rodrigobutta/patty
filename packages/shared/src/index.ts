@@ -645,3 +645,32 @@ export function avanceProgreso(p: Progreso): { nivel: number; avance: number; si
   }
   return { nivel: NIVELES_PROGRESO.length, avance: 1, siguiente: null };
 }
+
+// ---------- Estadísticas ----------
+
+export interface Estadisticas {
+  desde: string;
+  hasta: string;
+  dias: number;
+  dias_anotados: number;
+  /** Cuántas cosas se anotaron cada día (solo los días con algo). */
+  actividad: Array<{ fecha: string; n: number }>;
+  /** Lo que más se anotó: en cuántos días, cuántas veces y la suma (si tiene cantidad). */
+  top: Array<{ concepto_id: number; concepto: string; categoria_id: number; categoria: string; dias: number; veces: number; suma: number | null; unidad: string | null }>;
+  /** Las intensidades de "cómo me siento" (para contar caritas). */
+  animo: number[];
+  dolores: Estadisticas['top'];
+  /** Hora promedio (minutos del día). */
+  sueno: { acoste: number | null; levante: number | null };
+  clima: { dias_con_datos: number; dias_lluvia: number; mm: number; sol_promedio: number | null; temp_media: number | null; temp_max: number | null };
+  movimiento: { pasos_promedio: number | null; km: number; pantalla_promedio: number | null; llamadas: number };
+  remedios: { programadas: number; tomadas: number };
+}
+
+/** Los días en que pasó algo puntual (para el calendario del buscador). */
+export interface SerieConcepto {
+  concepto: { id: number; nombre: string; tipo_valor: TipoValor; unidad: string | null; categoria_id: number };
+  desde: string;
+  hasta: string;
+  dias: Array<{ fecha: string; veces: number; suma: number | null; intensidad: number | null }>;
+}
