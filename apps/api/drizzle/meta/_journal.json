@@ -50,6 +50,13 @@
       "when": 1792878520681,
       "tag": "0006_supervision",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792879239668,
+      "tag": "0007_codigo_supervision",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 // Supervisar a otro usuario: el supervisor manda la invitación (por usuario o mail), el supervisado la acepta o la
 // rechaza, y cualquiera de los dos la puede terminar. Aceptada, el supervisor ve y anota en las personas del
 // supervisado (vista `accesos`), recibe avisos (push/recordatorios) y le puede mandar avisos al teléfono.
+import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { MisSupervisiones, Supervision } from 'shared';
@@ -8,6 +9,9 @@ import { filas, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type C, type Env } from '../lib/http.js';
 import { avisarAUsuario } from '../push/usuarios.js';
+
+/** Sin 0/O ni 1/I/L, que se confunden al dictarlos o copiarlos. */
+const LETRAS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 interface Fila {
   id: number;
@@ -60,6 +64,42 @@ export const rutasSupervision = new Hono<Env>()
       datos: { tipo: 'supervision', supervision_id: String(nueva!.id) },
     });
     return c.json({ ok: true, nombre: otro.nombre }, 201);
+  })
+  .post('/codigo', async (c) => {
+    // El que quiere ser supervisado pide un código para mostrarle al supervisor (uno por vez: el anterior deja de servir).
+    const u = c.var.usuario;
+    await c.var.db.execute(sql`DELETE FROM codigos_supervision WHERE usuario_id = ${u.id} OR vence < now()`);
+    for (let i = 0; i < 20; i++) {
+      const codigo = Array.from(randomBytes(6), (b) => LETRAS[b % LETRAS.length]).join('');
+      // Siempre con algún número: así no se confunde con un nombre de usuario.
+      if (!/\d/.test(codigo)) continue;
+      const r = await una(c.var.db, sql`INSERT INTO codigos_supervision (codigo, usuario_id, vence) VALUES (${codigo}, ${u.id}, now() + interval '15 minutes')
+        ON CONFLICT DO NOTHING RETURNING codigo`);
+      if (r) return c.json({ codigo, minutos: 15 }, 201);
+    }
+    throw new ErrorApi('No pude generar el código, probá de nuevo.');
+  })
+  .post('/con-codigo', async (c) => {
+    // {codigo}: el supervisor escribe el código que le mostró el otro, y ya lo supervisa (sin invitación).
+    const u = c.var.usuario;
+    const codigo = texto((await cuerpo(c)).codigo).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    // Se usa (y se borra) solo si es de otro: así el propio no lo gasta por probarlo.
+    const r = await una<{ usuario_id: number; nombre: string }>(
+      c.var.db,
+      sql`DELETE FROM codigos_supervision k USING usuarios o
+          WHERE k.codigo = ${codigo} AND k.vence > now() AND o.id = k.usuario_id AND o.activo AND k.usuario_id <> ${u.id}
+          RETURNING k.usuario_id, o.nombre`,
+    );
+    if (!r) {
+      if (await una(c.var.db, sql`SELECT 1 AS x FROM codigos_supervision WHERE codigo = ${codigo} AND usuario_id = ${u.id}`)) {
+        throw new ErrorApi('Ese código es tuyo: lo tiene que escribir quien te va a supervisar.');
+      }
+      throw new ErrorApi('Ese código no existe o ya venció. Pedile que genere uno nuevo.');
+    }
+    await c.var.db.execute(sql`INSERT INTO supervisiones (supervisor_id, supervisado_id, estado, respondido) VALUES (${u.id}, ${r.usuario_id}, 'aceptada', now())
+      ON CONFLICT (supervisor_id, supervisado_id) DO UPDATE SET estado = 'aceptada', respondido = now()`);
+    await avisarAUsuario(c.var.db, r.usuario_id, { titulo: 'Patty', cuerpo: `${u.nombre} ya te supervisa. Lo podés quitar cuando quieras desde Más.`, datos: { tipo: 'supervision' } });
+    return c.json({ ok: true, nombre: r.nombre }, 201);
   })
   .post('/:id/responder', async (c) => {
     // {aceptar: true | false}: solo el supervisado, y solo si está pendiente.

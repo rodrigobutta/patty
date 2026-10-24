@@ -385,6 +385,18 @@ export const supervisiones = pgTable(
   (t) => [uniqueIndex('supervisiones_par_idx').on(t.supervisor_id, t.supervisado_id), index('supervisiones_supervisado_idx').on(t.supervisado_id)],
 );
 
+/**
+ * Un código corto que muestra en pantalla quien quiere ser supervisado: el supervisor lo escribe y la supervisión queda
+ * aceptada, sin invitación. Vence a los 15 minutos y sirve una sola vez.
+ */
+export const codigosSupervision = pgTable('codigos_supervision', {
+  codigo: text('codigo').primaryKey(),
+  usuario_id: integer('usuario_id')
+    .notNull()
+    .references(() => usuarios.id, { onDelete: 'cascade' }),
+  vence: instante('vence').notNull(),
+});
+
 // ---------- Patrones ----------
 
 /** Cada vez que se corre el análisis de una persona. */

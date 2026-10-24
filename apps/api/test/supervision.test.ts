@@ -91,3 +91,18 @@ describe('supervisión', () => {
     expect(await revisarDiasSinAnotar(db, new Date('2026-10-10T00:02:00.000Z'))).toBe(1 - 1);
   });
 });
+
+describe('supervisión con código', () => {
+  it('el supervisado muestra un código y el supervisor lo escribe: queda aceptada, una sola vez', async () => {
+    const { hijo, mama, enviados } = await familia();
+    const k = await mama.c.post('/api/supervision/codigo');
+    expect(k.body.codigo).toMatch(/^[A-Z2-9]{6}$/);
+    expect((await mama.c.post('/api/supervision/con-codigo', { codigo: k.body.codigo })).status).toBe(400);
+    expect((await hijo.c.post('/api/supervision/con-codigo', { codigo: 'ZZZZZZ' })).status).toBe(400);
+    const r = await hijo.c.post('/api/supervision/con-codigo', { codigo: ` ${k.body.codigo.toLowerCase().slice(0, 3)}-${k.body.codigo.slice(3)} ` });
+    expect(r.body).toMatchObject({ ok: true, nombre: 'Marta' });
+    expect(enviados.at(-1)).toMatchObject({ token: 'tel-marta' });
+    expect((await hijo.c.get(`/api/registros?persona=${mama.personaId}`)).status).toBe(200);
+    expect((await hijo.c.post('/api/supervision/con-codigo', { codigo: k.body.codigo })).status).toBe(400);
+  });
+});
