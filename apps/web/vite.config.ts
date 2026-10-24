@@ -11,7 +11,12 @@ export default defineConfig(({ mode }) => {
     base: './',
     // "shared" se usa desde el código fuente (sin compilarlo antes).
     resolve: { conditions: ['source'] },
-    server: { port: 5173, proxy: { '/api': { target: destino, changeOrigin: true } } },
+    server: {
+      port: 5173,
+      proxy: { '/api': { target: destino, changeOrigin: true } },
+      // Los proyectos nativos no son parte de la web: que tocarlos no recargue la página.
+      watch: { ignored: ['**/android/**', '**/ios/**'] },
+    },
     plugins: [
       react(),
       VitePWA({

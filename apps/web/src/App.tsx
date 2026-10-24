@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useEstado } from './estado';
+import { useDatosDelTelefono } from './lib/telefono';
 import { useSeguirUbicacion } from './lib/ubicacion';
 import { Entrar } from './pantallas/Entrar';
 import { Hoy } from './pantallas/Hoy';
@@ -19,6 +20,7 @@ export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso } = useEstado();
   const [pestana, setPestana] = useState<Pestana>('hoy');
   useSeguirUbicacion(fase === 'listo' ? persona?.id : undefined);
+  useDatosDelTelefono(fase === 'listo' ? persona?.id : undefined);
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;

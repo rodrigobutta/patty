@@ -38,10 +38,14 @@ no comparte datos con Quincho. Si hace falta ver cómo se resolvió algo de la b
   `DATABASE_URL=${{Postgres.DATABASE_URL}}`. URL: https://web-production-4c7d8.up.railway.app. `ANTHROPIC_API_KEY`
   queda para que la cargue Rodrigo (la misma de Quincho, proyecto `easy-project-plan-next`, servicio `app`).
 
+- **App nativa (2026-10-24)**: Capacitor 8 en `apps/web` (Android e iPhone), abre la web de Railway o el Vite de
+  la Mac con recarga en vivo (`pnpm movil:dev:android`). Rodrigo usa un **Android**; se mantienen las dos plataformas
+  y en el iPhone faltan uso de apps y llamadas. En su Mac quedaron Java 21, Android Studio, el SDK y el emulador
+  `Patty_Pixel`; Xcode lo instala él (pide su clave). Detalle en docs/DISENO.md y el README.
+
 ## Próximos pasos posibles
 
-Ver "Pendiente / ideas" en docs/DISENO.md. Lo más pedido por Rodrigo: app nativa con Capacitor que lea Salud /
-Health Connect y tiempo de pantalla. El clima automático por ubicación ya está (Open-Meteo), y también el seguimiento de ubicación con lugares con nombre y viajes (ver docs/DISENO.md).
+Ver "Pendiente / ideas" en docs/DISENO.md. Lo más pedido por Rodrigo: que la app nativa lea Salud / Health Connect. El clima automático por ubicación ya está (Open-Meteo), y también el seguimiento de ubicación con lugares con nombre y viajes (ver docs/DISENO.md).
 
 ## Cómo trabajar acá
 

@@ -56,13 +56,26 @@ async function fuenteDelPedido(c: C): Promise<Fuente> {
   return f;
 }
 
+/** El formato del plugin de ubicación de la app nativa, llevado al de Patty (los demás pasan como vienen). */
+export function puntoDeLaApp(x: unknown): unknown {
+  const p = x as Record<string, unknown> | null;
+  if (!p || p.lat !== undefined || p.latitude === undefined) return x;
+  return {
+    lat: p.latitude,
+    lon: p.longitude,
+    precision: p.accuracy ?? undefined,
+    instante: typeof p.time === 'number' ? new Date(p.time).toISOString() : undefined,
+  };
+}
+
 export const rutasIngesta = new Hono<Env>()
   // Un atajo del teléfono ("al salir de casa", "al llegar al trabajo") manda dónde está: { "lat": -34.6, "lon": -58.4 }.
-  // También acepta { "puntos": [...] } como la web. Corre aunque Patty esté cerrada.
+  // También acepta { "puntos": [...] } como la web, y lo que manda sola la app nativa en segundo plano
+  // ({ latitude, longitude, accuracy, time }). Corre aunque Patty esté cerrada.
   .post('/ubicacion', async (c) => {
     const f = await fuenteDelPedido(c);
     const d = await cuerpo(c);
-    const lista = Array.isArray(d.puntos) ? d.puntos : [d];
+    const lista = (Array.isArray(d.puntos) ? d.puntos : [d]).map(puntoDeLaApp);
     const r = await c.var.db.transaction(async (tx) => {
       await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE id = ${f.id}`);
       return guardarPuntos(tx, { id: f.persona_id, zona_horaria: f.zona_horaria }, lista);

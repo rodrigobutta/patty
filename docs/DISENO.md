@@ -72,8 +72,22 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   - En el motor, las estadías tienen hora (para el orden dentro del día) pero son `automatica`: un día con solo
     ubicación no cuenta como día anotado (si no, parecería un día sin dolores).
   - Borrar el historial (Más) borra puntos y lo calculado; los lugares quedan.
-- Próximos pasos: un atajo de iOS (Atajos + Salud) y una app con Capacitor que lea Health Connect / HealthKit y el
-  tiempo de pantalla.
+- **App nativa** (Capacitor 8, `apps/web/android` y `apps/web/ios`; cómo correrla en el README): abre la web desde
+  `server.url` (Railway, o el Vite de la Mac en desarrollo), así que es el mismo código y la misma sesión con cookie;
+  lo empaquetado es solo la pantalla de "sin conexión" (`apps/web/movil/local`). `lib/nativo.ts` dice si está adentro.
+  - La app crea sola una fuente «App de Android» / «App de iPhone» (tipo `telefono`) y guarda su token en el teléfono
+    (`lib/fuenteApp.ts`): con él manda lo que junta sin la web a la vista.
+  - Ubicación con la app cerrada: plugin `@capgo/background-geolocation` (servicio en primer plano en Android, con
+    notificación fija; modo de fondo `location` en iOS). Cada punto (como mucho cada 2 min y 100 m) lo manda el código
+    nativo directo a `POST /api/ingesta/ubicacion`, que también acepta su formato (`latitude`, `longitude`, `time`).
+    Android no deja arrancarlo con la app en segundo plano: si hace falta, espera a que vuelva a estar a la vista.
+  - Datos del teléfono (solo Android, plugin propio `TelefonoPlugin.java`): minutos en primer plano de cada app
+    (eventos de UsageStats, permiso «Acceso a datos de uso» que se da en Ajustes) y llamadas (entrantes + salientes,
+    perdidas y minutos; nunca números ni nombres; permiso `READ_CALL_LOG`). Se prende en Más; al abrir Patty (como
+    mucho cada 30 min) manda los últimos 7 días calendario a `POST /api/ingesta`: «Tiempo de pantalla», «Uso de
+    <app>» (si pasó 5 min en el día), «Llamadas», «Llamadas perdidas», «Minutos en llamadas». Mandar de nuevo un día
+    actualiza el valor.
+- Próximos pasos: leer Health Connect / HealthKit (pasos, sueño, pulso) desde la app nativa.
 
 ## Cómo se buscan los patrones
 
@@ -125,7 +139,7 @@ docs/           Este documento.
 
 ## Pendiente / ideas
 
-- Capacitor (iOS y Android) y lectura de Salud / Health Connect, tiempo de pantalla.
+- Lectura de Salud / Health Connect desde la app nativa; íconos propios de la app nativa (hoy los de Capacitor).
 - Usar `padre_id` (grupos) en el análisis: "verduras → …".
 - Combinaciones (tomate **y** poco sueño → dolor) y efectos de "dosis" (cuánto más café, más…).
 - Recordatorios para anotar (notificaciones) y carga por voz.

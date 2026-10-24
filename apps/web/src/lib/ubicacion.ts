@@ -1,11 +1,14 @@
 // Seguimiento de la ubicación para contar viajes y saber en qué lugares con nombre estuvo la persona.
 // Viene apagado: se prende por dispositivo en Más. Mientras Patty está abierta se sigue el movimiento y se manda un
 // punto solo cuando hace falta (primero del día, más de 1 km, o entrar o salir de un lugar); la API vuelve a filtrar.
-// Una web no puede seguir la ubicación con la app cerrada o la pantalla apagada: para eso está el atajo del teléfono
-// (POST /api/ingesta/ubicacion) y, más adelante, la app nativa.
+// Una web no puede seguir la ubicación con la app cerrada o la pantalla apagada: para eso está la app nativa (que la
+// sigue en segundo plano y la manda sola a POST /api/ingesta/ubicacion) o el atajo del teléfono.
+import { BackgroundGeolocation } from '@capgo/background-geolocation';
 import { useEffect, useState } from 'react';
 import { puntoNuevo, type Coordenadas, type Lugar } from 'shared';
 import { api } from '../api';
+import { ingestaUrl, tokenDeLaApp } from './fuenteApp';
+import { esNativa } from './nativo';
 
 const CLAVE = 'ubicacion';
 const ULTIMO = 'ubicacion-ultimo';
@@ -28,6 +31,10 @@ export function ponerSeguimiento(activo: boolean): void {
     }
   } catch {
     /* sin almacenamiento */
+  }
+  if (!activo && esNativa()) {
+    siguiendoNativo = null;
+    void BackgroundGeolocation.stop().catch(() => {});
   }
   window.dispatchEvent(new Event(EVENTO));
 }
@@ -99,6 +106,52 @@ export function seguir(personaId: number): () => void {
   };
 }
 
+/**
+ * En la app nativa: el teléfono sigue la ubicación aunque Patty esté cerrada (Android muestra una notificación fija
+ * mientras tanto) y manda cada punto directo a la ingesta, sin pasar por la web. La API se queda solo con los que
+ * sirven (primero del día, más de 1 km, entrar o salir de un lugar). No se corta al salir de la pantalla: solo al
+ * apagarlo en Más.
+ */
+let siguiendoNativo: number | null = null;
+
+export async function seguirNativo(personaId: number, alFallar: (mensaje: string) => void = () => {}): Promise<void> {
+  if (siguiendoNativo === personaId) return;
+  // Android no deja arrancar el seguimiento con la app en segundo plano: se espera a que vuelva a estar a la vista.
+  if (document.visibilityState !== 'visible') {
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible') return;
+      document.removeEventListener('visibilitychange', alVolver);
+      if (seguimientoActivado()) void seguirNativo(personaId, alFallar);
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    return;
+  }
+  siguiendoNativo = personaId;
+  try {
+    const token = await tokenDeLaApp(personaId);
+    await BackgroundGeolocation.stop().catch(() => {});
+    await BackgroundGeolocation.start(
+      {
+        backgroundTitle: 'Patty',
+        backgroundMessage: 'Anotando tus viajes y los lugares donde estás',
+        requestPermissions: true,
+        stale: false,
+        distanceFilter: 100,
+        minIntervalMs: 2 * 60000,
+        networkFallback: true,
+        url: ingestaUrl('/ubicacion'),
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      (_punto, error) => {
+        if (error?.code === 'NOT_AUTHORIZED') alFallar('Patty no tiene permiso de ubicación: habilitalo en los ajustes del teléfono («Permitir todo el tiempo»).');
+      },
+    );
+  } catch (e) {
+    siguiendoNativo = null;
+    alFallar((e as Error).message);
+  }
+}
+
 /** Mientras el seguimiento esté prendido en este dispositivo, sigue la ubicación de la persona elegida. */
 export function useSeguirUbicacion(personaId: number | undefined): void {
   const [activo, setActivo] = useState(seguimientoActivado);
@@ -107,5 +160,9 @@ export function useSeguirUbicacion(personaId: number | undefined): void {
     window.addEventListener(EVENTO, f);
     return () => window.removeEventListener(EVENTO, f);
   }, []);
-  useEffect(() => (activo && personaId ? seguir(personaId) : undefined), [activo, personaId]);
+  useEffect(() => {
+    if (!activo || !personaId) return;
+    if (esNativa()) void seguirNativo(personaId);
+    else return seguir(personaId);
+  }, [activo, personaId]);
 }

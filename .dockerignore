@@ -2,3 +2,5 @@
 **/dist
 **/.env
 .git
+apps/web/android
+apps/web/ios

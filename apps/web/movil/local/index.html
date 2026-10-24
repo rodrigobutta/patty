@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Patty</title>
+    <style>
+      :root { color-scheme: light dark; --fondo: #f6f4fb; --texto: #2a2440; --acento: #6b4fbb; }
+      @media (prefers-color-scheme: dark) { :root { --fondo: #17141f; --texto: #ece8f6; --acento: #a993ef; } }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--fondo); color: var(--texto);
+        font: 17px/1.5 system-ui, -apple-system, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+      button { margin-top: 16px; font: inherit; padding: 10px 22px; border-radius: 999px; border: 0; background: var(--acento); color: #fff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Sin conexión</h1>
+      <p>Patty necesita internet para abrir. Revisá la conexión y probá de nuevo.</p>
+      <button onclick="history.length > 1 ? history.back() : location.reload()">Reintentar</button>
+    </main>
+  </body>
+</html>

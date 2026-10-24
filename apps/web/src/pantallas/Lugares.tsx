@@ -6,7 +6,8 @@ import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
 import { horaEn } from '../lib/fechas';
 import { ubicacion } from '../lib/clima';
-import { mandarPunto, ponerLugares, ponerSeguimiento, seguimientoActivado } from '../lib/ubicacion';
+import { esNativa, plataforma } from '../lib/nativo';
+import { mandarPunto, ponerLugares, ponerSeguimiento, seguimientoActivado, seguirNativo } from '../lib/ubicacion';
 
 export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEscribir: boolean }) {
   const { avisar } = useEstado();
@@ -44,7 +45,8 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
   const prender = async (si: boolean) => {
     ponerSeguimiento(si);
     setActivo(si);
-    if (si) {
+    if (si && esNativa()) await seguirNativo(persona.id, setError); // pide los permisos y arranca en segundo plano
+    else if (si) {
       const u = await ubicacion(); // que el teléfono pida el permiso ahora
       if (!u) setError('El teléfono no dio la ubicación: revisá el permiso del navegador para Patty.');
       else if (await mandarPunto(persona.id, u)) void traer();
@@ -85,11 +87,20 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
         <input type="checkbox" checked={activo} onChange={(e) => void prender(e.target.checked)} />
         <span>Contar viajes y lugares con la ubicación de este teléfono.</span>
       </label>
-      <p className="suave chico">
-        Se guarda un punto cuando te movés más de 1 km o entrás o salís de un lugar con nombre. Solo funciona con Patty
-        abierta: el navegador no deja seguir la ubicación con la app cerrada (para eso, el atajo de abajo). Los puntos se
-        borran solos a los 90 días; quedan los viajes y las estadías.
-      </p>
+      {esNativa() ? (
+        <p className="suave chico">
+          Se guarda un punto cuando te movés más de 1 km o entrás o salís de un lugar con nombre, también con Patty
+          cerrada{plataforma() === 'android' ? ' (Android muestra una notificación fija mientras tanto)' : ''}. Para que no
+          se corte, dale a Patty el permiso de ubicación «Permitir todo el tiempo». Los puntos se borran solos a los 90
+          días; quedan los viajes y las estadías.
+        </p>
+      ) : (
+        <p className="suave chico">
+          Se guarda un punto cuando te movés más de 1 km o entrás o salís de un lugar con nombre. Solo funciona con Patty
+          abierta: el navegador no deja seguir la ubicación con la app cerrada (para eso, la app de Android o iPhone, o el
+          atajo de abajo). Los puntos se borran solos a los 90 días; quedan los viajes y las estadías.
+        </p>
+      )}
 
       {dia && dia.puntos > 0 ? (
         <div className="nota-ia">
@@ -128,11 +139,11 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
           <button className="btn" onClick={borrarHistorial}>Borrar historial</button>
         </div>
       ) : null}
-      <p className="suave chico">
+      {esNativa() ? null : <p className="suave chico">
         Con la app cerrada: en el iPhone, Atajos → Automatización → «Al llegar» o «Al salir» de un lugar → «Obtener
         ubicación actual» y «Obtener contenido de URL» con POST a <code>{(API_BASE || location.origin) + '/api/ingesta/ubicacion'}</code>,
         JSON <code>{'{"lat": …, "lon": …}'}</code> y el token de una fuente «Teléfono» de arriba.
-      </p>
+      </p>}
       {error ? <p className="neg">{error}</p> : null}
     </div>
   );

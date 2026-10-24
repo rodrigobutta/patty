@@ -49,3 +49,19 @@ describe('qué puntos se guardan', () => {
     expect(puntoNuevo(p(-34.6), p(-34.6001), [CASA])).toBe(false); // sigue en casa
   });
 });
+
+describe('puntos que manda la app nativa', () => {
+  it('lleva el formato del plugin de ubicación al de Patty', async () => {
+    const { puntoDeLaApp } = await import('../src/routes/ingesta.js');
+    expect(puntoDeLaApp({ latitude: -34.6, longitude: -58.4, accuracy: 12, time: Date.parse('2026-10-24T12:00:00Z'), simulated: false })).toEqual({
+      lat: -34.6,
+      lon: -58.4,
+      precision: 12,
+      instante: '2026-10-24T12:00:00.000Z',
+    });
+  });
+  it('deja pasar los puntos que ya vienen como los manda la web o un atajo', async () => {
+    const { puntoDeLaApp } = await import('../src/routes/ingesta.js');
+    expect(puntoDeLaApp({ lat: 1, lon: 2 })).toEqual({ lat: 1, lon: 2 });
+  });
+});
