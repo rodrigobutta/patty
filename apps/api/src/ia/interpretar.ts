@@ -85,7 +85,9 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, 
     '"anoche", "el lunes a la mañana" se calculan desde hoy. Si no se dice la hora, usá una razonable según el momento: ' +
     'a la mañana 9:00, al mediodía 13:00, a la tarde 17:00, a la noche 21:00. Lo de la madrugada ("anoche a las 2") va con ' +
     'la fecha del calendario en que pasó (la del día siguiente). Si algo duró ("estuvimos 3 horas"), poné duracion_min en ' +
-    'el registro de esa actividad o evento.';
+    'el registro de esa actividad o evento. ' +
+    'Si al final hay aclaraciones (respuestas a tus preguntas), usalas para completar o corregir los registros: no los ' +
+    'repitas, y no vuelvas a preguntar lo que ya se aclaró.';
   const consigna = [
     `Hoy es ${diaDeLaSemana(hoy)} ${hoy} y son las ${String(Math.floor(hora / 60)).padStart(2, '0')}:${String(hora % 60).padStart(2, '0')} para ${p.nombre}.`,
     ...(referencia && referencia !== hoy

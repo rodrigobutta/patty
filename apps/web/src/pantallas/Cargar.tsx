@@ -207,6 +207,11 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
   );
 }
 
+/**
+ * "Contarlo": hablarle (o escribirle) a Patty cómo fue el día y que lo ordene en registros para revisar. Con micrófono
+ * solo se ve el botón grande y lo que se escuchó; para escribir hay un enlace. Si Patty tiene dudas ("¿cuántas
+ * porciones?"), se le contesta igual, hablando o escribiendo, y vuelve a ordenar todo con la aclaración.
+ */
 function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
   persona: Persona;
   /** El día que se estaba mirando: si no se dice cuándo pasó, es ese. */
@@ -216,75 +221,83 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
 }) {
   const { categorias, festejar, sesion } = useEstado();
   const vozServidor = Boolean(sesion?.voz);
-  const [transcribiendo, setTranscribiendo] = useState(false);
+  const conVoz = hayVoz(vozServidor);
+  const [modo, setModo] = useState<'voz' | 'escribir'>(conVoz ? 'voz' : 'escribir');
+  /** Todo lo contado hasta ahora (con las aclaraciones): es lo que se manda a ordenar. */
   const [texto, setTexto] = useState('');
+  /** Lo que se está escuchando ahora (en vivo si el teléfono lo da). */
+  const [oido, setOido] = useState('');
+  const [respuesta, setRespuesta] = useState('');
   const [propuesta, setPropuesta] = useState<Propuesta[] | null>(null);
   const [dudas, setDudas] = useState<string[]>([]);
   const [quitar, setQuitar] = useState<Set<number>>(new Set());
-  const [trabajando, setTrabajando] = useState(false);
+  const [estado, setEstado] = useState<'quieto' | 'escuchando' | 'transcribiendo' | 'ordenando' | 'guardando'>('quieto');
   const [error, setError] = useState('');
-
-  const [escuchando, setEscuchando] = useState(false);
   const escucha = useRef<Escucha | null>(null);
-  /** Lo que ya estaba escrito antes de dictar: lo dictado se agrega a continuación. */
-  const previo = useRef('');
-  /** El texto ya se ordenó: lo próximo que se dicte lo reemplaza en vez de sumarse (si no, se repetiría todo). */
-  const yaOrdenado = useRef(false);
 
-  // Dictar: el texto va apareciendo mientras se habla y, al terminar, se ordena solo.
-  const dictar = async () => {
-    if (escuchando) return escucha.current?.parar();
+  const interpretar = async (contado: string) => {
+    setEstado('ordenando');
     setError('');
-    previo.current = yaOrdenado.current ? '' : texto.trim();
-    yaOrdenado.current = false;
-    if (!previo.current) setTexto('');
+    try {
+      const r = await api<{ registros: Propuesta[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado, fecha });
+      setTexto(contado);
+      setPropuesta(r.registros);
+      setDudas(r.dudas);
+      setQuitar(new Set());
+      setRespuesta('');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setEstado('quieto');
+    }
+  };
+
+  /** Lo nuevo que se cuenta: si ya había propuesta con dudas, va como respuesta a esas dudas; si no, es el relato. */
+  const contar = (nuevo: string) => {
+    const t = nuevo.trim();
+    if (!t) return;
+    if (propuesta) {
+      const preguntas = dudas.length ? ` (a tus preguntas: ${dudas.join(' / ')})` : '';
+      void interpretar(`${texto}\n\nAclaración${preguntas}: ${t}`);
+    } else void interpretar(t);
+  };
+
+  const escucharAhora = async () => {
+    if (estado === 'escuchando') return escucha.current?.parar();
+    setError('');
+    setOido('');
     let dicho = '';
-    setEscuchando(true);
+    setEstado('escuchando');
     escucha.current = await escuchar(
       (t) => {
         dicho = t;
-        setTexto([previo.current, t].filter(Boolean).join(' '));
+        setOido(t);
       },
       (err) => {
-        setEscuchando(false);
-        setTranscribiendo(false);
         escucha.current = null;
-        if (err) setError(err);
-        else if (dicho.trim()) void interpretar([previo.current, dicho].filter(Boolean).join(' '));
+        if (err) {
+          setEstado('quieto');
+          setError(err);
+        } else if (dicho.trim()) contar(dicho);
+        else setEstado('quieto');
       },
-      { servidor: vozServidor, alTranscribir: () => { setEscuchando(false); setTranscribiendo(true); } },
+      { servidor: vozServidor, alTranscribir: () => setEstado('transcribiendo') },
     );
   };
 
   // Desde el botón grande del Día: se empieza a escuchar apenas se abre.
   const empezado = useRef(false);
   useEffect(() => {
-    if (!dictarAlAbrir || empezado.current || !hayVoz(vozServidor)) return;
+    if (!dictarAlAbrir || empezado.current || !conVoz) return;
     empezado.current = true;
-    void dictar();
+    void escucharAhora();
   });
-
-  const interpretar = async (contado = texto) => {
-    setTrabajando(true);
-    setError('');
-    try {
-      const r = await api<{ registros: Propuesta[]; dudas: string[] }>('POST', '/api/registros/interpretar', { persona_id: persona.id, texto: contado, fecha });
-      setPropuesta(r.registros);
-      setDudas(r.dudas);
-      yaOrdenado.current = true;
-      setQuitar(new Set());
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setTrabajando(false);
-    }
-  };
 
   /** El día de Patty (de 5 a 5) de un instante, para mostrar si lo propuesto va a otro día. */
   const diaDe = (inicio: string) => hoyEn(persona.zona_horaria, new Date(inicio));
 
   const guardar = async () => {
-    setTrabajando(true);
+    setEstado('guardando');
     try {
       const lista = propuesta!.filter((_, i) => !quitar.has(i)).map((p) => ({ ...p, persona_id: persona.id }));
       const hechos = await api<Registro[]>('POST', '/api/registros/varios', { registros: lista });
@@ -295,9 +308,44 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
       alGuardar(otroDia);
     } catch (e) {
       setError((e as Error).message);
-      setTrabajando(false);
+      setEstado('quieto');
     }
   };
+
+  const ocupado = estado !== 'quieto' && estado !== 'escuchando';
+  const leyenda = {
+    quieto: propuesta ? 'Tocá y contestale' : 'Tocá y contale',
+    escuchando: 'Te escucho… tocá para terminar',
+    transcribiendo: 'Pasando a texto…',
+    ordenando: 'Ordenando…',
+    guardando: 'Guardando…',
+  }[estado];
+
+  /** El micrófono grande (o, escribiendo, el cuadro de texto), para contar o para contestar. */
+  const entrada = (paraResponder: boolean) =>
+    modo === 'voz' ? (
+      <div className={`voz${paraResponder ? ' chica' : ''}`}>
+        <button className={`boton-voz ${estado}`} onClick={() => void escucharAhora()} disabled={ocupado} aria-label={leyenda}>
+          <span aria-hidden>{ocupado ? '⏳' : '🎙️'}</span>
+        </button>
+        <p className="leyenda-voz">{leyenda}</p>
+        {oido && (estado === 'escuchando' || estado === 'transcribiendo' || estado === 'ordenando') ? <blockquote className="oido">{oido}</blockquote> : null}
+        <button className="enlace" onClick={() => setModo('escribir')} disabled={estado === 'escuchando'}>✍️ Prefiero escribir</button>
+      </div>
+    ) : paraResponder ? (
+      <div className="responder">
+        <input value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder="Ej: dos porciones, era de mi primo" onKeyDown={(e) => e.key === 'Enter' && contar(respuesta)} />
+        <button className="btn primario" disabled={ocupado || !respuesta.trim()} onClick={() => contar(respuesta)}>{estado === 'ordenando' ? 'Ordenando…' : 'Responder'}</button>
+        {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>🎙️ Prefiero hablar</button> : null}
+      </div>
+    ) : (
+      <>
+        <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
+          placeholder="Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»" />
+        <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? 'Ordenando…' : 'Ordenarlo'}</button>
+        {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>🎙️ Prefiero hablar</button> : null}
+      </>
+    );
 
   if (propuesta) {
     return (
@@ -307,7 +355,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
           {propuesta.map((p, i) => {
             const cat = categorias.find((c) => c.id === p.categoria_id);
             return (
-              <li key={i} className={quitar.has(i) ? 'tachado' : ''} onClick={() => setQuitar((q) => { const n = new Set(q); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
+              <li key={i} className={`entra${quitar.has(i) ? ' tachado' : ''}`} style={{ ['--n' as string]: i }} onClick={() => setQuitar((q) => { const n = new Set(q); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
                 <span className="hora">
                   {diaDe(p.inicio) !== fecha ? <span className="dia-propuesta">{nombreDia(diaDe(p.inicio), persona.zona_horaria)}</span> : null}
                   {horaEn(p.inicio, persona.zona_horaria)}
@@ -323,27 +371,27 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false }: {
             );
           })}
         </ul>
-        {dudas.length ? <div className="nota-ia">{dudas.map((d) => <p key={d}>🤔 {d}</p>)}</div> : null}
+        {dudas.length ? (
+          <div className="nota-ia">
+            {dudas.map((d) => <p key={d}>🤔 {d}</p>)}
+            <p className="suave chico">Si querés, contestale y lo suma a lo anterior; si no, anotá así.</p>
+            {entrada(true)}
+          </div>
+        ) : null}
         {error ? <p className="neg">{error}</p> : null}
         <div className="fila">
-          <button className="btn" onClick={() => setPropuesta(null)}>Volver</button>
-          <button className="btn primario" onClick={guardar} disabled={trabajando || quitar.size === propuesta.length}>Anotar {propuesta.length - quitar.size}</button>
+          <button className="btn" onClick={() => { setPropuesta(null); setDudas([]); }} disabled={ocupado}>Volver</button>
+          <button className="btn primario" onClick={guardar} disabled={ocupado || estado === 'escuchando' || quitar.size === propuesta.length}>
+            {estado === 'guardando' ? 'Guardando…' : `Anotar ${propuesta.length - quitar.size}`}
+          </button>
         </div>
       </div>
     );
   }
   return (
     <div className="valor">
-      <textarea rows={5} value={texto} onChange={(e) => { yaOrdenado.current = false; setTexto(e.target.value); }} autoFocus={!hayVoz(vozServidor)}
-        placeholder="Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»" />
-      {hayVoz(vozServidor) ? (
-        <button className={`microfono${escuchando ? ' escuchando' : ''}`} onClick={() => void dictar()} disabled={trabajando || transcribiendo} aria-label={escuchando ? 'Terminar de dictar' : 'Dictar'}>
-          <span aria-hidden>🎙️</span>
-          {transcribiendo ? 'Pasando a texto…' : escuchando ? 'Te escucho… tocá para terminar' : 'Hablarle'}
-        </button>
-      ) : null}
+      {entrada(false)}
       {error ? <p className="neg">{error}</p> : null}
-      <button className="btn primario ancho" onClick={() => void interpretar()} disabled={trabajando || escuchando || !texto.trim()}>{trabajando ? 'Leyendo…' : 'Ordenarlo'}</button>
     </div>
   );
 }

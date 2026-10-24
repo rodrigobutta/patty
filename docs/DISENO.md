@@ -108,6 +108,9 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
 - **Festejo** (`mascota/Festejo.tsx`, `festejar` en el estado): al anotar algo la mascota aparece un momento, salta
   y suelta chispitas; si lo anotado es que la persona está mal, acompaña con otra cara. Después de contestar
   "¿cómo te sentís ahora?" la pregunta desaparece del Día por 3 horas; tocando la mascota de arriba se abre cuando sea.
+- **Contarlo con la voz**: si hay micrófono, solo el botón grande y lo que se escuchó (con un enlace "Prefiero
+  escribir"). Si Patty tiene dudas ("¿cuántas porciones?"), se le contesta igual, hablando o escribiendo: la respuesta
+  se suma al relato como "Aclaración" y se vuelve a ordenar todo.
 - **Días anteriores**: "Contarlo" entiende "ayer", "el sábado a la noche", "anoche a las 2" y duraciones ("estuvimos 3
   horas"), y si se abre mirando otro día, eso es lo que se toma por defecto (`fecha` en `/api/registros/interpretar`).
   La propuesta muestra el día si no es el que se mira, y al guardar el Día salta a ese día.

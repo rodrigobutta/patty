@@ -294,6 +294,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           </ul>
         </div>
       ) : null}
+      </div>
+      {/* Las hojas van fuera del contenido animado: si no, quedan atrás de la lista mientras se anima. */}
       {editando ? (
         <>
           <div className="velo" onClick={() => setEditando(null)} />
@@ -319,7 +321,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           />
         </>
       ) : null}
-      </div>
       {sesion?.ia ? (
         <button className="contale" onClick={() => setCargando('contar')}>
           <span aria-hidden>{hayVoz(sesion.voz) ? '🎙️' : '✍️'}</span>

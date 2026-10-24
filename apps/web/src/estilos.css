@@ -319,3 +319,23 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 @keyframes recien { from { opacity: 0; transform: translateY(-14px) scale(0.92); } 60% { opacity: 1; transform: translateY(2px) scale(1.02); } to { transform: none; } }
 @keyframes destello { 0% { box-shadow: 0 0 0 0 rgb(107 79 187 / 0.45); border-color: var(--acento); } 100% { box-shadow: 0 0 0 12px rgb(107 79 187 / 0); } }
 @media (prefers-reduced-motion: reduce) { .lista.linea li.recien { animation: none; } }
+
+/* "Contarlo" con la voz: un botón grande, lo que se escuchó y un enlace para escribir. */
+.voz { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 0 6px; }
+.boton-voz { width: 112px; height: 112px; border-radius: 50%; border: 0; background: var(--acento); color: var(--sobre-acento);
+  font-size: 46px; cursor: pointer; box-shadow: 0 10px 30px rgb(107 79 187 / 0.35); transition: transform 0.15s ease; }
+.boton-voz:active:not(:disabled) { transform: scale(0.94); }
+.boton-voz.escuchando { animation: late-voz 1.3s ease-in-out infinite; }
+.boton-voz.transcribiendo, .boton-voz.ordenando, .boton-voz.guardando { background: var(--acento-suave); color: var(--acento); box-shadow: none; animation: gira-suave 1.6s linear infinite; }
+@keyframes late-voz { 0%, 100% { box-shadow: 0 0 0 0 rgb(107 79 187 / 0.5), 0 10px 30px rgb(107 79 187 / 0.35); } 50% { box-shadow: 0 0 0 22px rgb(107 79 187 / 0), 0 10px 30px rgb(107 79 187 / 0.35); } }
+@keyframes gira-suave { to { transform: rotate(360deg); } }
+.leyenda-voz { margin: 0; font-weight: 700; color: var(--acento); }
+.oido { margin: 4px 0 0; padding: 10px 14px; border-radius: 16px 16px 16px 4px; background: var(--panel); border: 1px solid var(--borde);
+  font-size: 15px; max-width: 100%; animation: aparece-suave 0.25s ease; }
+.enlace { background: none; border: 0; color: var(--suave); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; padding: 6px; }
+.voz.chica { padding: 8px 0 0; }
+.voz.chica .boton-voz { width: 64px; height: 64px; font-size: 26px; }
+.responder { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.responder input { flex: 1 1 100%; }
+.responder .btn { flex: 1; }
+@media (prefers-reduced-motion: reduce) { .boton-voz { animation: none !important; } }
