@@ -1,13 +1,14 @@
 // Lo que Patty encontró: relaciones entre lo que se hace y cómo se siente, con cuántos días de diferencia.
 import { useCallback, useEffect, useState } from 'react';
-import { nombreRasgo, type Hallazgo, type Persona, type ResultadoAnalisis } from 'shared';
+import { avanceProgreso, nombreRasgo, type Hallazgo, type Persona, type Progreso, type ResultadoAnalisis } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
+import { RuedaProgreso } from './RuedaProgreso';
 
 const Q_FIRME = 0.1;
 const cuando = (d: number) => (d === 0 ? 'el mismo día' : d === 1 ? 'al día siguiente' : `${d} días después`);
 
-export function Patrones({ persona }: { persona: Persona }) {
+export function Patrones({ persona, progreso }: { persona: Persona; progreso: Progreso | null }) {
   const { sesion, usuario } = useEstado();
   const [hallazgos, setHallazgos] = useState<Hallazgo[] | null>(null);
   const [ultimo, setUltimo] = useState<Pick<ResultadoAnalisis, 'resumen' | 'sugerencias'> | null>(null);
@@ -67,8 +68,10 @@ export function Patrones({ persona }: { persona: Persona }) {
     </article>
   );
 
+  const listo = progreso ? avanceProgreso(progreso).nivel > 0 : true;
   return (
     <section className="patrones">
+      {progreso ? <div className="tarjeta">{<RuedaProgreso progreso={progreso} />}</div> : null}
       <div className="tarjeta">
         <h2>Patrones de {persona.nombre}</h2>
         <p className="suave">
@@ -76,7 +79,9 @@ export function Patrones({ persona }: { persona: Persona }) {
           {sesion?.ia ? ' La IA explica lo que encuentra.' : ''}
         </p>
         {usuario?.rol !== 'lector' ? (
-          <button className="btn primario ancho" onClick={analizar} disabled={analizando}>{analizando ? 'Buscando patrones…' : 'Buscar patrones'}</button>
+          <button className={`btn ancho ${listo ? 'primario' : ''}`} onClick={analizar} disabled={analizando || !listo}>
+            {analizando ? 'Buscando patrones…' : listo ? 'Buscar patrones' : 'Todavía me faltan datos'}
+          </button>
         ) : null}
         {error ? <p className="neg">{error}</p> : null}
       </div>
@@ -91,7 +96,7 @@ export function Patrones({ persona }: { persona: Persona }) {
         </details>
       ) : null}
 
-      {hallazgos && !firmes.length && !analizando ? <p className="suave centro">Todavía no hay patrones claros. Con un par de semanas de anotaciones empiezan a aparecer.</p> : null}
+      {hallazgos && !firmes.length && !analizando && listo ? <p className="suave centro">Todavía no hay patrones claros. Seguí anotando: cuantos más días, más fácil es verlos.</p> : null}
 
       {ultimo?.sugerencias?.length ? (
         <div className="tarjeta">

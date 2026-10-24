@@ -140,3 +140,21 @@ describe('remedios y tomas', () => {
     expect(g.body.total).toBe(15);
   });
 });
+
+describe('progreso hacia los patrones', () => {
+  it('cuenta días anotados y días con cómo se sintió; el avance llega a 1 con 14 y 7', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    for (let i = 0; i < 3; i++) {
+      const dia = `2026-10-${String(20 + i).padStart(2, '0')}T15:00:00.000Z`;
+      await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Agua', categoria_id: categorias.bebida, inicio: dia, valor: 1 });
+    }
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Dolor de cabeza', categoria_id: categorias.sintoma, inicio: '2026-10-21T18:00:00.000Z', intensidad: 4 });
+    const p = (await ana.get(`/api/progreso?persona=${personaId}`)).body;
+    expect(p).toEqual({ dias: 3, dias_efecto: 1, minimo: 14, minimo_efecto: 7 });
+    const { avanceProgreso } = await import('shared');
+    expect(avanceProgreso(p).nivel).toBe(0);
+    expect(avanceProgreso({ ...p, dias: 14, dias_efecto: 7 })).toMatchObject({ nivel: 1, avance: 0 });
+    expect(avanceProgreso({ ...p, dias: 22, dias_efecto: 7 }).avance).toBeCloseTo(0.5);
+    expect(avanceProgreso({ ...p, dias: 90, dias_efecto: 30 })).toMatchObject({ nivel: 3, avance: 1, siguiente: null });
+  });
+});

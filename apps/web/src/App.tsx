@@ -19,14 +19,17 @@ import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
 import { Patrones } from './pantallas/Patrones';
+import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
+import { useProgreso } from './lib/progreso';
+import { avanceProgreso } from 'shared';
 import { ofrecerPerfil, Perfil } from './pantallas/Perfil';
 
 type Pestana = 'hoy' | 'patrones' | 'mas';
 
-const PESTANAS: Array<{ id: Pestana; icono: string; nombre: string }> = [
-  { id: 'hoy', icono: '📅', nombre: 'Día' },
-  { id: 'patrones', icono: '✨', nombre: 'Patrones' },
-  { id: 'mas', icono: '☰', nombre: 'Más' },
+const PESTANAS: Array<{ id: Pestana; nombre: string }> = [
+  { id: 'hoy', nombre: 'Día' },
+  { id: 'patrones', nombre: 'Patrones' },
+  { id: 'mas', nombre: 'Más' },
 ];
 
 export function App() {
@@ -47,6 +50,8 @@ export function App() {
   useEncuesta();
   useIrAlDiaConElAviso(useCallback(() => setPestana('hoy'), []));
   useRecordatorios(fase === 'listo');
+  const progreso = useProgreso(fase === 'listo' ? persona?.id : undefined);
+  const avance = progreso ? avanceProgreso(progreso) : { avance: 0, nivel: 0 };
   usePush(fase === 'listo', Boolean(sesion?.push));
   useEffect(() => alPedirIrAlDia(() => setPestana('hoy')), []);
   // Un aviso push de otra persona (una que se supervisa) la elige; uno de supervisión lleva a Más.
@@ -101,12 +106,18 @@ export function App() {
         )}
       </header>
       <main>
-        {pestana === 'hoy' ? <Hoy persona={persona} cara={cara} /> : pestana === 'patrones' ? <Patrones persona={persona} /> : <Mas />}
+        {pestana === 'hoy' ? <Hoy persona={persona} cara={cara} /> : pestana === 'patrones' ? <Patrones persona={persona} progreso={progreso} /> : <Mas />}
       </main>
       <nav className="pestanas">
         {PESTANAS.map((p) => (
           <button key={p.id} className={pestana === p.id ? 'activa' : ''} onClick={() => setPestana(p.id)}>
-            <span aria-hidden>{p.icono}</span>
+            {p.id === 'hoy' ? (
+              <IconoDia activo={pestana === p.id} />
+            ) : p.id === 'patrones' ? (
+              <IconoPatrones activo={pestana === p.id} avance={avance.avance} nivel={avance.nivel} />
+            ) : (
+              <IconoMas activo={pestana === p.id} />
+            )}
             {p.nombre}
           </button>
         ))}

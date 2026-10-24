@@ -607,3 +607,41 @@ export function perfilTexto(p: Pick<Persona, 'nacimiento' | 'sexo' | 'altura_cm'
   const cond = p.condiciones?.length ? `condiciones: ${p.condiciones.join(', ').toLowerCase()}` : '';
   return [texto, cond].filter(Boolean).join('; ');
 }
+
+// ---------- Progreso hacia los patrones ----------
+
+/** Cuánto le falta a Patty para poder buscar patrones (y para que sean más firmes). */
+export interface Progreso {
+  /** Días con algo anotado a mano (últimos 180). */
+  dias: number;
+  /** De esos, días en que se anotó cómo se sentía o alguna molestia (los "efectos" que se buscan explicar). */
+  dias_efecto: number;
+  /** Días que hacen falta para empezar a buscar. */
+  minimo: number;
+  /** Días con efectos que conviene tener para empezar. */
+  minimo_efecto: number;
+}
+
+/** Los niveles: para empezar, para que los patrones sean más firmes, y para que sean bastante confiables. */
+export const NIVELES_PROGRESO = [
+  { dias: 14, nombre: 'Primeros patrones' },
+  { dias: 30, nombre: 'Patrones más firmes' },
+  { dias: 60, nombre: 'Patrones confiables' },
+];
+
+/**
+ * El avance hacia el próximo nivel, de 0 a 1, y en qué nivel está (0: todavía no puede buscar). Para el primero
+ * cuentan los días anotados (70%) y los días con cómo se sintió (30%); después, solo los días.
+ */
+export function avanceProgreso(p: Progreso): { nivel: number; avance: number; siguiente: (typeof NIVELES_PROGRESO)[number] | null } {
+  const primero = Math.min(p.dias / p.minimo, 1) * 0.7 + Math.min(p.dias_efecto / p.minimo_efecto, 1) * 0.3;
+  if (primero < 1) return { nivel: 0, avance: primero, siguiente: NIVELES_PROGRESO[0] };
+  for (let i = 1; i < NIVELES_PROGRESO.length; i++) {
+    const n = NIVELES_PROGRESO[i];
+    if (p.dias < n.dias) {
+      const antes = NIVELES_PROGRESO[i - 1].dias;
+      return { nivel: i, avance: (p.dias - antes) / (n.dias - antes), siguiente: n };
+    }
+  }
+  return { nivel: NIVELES_PROGRESO.length, avance: 1, siguiente: null };
+}

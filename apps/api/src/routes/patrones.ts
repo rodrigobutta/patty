@@ -1,7 +1,7 @@
 // Análisis de patrones de una persona y los hallazgos que se van acumulando.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { nombreRasgo, perfilTexto, type Hallazgo, type Persona, type ResultadoAnalisis } from 'shared';
+import { nombreRasgo, perfilTexto, type Hallazgo, type Persona, type Progreso, type ResultadoAnalisis } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { analisis, hallazgos } from '../db/schema.js';
 import { explicarHallazgos } from '../ia/analizar.js';
@@ -145,6 +145,20 @@ export const rutasPatrones = new Hono<Env>()
           : null),
       sugerencias: ia?.sugerencias ?? [],
     };
+    return c.json(res);
+  })
+  .get('/progreso', async (c) => {
+    // ?persona=1: cuántos días anotados hay (y con cómo se sintió), para la rueda que se llena hasta poder buscar.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const hasta = diaDePatty(new Date(), p.zona_horaria);
+    const r = await una<{ dias: number; dias_efecto: number }>(
+      c.var.db,
+      sql`SELECT count(DISTINCT r.fecha)::int AS dias,
+                 count(DISTINCT r.fecha) FILTER (WHERE k.rol = 'efecto')::int AS dias_efecto
+          FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
+          WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.fecha BETWEEN ${sumarDias(hasta, -179)} AND ${hasta}`,
+    );
+    const res: Progreso = { dias: r?.dias ?? 0, dias_efecto: r?.dias_efecto ?? 0, minimo: DIAS_MINIMOS, minimo_efecto: 7 };
     return c.json(res);
   })
   .get('/analisis/ultimo', async (c) => {
