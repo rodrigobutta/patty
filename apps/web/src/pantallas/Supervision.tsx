@@ -21,6 +21,12 @@ export function Supervision() {
     }
   }, []);
   useEffect(() => void traer(), [traer]);
+  // Si se contestó desde el aviso del teléfono, se actualiza.
+  useEffect(() => {
+    const f = () => void traer();
+    window.addEventListener('patty-supervision', f);
+    return () => window.removeEventListener('patty-supervision', f);
+  }, [traer]);
 
   const hacer = async (f: () => Promise<unknown>, aviso: string, recargarPersonas = false) => {
     setError('');

@@ -50,12 +50,14 @@ export const rutasSupervision = new Hono<Env>()
     if (otro.id === u.id) throw new ErrorApi('No podés supervisarte a vos mismo.');
     const ya = await una<Fila>(c.var.db, sql`SELECT id, estado FROM supervisiones WHERE supervisor_id = ${u.id} AND supervisado_id = ${otro.id}`);
     if (ya?.estado === 'aceptada') throw new ErrorApi(`Ya supervisás a ${otro.nombre}.`);
-    await c.var.db.execute(sql`INSERT INTO supervisiones (supervisor_id, supervisado_id) VALUES (${u.id}, ${otro.id})
-      ON CONFLICT (supervisor_id, supervisado_id) DO UPDATE SET estado = 'pendiente', creado = now(), respondido = NULL`);
+    const nueva = await una<{ id: number }>(c.var.db, sql`INSERT INTO supervisiones (supervisor_id, supervisado_id) VALUES (${u.id}, ${otro.id})
+      ON CONFLICT (supervisor_id, supervisado_id) DO UPDATE SET estado = 'pendiente', creado = now(), respondido = NULL
+      RETURNING id`);
     await avisarAUsuario(c.var.db, otro.id, {
       titulo: 'Patty',
-      cuerpo: `${u.nombre} quiere supervisarte: ver tu día y avisarte si te olvidás algo. Entrá a Más para aceptar o no.`,
-      datos: { tipo: 'supervision' },
+      cuerpo: `${u.nombre} quiere supervisarte: ver tu día y avisarte si te olvidás algo. ¿Aceptás?`,
+      // Con el id, el aviso trae los botones Aceptar y No (AvisosPushService).
+      datos: { tipo: 'supervision', supervision_id: String(nueva!.id) },
     });
     return c.json({ ok: true, nombre: otro.nombre }, 201);
   })

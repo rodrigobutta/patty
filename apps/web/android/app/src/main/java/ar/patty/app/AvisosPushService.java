@@ -63,11 +63,27 @@ public class AvisosPushService extends FirebaseMessagingService {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pi);
+        // Una invitación a supervisar se contesta desde el aviso: abre la app con la respuesta y la web la manda.
+        if ("supervision".equals(datos.get("tipo")) && datos.get("supervision_id") != null) {
+            b.addAction(0, "Aceptar", conAccion(datos, "aceptar", id, id + 1));
+            b.addAction(0, "No", conAccion(datos, "rechazar", id, id + 2));
+        }
         try {
             nm.notify(id, b.build());
         } catch (SecurityException e) {
             // Sin permiso de avisos: no hay nada que hacer.
         }
+    }
+
+    private PendingIntent conAccion(Map<String, String> datos, String accion, int aviso, int codigo) {
+        Intent i = new Intent(this, MainActivity.class);
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        for (Map.Entry<String, String> e : datos.entrySet()) i.putExtra(e.getKey(), e.getValue());
+        i.putExtra("accion", accion);
+        // Para sacar el aviso una vez contestado.
+        i.putExtra("aviso_id", aviso);
+        i.putExtra(EXTRA_TOCADO, true);
+        return PendingIntent.getActivity(this, codigo, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     @Override

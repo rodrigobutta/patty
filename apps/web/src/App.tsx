@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { api } from './api';
 import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { alPedirIrAlDia } from './lib/avisos';
@@ -28,7 +29,7 @@ const PESTANAS: Array<{ id: Pestana; icono: string; nombre: string }> = [
 ];
 
 export function App() {
-  const { fase, error, persona, personas, elegirPersona, aviso, sesion } = useEstado();
+  const { fase, error, persona, personas, elegirPersona, aviso, sesion, avisar, recargar } = useEstado();
   const [pestana, setPestana] = useState<Pestana>('hoy');
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
   // Lo que junta solo el teléfono (ubicación, llamadas, reloj, clima) va siempre a la persona propia, aunque se esté
@@ -49,10 +50,22 @@ export function App() {
   useEffect(
     () =>
       alTocarAvisoPush((d) => {
-        if (d.tipo === 'supervision') setPestana('mas');
+        if (d.tipo === 'supervision') {
+          setPestana('mas');
+          // "Aceptar" o "No" tocado en el aviso de la invitación.
+          if (d.supervision_id && (d.accion === 'aceptar' || d.accion === 'rechazar')) {
+            void api('POST', `/api/supervision/${d.supervision_id}/responder`, { aceptar: d.accion === 'aceptar' })
+              .then(() => {
+                avisar(d.accion === 'aceptar' ? 'Listo, aceptaste la supervisión' : 'Listo, no aceptaste');
+                window.dispatchEvent(new Event('patty-supervision'));
+                return recargar();
+              })
+              .catch((e: Error) => avisar(e.message));
+          }
+        }
         if (d.persona_id && personas.some((p) => p.id === Number(d.persona_id))) elegirPersona(Number(d.persona_id));
       }),
-    [personas, elegirPersona],
+    [personas, elegirPersona, avisar, recargar],
   );
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;

@@ -61,6 +61,11 @@ public class MascotaPlugin extends Plugin {
             if (v instanceof String) datos.put(k, (String) v);
         }
         intent.removeExtra(AvisosPushService.EXTRA_TOCADO);
+        int aviso = intent.getIntExtra("aviso_id", 0);
+        if (aviso != 0) {
+            android.app.NotificationManager nm = (android.app.NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            nm.cancel(aviso);
+        }
         notifyListeners("avisoTocado", datos, true);
     }
 
