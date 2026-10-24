@@ -1,6 +1,7 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
+import { alTocarAvisoPush } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
@@ -132,6 +133,13 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   }, [traer]);
   // Una toma marcada desde el aviso del teléfono también se ve en el Día.
   useAlCambiarTomas(traer);
+  // Tocar el aviso push de una toma lleva al día de esa toma.
+  useEffect(
+    () => alTocarAvisoPush((d) => {
+      if (d.programada) setFecha(hoyEn(persona.zona_horaria, new Date(d.programada)));
+    }),
+    [persona.zona_horaria],
+  );
   const [vuelta, setVuelta] = useState(0);
 
   /** Borra (y sus partes, si es la tele). Devuelve false si al final no se quiso borrar. */

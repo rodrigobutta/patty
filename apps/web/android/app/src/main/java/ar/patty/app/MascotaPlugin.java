@@ -41,6 +41,27 @@ public class MascotaPlugin extends Plugin {
     public void load() {
         PeriodicWorkRequest trabajo = new PeriodicWorkRequest.Builder(Revisar.class, 2, TimeUnit.HOURS).build();
         WorkManager.getInstance(getContext()).enqueueUniquePeriodicWork("mascota", ExistingPeriodicWorkPolicy.KEEP, trabajo);
+        // Si la app se abrió tocando un aviso push (con la app cerrada).
+        if (getActivity() != null) avisarAvisoTocado(getActivity().getIntent());
+    }
+
+    @Override
+    protected void handleOnNewIntent(android.content.Intent intent) {
+        super.handleOnNewIntent(intent);
+        avisarAvisoTocado(intent);
+    }
+
+    /** Le pasa a la web los datos del aviso push que se tocó (ver AvisosPushService), para que vaya a donde corresponde. */
+    private void avisarAvisoTocado(android.content.Intent intent) {
+        if (intent == null || !intent.getBooleanExtra(AvisosPushService.EXTRA_TOCADO, false)) return;
+        com.getcapacitor.JSObject datos = new com.getcapacitor.JSObject();
+        android.os.Bundle b = intent.getExtras();
+        if (b != null) for (String k : b.keySet()) {
+            Object v = b.get(k);
+            if (v instanceof String) datos.put(k, (String) v);
+        }
+        intent.removeExtra(AvisosPushService.EXTRA_TOCADO);
+        notifyListeners("avisoTocado", datos, true);
     }
 
     /**

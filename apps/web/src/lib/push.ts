@@ -11,7 +11,18 @@ import { esNativa, plataforma } from './nativo';
 const CLAVE_TOKEN = 'push-token';
 const CLAVE_HASTA = 'avisos-hasta';
 
-const Mascota = registerPlugin<{ hayFirebase(): Promise<{ si: boolean }> }>('Mascota');
+const Mascota = registerPlugin<{
+  hayFirebase(): Promise<{ si: boolean }>;
+  addListener(evento: 'avisoTocado', f: (datos: Record<string, string>) => void): Promise<{ remove(): Promise<void> }>;
+}>('Mascota');
+
+const EVENTO_ABRIR = 'patty-abrir-aviso';
+/** Para que la pantalla que corresponda reaccione a un aviso tocado (por ahora, todos van al Día). */
+export function alTocarAvisoPush(f: (datos: Record<string, string>) => void): () => void {
+  const g = (e: Event) => f((e as CustomEvent<Record<string, string>>).detail);
+  window.addEventListener(EVENTO_ABRIR, g);
+  return () => window.removeEventListener(EVENTO_ABRIR, g);
+}
 
 const leer = (k: string) => {
   try {
@@ -63,6 +74,13 @@ export function usePush(listo: boolean, servidorManda: boolean): void {
     const quitar: Array<Promise<{ remove(): Promise<void> }>> = [];
     void (async () => {
       if (!(await hayFirebase()) || !vivo) return;
+      // Tocar un aviso push abre el Día (los recordatorios de remedios, en el día de la toma).
+      quitar.push(
+        Mascota.addListener('avisoTocado', (datos) => {
+          irAlDia();
+          window.dispatchEvent(new CustomEvent(EVENTO_ABRIR, { detail: datos }));
+        }),
+      );
       quitar.push(
         PushNotifications.addListener('registration', (t) => {
           guardar(CLAVE_TOKEN, t.value);

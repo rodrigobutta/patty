@@ -21,6 +21,9 @@ import java.util.Map;
  */
 public class AvisosPushService extends FirebaseMessagingService {
 
+    /** Marca en el intent de que se abrió la app tocando un aviso (MascotaPlugin se lo pasa a la web). */
+    public static final String EXTRA_TOCADO = "patty_aviso_tocado";
+
     @Override
     public void onMessageReceived(@NonNull RemoteMessage m) {
         RemoteMessage.Notification n = m.getNotification();
@@ -46,6 +49,7 @@ public class AvisosPushService extends FirebaseMessagingService {
         Intent abrir = new Intent(this, MainActivity.class);
         abrir.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         for (Map.Entry<String, String> e : datos.entrySet()) abrir.putExtra(e.getKey(), e.getValue());
+        abrir.putExtra(EXTRA_TOCADO, true);
         int id = (int) (System.currentTimeMillis() & 0x7fffffff);
         PendingIntent pi = PendingIntent.getActivity(this, id, abrir, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
