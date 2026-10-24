@@ -37,6 +37,14 @@ export class Cliente {
     const texto = await r.text();
     return { status: r.status, body: texto ? JSON.parse(texto) : null, cookie: set };
   }
+  /** Un pedido con el cuerpo tal cual (audio, por ejemplo). */
+  async pedirCrudo<T = any>(metodo: string, ruta: string, cuerpo: Uint8Array, tipo: string): Promise<Respuesta<T>> {
+    const h: Record<string, string> = { ...this.headers, 'Content-Type': tipo };
+    if (this.cookie) h.Cookie = this.cookie;
+    const r = await app.request(ruta, { method: metodo, headers: h, body: cuerpo });
+    const texto = await r.text();
+    return { status: r.status, body: texto ? JSON.parse(texto) : null, cookie: r.headers.get('Set-Cookie') };
+  }
   get = <T = any>(ruta: string) => this.pedir<T>('GET', ruta);
   post = <T = any>(ruta: string, c?: unknown) => this.pedir<T>('POST', ruta, c ?? {});
   put = <T = any>(ruta: string, c?: unknown) => this.pedir<T>('PUT', ruta, c ?? {});

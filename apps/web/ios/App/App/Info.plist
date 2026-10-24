@@ -26,6 +26,10 @@
 	<string>Patty usa tu ubicación para el clima de lo que anotás y para contar viajes y lugares.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Con la app cerrada, Patty sigue anotando tus viajes y los lugares donde estuviste.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Para que puedas contarle tu día a Patty hablando.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Para pasar a texto lo que le contás a Patty.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

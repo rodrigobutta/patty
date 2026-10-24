@@ -207,7 +207,9 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
 }
 
 function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Persona; alGuardar(): void; dictarAlAbrir?: boolean }) {
-  const { categorias, festejar } = useEstado();
+  const { categorias, festejar, sesion } = useEstado();
+  const vozServidor = Boolean(sesion?.voz);
+  const [transcribiendo, setTranscribiendo] = useState(false);
   const [texto, setTexto] = useState('');
   const [propuesta, setPropuesta] = useState<Propuesta[] | null>(null);
   const [dudas, setDudas] = useState<string[]>([]);
@@ -234,17 +236,19 @@ function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Pe
       },
       (err) => {
         setEscuchando(false);
+        setTranscribiendo(false);
         escucha.current = null;
         if (err) setError(err);
         else if (dicho.trim()) void interpretar([previo.current, dicho].filter(Boolean).join(' '));
       },
+      { servidor: vozServidor, alTranscribir: () => { setEscuchando(false); setTranscribiendo(true); } },
     );
   };
 
   // Desde el botón grande del Día: se empieza a escuchar apenas se abre.
   const empezado = useRef(false);
   useEffect(() => {
-    if (!dictarAlAbrir || empezado.current || !hayVoz()) return;
+    if (!dictarAlAbrir || empezado.current || !hayVoz(vozServidor)) return;
     empezado.current = true;
     void dictar();
   });
@@ -310,12 +314,12 @@ function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Pe
   }
   return (
     <div className="valor">
-      <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus={!hayVoz()}
+      <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus={!hayVoz(vozServidor)}
         placeholder="Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»" />
-      {hayVoz() ? (
-        <button className={`microfono${escuchando ? ' escuchando' : ''}`} onClick={() => void dictar()} disabled={trabajando} aria-label={escuchando ? 'Terminar de dictar' : 'Dictar'}>
+      {hayVoz(vozServidor) ? (
+        <button className={`microfono${escuchando ? ' escuchando' : ''}`} onClick={() => void dictar()} disabled={trabajando || transcribiendo} aria-label={escuchando ? 'Terminar de dictar' : 'Dictar'}>
           <span aria-hidden>🎙️</span>
-          {escuchando ? 'Te escucho… tocá para terminar' : 'Hablarle'}
+          {transcribiendo ? 'Pasando a texto…' : escuchando ? 'Te escucho… tocá para terminar' : 'Hablarle'}
         </button>
       ) : null}
       {error ? <p className="neg">{error}</p> : null}

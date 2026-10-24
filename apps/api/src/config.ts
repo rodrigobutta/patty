@@ -25,6 +25,10 @@ export const config = {
   get anthropicWorkspaceId() {
     return env('ANTHROPIC_WORKSPACE_ID');
   },
+  /** Opcional: para pasar a texto lo que se dicta (transcripción de OpenAI). Sin esto, el teléfono usa su reconocedor. */
+  get openaiApiKey() {
+    return env('OPENAI_API_KEY');
+  },
   get googleClientId() {
     return env('GOOGLE_CLIENT_ID');
   },

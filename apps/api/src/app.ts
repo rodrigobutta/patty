@@ -16,6 +16,7 @@ import { rutasRegistros } from './routes/registros.js';
 import { rutasSesion } from './routes/sesion.js';
 import { rutasUbicacion } from './routes/ubicacion.js';
 import { rutasUsuarios } from './routes/usuarios.js';
+import { rutasVoz } from './routes/voz.js';
 
 const TIPOS: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -76,6 +77,7 @@ export function crearApp(): Hono<Env> {
   api.route('/registros', rutasRegistros);
   api.route('/clima', rutasClima);
   api.route('/ubicacion', rutasUbicacion);
+  api.route('/voz', rutasVoz);
   api.route('/', rutasPatrones);
   api.all('*', () => {
     throw new ErrorApi('Ruta desconocida.', 404);

@@ -13,6 +13,7 @@ import { una, type Tx } from '../db/client.js';
 import { usuarios } from '../db/schema.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, esHttps, texto, type C, type Env } from '../lib/http.js';
+import { vozDisponible } from './voz.js';
 import { iaDisponible } from '../ia/cliente.js';
 import { crearUsuario } from './usuarios.js';
 
@@ -31,6 +32,7 @@ export const rutasSesion = new Hono<Env>()
       usuario: await usuarioDeToken(c.var.db, c.var.token),
       google: config.googleClientId ?? null,
       ia: iaDisponible(),
+      voz: vozDisponible(),
     };
     return c.json(s);
   })

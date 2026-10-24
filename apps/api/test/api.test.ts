@@ -118,6 +118,32 @@ describe('registros', () => {
   });
 });
 
+describe('dictar', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('manda el audio a OpenAI y devuelve el texto; sin clave, avisa', async () => {
+    const { ana } = await conAdmin();
+    const sin = await ana.pedirCrudo('POST', '/api/voz', new Uint8Array([1, 2, 3]), 'audio/webm');
+    expect(sin.status).toBe(503);
+    process.env.OPENAI_API_KEY = 'clave-de-prueba';
+    try {
+      const pedidos: Array<{ url: string; modelo: unknown }> = [];
+      vi.stubGlobal('fetch', async (url: string, init: { body: FormData }) => {
+        pedidos.push({ url, modelo: init.body.get('model') });
+        return new Response(JSON.stringify({ text: ' Desayuné café con tostadas. ' }), { headers: { 'Content-Type': 'application/json' } });
+      });
+      const r = await ana.pedirCrudo('POST', '/api/voz', new Uint8Array([1, 2, 3]), 'audio/webm;codecs=opus');
+      expect(r.status).toBe(200);
+      expect(r.body).toEqual({ texto: 'Desayuné café con tostadas.' });
+      expect(pedidos).toEqual([{ url: 'https://api.openai.com/v1/audio/transcriptions', modelo: 'gpt-4o-transcribe' }]);
+      expect((await ana.pedirCrudo('POST', '/api/voz', new Uint8Array([1]), 'video/avi')).status).toBe(415);
+      expect((await ana.get('/api/sesion')).body.voz).toBe(true);
+    } finally {
+      delete process.env.OPENAI_API_KEY;
+    }
+  });
+});
+
 describe('cantidad de un concepto', () => {
   it('se pregunta una vez: al elegir la unidad (o decir que no) queda decidido', async () => {
     const { ana, personaId, categorias } = await conAdmin();

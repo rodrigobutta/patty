@@ -111,8 +111,9 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
 - **Editar** (`pantallas/Editar.tsx`): tocando algo del Día se cambia la hora, la cantidad o los minutos, la intensidad
   (o la carita) y la nota; el concepto no (se borra y se anota de nuevo). La tele mueve sus partes juntas.
 - En el Día, con la IA andando, el botón grande **«Contale a Patty»** abre "Contarlo" y empieza a escuchar al toque.
-- **Dictar** en "Contarlo" (`lib/voz.ts`): en la app nativa con el reconocimiento de voz del teléfono
-  (`@capgo/capacitor-speech-recognition`, permiso de micrófono), en el navegador con Web Speech si lo hay. El texto
+- **Dictar** en "Contarlo" (`lib/voz.ts`): si el servidor tiene `OPENAI_API_KEY` (`sesion.voz`), Patty graba el audio
+  (MediaRecorder) y `POST /api/voz` lo pasa a texto con OpenAI (`gpt-4o-transcribe`): anda en cualquier teléfono sin
+  instalar nada. Si no, usa el reconocedor del teléfono (`@capgo/capacitor-speech-recognition`) o Web Speech. El texto
   aparece mientras se habla y al terminar se ordena solo con la IA; la persona revisa y anota.
 - **Tele** (pestaña «📺 Tele» al anotar, `pantallas/Tele.tsx`): tipo de contenido, cuánto tiempo y canal o plataforma
   (los ya usados primero). Se guardan tres duraciones en «Pantalla y redes»: «Tele» (total, con el detalle en la nota),

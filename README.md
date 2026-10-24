@@ -61,5 +61,5 @@ Entrar con Google no funciona dentro de la app (Google no lo deja en una WebView
 ## Railway
 
 Igual que Quincho: un servicio con este repo (usa el `Dockerfile` por `railway.json`), el plugin de Postgres
-(`DATABASE_URL`) y `PORT=8000`. Opcionales: `ANTHROPIC_API_KEY`, `ANTHROPIC_WORKSPACE_ID`, `GOOGLE_CLIENT_ID`.
+(`DATABASE_URL`) y `PORT=8000`. Opcionales: `ANTHROPIC_API_KEY`, `ANTHROPIC_WORKSPACE_ID`, `OPENAI_API_KEY` (dictar), `GOOGLE_CLIENT_ID`.
 No necesita volumen: no guarda archivos.

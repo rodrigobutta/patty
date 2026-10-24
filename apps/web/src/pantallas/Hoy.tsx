@@ -241,7 +241,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       ) : null}
       {sesion?.ia ? (
         <button className="contale" onClick={() => setCargando('contar')}>
-          <span aria-hidden>{hayVoz() ? '🎙️' : '✍️'}</span>
+          <span aria-hidden>{hayVoz(sesion.voz) ? '🎙️' : '✍️'}</span>
           Contale a Patty
         </button>
       ) : null}

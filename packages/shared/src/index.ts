@@ -144,6 +144,8 @@ export interface Sesion {
   usuario: Usuario | null;
   google: string | null;
   ia: boolean;
+  /** Si el servidor pasa audio a texto (lo que se dicta); si no, el teléfono usa su propio reconocedor. */
+  voz: boolean;
 }
 
 export interface Persona {
