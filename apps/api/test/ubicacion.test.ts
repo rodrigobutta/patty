@@ -65,3 +65,40 @@ describe('puntos que manda la app nativa', () => {
     expect(puntoDeLaApp({ lat: 1, lon: 2 })).toEqual({ lat: 1, lon: 2 });
   });
 });
+
+describe('resumen del clima de un día', () => {
+  it('saca máxima, mínima, horas de sol y de lluvia, y la nubosidad solo de las horas de luz', async () => {
+    const { resumirClimaDelDia } = await import('../src/clima/resumenDiario.js');
+    const h = (n: number) => n * 3600000;
+    const lecturas = [
+      // Noche: nublado, sin radiación (no cuenta para la nubosidad de día).
+      { hora: h(3), concepto: 'Nubosidad', valor: 100 },
+      { hora: h(3), concepto: 'Radiación solar', valor: 0 },
+      { hora: h(3), concepto: 'Temperatura', valor: 10 },
+      { hora: h(3), concepto: 'Lluvia', valor: 1.2 },
+      { hora: h(3), concepto: 'Presión', valor: 1015 },
+      // Día: poco nublado, con sol.
+      { hora: h(13), concepto: 'Nubosidad', valor: 20 },
+      { hora: h(13), concepto: 'Radiación solar', valor: 600 },
+      { hora: h(13), concepto: 'Temperatura', valor: 22 },
+      { hora: h(13), concepto: 'Minutos de sol', valor: 60 },
+      { hora: h(13), concepto: 'Lluvia', valor: 0 },
+      { hora: h(13), concepto: 'Presión', valor: 1009 },
+      { hora: h(14), concepto: 'Nubosidad', valor: 40 },
+      { hora: h(14), concepto: 'Radiación solar', valor: 500 },
+      { hora: h(14), concepto: 'Minutos de sol', valor: 30 },
+    ];
+    const r = Object.fromEntries(resumirClimaDelDia(lecturas).map((v) => [v.concepto, v.valor]));
+    expect(r).toMatchObject({
+      'Temperatura máxima': 22,
+      'Temperatura mínima': 10,
+      'Amplitud térmica': 12,
+      'Nubosidad de día': 30,
+      'Horas de sol': 1.5,
+      'Lluvia del día': 1.2,
+      'Horas con lluvia': 1,
+      'Cambio de presión': -6,
+    });
+    expect(r['Humedad media']).toBeUndefined(); // sin datos, no se inventa
+  });
+});

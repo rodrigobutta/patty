@@ -32,3 +32,16 @@ describe('datos automáticos del día', () => {
     ]);
   });
 });
+
+describe('el clima del día', () => {
+  it('si está el resumen del día, no se muestran las horas, y las horas se leen como duración', () => {
+    const g = agruparAutomaticos([
+      dato({ fuente: 'Clima automático', tipo_fuente: 'clima', concepto: 'Temperatura', unidad: '°C', cantidad: 10, minimo: 10, maximo: 20 }),
+      dato({ fuente: 'Clima del día', tipo_fuente: 'clima', concepto: 'Horas de sol', unidad: 'h', suma: 2.5 }),
+      dato({ fuente: 'Clima del día', tipo_fuente: 'clima', concepto: 'Temperatura máxima', unidad: '°C', suma: 20 }),
+    ]);
+    expect(g.map((x) => [x.fuente, x.lineas.map((l) => `${l.concepto}: ${l.valor}`)])).toEqual([
+      ['Clima del día', ['Temperatura máxima: 20 °C', 'Horas de sol: 2 h 30 min']],
+    ]);
+  });
+});

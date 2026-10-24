@@ -204,7 +204,7 @@ describe('clima automático', () => {
     const m = await obtenerDb().execute(
       sql`SELECT c.nombre, cat.clave AS categoria, m.valor, m.unidad, f.nombre AS fuente FROM mediciones m
           JOIN conceptos c ON c.id = m.concepto_id JOIN categorias cat ON cat.id = c.categoria_id JOIN fuentes f ON f.id = m.fuente_id
-          ORDER BY c.nombre`,
+          WHERE f.nombre = 'Clima automático' ORDER BY c.nombre`,
     );
     expect([...m]).toEqual([
       { nombre: 'Calidad del aire', categoria: 'clima', valor: 42, unidad: 'AQI', fuente: 'Clima automático' },
@@ -218,7 +218,21 @@ describe('clima automático', () => {
     ]);
     // Entra en el día de la persona, como lo demás que se anota.
     const dia = await ana.get(`/api/personas/${personaId}/fuentes`);
-    expect(dia.body.map((f: any) => f.nombre)).toEqual(['Clima automático']);
+    expect(dia.body.map((f: any) => f.nombre)).toEqual(['Clima automático', 'Clima del día']);
+    // Y el resumen del día: máxima, horas de sol, horas con lluvia…
+    const resumen = await obtenerDb().execute(
+      sql`SELECT c.nombre, m.valor FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id JOIN fuentes f ON f.id = m.fuente_id
+          WHERE f.nombre = 'Clima del día' ORDER BY c.nombre`,
+    );
+    expect([...resumen]).toEqual(
+      expect.arrayContaining([
+        { nombre: 'Temperatura máxima', valor: 21.4 },
+        { nombre: 'Horas de sol', valor: 0.5 },
+        { nombre: 'Horas con lluvia', valor: 1 },
+        { nombre: 'Lluvia del día', valor: 0.2 },
+        { nombre: 'Calidad del aire media', valor: 42 },
+      ]),
+    );
   });
 
   it('valida la ubicación, el permiso y avisa si el servicio falla', async () => {

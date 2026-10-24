@@ -10,6 +10,7 @@ import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, sumarDias } from '../lib/fechas.js';
 import { cuerpo, idParam, type Env } from '../lib/http.js';
+import { climaPorHoraParaPatrones } from './clima.js';
 import { buscarPatrones, describir, DIAS_MINIMOS, type ConceptoInfo, type FilaDiaria } from '../patrones/motor.js';
 
 const COLUMNAS = sql`h.id, h.persona_id, h.causa_id, h.efecto_id, ca.nombre AS causa, ef.nombre AS efecto, h.causa_modo, h.efecto_modo,
@@ -36,11 +37,13 @@ export const rutasPatrones = new Hono<Env>()
     const desde = esFecha(d.desde) ? d.desde : sumarDias(hasta, -179);
     if (desde > hasta || desde < sumarDias(hasta, -730)) throw new ErrorApi('El período tiene que ser de hasta dos años.');
 
-    const serie = await filas<FilaDiaria & { primera: Date | null }>(
+    const porHora = await db.transaction((tx) => climaPorHoraParaPatrones(tx, p, desde, hasta));
+    const serieCompleta = await filas<FilaDiaria & { primera: Date | null }>(
       db,
       sql`SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha, concepto_id, veces, suma, promedio, intensidad_max AS intensidad, primera
           FROM serie_diaria WHERE persona_id = ${p.id} AND fecha BETWEEN ${desde} AND ${hasta}`,
     );
+    const serie = serieCompleta.filter((f) => !porHora.has(Number(f.concepto_id)));
     // Las mediciones automáticas no tienen "primera" con sentido para el orden del día: solo las manuales.
     const manuales = new Set(
       (await filas<{ fecha: string; concepto_id: number }>(

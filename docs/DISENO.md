@@ -58,6 +58,13 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   «Clima automático» de la persona (se crea sola). Una lectura por hora y persona: si ya está, no se vuelve a pedir. Lo
   anotado hace más de 48 h no lleva clima (la ubicación de ahora no dice dónde estaba). La ubicación no se guarda y a
   Open-Meteo va con 2 decimales (~1 km). Se apaga por dispositivo en Más.
+- **Clima del día** (`clima/resumenDiario.ts`): cada vez que llega clima se recalcula, por día, un resumen en la fuente
+  «Clima del día»: máxima, mínima, media y amplitud, sensación y humedad medias, punto de rocío, nubosidad de día
+  (solo las horas con radiación solar), horas de sol, radiación de día, UV máximo, lluvia del día y horas con lluvia,
+  viento medio y ráfaga máxima, presión media y cuánto cambió, visibilidad mínima y calidad del aire. Los patrones usan
+  estos y no las horas (el promedio de las horas mezcla la noche con el día): `climaPorHoraParaPatrones` saca los
+  conceptos horarios y completa el resumen de días viejos que no lo tengan. En el Día se ve el resumen en vez de las
+  horas.
 - **Ubicación y lugares** (apagado por defecto, se prende por dispositivo en Más):
   - Con Patty abierta, la web sigue la ubicación (`watchPosition`, se corta al ocultarse) y manda un punto a
     `POST /api/ubicacion` solo si es el primero del día, si se movió más de 1 km o si entró o salió de un lugar con

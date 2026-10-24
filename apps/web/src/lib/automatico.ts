@@ -7,7 +7,10 @@ export interface GrupoAutomatico { fuente: string; tipo: string; lineas: Array<{
 const ORDEN = ['telefono', 'ubicacion', 'reloj', 'clima', 'otro'];
 const ORDEN_CLIMA = ['Temperatura', 'Sensación térmica', 'Humedad', 'Punto de rocío', 'Lluvia', 'Nubosidad', 'Minutos de sol',
   'Índice UV', 'Radiación solar', 'Viento', 'Ráfagas', 'Presión', 'Visibilidad', 'Calidad del aire', 'PM2.5', 'PM10', 'Ozono',
-  'Dióxido de nitrógeno'];
+  'Dióxido de nitrógeno', 'Temperatura máxima', 'Temperatura mínima', 'Temperatura media', 'Amplitud térmica',
+  'Sensación térmica media', 'Humedad media', 'Punto de rocío medio', 'Nubosidad de día', 'Horas de sol',
+  'Radiación solar media de día', 'Índice UV máximo', 'Lluvia del día', 'Horas con lluvia', 'Viento medio', 'Ráfaga máxima',
+  'Presión media', 'Cambio de presión', 'Visibilidad mínima', 'Calidad del aire media', 'PM2.5 medio', 'Ozono medio'];
 
 const numero = (n: number) => Number(n.toFixed(1)).toLocaleString('es-AR');
 
@@ -18,7 +21,8 @@ export function duracion(minutos: number): string {
 }
 
 export function valorAutomatico(d: DatoAutomatico): string {
-  const conUnidad = (n: number) => (d.unidad === 'min' ? duracion(n) : `${numero(n)}${d.unidad ? ' ' + d.unidad : ''}`);
+  const conUnidad = (n: number) =>
+    d.unidad === 'min' ? duracion(n) : d.unidad === 'h' ? duracion(n * 60) : `${numero(n)}${d.unidad ? ' ' + d.unidad : ''}`;
   // Del clima, el rango del día; lo que se acumula (lluvia, minutos de sol), el total.
   if (d.tipo_fuente === 'clima' && d.unidad !== 'mm' && d.unidad !== 'min' && d.cantidad > 1) {
     return d.minimo === d.maximo ? conUnidad(d.minimo) : `${numero(d.minimo)}–${conUnidad(d.maximo)}`;
@@ -26,7 +30,13 @@ export function valorAutomatico(d: DatoAutomatico): string {
   return conUnidad(d.suma);
 }
 
-export function agruparAutomaticos(datos: DatoAutomatico[]): GrupoAutomatico[] {
+/** Los resúmenes del clima del día (si están, se muestran en lugar de las horas: dicen lo mismo, más claro). */
+const CLIMA_DEL_DIA = 'Clima del día';
+const CLIMA_POR_HORA = 'Clima automático';
+
+export function agruparAutomaticos(todos: DatoAutomatico[]): GrupoAutomatico[] {
+  const hayResumen = todos.some((d) => d.fuente === CLIMA_DEL_DIA);
+  const datos = hayResumen ? todos.filter((d) => d.fuente !== CLIMA_POR_HORA) : todos;
   const grupos = new Map<string, GrupoAutomatico>();
   for (const d of datos) {
     const g = grupos.get(d.fuente) ?? { fuente: d.fuente, tipo: d.tipo_fuente, lineas: [] };
