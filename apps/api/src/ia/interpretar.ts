@@ -129,7 +129,10 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, 
     'consejos médicos ni cambies dosis: anotá lo que dice. Si falta algo importante para recordarle (la dosis, cada ' +
     'cuánto), preguntalo en dudas. ' +
     'Si al final hay aclaraciones (respuestas a tus preguntas), usalas para completar o corregir los registros: no los ' +
-    'repitas, y no vuelvas a preguntar lo que ya se aclaró.';
+    'repitas, y no vuelvas a preguntar lo que ya se aclaró. Si alguna pregunta anterior quedó sin contestar, volvé a ' +
+    'preguntarla mientras siga faltando algo que importa (sobre todo en remedios: dosis y cada cuánto o a qué hora; y ' +
+    'cantidades que se pidieron); lo que es solo un detalle, dejalo pasar sin insistir. Preguntá todo lo que falta de ' +
+    'una vez, en preguntas cortas, cada una sobre una sola cosa.';
   const consigna = [
     `Hoy es ${diaDeLaSemana(hoy)} ${hoy} y son las ${String(Math.floor(hora / 60)).padStart(2, '0')}:${String(hora % 60).padStart(2, '0')} para ${p.nombre}.`,
     ...(referencia && referencia !== hoy
