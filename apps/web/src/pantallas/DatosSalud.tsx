@@ -29,7 +29,8 @@ export function DatosSalud({ persona }: { persona: Persona }) {
     setMandando(true);
     try {
       const n = await sincronizarSalud(persona.id);
-      avisar(n ? `Listo: ${n} datos de los últimos 7 días` : `Todavía no hay datos en ${almacen}`);
+      if (n) avisar(`Listo: ${n} datos de los últimos 7 días`);
+      else setError(`${almacen} no tiene datos de los últimos 7 días: la app de tu reloj todavía no le está mandando nada. Abrí la app del reloj y buscá la opción de compartir con ${almacen}.`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
