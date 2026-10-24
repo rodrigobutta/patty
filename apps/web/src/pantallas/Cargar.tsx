@@ -1,5 +1,5 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
@@ -32,9 +32,16 @@ interface Propuesta {
   nota: string | null;
 }
 
-export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Persona; fecha: string; alGuardar(): void; alCerrar(): void }) {
+export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false }: {
+  persona: Persona;
+  fecha: string;
+  alGuardar(): void;
+  alCerrar(): void;
+  /** Abrir directo en "Contarlo" y, si se puede, empezar a escuchar (el botón grande del Día). */
+  contar?: boolean;
+}) {
   const { categorias, sesion, festejar } = useEstado();
-  const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>('rapido');
+  const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>(contar ? 'texto' : 'rapido');
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [elegido, setElegido] = useState<Elegido | null>(null);
   const [pidiendoCategoria, setPidiendoCategoria] = useState<string | null>(null);
@@ -61,7 +68,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Perso
       </div>
 
       {modo === 'texto' ? (
-        <TextoLibre persona={persona} alGuardar={alGuardar} />
+        <TextoLibre persona={persona} alGuardar={alGuardar} dictarAlAbrir={contar} />
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
@@ -199,7 +206,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
   );
 }
 
-function TextoLibre({ persona, alGuardar }: { persona: Persona; alGuardar(): void }) {
+function TextoLibre({ persona, alGuardar, dictarAlAbrir = false }: { persona: Persona; alGuardar(): void; dictarAlAbrir?: boolean }) {
   const { categorias, festejar } = useEstado();
   const [texto, setTexto] = useState('');
   const [propuesta, setPropuesta] = useState<Propuesta[] | null>(null);
@@ -233,6 +240,14 @@ function TextoLibre({ persona, alGuardar }: { persona: Persona; alGuardar(): voi
       },
     );
   };
+
+  // Desde el botón grande del Día: se empieza a escuchar apenas se abre.
+  const empezado = useRef(false);
+  useEffect(() => {
+    if (!dictarAlAbrir || empezado.current || !hayVoz()) return;
+    empezado.current = true;
+    void dictar();
+  });
 
   const interpretar = async (contado = texto) => {
     setTrabajando(true);

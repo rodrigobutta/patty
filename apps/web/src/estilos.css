@@ -231,3 +231,15 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .microfono.escuchando { background: var(--acento); color: var(--sobre-acento); animation: late 1.2s ease-in-out infinite; }
 @keyframes late { 0%, 100% { box-shadow: 0 0 0 0 rgb(107 79 187 / 0.45); } 50% { box-shadow: 0 0 0 10px rgb(107 79 187 / 0); } }
 .barra button.marca { background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer; }
+
+/* "Contale a Patty": el botón grande para hablarle (o escribirle) sin buscar nada. */
+.contale { position: fixed; left: 20px; right: 96px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 7; height: 60px;
+  display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 999px; border: 0;
+  background: var(--acento); color: var(--sobre-acento); font: inherit; font-size: 17px; font-weight: 800; cursor: pointer;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25); }
+/* Con el botón grande al lado, el ＋ pasa a segundo plano. */
+.contale + .fab { background: var(--panel); color: var(--acento); border: 2px solid var(--acento); }
+.contale span { font-size: 24px; }
+@media (min-width: 640px) { .contale { right: auto; width: 320px; } }
+/* Que lo último del Día no quede tapado por los botones de abajo. */
+.dia { padding-bottom: 96px; }

@@ -1,6 +1,7 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
 import { useCallback, useEffect, useState } from 'react';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
+import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
 import { api } from '../api';
@@ -40,13 +41,14 @@ function detalle(r: Registro, tipo: string | undefined): string {
 }
 
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
-  const { categorias, avisar, festejar } = useEstado();
+  const { categorias, avisar, festejar, sesion } = useEstado();
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
   const [registros, setRegistros] = useState<Registro[] | null>(null);
   const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>([]);
   /** La fuente de datos automáticos que está abierta (se ve todo lo que llegó de ella). */
   const [abierto, setAbierto] = useState<string | null>(null);
-  const [cargando, setCargando] = useState(false);
+  /** La hoja de anotar abierta: normal, o directo en "Contarlo" (el botón grande de hablarle). */
+  const [cargando, setCargando] = useState<false | 'normal' | 'contar'>(false);
   /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
   const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
   const [error, setError] = useState('');
@@ -222,11 +224,17 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           />
         </>
       ) : null}
-      <button className="fab" onClick={() => setCargando(true)} aria-label="Anotar">＋</button>
+      {sesion?.ia ? (
+        <button className="contale" onClick={() => setCargando('contar')}>
+          <span aria-hidden>{hayVoz() ? '🎙️' : '✍️'}</span>
+          Contale a Patty
+        </button>
+      ) : null}
+      <button className="fab" onClick={() => setCargando('normal')} aria-label="Anotar">＋</button>
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />
-          <Cargar persona={persona} fecha={fecha} alCerrar={() => setCargando(false)} alGuardar={() => { setCargando(false); void traer(); avisarAnotado(); }} />
+          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} alCerrar={() => setCargando(false)} alGuardar={() => { setCargando(false); void traer(); avisarAnotado(); }} />
         </>
       ) : null}
     </section>
