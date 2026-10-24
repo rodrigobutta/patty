@@ -73,6 +73,17 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
   const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
   const [error, setError] = useState('');
+  /**
+   * Los registros que ya se mostraron en este día: los nuevos (recién anotados) entran con su propia animación. Es
+   * null mientras se carga un día, así la primera vez entran todos de a uno.
+   */
+  const vistos = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    vistos.current = null;
+  }, [fecha]);
+  useEffect(() => {
+    if (registros) vistos.current = new Set(registros.map((r) => r.id));
+  }, [registros]);
   /** Lo anotado que se está cambiando (al tocarlo). */
   const [editando, setEditando] = useState<Registro | null>(null);
   const hoy = hoyEn(persona.zona_horaria);
@@ -226,14 +237,19 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </div>
       ) : (
         <ul className="lista linea">
-          {registros.filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio)).map((r, i, todos) => {
+          {registros
+            .filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio))
+            // Lo más reciente arriba: lo que se acaba de anotar se ve primero.
+            .slice()
+            .reverse()
+            .map((r, i, todos) => {
             const cat = tipoDe(r);
             const f = franja(r.inicio, persona.zona_horaria);
             const nuevaFranja = i === 0 || franja(todos[i - 1].inicio, persona.zona_horaria) !== f;
             return (
               <Fragment key={r.id}>
                 {nuevaFranja ? <li className="franja" aria-hidden><span>{f.emoji}</span> {f.nombre}</li> : null}
-              <li className="tocable entra" style={{ ['--n' as string]: Math.min(i, 12) }} onClick={() => setEditando(r)} onContextMenu={(e) => { e.preventDefault(); void borrar(r); }}>
+              <li className={`tocable ${vistos.current && !vistos.current.has(r.id) ? 'recien' : vistos.current ? '' : 'entra'}`} style={{ ['--n' as string]: Math.min(i, 12) }} onClick={() => setEditando(r)} onContextMenu={(e) => { e.preventDefault(); void borrar(r); }}>
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
                 <span className="icono">{cat?.icono}</span>
                 <span className="que">

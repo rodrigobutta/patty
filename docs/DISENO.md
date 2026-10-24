@@ -112,7 +112,8 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   horas"), y si se abre mirando otro día, eso es lo que se toma por defecto (`fecha` en `/api/registros/interpretar`).
   La propuesta muestra el día si no es el que se mira, y al guardar el Día salta a ese día.
 - **El Día** se puede recorrer deslizando de costado; lo anotado va como línea de tiempo por partes del día (mañana,
-  tarde, noche), entra animado y mientras carga hay renglones que brillan.
+  tarde, noche) con lo más reciente arriba; entra animado, lo recién anotado aparece con un destello, y mientras carga
+  hay renglones que brillan.
 - **Editar** (`pantallas/Editar.tsx`): tocando algo del Día se cambia la hora, la cantidad o los minutos, la intensidad
   (o la carita) y la nota; el concepto no (se borra y se anota de nuevo). La tele mueve sus partes juntas.
 - En el Día, con la IA andando, el botón grande **«Contale a Patty»** abre "Contarlo" y empieza a escuchar al toque.
