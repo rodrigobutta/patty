@@ -101,13 +101,14 @@ export function useAlTocarAviso(abrir: () => void): void {
 }
 
 /** Al arrancar la app: programar el aviso y escuchar cuando se toca. */
-export function useEncuesta(): void {
+export function useEncuesta(listo = true): void {
+  // Recién con la sesión iniciada: así el permiso de avisos se pide después de entrar, no en la pantalla de entrar.
   useEffect(() => {
-    if (!esNativa()) return;
+    if (!esNativa() || !listo) return;
     void programarAviso();
     const h = LocalNotifications.addListener('localNotificationActionPerformed', (a) => {
       if (a.notification.extra?.encuesta) abrirEncuesta();
     });
     return () => void h.then((x) => x.remove());
-  }, []);
+  }, [listo]);
 }

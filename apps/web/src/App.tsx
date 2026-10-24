@@ -47,7 +47,7 @@ export function App() {
   useSalud(deEsteTelefono);
   useClimaDeLasUltimasHoras(deEsteTelefono);
   const cara = useCara(fase === 'listo' ? persona : null);
-  useEncuesta();
+  useEncuesta(fase === 'listo');
   useIrAlDiaConElAviso(useCallback(() => setPestana('hoy'), []));
   useRecordatorios(fase === 'listo');
   const progreso = useProgreso(fase === 'listo' ? persona?.id : undefined);
