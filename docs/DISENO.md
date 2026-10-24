@@ -204,6 +204,17 @@ saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), crea
   (un crónico y más de una semana sin abrir la app). Necesita `FIREBASE_SERVICE_ACCOUNT` en el servidor y
   `google-services.json` en `apps/web/android/app`; sin eso, todo sigue andando sin push.
 
+## Supervisión
+
+- `supervisiones`: un usuario pide supervisar a otro (por usuario o mail) y el otro acepta o rechaza; cualquiera la
+  termina. Aceptada, la vista `accesos` le da al supervisor acceso de editor a las personas de las que el supervisado
+  es dueño. Todo lo que mira "quién ve a quién" usa `accesos` (con `por_supervision` para distinguir).
+- Al supervisor le llegan por push: una toma sin marcar a la hora, y a las 21 si la persona no anotó nada en el día.
+  Los recordatorios de cada toma van solo a quien la toma. Le puede mandar avisos ("acordate del remedio") desde Más
+  o desde el día de esa persona.
+- Lo que junta solo el teléfono (ubicación, llamadas, reloj, clima) va siempre a la persona propia (`propia`), aunque
+  se esté mirando a otra.
+
 ## Usuarios y acceso
 
 - Usuarios con rol `admin`, `editor` o `lector`; el primero que entra (con clave o con Google) es administrador.

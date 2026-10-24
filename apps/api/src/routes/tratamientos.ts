@@ -16,10 +16,10 @@ import { guardarRegistro } from './registros.js';
 /** Una toma anotada a mano (o contada) cuenta para la programada más cercana dentro de este margen. */
 const MARGEN_VINCULAR_H = 3;
 
-export type Fila = Omit<Tratamiento, 'total' | 'tomadas' | 'proxima' | 'activo'> & { zona: string };
+export type Fila = Omit<Tratamiento, 'total' | 'tomadas' | 'proxima' | 'activo'> & { zona: string; persona_nombre: string };
 
 export const COLUMNAS = sql`t.id, t.persona_id, t.concepto_id, c.nombre AS remedio, t.dosis, t.unidad, t.cada_horas, t.horarios,
-  t.inicio, t.fin, t.motivo, t.nota, t.terminado, p.zona_horaria AS zona`;
+  t.inicio, t.fin, t.motivo, t.nota, t.terminado, p.zona_horaria AS zona, p.nombre AS persona_nombre`;
 export const DESDE = sql`FROM tratamientos t JOIN conceptos c ON c.id = t.concepto_id JOIN personas p ON p.id = t.persona_id`;
 
 const iso = (v: string | null) => (v ? new Date(v).toISOString() : null);
@@ -41,8 +41,9 @@ const finDe = (t: Fila) => Math.min(t.fin ? Date.parse(t.fin) : Infinity, t.term
 async function completar(tx: Tx, t: Fila): Promise<Tratamiento> {
   const ahora = new Date();
   const fin = finDe(t);
-  const { zona, ...resto } = t;
+  const { zona, persona_nombre, ...resto } = t;
   void zona;
+  void persona_nombre;
   const r = await una<{ tomadas: number }>(tx, sql`SELECT count(*)::int AS tomadas FROM tomas tm
     JOIN registros r ON r.id = tm.registro_id AND r.borrado IS NULL WHERE tm.tratamiento_id = ${t.id} AND tm.estado = 'tomada'`);
   const programable = Boolean(t.cada_horas || t.horarios.length);
@@ -228,7 +229,7 @@ export const rutasTratamientos = new Hono<Env>()
       c.var.db,
       sql`SELECT ${COLUMNAS} ${DESDE} WHERE t.borrado IS NULL AND t.terminado IS NULL
           AND (t.fin IS NULL OR t.fin > now()) AND (cardinality(t.horarios) > 0 OR t.cada_horas IS NOT NULL)
-          AND (${u.rol === 'admin'} OR EXISTS (SELECT 1 FROM persona_usuarios pu WHERE pu.persona_id = t.persona_id AND pu.usuario_id = ${u.id}))`,
+          AND (${u.rol === 'admin'} OR EXISTS (SELECT 1 FROM accesos pu WHERE pu.persona_id = t.persona_id AND pu.usuario_id = ${u.id}))`,
     );
     return c.json((await tomasDe(c.var.db, lista, desde, hasta)).filter((t) => t.estado === null));
   })

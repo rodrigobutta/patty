@@ -116,7 +116,8 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const persona = personas.find((p) => p.id === personaId) ?? personas[0] ?? null;
+  // Si no se eligió ninguna, la propia (no la de alguien que se supervisa).
+  const persona = personas.find((p) => p.id === personaId) ?? personas.find((p) => p.propia) ?? personas[0] ?? null;
   const valor: Estado = {
     fase, error, sesion, usuario: sesion?.usuario ?? null, personas, persona, categorias, elegirPersona, recargar, entro, salir, aviso, avisar, festejo, festejar, terminarFestejo,
   };

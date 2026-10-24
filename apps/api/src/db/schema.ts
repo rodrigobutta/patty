@@ -360,6 +360,31 @@ export const avisosEnviados = pgTable('avisos_enviados', {
   enviado: creado(),
 });
 
+// ---------- Supervisión ----------
+
+/**
+ * Un usuario que supervisa a otro (un hijo a su mamá, por ejemplo): lo pide el supervisor y el supervisado lo acepta.
+ * Aceptada, el supervisor ve y anota en las personas del supervisado (las que tiene como dueño), recibe avisos si se
+ * olvida una toma o pasa el día sin anotar, y le puede mandar avisos. Cualquiera de los dos la puede terminar.
+ * La vista `accesos` (migración 0006) junta esto con `persona_usuarios`: es lo que se usa para saber quién ve a quién.
+ */
+export const supervisiones = pgTable(
+  'supervisiones',
+  {
+    id: id(),
+    supervisor_id: integer('supervisor_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    supervisado_id: integer('supervisado_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    estado: text('estado', { enum: ['pendiente', 'aceptada', 'rechazada'] }).notNull().default('pendiente'),
+    creado: creado(),
+    respondido: instante('respondido'),
+  },
+  (t) => [uniqueIndex('supervisiones_par_idx').on(t.supervisor_id, t.supervisado_id), index('supervisiones_supervisado_idx').on(t.supervisado_id)],
+);
+
 // ---------- Patrones ----------
 
 /** Cada vez que se corre el análisis de una persona. */

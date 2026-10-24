@@ -3,7 +3,7 @@ import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { alPedirIrAlDia } from './lib/avisos';
 import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
-import { usePush } from './lib/push';
+import { alTocarAvisoPush, usePush } from './lib/push';
 import { useRecordatorios } from './lib/remedios';
 import { pedirSentir } from './lib/sentir';
 import { useSalud } from './lib/salud';
@@ -31,16 +31,29 @@ export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso, sesion } = useEstado();
   const [pestana, setPestana] = useState<Pestana>('hoy');
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
-  useSeguirUbicacion(fase === 'listo' ? persona?.id : undefined);
-  useDatosDelTelefono(fase === 'listo' ? persona?.id : undefined);
-  useSalud(fase === 'listo' ? persona?.id : undefined);
-  useClimaDeLasUltimasHoras(fase === 'listo' ? persona?.id : undefined);
+  // Lo que junta solo el teléfono (ubicación, llamadas, reloj, clima) va siempre a la persona propia, aunque se esté
+  // mirando el día de alguien que se supervisa.
+  const propia = personas.find((p) => p.propia) ?? (persona && !persona.supervisada ? persona : undefined);
+  const deEsteTelefono = fase === 'listo' ? propia?.id : undefined;
+  useSeguirUbicacion(deEsteTelefono);
+  useDatosDelTelefono(deEsteTelefono);
+  useSalud(deEsteTelefono);
+  useClimaDeLasUltimasHoras(deEsteTelefono);
   const cara = useCara(fase === 'listo' ? persona : null);
   useEncuesta();
   useIrAlDiaConElAviso(useCallback(() => setPestana('hoy'), []));
   useRecordatorios(fase === 'listo');
   usePush(fase === 'listo', Boolean(sesion?.push));
   useEffect(() => alPedirIrAlDia(() => setPestana('hoy')), []);
+  // Un aviso push de otra persona (una que se supervisa) la elige; uno de supervisión lleva a Más.
+  useEffect(
+    () =>
+      alTocarAvisoPush((d) => {
+        if (d.tipo === 'supervision') setPestana('mas');
+        if (d.persona_id && personas.some((p) => p.id === Number(d.persona_id))) elegirPersona(Number(d.persona_id));
+      }),
+    [personas, elegirPersona],
+  );
 
   if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;

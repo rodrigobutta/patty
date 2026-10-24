@@ -443,3 +443,9 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .form-remedio .opcion input.corto { display: inline-block; width: 60px; padding: 6px 8px; margin: 0 4px; }
 .resumen-tomas { margin: 4px 0 10px; }
 .remedio-propuesto { cursor: pointer; }
+
+/* ---------- Supervisión ---------- */
+.supervisando { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; margin-bottom: 12px;
+  border-radius: var(--radio); background: var(--acento-suave); color: var(--texto); font-size: 14px; }
+.supervision .invitacion p { margin: 0 0 4px; }
+.supervision .fila input { min-width: 0; }

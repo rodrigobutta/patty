@@ -17,6 +17,7 @@ import { Cargar } from './Cargar';
 import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { RemediosDelDia } from './RemediosDelDia';
+import { Avisarle } from './Supervision';
 import { Caritas, esMalo, Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
@@ -76,6 +77,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
   const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
   const [error, setError] = useState('');
+  /** La hoja para mandarle un aviso a quien se supervisa. */
+  const [avisandole, setAvisandole] = useState(false);
   /**
    * Los registros que ya se mostraron en este día: los nuevos (recién anotados) entran con su propia animación. Es
    * null mientras se carga un día, así la primera vez entran todos de a uno.
@@ -172,7 +175,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   // La primera vez que se abre Patty a esa hora sin haber contestado, la encuesta se abre sola (una vez por día):
   // así funciona aunque el aviso se toque agrupado con otros, o se abra la app sin tocarlo.
   useEffect(() => {
-    if (momento !== 'dia' || registros === null || sintiendo) return;
+    if (momento !== 'dia' || registros === null || sintiendo || persona.supervisada) return;
     const clave = `encuesta-abierta-${hoy}`;
     try {
       if (localStorage.getItem(clave)) return;
@@ -220,8 +223,15 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       </div>
       <div className={`contenido-dia${direccion ? ` entra-${direccion}` : ''}`} key={fecha}>
       {error ? <p className="neg">{error}</p> : null}
+      {persona.supervisada ? (
+        <div className="supervisando">
+          <span>👀 Estás viendo el día de <strong>{persona.nombre}</strong></span>
+          <button className="btn chico" onClick={() => setAvisandole(true)}>📣 Avisarle</button>
+        </div>
+      ) : null}
       <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
-      {fecha === hoy ? (
+      {/* "¿Cómo te sentís?" lo contesta cada uno: no se muestra en el día de alguien que se supervisa. */}
+      {fecha === hoy && !persona.supervisada ? (
         contestadoHacePoco ? (
           <button className="algo-puntual" onClick={() => setSintiendo({ momento: 'ahora', estado: null })}>
             😴 ¿Algo puntual? Con sueño, con hambre, con energía…
@@ -335,6 +345,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             alCerrar={() => setSintiendo(null)}
             alGuardar={() => { setSintiendo(null); void traer(); avisarAnotado(); }}
           />
+        </>
+      ) : null}
+      {avisandole ? (
+        <>
+          <div className="velo" onClick={() => setAvisandole(false)} />
+          <Avisarle nombre={persona.nombre} ruta="/api/supervision/avisar-persona" cuerpoExtra={{ persona_id: persona.id }} alCerrar={() => setAvisandole(false)} />
         </>
       ) : null}
       {sesion?.ia ? (

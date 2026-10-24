@@ -15,6 +15,7 @@ import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
 import { Remedios } from './Remedios';
+import { Supervision } from './Supervision';
 import { NuevaPersona } from './NuevaPersona';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
@@ -119,6 +120,9 @@ export function Mas() {
         {error ? <p className="neg">{error}</p> : null}
       </div>
 
+      <h2 className="seccion">Supervisión</h2>
+      <Supervision />
+
       <h2 className="seccion">Personas</h2>
       <div className="tarjeta">
         <p className="suave chico">De quién se anota el día. Tocá una para cambiar.</p>
@@ -126,7 +130,7 @@ export function Mas() {
           {personas.map((p) => (
             <li key={p.id} onClick={() => elegirPersona(p.id)} className={p.id === persona?.id ? 'marcada' : ''}>
               <span className="que">{p.nombre}</span>
-              <span className="suave chico">{p.id === persona?.id ? '✓ elegida' : ''}</span>
+              <span className="suave chico">{p.id === persona?.id ? '✓ elegida' : p.supervisada ? 'supervisás' : ''}</span>
             </li>
           ))}
         </ul>

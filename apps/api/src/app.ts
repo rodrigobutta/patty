@@ -15,6 +15,7 @@ import { rutasPatrones } from './routes/patrones.js';
 import { rutasPersonas } from './routes/personas.js';
 import { rutasRegistros } from './routes/registros.js';
 import { rutasSesion } from './routes/sesion.js';
+import { rutasSupervision } from './routes/supervision.js';
 import { rutasTratamientos } from './routes/tratamientos.js';
 import { rutasUbicacion } from './routes/ubicacion.js';
 import { rutasUsuarios } from './routes/usuarios.js';
@@ -82,6 +83,7 @@ export function crearApp(): Hono<Env> {
   api.route('/ubicacion', rutasUbicacion);
   api.route('/voz', rutasVoz);
   api.route('/dispositivos', rutasDispositivos);
+  api.route('/supervision', rutasSupervision);
   api.route('/', rutasPatrones);
   api.all('*', () => {
     throw new ErrorApi('Ruta desconocida.', 404);

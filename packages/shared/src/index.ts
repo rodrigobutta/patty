@@ -156,6 +156,10 @@ export interface Persona {
   zona_horaria: string;
   nacimiento: string | null;
   notas: string | null;
+  /** Si el usuario es su dueño (es "la suya"): a esa van los datos que junta solo el teléfono. */
+  propia?: boolean;
+  /** Si la ve porque supervisa a su dueño. */
+  supervisada?: boolean;
 }
 
 export interface Categoria extends CategoriaBase {
@@ -498,3 +502,29 @@ export function tomasEntre(
   }
   return salida;
 }
+
+// ---------- Supervisión ----------
+
+/** Un supervisor y un supervisado (vistos desde el usuario que pregunta). */
+export interface Supervision {
+  id: number;
+  estado: 'pendiente' | 'aceptada' | 'rechazada';
+  /** El otro usuario: el supervisado si yo supervisé, el supervisor si me supervisan. */
+  otro: { id: number; nombre: string; usuario: string };
+  creado: string;
+}
+
+export interface MisSupervisiones {
+  /** A quiénes superviso (aceptadas y las que mandé y esperan respuesta). */
+  supervisas: Supervision[];
+  /** Quiénes me supervisan (aceptadas y las invitaciones que tengo que contestar). */
+  te_supervisan: Supervision[];
+}
+
+/** Avisos rápidos que un supervisor le manda al supervisado. */
+export const AVISOS_RAPIDOS = [
+  'Acordate de tomar tus remedios 💊',
+  '¿Cómo estás? Contale a Patty cómo va tu día',
+  'Anotá lo que comiste hoy 🍽️',
+  'Te estoy pensando ❤️',
+];
