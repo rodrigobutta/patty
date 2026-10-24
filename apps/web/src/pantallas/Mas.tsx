@@ -1,4 +1,5 @@
-// Personas, dispositivos, tema, instalar la app y salir.
+// Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
+// lo avanzado (tokens para que otros dispositivos manden datos).
 import { useEffect, useState } from 'react';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
@@ -50,50 +51,25 @@ export function Mas() {
 
   return (
     <section className="mas">
+      <h2 className="seccion">Lo que Patty junta sola</h2>
       <div className="tarjeta">
-        <h3>Personas</h3>
-        <ul className="lista">
-          {personas.map((p) => (
-            <li key={p.id} onClick={() => elegirPersona(p.id)} className={p.id === persona?.id ? 'marcada' : ''}>{p.nombre}<span className="suave chico"> · {p.zona_horaria}</span></li>
-          ))}
-        </ul>
-        {nueva ? <NuevaPersona alTerminar={() => setNueva(false)} /> : usuario?.rol !== 'lector' ? <button className="btn" onClick={() => setNueva(true)}>＋ Agregar persona</button> : null}
-      </div>
-
-      <div className="tarjeta">
-        <h3>Reloj, teléfono y clima</h3>
-        <p className="suave chico">
-          Cada dispositivo manda sus datos (pasos, pulso, tiempo de pantalla, temperatura) a <code>{(API_BASE || location.origin) + '/api/ingesta'}</code> con su propio token.
-        </p>
+        <h3>🌤️ Clima</h3>
         <label className="opcion">
           <input type="checkbox" checked={clima} onChange={(e) => {
             ponerClima(e.target.checked);
             setClima(e.target.checked);
             if (e.target.checked) void ubicacion(); // para que el teléfono pida el permiso ahora y no al anotar
           }} />
-          <span>Anotar el clima solo (temperatura, sensación, humedad, lluvia, viento, nubes, sol, UV, presión y calidad del aire) de cada hora, con la ubicación de este teléfono.</span>
+          <span>Anotar el clima de cada hora donde estás: temperatura, humedad, lluvia, viento, sol, presión y calidad del aire.</span>
         </label>
-        <ul className="lista">
-          {fuentes.map((f) => <li key={f.id}>{f.nombre}<span className="suave chico"> · {f.ultimo_uso ? `último dato ${new Date(f.ultimo_uso).toLocaleString('es-AR')}` : 'sin datos todavía'}</span></li>)}
-        </ul>
-        {token ? (
-          <div className="nota-ia">
-            <p>Token de «{token.nombre}» (se muestra una sola vez):</p>
-            <code className="token">{token.token}</code>
-          </div>
-        ) : null}
-        {usuario?.rol !== 'lector' ? (
-          <div className="chips">
-            <button className="chip" onClick={() => nuevaFuente('reloj', 'Reloj')}>⌚ Reloj</button>
-            <button className="chip" onClick={() => nuevaFuente('telefono', 'Teléfono')}>📱 Teléfono</button>
-            <button className="chip" onClick={() => nuevaFuente('clima', 'Clima')}>🌤️ Clima</button>
-          </div>
-        ) : null}
-        {error ? <p className="neg">{error}</p> : null}
       </div>
+      {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
+      {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
+      {persona && esNativa() ? <DatosSalud persona={persona} /> : null}
 
+      <h2 className="seccion">Avisos</h2>
       <div className="tarjeta">
-        <h3>Encuesta de la noche</h3>
+        <h3>🌙 Encuesta de la noche</h3>
         <label className="opcion">
           <input type="checkbox" checked={encuesta.activa} onChange={(e) => void cambiarEncuesta({ ...encuesta, activa: e.target.checked })} />
           <span>Preguntarme cómo me sentí en el día.</span>
@@ -109,24 +85,66 @@ export function Mas() {
             ? 'Llega un aviso a esa hora; si no lo contestás, el Día te lo vuelve a preguntar hasta las 5 de la mañana.'
             : 'Desde esa hora, el Día te pregunta cómo te sentiste. Con la app de Android o iPhone, además, llega un aviso.'}
         </p>
+        {error ? <p className="neg">{error}</p> : null}
       </div>
 
-      {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
-      {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
-      {persona && esNativa() ? <DatosSalud persona={persona} /> : null}
-
+      <h2 className="seccion">Personas</h2>
       <div className="tarjeta">
-        <h3>Tema</h3>
-        <div className="segmentos">
+        <p className="suave chico">De quién se anota el día. Tocá una para cambiar.</p>
+        <ul className="lista">
+          {personas.map((p) => (
+            <li key={p.id} onClick={() => elegirPersona(p.id)} className={p.id === persona?.id ? 'marcada' : ''}>
+              <span className="que">{p.nombre}</span>
+              <span className="suave chico">{p.id === persona?.id ? '✓ elegida' : ''}</span>
+            </li>
+          ))}
+        </ul>
+        {nueva ? <NuevaPersona alTerminar={() => setNueva(false)} /> : usuario?.rol !== 'lector' ? <button className="btn ancho" onClick={() => setNueva(true)}>＋ Agregar persona</button> : null}
+      </div>
+
+      <h2 className="seccion">Tu cuenta</h2>
+      <Cuenta />
+      <div className="tarjeta">
+        <h3>🎨 Tema</h3>
+        <div className="segmentos ancho">
           {(['auto', 'claro', 'oscuro'] as Tema[]).map((t) => (
             <button key={t} className={tema === t ? 'activa' : ''} onClick={() => { ponerTema(t); setTema(t); }}>{t === 'auto' ? 'Automático' : t === 'claro' ? 'Claro' : 'Oscuro'}</button>
           ))}
         </div>
       </div>
-
       {!instalada() && !esNativa() ? <button className="btn ancho" onClick={instalar}>📲 Instalar Patty en el teléfono</button> : null}
-      <Cuenta />
-      <button className="btn ancho" onClick={salir}>Salir ({usuario?.nombre})</button>
+      <button className="btn ancho salir" onClick={salir}>Salir ({usuario?.nombre})</button>
+
+      {usuario?.rol !== 'lector' ? (
+        <details className="avanzado">
+          <summary>Avanzado: conectar otro dispositivo</summary>
+          <p className="suave chico">
+            Para un reloj, un atajo del teléfono o un servicio que mande datos por su cuenta a{' '}
+            <code>{(API_BASE || location.origin) + '/api/ingesta'}</code>. Cada uno usa su propio token. La app ya manda
+            lo suyo sola: esto es solo para otros dispositivos.
+          </p>
+          {fuentes.length ? (
+            <ul className="lista">
+              {fuentes.map((f) => (
+                <li key={f.id}>
+                  <span className="que">{f.nombre}</span>
+                  <span className="suave chico">{f.ultimo_uso ? `último dato ${new Date(f.ultimo_uso).toLocaleDateString('es-AR')}` : 'sin datos'}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {token ? (
+            <div className="nota-ia">
+              <p>Token de «{token.nombre}» (se muestra una sola vez):</p>
+              <code className="token">{token.token}</code>
+            </div>
+          ) : null}
+          <div className="columna">
+            <button className="btn" onClick={() => nuevaFuente('reloj', 'Reloj')}>⌚ Nuevo token para un reloj</button>
+            <button className="btn" onClick={() => nuevaFuente('telefono', 'Atajo del teléfono')}>📱 Nuevo token para un atajo</button>
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

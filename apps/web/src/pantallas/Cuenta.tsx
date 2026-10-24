@@ -29,7 +29,7 @@ export function Cuenta() {
   if (!sesion?.google) return null;
   return (
     <div className="tarjeta">
-      <h3>Tu cuenta</h3>
+      <h3>🔑 Google</h3>
       {email ? (
         <p className="chico">✅ Podés entrar con Google como <strong>{email}</strong>.</p>
       ) : (

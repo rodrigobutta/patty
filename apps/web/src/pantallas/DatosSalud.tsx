@@ -57,7 +57,7 @@ export function DatosSalud({ persona }: { persona: Persona }) {
 
   return (
     <div className="tarjeta">
-      <h3>Reloj y salud</h3>
+      <h3>⌚ Reloj y salud</h3>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => void prender(e.target.checked)} />
         <span>Traer de {almacen} el sueño, los pasos, el pulso, las calorías y más, un resumen por día.</span>
@@ -79,7 +79,7 @@ export function DatosSalud({ persona }: { persona: Persona }) {
         </p>
       ) : null}
       {activo ? (
-        <div className="fila">
+        <div className="columna">
           <button className="btn" disabled={mandando} onClick={() => void mandar()}>{mandando ? 'Mandando…' : 'Mandar ahora'}</button>
           <button className="btn" onClick={() => void prender(true)}>Permisos</button>
           {plataforma() === 'android' ? (

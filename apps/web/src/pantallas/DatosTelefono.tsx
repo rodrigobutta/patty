@@ -44,7 +44,7 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
 
   return (
     <div className="tarjeta">
-      <h3>Uso del teléfono y llamadas</h3>
+      <h3>📱 Uso del teléfono y llamadas</h3>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => prender(e.target.checked)} />
         <span>Anotar cada día el tiempo de pantalla, los minutos de cada app y las llamadas de este teléfono.</span>
@@ -54,7 +54,7 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
         se usó 5 minutos o más en el día. Se manda al abrir Patty, los últimos 7 días.
       </p>
       {permisos ? (
-        <div className="fila">
+        <div className="columna">
           {permisos.uso === 'granted' ? (
             <span className="chico">✅ Uso de apps</span>
           ) : (

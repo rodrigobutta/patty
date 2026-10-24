@@ -82,7 +82,7 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
 
   return (
     <div className="tarjeta">
-      <h3>Ubicación y lugares</h3>
+      <h3>📍 Ubicación y lugares</h3>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => void prender(e.target.checked)} />
         <span>Contar viajes y lugares con la ubicación de este teléfono.</span>
@@ -134,16 +134,16 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
         ))}
       </ul>
       {puedeEscribir ? (
-        <div className="fila">
+        <div className="columna">
           <button className="btn" onClick={() => void guardarAca()}>📍 Guardar dónde estoy</button>
-          <button className="btn" onClick={borrarHistorial}>Borrar historial</button>
+          <button className="btn suave-btn" onClick={borrarHistorial}>Borrar historial de ubicación</button>
         </div>
       ) : null}
-      {esNativa() ? null : <p className="suave chico">
-        Con la app cerrada: en el iPhone, Atajos → Automatización → «Al llegar» o «Al salir» de un lugar → «Obtener
+      {esNativa() ? null : <details className="ayuda"><summary>¿Y con la app cerrada, sin instalar la app?</summary><p className="suave chico">
+        En el iPhone, Atajos → Automatización → «Al llegar» o «Al salir» de un lugar → «Obtener
         ubicación actual» y «Obtener contenido de URL» con POST a <code>{(API_BASE || location.origin) + '/api/ingesta/ubicacion'}</code>,
-        JSON <code>{'{"lat": …, "lon": …}'}</code> y el token de una fuente «Teléfono» de arriba.
-      </p>}
+        JSON <code>{'{"lat": …, "lon": …}'}</code> y un token de «Avanzado», abajo de todo en Más.
+      </p></details>}
       {error ? <p className="neg">{error}</p> : null}
     </div>
   );
