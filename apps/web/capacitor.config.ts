@@ -3,7 +3,7 @@
 // recarga en vivo. Solo hay que volver a instalar cuando cambia algo nativo (plugins, permisos, este archivo).
 import type { CapacitorConfig } from '@capacitor/cli';
 
-const URL_PRODUCCION = 'https://web-production-4c7d8.up.railway.app';
+const URL_PRODUCCION = 'https://patty.today';
 
 const config: CapacitorConfig = {
   appId: 'ar.patty.app',

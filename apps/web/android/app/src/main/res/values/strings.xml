@@ -5,5 +5,5 @@
     <string name="package_name">ar.patty.app</string>
     <string name="custom_url_scheme">ar.patty.app</string>
     <!-- Lo que muestra Health Connect cuando se toca "Política de privacidad" al dar permisos. -->
-    <string name="health_connect_privacy_policy_url">https://web-production-4c7d8.up.railway.app/privacidad.html</string>
+    <string name="health_connect_privacy_policy_url">https://patty.today/privacidad.html</string>
 </resources>

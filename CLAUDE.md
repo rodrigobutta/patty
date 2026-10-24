@@ -35,7 +35,7 @@ no comparte datos con Quincho. Si hace falta ver cómo se resolvió algo de la b
 - Typecheck y tests pasan. La base de pruebas `patty_test` ya está creada en la Mac.
 - **Railway (2026-10-24)**: proyecto `patty` en la cuenta de Rodrigo (rbutta@gmail.com, plan hobby), servicios `web`
   (repo `rodrigobutta/patty`, rama `main`, se redespliega con cada push) y `Postgres`. Variables de `web`: `PORT=8000`,
-  `DATABASE_URL=${{Postgres.DATABASE_URL}}`. URL: https://web-production-4c7d8.up.railway.app. `ANTHROPIC_API_KEY`
+  `DATABASE_URL=${{Postgres.DATABASE_URL}}`. URL: https://patty.today (dominio propio desde 2026-10-24; la de Railway, web-production-4c7d8.up.railway.app, sigue andando). `ANTHROPIC_API_KEY`
   queda para que la cargue Rodrigo (la misma de Quincho, proyecto `easy-project-plan-next`, servicio `app`).
 
 - **App nativa (2026-10-24)**: Capacitor 8 en `apps/web` (Android e iPhone), abre la web de Railway o el Vite de
