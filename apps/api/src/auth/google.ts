@@ -22,7 +22,9 @@ export async function verificarGoogle(credencial: string): Promise<CuentaGoogle>
     // token vencido o inválido: Google responde 400
     throw new ErrorApi('No se pudo validar la cuenta de Google. Probá de nuevo.', 401);
   }
-  if (info.aud !== cliente || !['accounts.google.com', 'https://accounts.google.com'].includes(info.iss as string)) {
+  // El token del iPhone puede venir a nombre del cliente de iOS (o del web, si se pidió con serverClientId).
+  const aceptados = [cliente, ...(config.googleIosClientId ? [config.googleIosClientId] : [])];
+  if (!aceptados.includes(info.aud as string) || !['accounts.google.com', 'https://accounts.google.com'].includes(info.iss as string)) {
     throw new ErrorApi('La credencial no es para esta app.', 401);
   }
   if (String(info.email_verified).toLowerCase() !== 'true' || !info.email) {

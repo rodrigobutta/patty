@@ -2,7 +2,7 @@
 // no anda (Google no deja iniciar sesión dentro de una vista web), así que se usa el inicio de sesión del teléfono
 // (plugin de Capgo, con el mismo ID de cliente web): devuelve el mismo tipo de credencial y la API la verifica igual.
 import { SocialLogin } from '@capgo/capacitor-social-login';
-import { esNativa } from './nativo';
+import { esNativa, plataforma } from './nativo';
 import { temaOscuro } from './tema';
 
 interface GoogleId {
@@ -27,11 +27,17 @@ export async function montarGoogle(el: HTMLElement | null, clientId: string, alE
 
 export const googleNativo = () => esNativa();
 
+/** El cliente de OAuth de Google para la app de iPhone (proyecto patty). No es secreto. */
+const GOOGLE_IOS = '1021740679928-h6lqqb6ndqa4cqva06556aki2kq2fklc.apps.googleusercontent.com';
+
 let iniciado: string | null = null;
 /** En la app nativa: abre la elección de cuenta de Google del teléfono y devuelve la credencial (ID token). */
 export async function entrarConGoogleNativo(clientId: string): Promise<string> {
   if (iniciado !== clientId) {
-    await SocialLogin.initialize({ google: { webClientId: clientId } });
+    // En iPhone hace falta además el cliente de iOS (el esquema invertido va en Info.plist, CFBundleURLTypes).
+    await SocialLogin.initialize({
+      google: plataforma() === 'ios' ? { iOSClientId: GOOGLE_IOS, iOSServerClientId: clientId, webClientId: clientId } : { webClientId: clientId },
+    });
     iniciado = clientId;
   }
   // Sin pedir scopes: con eso ya devuelve el ID token con el mail (pedir scopes extra en Android exige tocar la MainActivity).

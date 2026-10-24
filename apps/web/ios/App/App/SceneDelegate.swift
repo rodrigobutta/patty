@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import GoogleSignIn
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -15,6 +16,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        // La vuelta de "Continuar con Google" (por si no usó la ventana del sistema).
+        for c in URLContexts where GIDSignIn.sharedInstance.handle(c.url) { return }
         SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
     }
 

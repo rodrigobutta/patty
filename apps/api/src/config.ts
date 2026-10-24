@@ -47,6 +47,10 @@ export const config = {
   get apnsSandbox() {
     return env('APNS_SANDBOX') === '1';
   },
+  /** El cliente de Google para la app de iPhone (no es secreto: también está en la app). */
+  get googleIosClientId() {
+    return env('GOOGLE_IOS_CLIENT_ID') ?? '1021740679928-h6lqqb6ndqa4cqva06556aki2kq2fklc.apps.googleusercontent.com';
+  },
   get googleClientId() {
     return env('GOOGLE_CLIENT_ID');
   },
