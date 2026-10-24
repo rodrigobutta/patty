@@ -195,3 +195,6 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .pregunta-cantidad p { margin-top: 0; }
 .pregunta-cantidad .fila { margin-top: 4px; }
 .pregunta-cantidad .fila input { flex: 2; }
+
+/* "Miré tele": qué, cuánto y en qué canal. */
+.tele .rotulo { margin: 12px 0 4px; font-weight: 600; }

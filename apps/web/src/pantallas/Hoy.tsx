@@ -2,10 +2,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
 import { guardarSentir, type Momento } from '../lib/sentir';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
-import { agruparAutomaticos, resumenDelGrupo } from '../lib/automatico';
+import { agruparAutomaticos, duracion, resumenDelGrupo } from '../lib/automatico';
 import { hoyEn, horaEn, nombreDia, sumarDias } from '../lib/fechas';
 import { avisarAnotado } from '../mascota/cara';
 import type { Cara } from '../mascota/dibujo';
@@ -21,6 +21,10 @@ const PEDIDOS: Record<Cara, string> = {
   triste: 'Hace días que no me contás nada… Anotá algo, aunque sea a qué hora te levantaste.',
 };
 
+/** «Tele: Noticias» y «Tele en TN» van con su «Tele»: en el Día se ve uno solo (y se borran juntos). */
+const esParteDeTele = (r: Registro) => r.concepto.startsWith(teleDeTipo('')) || r.concepto.startsWith(teleEnCanal(''));
+const partesDe = (r: Registro, todos: Registro[]) => (r.concepto === TELE ? todos.filter((o) => esParteDeTele(o) && o.inicio === r.inicio) : []);
+
 function detalle(r: Registro, tipo: string | undefined): string {
   if (r.intensidad !== null && (r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI)) {
     const e = estadoDe(r.intensidad);
@@ -28,7 +32,7 @@ function detalle(r: Registro, tipo: string | undefined): string {
   }
   if (r.intensidad !== null) return `${r.intensidad}/10`;
   if (r.valor === null || tipo === 'hora') return '';
-  if (tipo === 'duracion') return `${r.valor} min`;
+  if (tipo === 'duracion' || r.unidad === 'min') return duracion(r.valor);
   return `${Number(r.valor.toFixed(2))}${r.unidad ? ' ' + r.unidad : ''}`;
 }
 
@@ -66,7 +70,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
 
   const borrar = async (r: Registro) => {
     if (!confirm(`¿Borrar «${r.concepto}» de las ${horaEn(r.inicio, persona.zona_horaria)}?`)) return;
-    await api('DELETE', `/api/registros/${r.id}`);
+    for (const x of [r, ...partesDe(r, registros ?? [])]) await api('DELETE', `/api/registros/${x.id}`);
     avisar('Borrado');
     avisarAnotado();
     void traer();
@@ -141,7 +145,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </div>
       ) : (
         <ul className="lista linea">
-          {registros.map((r) => {
+          {registros.filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio)).map((r) => {
             const cat = tipoDe(r);
             return (
               <li key={r.id} onContextMenu={(e) => { e.preventDefault(); void borrar(r); }}>

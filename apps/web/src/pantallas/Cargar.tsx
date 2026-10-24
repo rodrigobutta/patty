@@ -6,6 +6,7 @@ import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
 import { horaAhora, horaEn, instanteDelDia } from '../lib/fechas';
 import { Autocompletar } from '../ui/Autocompletar';
+import { Tele } from './Tele';
 
 interface Elegido {
   concepto_id?: number;
@@ -32,7 +33,7 @@ interface Propuesta {
 
 export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Persona; fecha: string; alGuardar(): void; alCerrar(): void }) {
   const { categorias, sesion, avisar } = useEstado();
-  const [modo, setModo] = useState<'rapido' | 'texto'>('rapido');
+  const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>('rapido');
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [elegido, setElegido] = useState<Elegido | null>(null);
   const [pidiendoCategoria, setPidiendoCategoria] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Perso
       <div className="hoja-cabeza">
         <div className="segmentos">
           <button className={modo === 'rapido' ? 'activa' : ''} onClick={() => setModo('rapido')}>Rápido</button>
+          <button className={modo === 'tele' ? 'activa' : ''} onClick={() => setModo('tele')}>📺 Tele</button>
           {sesion?.ia ? <button className={modo === 'texto' ? 'activa' : ''} onClick={() => setModo('texto')}>Contarlo ✨</button> : null}
         </div>
         <button className="btn-icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
@@ -59,6 +61,8 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar }: { persona: Perso
 
       {modo === 'texto' ? (
         <TextoLibre persona={persona} alGuardar={alGuardar} />
+      ) : modo === 'tele' ? (
+        <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
         <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { avisar(`Anotado: ${elegido.nombre}`); alGuardar(); }} />
       ) : (

@@ -203,6 +203,17 @@ export const CUANTO = [
   { nombre: 'Mucho', intensidad: 9 },
 ];
 
+/**
+ * La tele: cuánto, qué tipo de contenido y en qué canal o plataforma. Se anota como tres duraciones (minutos) en
+ * «Pantalla y redes»: «Tele» (el total), «Tele: Noticias» (el tipo) y «Tele en TN» (el canal), para que Patty pueda
+ * encontrar cosas como "los días con muchas noticias, a la noche me duele la cabeza".
+ */
+export const TELE = 'Tele';
+export const TIPOS_DE_TELE = ['Noticias', 'Películas', 'Series', 'Deportes', 'Documentales', 'Entretenimiento', 'Política y debates', 'Chimentos', 'Música', 'Infantiles'];
+export const CANALES_COMUNES = ['TN', 'C5N', 'LN+', 'A24', 'Crónica', 'Telefe', 'El Trece', 'América', 'TV Pública', 'Netflix', 'YouTube', 'Disney+', 'Max', 'Prime Video', 'ESPN', 'TyC Sports'];
+export const teleDeTipo = (tipo: string) => `${TELE}: ${tipo}`;
+export const teleEnCanal = (canal: string) => `${TELE} en ${canal}`;
+
 /** Lo que llegó solo en un día (teléfono, ubicación, clima, reloj), resumido por fuente y concepto. */
 export interface DatoAutomatico {
   fuente: string;

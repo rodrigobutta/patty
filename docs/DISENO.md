@@ -105,6 +105,10 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   preguntar; desde ahí, al anotarlo se pide "¿Cuántos vasos?".
 - En el Día, lo que llegó solo va en un renglón por fuente (teléfono, ubicación, clima) con lo principal
   (`resumenDelGrupo`); al tocarlo se abre con todo.
+- **Tele** (pestaña «📺 Tele» al anotar, `pantallas/Tele.tsx`): tipo de contenido, cuánto tiempo y canal o plataforma
+  (los ya usados primero). Se guardan tres duraciones en «Pantalla y redes»: «Tele» (total, con el detalle en la nota),
+  «Tele: Noticias» y «Tele en TN», para que los patrones separen tipos y canales. En el Día se ve solo «Tele» y se
+  borran juntas.
 - **¿Cómo te sentís?** (arriba del Día, `pantallas/Sentir.tsx`, `lib/sentir.ts`): cuatro caritas (muy bien, bien,
   mal, muy mal) que se guardan como «Cómo me siento» en Ánimo con intensidad 10, 7, 4 y 1 (más alto, mejor: el motor
   compara días buenos y malos). Muy bien y bien se guardan al toque; mal y muy mal preguntan qué pasa: síntomas (los
