@@ -67,6 +67,14 @@ export const personas = pgTable('personas', {
   nombre: text('nombre').notNull(),
   zona_horaria: text('zona_horaria').notNull().default('America/Argentina/Buenos_Aires'),
   nacimiento: date('nacimiento', { mode: 'string' }),
+  /**
+   * Datos opcionales para que Patty entienda mejor los patrones (no es una app médica): sexo, altura, peso y
+   * condiciones crónicas ("Hipertensión", "Celiaquía"). Se cargan en la bienvenida o después, en Más.
+   */
+  sexo: text('sexo', { enum: ['femenino', 'masculino', 'otro'] }),
+  altura_cm: smallint('altura_cm'),
+  peso_kg: doublePrecision('peso_kg'),
+  condiciones: text('condiciones').array().notNull().default(sql`'{}'::text[]`),
   notas: text('notas'),
   creado_por: integer('creado_por').references(() => usuarios.id, { onDelete: 'set null' }),
   creado: creado(),

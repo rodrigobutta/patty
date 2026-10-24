@@ -34,6 +34,8 @@ export interface Explicaciones {
 
 export function explicarHallazgos(datos: {
   persona: string;
+  /** Lo que la persona contó de sí (edad, sexo, condiciones), si contó algo. */
+  perfil?: string;
   desde: string;
   hasta: string;
   diasActivos: number;
@@ -49,6 +51,7 @@ export function explicarHallazgos(datos: {
     'sea azar o se explique por otra cosa (un confusor: por ejemplo, el fin de semana), y alta lo que tiene sentido y está ' +
     'bien sostenido por los números. "Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.';
   const lineas = [
+    ...(datos.perfil ? [`Sobre la persona (lo contó ella; usalo para entender mejor, no para diagnosticar): ${datos.perfil}.`] : []),
     `Persona: ${datos.persona}. Período: ${datos.desde} a ${datos.hasta}, ${datos.diasActivos} días con anotaciones.`,
     `Se probaron ${datos.paresEvaluados} combinaciones (por eso algunas pueden salir por azar: mirá el q).`,
     '',

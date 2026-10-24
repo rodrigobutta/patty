@@ -19,6 +19,7 @@ import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
 import { Patrones } from './pantallas/Patrones';
+import { ofrecerPerfil, Perfil } from './pantallas/Perfil';
 
 type Pestana = 'hoy' | 'patrones' | 'mas';
 
@@ -32,6 +33,8 @@ export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso, sesion, avisar, recargar } = useEstado();
   const [pestana, setPestana] = useState<Pestana>('hoy');
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
+  /** El paso opcional de datos de la persona (una vez, después de la bienvenida). */
+  const [perfilListo, setPerfilListo] = useState(false);
   // Lo que junta solo el teléfono (ubicación, llamadas, reloj, clima) va siempre a la persona propia, aunque se esté
   // mirando el día de alguien que se supervisa.
   const propia = personas.find((p) => p.propia) ?? (persona && !persona.supervisada ? persona : undefined);
@@ -73,6 +76,14 @@ export function App() {
   if (fase === 'entrar' || fase === 'configurar') return <Entrar configurar={fase === 'configurar'} />;
   if (bienvenida) return <Bienvenida alTerminar={() => setBienvenida(false)} />;
   if (!persona) return <NuevaPersona primera />;
+  if (!perfilListo && ofrecerPerfil(persona)) {
+    return (
+      <div className="bienvenida perfil-paso">
+        <Mascota cara="feliz" tamano={90} className="saluda" />
+        <Perfil persona={persona} bienvenida alTerminar={() => setPerfilListo(true)} />
+      </div>
+    );
+  }
 
   return (
     <div className="app">

@@ -155,6 +155,11 @@ export interface Persona {
   nombre: string;
   zona_horaria: string;
   nacimiento: string | null;
+  sexo?: 'femenino' | 'masculino' | 'otro' | null;
+  altura_cm?: number | null;
+  peso_kg?: number | null;
+  /** Condiciones crónicas ("Hipertensión", "Celiaquía"), si las quiso contar. */
+  condiciones?: string[];
   notas: string | null;
   /** Si el usuario es su dueño (es "la suya"): a esa van los datos que junta solo el teléfono. */
   propia?: boolean;
@@ -562,3 +567,43 @@ export const AVISOS_RAPIDOS = [
   'Anotá lo que comiste hoy 🍽️',
   'Te estoy pensando ❤️',
 ];
+
+// ---------- Perfil ----------
+
+/** Condiciones crónicas comunes, para elegir con un toque (se puede escribir otra). */
+export const CONDICIONES_COMUNES = [
+  'Hipertensión',
+  'Diabetes',
+  'Colesterol alto',
+  'Hipotiroidismo',
+  'Asma',
+  'Migraña',
+  'Colon irritable',
+  'Celiaquía',
+  'Gastritis o reflujo',
+  'Artrosis',
+  'Fibromialgia',
+  'Ansiedad',
+  'Depresión',
+  'Alergias',
+];
+
+/**
+ * Lo que se sabe de la persona, en una línea para la IA ("mujer, 67 años, 1,60 m, 70 kg; condiciones: hipertensión").
+ * Vacío si no cargó nada.
+ */
+export function perfilTexto(p: Pick<Persona, 'nacimiento' | 'sexo' | 'altura_cm' | 'peso_kg' | 'condiciones'>, hoy = new Date()): string {
+  const partes: string[] = [];
+  if (p.sexo) partes.push(p.sexo === 'femenino' ? 'mujer' : p.sexo === 'masculino' ? 'varón' : 'otro sexo');
+  if (p.nacimiento) {
+    const n = new Date(p.nacimiento + 'T12:00:00Z');
+    let edad = hoy.getUTCFullYear() - n.getUTCFullYear();
+    if (hoy.getUTCMonth() < n.getUTCMonth() || (hoy.getUTCMonth() === n.getUTCMonth() && hoy.getUTCDate() < n.getUTCDate())) edad--;
+    if (edad >= 0 && edad < 130) partes.push(`${edad} años`);
+  }
+  if (p.altura_cm) partes.push(`${(p.altura_cm / 100).toFixed(2).replace('.', ',')} m`);
+  if (p.peso_kg) partes.push(`${String(Number(p.peso_kg.toFixed(1))).replace('.', ',')} kg`);
+  const texto = partes.join(', ');
+  const cond = p.condiciones?.length ? `condiciones: ${p.condiciones.join(', ').toLowerCase()}` : '';
+  return [texto, cond].filter(Boolean).join('; ');
+}

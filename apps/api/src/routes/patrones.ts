@@ -1,7 +1,7 @@
 // Análisis de patrones de una persona y los hallazgos que se van acumulando.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { nombreRasgo, type Hallazgo, type ResultadoAnalisis } from 'shared';
+import { nombreRasgo, perfilTexto, type Hallazgo, type Persona, type ResultadoAnalisis } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { analisis, hallazgos } from '../db/schema.js';
 import { explicarHallazgos } from '../ia/analizar.js';
@@ -95,7 +95,7 @@ export const rutasPatrones = new Hono<Env>()
       const frecuentes = [...diasPor].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([id, dias]) => ({ nombre: nombre.get(id)!, dias }));
       try {
         ia = await explicarHallazgos({
-          persona: p.nombre, desde, hasta, diasActivos: r.dias_activos, paresEvaluados: r.pares_evaluados,
+          persona: p.nombre, perfil: perfilTexto((await una<Persona>(db, sql`SELECT to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones FROM personas WHERE id = ${p.id}`))!), desde, hasta, diasActivos: r.dias_activos, paresEvaluados: r.pares_evaluados,
           candidatos: conNombres.slice(0, 25), frecuentes,
         });
       } catch (e) {

@@ -106,3 +106,17 @@ describe('supervisión con código', () => {
     expect((await hijo.c.post('/api/supervision/con-codigo', { codigo: k.body.codigo })).status).toBe(400);
   });
 });
+
+describe('perfil de la persona', () => {
+  it('guarda los datos opcionales, los valida y los devuelve', async () => {
+    const { ana, personaId } = await conAdmin();
+    const r = await ana.put(`/api/personas/${personaId}`, { nacimiento: '1958-03-10', sexo: 'femenino', altura_cm: '160', peso_kg: '70,5', condiciones: ['Hipertensión', 'Hipertensión', 'Celiaquía'] });
+    expect(r.status).toBe(200);
+    const p = (await ana.get('/api/personas')).body.find((x: any) => x.id === personaId);
+    expect(p).toMatchObject({ nacimiento: '1958-03-10', sexo: 'femenino', altura_cm: 160, peso_kg: 70.5, condiciones: ['Hipertensión', 'Celiaquía'] });
+    expect((await ana.put(`/api/personas/${personaId}`, { altura_cm: 1.6 })).status).toBe(400);
+    expect((await ana.put(`/api/personas/${personaId}`, { sexo: 'x' })).status).toBe(400);
+    const { perfilTexto } = await import('shared');
+    expect(perfilTexto(p, new Date('2026-10-24T12:00:00Z'))).toBe('mujer, 68 años, 1,60 m, 70,5 kg; condiciones: hipertensión, celiaquía');
+  });
+});

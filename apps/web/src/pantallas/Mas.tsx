@@ -9,11 +9,13 @@ import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
 import { esNativa } from '../lib/nativo';
 import { ponerRecordatorios, recordatoriosActivos } from '../lib/remedios';
 import { hayDatosDelTelefono } from '../lib/telefono';
+import { perfilTexto } from 'shared';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { Cuenta } from './Cuenta';
 import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
+import { Perfil } from './Perfil';
 import { Remedios } from './Remedios';
 import { Supervision } from './Supervision';
 import { NuevaPersona } from './NuevaPersona';
@@ -23,6 +25,7 @@ interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string 
 export function Mas() {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
   const [nueva, setNueva] = useState(false);
+  const [perfil, setPerfil] = useState(false);
   const [tema, setTema] = useState<Tema>(temaActual());
   const [fuentes, setFuentes] = useState<Fuente[]>([]);
   const [token, setToken] = useState<{ nombre: string; token: string } | null>(null);
@@ -136,6 +139,20 @@ export function Mas() {
         </ul>
         {nueva ? <NuevaPersona alTerminar={() => setNueva(false)} /> : usuario?.rol !== 'lector' ? <button className="btn ancho" onClick={() => setNueva(true)}>＋ Agregar persona</button> : null}
       </div>
+
+      {persona ? (
+        <div className="tarjeta">
+          <h3>🧍 Datos de {persona.nombre}</h3>
+          <p className="suave chico">{perfilTexto(persona) || 'Edad, altura, peso y condiciones crónicas: opcional, ayuda a entender mejor los patrones.'}</p>
+          {usuario?.rol !== 'lector' ? <button className="btn ancho" onClick={() => setPerfil(true)}>{perfilTexto(persona) ? 'Cambiar' : 'Completar'}</button> : null}
+          {perfil ? (
+            <>
+              <div className="velo" onClick={() => setPerfil(false)} />
+              <Perfil persona={persona} alTerminar={() => setPerfil(false)} />
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       <h2 className="seccion">Tu cuenta</h2>
       <Cuenta />

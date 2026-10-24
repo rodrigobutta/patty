@@ -9,7 +9,7 @@ import { fuentes, personas, personaUsuarios } from '../db/schema.js';
 import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { esFecha, zonaValida } from '../lib/fechas.js';
-import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
+import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
 
 function datosPersona(d: Record<string, unknown>, nueva: boolean) {
   const v: Partial<typeof personas.$inferInsert> = {};
@@ -26,6 +26,26 @@ function datosPersona(d: Record<string, unknown>, nueva: boolean) {
     if (v.nacimiento && !esFecha(v.nacimiento)) throw new ErrorApi('Fecha de nacimiento inválida.');
   }
   if ('notas' in d) v.notas = texto(d.notas) || null;
+  if ('sexo' in d) {
+    const sexo = texto(d.sexo) || null;
+    if (sexo && !['femenino', 'masculino', 'otro'].includes(sexo)) throw new ErrorApi('Sexo inválido.');
+    v.sexo = sexo as typeof v.sexo;
+  }
+  if ('altura_cm' in d) {
+    const a = numeroONulo(d.altura_cm, 'altura');
+    if (a !== null && (a < 40 || a > 250)) throw new ErrorApi('La altura va en centímetros (por ejemplo, 165).');
+    v.altura_cm = a === null ? null : Math.round(a);
+  }
+  if ('peso_kg' in d) {
+    const p = numeroONulo(d.peso_kg, 'peso');
+    if (p !== null && (p < 2 || p > 400)) throw new ErrorApi('El peso va en kilos (por ejemplo, 70).');
+    v.peso_kg = p;
+  }
+  if ('condiciones' in d) {
+    const lista = Array.isArray(d.condiciones) ? d.condiciones.map((x) => texto(x)).filter(Boolean) : [];
+    if (lista.length > 30 || lista.some((x) => x.length > 80)) throw new ErrorApi('Demasiadas condiciones o muy largas.');
+    v.condiciones = [...new Set(lista)];
+  }
   return v;
 }
 
@@ -35,7 +55,7 @@ export const rutasPersonas = new Hono<Env>()
     return c.json(
       await filas<Persona>(
         c.var.db,
-        sql`SELECT p.id, p.nombre, p.zona_horaria, p.nacimiento, p.notas,
+        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.notas,
               EXISTS (SELECT 1 FROM persona_usuarios d WHERE d.persona_id = p.id AND d.usuario_id = ${u.id} AND d.rol = 'dueno') AS propia,
               EXISTS (SELECT 1 FROM accesos a WHERE a.persona_id = p.id AND a.usuario_id = ${u.id} AND a.por_supervision) AS supervisada
             FROM personas p

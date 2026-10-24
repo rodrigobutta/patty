@@ -455,3 +455,17 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .que-me-supervisen { margin-top: 8px; }
 .codigo-supervision { text-align: center; }
 .codigo-supervision .codigo { font: 700 34px/1.2 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.12em; margin: 6px 0; color: var(--acento); }
+
+/* ---------- Perfil ---------- */
+.perfil .hoja-cabeza h3 { margin: 0; }
+.perfil.hoja { max-height: 92vh; overflow-y: auto; }
+.fila-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fila-datos label:first-child { grid-column: 1 / -1; }
+.fila-datos label { margin-bottom: 8px; }
+.fila-datos input { padding-left: 10px; padding-right: 10px; min-width: 0; }
+.perfil .sexo { margin-bottom: 12px; }
+.perfil .chip.chico { padding: 6px 10px; font-size: 13px; }
+.perfil .otra-condicion { margin: 8px 0 12px; flex-wrap: nowrap; }
+.perfil .otra-condicion input { min-width: 0; }
+.perfil-paso { justify-content: flex-start; align-items: center; }
+.perfil-bienvenida { width: 100%; max-width: 480px; text-align: left; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 16px; }
