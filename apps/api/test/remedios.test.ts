@@ -63,7 +63,7 @@ describe('remedios y tomas', () => {
     expect(t.body.proxima).toBeTruthy();
     const prox = (await ana.get('/api/tratamientos/proximas?horas=48')).body;
     expect(prox.length).toBeGreaterThanOrEqual(3);
-    expect(prox.length).toBeLessThanOrEqual(4);
+    expect(prox.length).toBeLessThanOrEqual(5); // incluye la que pasó hace menos de una hora
     expect(prox[0]).toMatchObject({ remedio: 'Vitamina D', persona_id: personaId, estado: null });
 
     const f = await ana.post(`/api/tratamientos/${t.body.id}/terminar`);

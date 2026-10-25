@@ -1,6 +1,6 @@
 // Cómo se muestra en el Día lo que llegó solo (teléfono, ubicación, reloj, clima): un grupo por fuente, una línea por
 // concepto. El clima viene una vez por hora, así que se muestra el rango del día (la lluvia y el sol, el total).
-import type { DatoAutomatico } from 'shared';
+import { unidadPara, type DatoAutomatico } from 'shared';
 
 export interface GrupoAutomatico { fuente: string; tipo: string; lineas: Array<{ concepto: string; categoria_id: number; valor: string }> }
 
@@ -28,7 +28,7 @@ export function reloj(horas: number): string {
 
 export function valorAutomatico(d: DatoAutomatico): string {
   const conUnidad = (n: number) =>
-    d.unidad === 'min' ? duracion(n) : d.unidad === 'h' ? duracion(n * 60) : d.unidad === 'hora' ? reloj(n) : `${numero(n)}${d.unidad ? ' ' + d.unidad : ''}`;
+    d.unidad === 'min' ? duracion(n) : d.unidad === 'h' ? duracion(n * 60) : d.unidad === 'hora' ? reloj(n) : `${numero(n)}${d.unidad ? ' ' + unidadPara(n, d.unidad) : ''}`;
   // Del clima, el rango del día; lo que se acumula (lluvia, minutos de sol), el total.
   if (d.tipo_fuente === 'clima' && d.unidad !== 'mm' && d.unidad !== 'min' && d.cantidad > 1) {
     return d.minimo === d.maximo ? conUnidad(d.minimo) : `${numero(d.minimo)}–${conUnidad(d.maximo)}`;

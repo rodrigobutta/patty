@@ -1,6 +1,6 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
 import { useEffect, useRef, useState } from 'react';
-import { dosisTexto, frecuenciaTexto, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
+import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
@@ -208,7 +208,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
       ) : null}
       {!preguntar && (t === 'cantidad' || t === 'medida' || t === 'duracion') ? (
         <label>
-          {t === 'duracion' ? 'Minutos' : elegido.unidad ? `¿${elegido.unidad.endsWith('os') ? 'Cuántos' : 'Cuántas'} ${elegido.unidad}?` : 'Cantidad'}
+          {t === 'duracion' ? 'Minutos' : elegido.unidad ? cuantos(elegido.unidad) : 'Cantidad'}
           <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} autoFocus />
           {t === 'duracion' ? (
             <div className="chips">{[10, 15, 30, 45, 60, 90].map((m) => <button key={m} className="chip" onClick={() => setValor(String(m))}>{m}</button>)}</div>
@@ -443,7 +443,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
                 <span>
                   {p.concepto_nombre}
                   {p.nuevo ? <span className="etiqueta">nuevo</span> : null}
-                  {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${p.valor}${p.unidad ? ' ' + p.unidad : ''}` : ''}
+                  {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${conUnidad(p.valor, p.unidad)}` : ''}
                   {p.nota ? <span className="suave chico"> — {p.nota}</span> : null}
                 </span>
               </li>

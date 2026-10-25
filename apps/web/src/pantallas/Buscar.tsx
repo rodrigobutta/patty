@@ -1,7 +1,7 @@
 // "Buscar" (en Patrones): elegir una cosa (dolor de cabeza, huevos, lluvia) y ver en qué días pasó, en un calendario
 // por mes, con cuántas veces por mes y qué días de la semana se repite más.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { normalizar, type Estadisticas, type Persona, type SerieConcepto, type Sugerencia } from 'shared';
+import { conUnidad, normalizar, type Estadisticas, type Persona, type SerieConcepto, type Sugerencia } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 
@@ -77,7 +77,7 @@ export function Buscar({ persona, conceptoInicial }: { persona: Persona; concept
   const valorDia = (d: SerieConcepto['dias'][number]) => {
     if (!serie) return '';
     if (d.intensidad !== null) return `intensidad ${d.intensidad}/10`;
-    if (d.suma !== null && serie.concepto.unidad) return `${Number(d.suma.toFixed(1))} ${serie.concepto.unidad}`;
+    if (d.suma !== null && serie.concepto.unidad) return conUnidad(d.suma, serie.concepto.unidad, 1);
     return d.veces === 1 ? 'una vez' : `${d.veces} veces`;
   };
 

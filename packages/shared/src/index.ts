@@ -488,9 +488,7 @@ export const HORAS_PARA_OLVIDADA = 3;
 /** "1 g", "2 comprimidos", "" */
 export function dosisTexto(dosis: number | null, unidad: string | null): string {
   if (dosis === null) return unidad ?? '';
-  if (!unidad) return String(dosis);
-  const plural = dosis !== 1 && /^(comprimido|cápsula|sobre|cucharada|puff)$/.test(unidad) ? 's' : '';
-  return `${Number(dosis.toFixed(2))} ${unidad}${plural}`;
+  return conUnidad(dosis, unidad);
 }
 
 /** "cada 8 h", "a las 09:00 y 21:00", "cuando haga falta" */
@@ -673,4 +671,51 @@ export interface SerieConcepto {
   desde: string;
   hasta: string;
   dias: Array<{ fecha: string; veces: number; suma: number | null; intensidad: number | null }>;
+}
+
+// ---------- Unidades en singular o plural ----------
+
+/** Unidades que no cambian: abreviaturas y símbolos ("g", "km/h", "°C"), y palabras iguales en los dos ("dosis"). */
+const INVARIABLES = /^(g|mg|kg|ml|l|cc|km|m|cm|mm|h|min|seg|s|ui|°c|%|hpa|aqi|uv|ppm|bpm|kcal|cal|w\/m²|µg\/m³|km\/h|dosis|puff|tele)$/i;
+
+/** "unidad" → "unidades", "vaso" → "vasos", "vez" → "veces", "porción" → "porciones". */
+export function plural(palabra: string): string {
+  const p = palabra.trim();
+  if (!p || INVARIABLES.test(p) || /[^\p{L}]$/u.test(p)) return p;
+  if (/[sx]$/i.test(p)) return p; // ya está en plural (o es invariable: "tórax")
+  if (/z$/i.test(p)) return p.slice(0, -1) + 'ces';
+  if (/ón$/i.test(p)) return p.slice(0, -2) + 'ones';
+  if (/[aeiouáéó]$/i.test(p)) return p + 's';
+  if (/[íú]$/i.test(p)) return p + 'es';
+  return p + 'es';
+}
+
+/** "unidades" → "unidad", "vasos" → "vaso", "veces" → "vez", "porciones" → "porción". */
+export function singular(palabra: string): string {
+  const p = palabra.trim();
+  if (!p || INVARIABLES.test(p) || !/s$/i.test(p)) return p;
+  if (/ces$/i.test(p)) return p.slice(0, -3) + 'z';
+  if (/iones$/i.test(p)) return p.slice(0, -5) + 'ión';
+  if (/ones$/i.test(p)) return p.slice(0, -4) + 'ón'; // "limones" → "limón"
+  // "unidades", "panes", "flores": vocal + l/n/r/d/j/y + "es" → se saca "es"; "sobres", "tomates", "tazas": solo la s.
+  if (/[aeiouáéíóú][lnrdjy]es$/i.test(p)) return p.slice(0, -2);
+  return p.slice(0, -1);
+}
+
+/** La unidad como corresponde a la cantidad: 1 unidad, 2 unidades, 1 vaso, 3 vasos, 500 mg. */
+export function unidadPara(cantidad: number, unidad: string): string {
+  return Math.abs(cantidad) === 1 ? singular(unidad) : plural(unidad);
+}
+
+/** "2 unidades", "1 vaso", "1.5 litros", "500 mg"; sin unidad, solo el número. */
+export function conUnidad(cantidad: number, unidad: string | null, decimales = 2): string {
+  const n = Number(cantidad.toFixed(decimales));
+  return unidad ? `${n} ${unidadPara(n, unidad)}` : String(n);
+}
+
+/** Para preguntar: "¿Cuántas unidades?", "¿Cuántos vasos?". */
+export function cuantos(unidad: string): string {
+  const sg = singular(unidad);
+  const femenina = /(a|dad|tad|ión|z|is)$/i.test(sg);
+  return `¿${femenina ? 'Cuántas' : 'Cuántos'} ${plural(unidad)}?`;
 }

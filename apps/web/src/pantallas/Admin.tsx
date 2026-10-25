@@ -2,6 +2,7 @@
 // usuarios (con su último acceso y lo que anotan; se crean, desactivan y se les cambia el rol o la clave) y lo último
 // que se anotó en toda la app. Se entra desde Más, o con patty.today/#admin en la compu.
 import { useCallback, useEffect, useState } from 'react';
+import { conUnidad } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 
@@ -127,7 +128,7 @@ const fechaHora = (iso: string) =>
 /** "1 anotación", "3 anotaciones" */
 const cuantos = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 const valorDe = (r: Registro) =>
-  r.intensidad !== null ? `${r.intensidad}/10` : r.valor !== null ? `${Number(r.valor.toFixed(2))}${r.unidad ? ' ' + r.unidad : ''}` : '';
+  r.intensidad !== null ? `${r.intensidad}/10` : r.valor !== null ? conUnidad(r.valor, r.unidad) : '';
 
 function Barritas({ datos, alto = 60 }: { datos: number[]; alto?: number }) {
   const max = Math.max(1, ...datos);
@@ -371,7 +372,7 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
               <ul className="lista-simple">
                 {d.tratamientos.map((t) => (
                   <li key={t.id}>
-                    💊 {t.remedio}{t.dosis !== null ? ` ${t.dosis}${t.unidad ? ' ' + t.unidad : ''}` : ''} · {t.cada_horas ? `cada ${t.cada_horas} h` : t.horarios.length ? t.horarios.join(', ') : 'si hace falta'} · {t.persona}
+                    💊 {t.remedio}{t.dosis !== null ? ` ${conUnidad(t.dosis, t.unidad)}` : ''} · {t.cada_horas ? `cada ${t.cada_horas} h` : t.horarios.length ? t.horarios.join(', ') : 'si hace falta'} · {t.persona}
                     {t.terminado ? ' · terminado' : ''}
                   </li>
                 ))}

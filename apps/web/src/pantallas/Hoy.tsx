@@ -5,7 +5,7 @@ import { alTocarAvisoPush } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, conUnidad, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { agruparAutomaticos, duracion, resumenDelGrupo } from '../lib/automatico';
@@ -63,7 +63,7 @@ function detalle(r: Registro, tipo: string | undefined): string {
   if (r.intensidad !== null) return `${r.intensidad}/10`;
   if (r.valor === null || tipo === 'hora') return '';
   if (tipo === 'duracion' || r.unidad === 'min') return duracion(r.valor);
-  return `${Number(r.valor.toFixed(2))}${r.unidad ? ' ' + r.unidad : ''}`;
+  return conUnidad(r.valor, r.unidad);
 }
 
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {

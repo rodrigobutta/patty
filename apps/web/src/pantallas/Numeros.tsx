@@ -1,7 +1,7 @@
 // "Números" (en Patrones): lo que se ve en los datos de los últimos 30 o 90 días, sin buscar relaciones: cuánto se
 // anotó, lo que más se repite, ánimo, dolores, sueño, clima, movimiento y remedios. Tocar algo lo abre en el buscador.
 import { useEffect, useState } from 'react';
-import { ESTADOS, estadoDe, type Estadisticas, type Persona } from 'shared';
+import { conUnidad, ESTADOS, estadoDe, type Estadisticas, type Persona } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { duracion } from '../lib/automatico';
@@ -63,7 +63,7 @@ export function Numeros({ persona, alElegir }: { persona: Persona; alElegir(conc
                 </span>
                 <span className="cifra">
                   <span><strong>{t.dias}</strong> {t.dias === 1 ? 'día' : 'días'}</span>
-                  {t.suma && t.unidad ? <span className="suave chico">{num(t.suma, 1)} {t.unidad}</span> : t.veces > t.dias ? <span className="suave chico">{t.veces} veces</span> : null}
+                  {t.suma && t.unidad ? <span className="suave chico">{conUnidad(t.suma, t.unidad, 1)}</span> : t.veces > t.dias ? <span className="suave chico">{t.veces} veces</span> : null}
                 </span>
               </li>
             ))}
