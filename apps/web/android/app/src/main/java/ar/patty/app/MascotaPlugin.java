@@ -95,6 +95,16 @@ public class MascotaPlugin extends Plugin {
         call.resolve();
     }
 
+    /** La marca y el modelo del teléfono (para explicar los ajustes con los menús de esa marca). */
+    @PluginMethod
+    public void telefono(PluginCall call) {
+        com.getcapacitor.JSObject r = new com.getcapacitor.JSObject();
+        r.put("marca", android.os.Build.MANUFACTURER);
+        r.put("modelo", android.os.Build.MODEL);
+        r.put("android", android.os.Build.VERSION.SDK_INT);
+        call.resolve(r);
+    }
+
     @PluginMethod
     public void anotado(PluginCall call) {
         String ultima = call.getString("ultima");

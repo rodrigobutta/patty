@@ -16,7 +16,7 @@ import { hayDatosDelTelefono, ponerDatos, sincronizar, Telefono } from '../lib/t
 import { ponerSeguimiento } from '../lib/ubicacion';
 import { Mascota } from '../mascota/Mascota';
 import { t } from '../lib/idioma';
-import { marcaDelTelefono, NOMBRE_MARCA, pasosPara } from '../lib/guiasPermisos';
+import { averiguarMarca, marcaDelTelefono, NOMBRE_MARCA, pasosPara } from '../lib/guiasPermisos';
 
 const CLAVE = 'permisos-ofrecidos';
 
@@ -59,7 +59,8 @@ export function alPedirGuia(f: () => void): () => void {
 
 export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { persona: Persona; bienvenida?: boolean; guia?: Paso; alTerminar(): void }) {
   const [abierta, setAbierta] = useState<Paso | null>(guia ?? null);
-  const marca = marcaDelTelefono();
+  const [marca, setMarca] = useState(marcaDelTelefono());
+  useEffect(() => void averiguarMarca().then(setMarca), []);
   const [estado, setEstado] = useState<EstadoTelefono | null>(null);
   const [ocupado, setOcupado] = useState<Paso | null>(null);
   const [nota, setNota] = useState<Partial<Record<Paso, string>>>({});

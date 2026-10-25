@@ -1,13 +1,27 @@
 // Cómo dar cada permiso, paso a paso, según el teléfono: los menús cambian de marca a marca (Samsung, Xiaomi, Motorola,
 // Pixel) y en el iPhone. La marca se saca del navegador de la app (el modelo viene en el user agent).
+import { registerPlugin } from '@capacitor/core';
 import { t } from './idioma';
 import { plataforma } from './nativo';
 
-export type Marca = 'iphone' | 'samsung' | 'xiaomi' | 'motorola' | 'pixel' | 'android';
+export type Marca = 'iphone' | 'samsung' | 'xiaomi' | 'oppo' | 'motorola' | 'pixel' | 'android';
+
+const Mascota = registerPlugin<{ telefono(): Promise<{ marca: string; modelo: string }> }>('Mascota');
+let delSistema: string | null = null;
+/** Pregunta la marca al teléfono (el modelo del navegador a veces no la dice, como en los OPPO y OnePlus). */
+export async function averiguarMarca(): Promise<Marca> {
+  if (plataforma() === 'android' && delSistema === null) {
+    delSistema = await Mascota.telefono()
+      .then((r) => `${r.marca} ${r.modelo}`)
+      .catch(() => '');
+  }
+  return marcaDelTelefono();
+}
 export type PermisoGuia = 'avisos' | 'ubicacion' | 'telefono' | 'salud';
 
-export function marcaDelTelefono(ua = typeof navigator === 'undefined' ? '' : navigator.userAgent): Marca {
+export function marcaDelTelefono(ua = `${delSistema ?? ''} ${typeof navigator === 'undefined' ? '' : navigator.userAgent}`): Marca {
   if (plataforma() === 'ios' || /iPhone|iPad/.test(ua)) return 'iphone';
+  if (/\b(OPPO|OnePlus|realme)\b|CPH\d{4}|RMX\d{4}/i.test(ua)) return 'oppo';
   if (/SM-[A-Z0-9]|Samsung|SAMSUNG|Galaxy/.test(ua)) return 'samsung';
   if (/Redmi|POCO|Xiaomi|\bMi \d|; M2\d{3}|; 2\d{3}[0-9A-Z]{3,}/.test(ua)) return 'xiaomi';
   if (/moto|Motorola|XT\d{4}/i.test(ua)) return 'motorola';
@@ -19,6 +33,7 @@ export const NOMBRE_MARCA: Record<Marca, string> = {
   iphone: 'iPhone',
   samsung: 'Samsung',
   xiaomi: 'Xiaomi / Redmi / POCO',
+  oppo: 'OPPO / OnePlus / realme',
   motorola: 'Motorola',
   pixel: 'Pixel',
   android: 'Android',
@@ -51,6 +66,8 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
           ? t('Volvé a la pantalla de Patty → Batería y elegí «Sin restricciones», así el teléfono no la frena.')
           : marca === 'xiaomi'
             ? t('En la misma pantalla de Patty: «Ahorro de batería» → «Sin restricciones», y prendé «Inicio automático».')
+            : marca === 'oppo'
+              ? t('En la misma pantalla de Patty: «Uso de batería» → prendé «Permitir actividad en segundo plano» y «Permitir inicio automático».')
             : t('En la misma pantalla: Batería (o «Uso de batería de la app») → «Sin restricciones».'),
         buscar('Patty'),
       ];

@@ -42,4 +42,6 @@ export const PERMISOS: Record<string, string> = {
   'Entrá a Permisos de apps → Patty y activá «Permitir todo».': 'Go to App permissions → Patty and turn on “Allow all”.',
   'Si usás un Galaxy Watch: en Samsung Health, ⋮ → Ajustes → Health Connect, y activá que comparta los datos.': 'If you use a Galaxy Watch: in Samsung Health, ⋮ → Settings → Health Connect, and turn on data sharing.',
   'Si usás reloj, abrí su app (Fitbit, Mi Fitness, Garmin…) y activá que comparta los datos con Health Connect.': 'If you use a watch, open its app (Fitbit, Mi Fitness, Garmin…) and turn on sharing with Health Connect.',
+  'Abrí Ajustes → Apps → Administración de apps → Patty.': 'Open Settings → Apps → App management → Patty.',
+  'En la misma pantalla de Patty: «Uso de batería» → prendé «Permitir actividad en segundo plano» y «Permitir inicio automático».': 'On the same Patty screen: “Battery usage” → turn on “Allow background activity” and “Allow auto launch”.',
 };
