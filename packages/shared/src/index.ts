@@ -46,6 +46,7 @@ export const CATEGORIAS_INICIALES: CategoriaBase[] = [
   { clave: 'clima', nombre: 'Clima', icono: '🌤️', rol: 'causa', tipo_valor: 'medida', unidad: null, orden: 11 },
   { clave: 'lugar', nombre: 'Lugares y salidas', icono: '📍', rol: 'causa', tipo_valor: 'duracion', unidad: 'min', orden: 12 },
   { clave: 'otro', nombre: 'Otro', icono: '📝', rol: 'ambos', tipo_valor: 'evento', unidad: null, orden: 13 },
+  { clave: 'ciclo', nombre: 'Ciclo menstrual', icono: '🩸', rol: 'ambos', tipo_valor: 'intensidad', unidad: null, orden: 14 },
 ];
 
 /** Conceptos que conviene que existan desde el principio (los que van a llenar los relojes y el clima). */
@@ -62,6 +63,7 @@ export const CONCEPTOS_INICIALES: Array<{ categoria: string; nombre: string; tip
   { categoria: 'pantalla', nombre: 'Tiempo de pantalla', tipo_valor: 'medida', unidad: 'min' },
   { categoria: 'lugar', nombre: 'Viajes', tipo_valor: 'medida', unidad: 'viajes' },
   { categoria: 'lugar', nombre: 'Km recorridos', tipo_valor: 'medida', unidad: 'km' },
+  { categoria: 'ciclo', nombre: 'Menstruación', tipo_valor: 'intensidad', unidad: null },
 ];
 
 /**
@@ -820,6 +822,7 @@ export const CAPAS_CALENDARIO = [
   { clave: 'temperatura', nombre: 'Temperatura', icono: '🌡️' },
   { clave: 'pasos', nombre: 'Pasos', icono: '👟' },
   { clave: 'pantalla', nombre: 'Pantalla', icono: '📱' },
+  { clave: 'ciclo', nombre: 'Ciclo', icono: '🩸' },
 ] as const;
 export type CapaCalendario = (typeof CAPAS_CALENDARIO)[number]['clave'];
 
@@ -844,3 +847,152 @@ export const PALABRAS_CHATARRA = [
   'helado', 'torta', 'factura', 'medialuna', 'donut', 'dona', 'gaseosa', 'coca', 'pepsi', 'sprite', 'fanta', 'energizante',
   'cerveza', 'fernet', 'vino', 'mcdonald', 'burger', 'lomito', 'choripan', 'chori', 'nachos', 'pochoclo',
 ];
+
+// ---------- Ciclo menstrual ----------
+
+/** El concepto con el que se anota cada día de menstruación (con la intensidad del flujo). */
+export const MENSTRUACION = 'Menstruación';
+/** Cuánto flujo hubo: se guarda como intensidad. */
+export const FLUJO = [
+  { nombre: 'Manchado', intensidad: 2 },
+  { nombre: 'Poco', intensidad: 4 },
+  { nombre: 'Normal', intensidad: 6 },
+  { nombre: 'Mucho', intensidad: 9 },
+];
+/** Síntomas típicos del ciclo, para anotar con un toque (van a «Dolores y molestias»). */
+export const SINTOMAS_CICLO = ['Cólicos', 'Hinchazón', 'Sensibilidad en los pechos', 'Antojos', 'Acné', 'Cambios de humor', 'Dolor de cabeza', 'Cansancio'];
+
+export type FaseCiclo = 'menstrual' | 'folicular' | 'ovulatoria' | 'lutea';
+export const FASES_CICLO: Record<FaseCiclo, { nombre: string; concepto: string }> = {
+  menstrual: { nombre: 'menstrual', concepto: 'Fase menstrual' },
+  folicular: { nombre: 'folicular', concepto: 'Fase folicular' },
+  ovulatoria: { nombre: 'ovulatoria', concepto: 'Fase ovulatoria' },
+  lutea: { nombre: 'lútea', concepto: 'Fase lútea' },
+};
+/** Los 5 días antes de que venga: aparte de la fase lútea, porque es cuando más síntomas suele haber. */
+export const PREMENSTRUAL = 'Días premenstruales';
+
+const diaMs = 86400000;
+const aFecha = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+const deFecha = (f: string) => Date.parse(f + 'T00:00:00Z');
+const entre = (a: string, b: string) => Math.round((deFecha(b) - deFecha(a)) / diaMs);
+const masDias = (f: string, n: number) => aFecha(deFecha(f) + n * diaMs);
+
+export interface Periodo { inicio: string; fin: string; dias: number }
+
+/** Junta los días anotados de menstruación en períodos (un hueco de hasta 2 días es el mismo período). */
+export function periodosDe(fechas: string[]): Periodo[] {
+  const dias = [...new Set(fechas)].sort();
+  const r: Periodo[] = [];
+  for (const f of dias) {
+    const ultimo = r.at(-1);
+    if (ultimo && entre(ultimo.fin, f) <= 3) {
+      ultimo.fin = f;
+      ultimo.dias = entre(ultimo.inicio, f) + 1;
+    } else r.push({ inicio: f, fin: f, dias: 1 });
+  }
+  return r;
+}
+
+export interface ResumenCiclo {
+  periodos: Periodo[];
+  /** Duración promedio del ciclo (de un inicio al siguiente) y del sangrado, en días. */
+  duracion_ciclo: number;
+  duracion_periodo: number;
+  /** Cuántos ciclos completos se usaron para el promedio (con menos de 2, se usa 28 de referencia). */
+  ciclos: number;
+  /** Si los ciclos varían poco (menos de 7 días entre el más corto y el más largo). */
+  regular: boolean | null;
+  /** Hoy: día del ciclo (1 = primer día de menstruación), fase y si está menstruando. */
+  dia: number | null;
+  fase: FaseCiclo | null;
+  en_periodo: boolean;
+  /** Lo estimado: próxima menstruación, ovulación y ventana fértil del ciclo actual. */
+  proxima: string | null;
+  ovulacion: string | null;
+  fertil_desde: string | null;
+  fertil_hasta: string | null;
+  /** Días que faltan para la próxima (negativo: viene con atraso). */
+  faltan: number | null;
+}
+
+/** La fase de un día dentro de un ciclo de `largo` días (la ovulación, ~14 días antes del próximo). */
+export function faseDe(dia: number, largo: number, diasPeriodo: number): FaseCiclo {
+  const ovulacion = largo - 14;
+  if (dia <= diasPeriodo) return 'menstrual';
+  if (Math.abs(dia - ovulacion) <= 1) return 'ovulatoria';
+  return dia < ovulacion ? 'folicular' : 'lutea';
+}
+
+/** Lo que se puede calcular del ciclo con los días de menstruación anotados, hasta `hoy`. */
+export function resumenCiclo(fechas: string[], hoy: string): ResumenCiclo {
+  const periodos = periodosDe(fechas.filter((f) => f <= hoy));
+  const largos = periodos.slice(1).map((p, i) => entre(periodos[i].inicio, p.inicio)).filter((n) => n >= 15 && n <= 60).slice(-6);
+  const duracion_ciclo = largos.length ? Math.round(largos.reduce((a, b) => a + b, 0) / largos.length) : 28;
+  const duraciones = periodos.slice(-6).map((p) => p.dias);
+  const duracion_periodo = duraciones.length ? Math.max(1, Math.round(duraciones.reduce((a, b) => a + b, 0) / duraciones.length)) : 5;
+  const ultimo = periodos.at(-1);
+  const vacio = { periodos, duracion_ciclo, duracion_periodo, ciclos: largos.length, regular: null, dia: null, fase: null, en_periodo: false, proxima: null, ovulacion: null, fertil_desde: null, fertil_hasta: null, faltan: null };
+  if (!ultimo) return vacio;
+  const dia = entre(ultimo.inicio, hoy) + 1;
+  const en_periodo = entre(ultimo.fin, hoy) <= 1 && dia <= 10;
+  const proxima = masDias(ultimo.inicio, duracion_ciclo);
+  const ovulacion = masDias(proxima, -14);
+  return {
+    ...vacio,
+    regular: largos.length >= 2 ? Math.max(...largos) - Math.min(...largos) < 7 : null,
+    dia,
+    fase: en_periodo ? 'menstrual' : faseDe(dia, duracion_ciclo, ultimo.dias),
+    en_periodo,
+    proxima,
+    ovulacion,
+    fertil_desde: masDias(ovulacion, -5),
+    fertil_hasta: masDias(ovulacion, 1),
+    faltan: entre(hoy, proxima),
+  };
+}
+
+/**
+ * Para los patrones: la fase de cada día del pasado según los períodos anotados (y si es premenstrual). Solo entre dos
+ * menstruaciones conocidas, o después de la última hasta su largo promedio.
+ */
+export function fasesPorDia(fechas: string[], desde: string, hasta: string): Map<string, { fase: FaseCiclo; premenstrual: boolean }> {
+  const r = new Map<string, { fase: FaseCiclo; premenstrual: boolean }>();
+  const periodos = periodosDe(fechas);
+  if (periodos.length < 2) return r;
+  const { duracion_ciclo } = resumenCiclo(fechas, hasta);
+  periodos.forEach((p, i) => {
+    const siguiente = periodos[i + 1]?.inicio ?? masDias(p.inicio, duracion_ciclo);
+    const largo = entre(p.inicio, siguiente);
+    if (largo < 15 || largo > 60) return;
+    for (let k = 0; k < largo; k++) {
+      const f = masDias(p.inicio, k);
+      if (f < desde || f > hasta) continue;
+      r.set(f, { fase: faseDe(k + 1, largo, p.dias), premenstrual: largo - k <= 5 });
+    }
+  });
+  return r;
+}
+
+// ---------- Estaciones ----------
+
+export type Estacion = 'verano' | 'otono' | 'invierno' | 'primavera';
+export const ESTACIONES: Record<Estacion, { nombre: string; icono: string }> = {
+  verano: { nombre: 'Verano', icono: '☀️' },
+  otono: { nombre: 'Otoño', icono: '🍂' },
+  invierno: { nombre: 'Invierno', icono: '❄️' },
+  primavera: { nombre: 'Primavera', icono: '🌸' },
+};
+
+/** Si la zona horaria es del hemisferio sur (las estaciones están al revés). */
+export function hemisferioSur(zona: string): boolean {
+  return /^(America\/(Argentina|Buenos_Aires|Cordoba|Santiago|Montevideo|Asuncion|Sao_Paulo|Rio_Branco|La_Paz|Lima|Punta_Arenas|Campo_Grande|Cuiaba|Porto_Velho|Belem|Fortaleza|Recife|Maceio|Bahia|Araguaina)|Australia\/|Pacific\/(Auckland|Fiji|Chatham|Tongatapu|Apia)|Africa\/(Johannesburg|Maputo|Harare|Lusaka|Windhoek|Gaborone|Maseru|Mbabane|Blantyre|Lubumbashi)|Indian\/(Mauritius|Reunion|Antananarivo)|Antarctica\/)/.test(zona);
+}
+
+/** La estación de una fecha (AAAA-MM-DD), con los cambios el 21 de marzo, junio, septiembre y diciembre. */
+export function estacionDe(fecha: string, zona: string): Estacion {
+  const md = fecha.slice(5);
+  const norte: Estacion = md >= '12-21' || md < '03-21' ? 'invierno' : md < '06-21' ? 'primavera' : md < '09-21' ? 'verano' : 'otono';
+  if (!hemisferioSur(zona)) return norte;
+  return ({ invierno: 'verano', primavera: 'otono', verano: 'invierno', otono: 'primavera' } as const)[norte];
+}

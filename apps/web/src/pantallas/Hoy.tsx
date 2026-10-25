@@ -5,7 +5,7 @@ import { alTocarAvisoPush } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, conUnidad, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, estacionDe, conUnidad, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { idioma, locale, t } from '../lib/idioma';
 import { useEstado } from '../estado';
@@ -18,6 +18,7 @@ import { IconoCamara, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { Cargar } from './Cargar';
 import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
+import { CicloDelDia } from './CicloDelDia';
 import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
@@ -252,7 +253,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         <button className="btn-icono" onClick={() => irA(-1)} aria-label={t('Día anterior')}>‹</button>
         <div className="titulo-dia" key={fecha}>
           <h2>{nombreDia(fecha, persona.zona_horaria)}</h2>
-          <p className="suave chico">{fechaLarga(fecha)}</p>
+          <p className="suave chico">{fechaLarga(fecha)} · {ESTACIONES[estacionDe(fecha, persona.zona_horaria)].icono} {t(ESTACIONES[estacionDe(fecha, persona.zona_horaria)].nombre)}</p>
         </div>
         <button className="btn-icono" onClick={() => irA(1)} disabled={fecha >= hoy} aria-label={t('Día siguiente')}>›</button>
       </div>
@@ -279,6 +280,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         )
       ) : null}
       <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
+      {fecha === hoy ? <CicloDelDia persona={persona} registros={registros ?? []} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} /> : null}
       {registros === null ? (
         <ul className="lista esqueleto" aria-label={t('Cargando')}>
           {[0, 1, 2].map((i) => <li key={i}><span className="brillo hora" /><span className="brillo icono" /><span className="brillo que" /></li>)}

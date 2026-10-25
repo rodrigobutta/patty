@@ -2,13 +2,14 @@
 // últimos días; y, para una cosa puntual ("dolor de cabeza", "huevos"), los días en que pasó, para el calendario.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { CAPAS_CALENDARIO, COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, normalizar, PALABRAS_CHATARRA, traducir, traducirDato, type CalendarioCapa, type CapaCalendario, type Estadisticas, type SerieConcepto } from 'shared';
+import { resumenCiclo, CAPAS_CALENDARIO, COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, normalizar, PALABRAS_CHATARRA, traducir, traducirDato, type CalendarioCapa, type CapaCalendario, type Estadisticas, type SerieConcepto } from 'shared';
 import { filas, una } from '../db/client.js';
 import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha as esFechaValida, localAInstante, sumarDias } from '../lib/fechas.js';
 import { type Env } from '../lib/http.js';
 import { COLUMNAS, DESDE, tomasDe, type Fila } from './tratamientos.js';
+import { diasDeMenstruacion } from './ciclo.js';
 
 /** Promedio de horas (en minutos del día); las de la madrugada cuentan como "tarde" (la 1:00 es 25:00). */
 function horaPromedio(lista: number[], madrugadaTarde: boolean): number | null {
@@ -201,6 +202,29 @@ export const rutasEstadisticas = new Hono<Env>()
       }
       const dias = [...porDia].map(([fecha, d]) => ({ fecha, valor: d.valor, detalle: d.nombres.join(', ') }));
       r = { tipo: 'numero', unidad: null, mejor: 'menos', dias, resumen: dias.length ? t('{n} días con comida chatarra (pizza, gaseosa, golosinas…).', { n: dias.length }) : t('Nada de comida chatarra en el período.') };
+    } else if (capa === 'ciclo') {
+      // Lo anotado (🩸) y lo estimado del ciclo actual: próxima menstruación (🔮), días fértiles (🌱) y ovulación (🥚).
+      const fechas = await diasDeMenstruacion(db, p.id);
+      const res = resumenCiclo(fechas, hoy);
+      const dias: CalendarioCapa['dias'] = fechas.map((fecha) => ({ fecha, valor: 1, emoji: '🩸', detalle: traducir(idioma, 'Menstruación') }));
+      const anotados = new Set(fechas);
+      const agregar = (fecha: string, emoji: string, detalle: string) => {
+        if (!anotados.has(fecha) && !dias.some((d) => d.fecha === fecha)) dias.push({ fecha, valor: 0, emoji, detalle: traducir(idioma, detalle) });
+      };
+      if (res.ovulacion && res.fertil_desde && res.fertil_hasta) {
+        agregar(res.ovulacion, '🥚', 'Ovulación (estimada)');
+        for (let f = res.fertil_desde; f <= res.fertil_hasta; f = sumarDias(f, 1)) agregar(f, '🌱', 'Días fértiles (estimados)');
+      }
+      if (res.proxima) for (let k = 0; k < res.duracion_periodo; k++) agregar(sumarDias(res.proxima, k), '🔮', 'Próxima menstruación (estimada)');
+      r = {
+        tipo: 'emoji',
+        unidad: null,
+        mejor: 'neutro',
+        dias,
+        resumen: !fechas.length
+          ? traducir(idioma, 'Todavía no anotaste ninguna menstruación. En el Día, «Me vino» la anota.')
+          : traducir(idioma, 'Ciclos de {n} días en promedio; la próxima, alrededor del {fecha}.', { n: res.duracion_ciclo, fecha: res.proxima ? new Date(res.proxima + 'T12:00:00Z').toLocaleDateString(idioma === 'en' ? 'en-US' : 'es-AR', { day: 'numeric', month: 'long', timeZone: 'UTC' }) : '' }),
+      };
     } else if (capa === 'afuera') {
       const l = await filas<{ fecha: string; valor: number; detalle: string | null; delivery: number }>(
         db,

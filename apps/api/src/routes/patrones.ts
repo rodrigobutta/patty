@@ -10,6 +10,7 @@ import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, sumarDias } from '../lib/fechas.js';
 import { cuerpo, idParam, type Env } from '../lib/http.js';
+import { rasgosDelCalendario } from './ciclo.js';
 import { climaPorHoraParaPatrones } from './clima.js';
 import { buscarPatrones, describir, DIAS_MINIMOS, type ConceptoInfo, type FilaDiaria } from '../patrones/motor.js';
 
@@ -73,11 +74,15 @@ export const rutasPatrones = new Hono<Env>()
         automatica: !manuales.has(clave) && llegadas.has(clave),
       };
     });
+    // La estación y la fase del ciclo de cada día, que vienen solas.
+    const calendario = await db.transaction((tx) => rasgosDelCalendario(tx, p, desde, hasta));
+    datos.push(...calendario.filas);
     const conceptos = await filas<ConceptoInfo>(
       db,
       sql`SELECT c.id, c.nombre, c.tipo_valor, k.rol FROM conceptos c JOIN categorias k ON k.id = c.categoria_id
           WHERE c.id IN (SELECT DISTINCT concepto_id FROM serie_diaria WHERE persona_id = ${p.id})`,
     );
+    for (const x of calendario.conceptos) if (!conceptos.some((k) => k.id === x.id)) conceptos.push(x);
     const r = buscarPatrones(datos, conceptos, desde, hasta);
     const idioma = c.var.idioma;
     const nombre = new Map(conceptos.map((x) => [x.id, x.nombre]));

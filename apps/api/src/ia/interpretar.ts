@@ -142,6 +142,9 @@ export async function interpretarTexto(
     'En comidas y bebidas, si se sabe dónde fue: donde = casa si fue casera o en casa; afuera si fue en un ' +
     'restaurante, bar, la oficina o la casa de otra persona; delivery si se pidió. En lugar, el nombre si se dijo ' +
     '("Mostaza", "lo de mi vieja", "Sushi Club", "PedidosYa"), no en la nota. Si no se dice nada, null en los dos. ' +
+    'Si cuenta que le vino o que está menstruando ("me vino", "estoy indispuesta", "me bajó"), va en la categoría ciclo, ' +
+    'concepto "Menstruación", con intensidad según el flujo (manchado 2, poco 4, normal 6, mucho 9; si no dice, 6). Los ' +
+    'cólicos y otras molestias del ciclo van como sintoma. ' +
     'Si viene una foto, mirá qué se ve y anotalo: en un plato de comida, cada comida o ingrediente principal que se ' +
     'reconozca (con una cantidad estimada si se puede, por ejemplo 2 empanadas, 1 vaso), una bebida, la caja de un ' +
     'remedio (su nombre). La hora es ahora, salvo que el texto diga otra cosa. Si no se distingue bien qué es, ' +

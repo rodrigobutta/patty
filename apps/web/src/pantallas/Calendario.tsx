@@ -33,7 +33,7 @@ export function Calendario({ persona }: { persona: Persona }) {
   useEffect(() => {
     setDatos(null);
     setElegido(null);
-    const hasta = finDeMes(mes) < hoy ? finDeMes(mes) : hoy;
+    const hasta = capa === 'ciclo' || finDeMes(mes) < hoy ? finDeMes(mes) : hoy;
     api<CalendarioCapa>('GET', `/api/estadisticas/calendario?persona=${persona.id}&capa=${capa}&desde=${mes}-01&hasta=${hasta}`)
       .then(setDatos)
       .catch(() => {});
@@ -56,7 +56,7 @@ export function Calendario({ persona }: { persona: Persona }) {
     <div className="calendario-capas">
       <div className="chips capas">
         {CAPAS_CALENDARIO.map((c) => (
-          <button key={c.clave} className={`chip${capa === c.clave ? ' activa' : ''}`} onClick={() => setCapa(c.clave)}>
+          <button key={c.clave} className={`chip${capa === c.clave ? ' activa' : ''}`} onClick={() => { setCapa(c.clave); if (c.clave !== 'ciclo' && mes > hoy.slice(0, 7)) setMes(hoy.slice(0, 7)); }}>
             <span aria-hidden>{c.icono}</span> {t(c.nombre)}
           </button>
         ))}
@@ -65,14 +65,14 @@ export function Calendario({ persona }: { persona: Persona }) {
         <div className="cabeza-mes">
           <button className="btn-icono" onClick={() => setMes(sumarMes(mes, -1))} aria-label={t('Mes anterior')}>‹</button>
           <strong>{info.icono} {nombreMes(mes)}</strong>
-          <button className="btn-icono" onClick={() => setMes(sumarMes(mes, 1))} disabled={mes >= hoy.slice(0, 7)} aria-label={t('Mes siguiente')}>›</button>
+          <button className="btn-icono" onClick={() => setMes(sumarMes(mes, 1))} disabled={mes >= (capa === 'ciclo' ? sumarMes(hoy.slice(0, 7), 2) : hoy.slice(0, 7))} aria-label={t('Mes siguiente')}>›</button>
         </div>
         <div className="grilla-mes" key={`${capa}${mes}`}>
           {DIAS_SEMANA.map((x, i) => <span key={`c${i}`} className="dia-semana">{x}</span>)}
           {celdas.map((f, i) => {
             if (!f) return <span key={`v${i}`} />;
             const x = porFecha.get(f);
-            const futuro = f > hoy;
+            const futuro = f > hoy && !(x && datos?.capa === 'ciclo');
             return (
               <button
                 key={f}
