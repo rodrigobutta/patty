@@ -10,6 +10,8 @@ import { horaEn } from '../lib/fechas';
 import { desmarcarToma, marcarToma, tomasCambiaron, useAlCambiarTomas } from '../lib/remedios';
 
 const CLAVE_ABIERTO = 'remedios-abierto';
+/** Lo último traído de cada día (persona|fecha), para que la tarjeta no aparezca de golpe al volver al Día. */
+const YA_TRAIDO = new Map<string, { tomas: Toma[]; cuandoHaceFalta: Tratamiento[] }>();
 
 /** Cuánto antes de la hora ya se ofrece marcarla. */
 const ANTES_MIN = 60;
@@ -42,8 +44,8 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
   alCambiar(): void;
 }) {
   const { festejar, avisar, usuario } = useEstado();
-  const [tomas, setTomas] = useState<Toma[]>([]);
-  const [cuandoHaceFalta, setCuandoHaceFalta] = useState<Tratamiento[]>([]);
+  const [tomas, setTomas] = useState<Toma[]>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.tomas ?? []);
+  const [cuandoHaceFalta, setCuandoHaceFalta] = useState<Tratamiento[]>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.cuandoHaceFalta ?? []);
   const [ocupado, setOcupado] = useState<string | null>(null);
   // Plegado de entrada (lo central de Patty es contar el día): se recuerda si se dejó abierto.
   const [abierto, setAbierto] = useState(() => {
@@ -61,14 +63,16 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
         api<Toma[]>('GET', `/api/tratamientos/tomas?persona=${persona.id}&fecha=${fecha}`),
         fecha === hoy ? api<Tratamiento[]>('GET', `/api/tratamientos?persona=${persona.id}`) : Promise.resolve([]),
       ]);
+      const chf = l.filter((x) => x.activo && !x.cada_horas && !x.horarios.length);
+      YA_TRAIDO.set(`${persona.id}|${fecha}`, { tomas: tm, cuandoHaceFalta: chf });
       setTomas(tm);
-      setCuandoHaceFalta(l.filter((x) => x.activo && !x.cada_horas && !x.horarios.length));
+      setCuandoHaceFalta(chf);
     } catch {
       /* sin conexión: el Día sigue igual */
     }
   }, [persona.id, fecha, hoy]);
   useEffect(() => {
-    setTomas([]);
+    setTomas(YA_TRAIDO.get(`${persona.id}|${fecha}`)?.tomas ?? []);
   }, [persona.id, fecha]);
   useEffect(() => {
     void traer();

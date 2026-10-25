@@ -8,6 +8,8 @@ import { useEstado } from '../estado';
 import { locale, t } from '../lib/idioma';
 
 const CLAVE_ABIERTO = 'ciclo-abierto';
+/** Lo último traído por persona, para que la tarjeta no aparezca de golpe al volver al Día. */
+const YA_TRAIDO = new Map<number, Ciclo>();
 
 type Ciclo = ResumenCiclo & { por_fase: Record<FaseCiclo | 'premenstrual', Array<{ concepto: string; dias: number }>> };
 
@@ -26,7 +28,7 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
   alCambiar(): void;
 }) {
   const { categorias, festejar, avisar, usuario } = useEstado();
-  const [ciclo, setCiclo] = useState<Ciclo | null>(null);
+  const [ciclo, setCiclo] = useState<Ciclo | null>(() => YA_TRAIDO.get(persona.id) ?? null);
   const [ocupado, setOcupado] = useState(false);
   const [abierto, setAbierto] = useState(() => {
     try {
@@ -40,7 +42,12 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
   const catSintoma = categorias.find((c) => c.clave === 'sintoma');
 
   const traer = useCallback(() => {
-    api<Ciclo>('GET', `/api/ciclo?persona=${persona.id}`).then(setCiclo).catch(() => {});
+    api<Ciclo>('GET', `/api/ciclo?persona=${persona.id}`)
+      .then((c) => {
+        YA_TRAIDO.set(persona.id, c);
+        setCiclo(c);
+      })
+      .catch(() => {});
   }, [persona.id]);
   useEffect(() => traer(), [traer, vuelta]);
 

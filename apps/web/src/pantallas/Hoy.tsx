@@ -52,6 +52,9 @@ function franja(inicio: string, zona: string) {
 }
 
 /** "sábado 24 de octubre" */
+/** Lo último traído de cada día (persona|fecha), para no arrancar en blanco al volver al Día. */
+const YA_TRAIDO = new Map<string, { registros: Registro[]; automaticos: DatoAutomatico[] }>();
+
 const fechaLarga = (fecha: string) =>
   new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(fecha + 'T12:00:00Z'));
 
@@ -75,8 +78,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   // En el día propio, Patty le habla por su apodo.
   const apodo = persona.propia ? sesion?.usuario?.apodo ?? '' : '';
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
-  const [registros, setRegistros] = useState<Registro[] | null>(null);
-  const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>([]);
+  const [registros, setRegistros] = useState<Registro[] | null>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.registros ?? null);
+  const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.automaticos ?? []);
   /** La fuente de datos automáticos que está abierta (se ve todo lo que llegó de ella). */
   const [abierto, setAbierto] = useState<string | null>(null);
   /** La hoja de anotar abierta: normal, o directo en "Contarlo" (el botón grande de hablarle). */
@@ -128,6 +131,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         api<Registro[]>('GET', `/api/registros?persona=${persona.id}&desde=${fecha}`),
         api<DatoAutomatico[]>('GET', `/api/registros/automaticos?persona=${persona.id}&fecha=${fecha}`).catch(() => []),
       ]);
+      YA_TRAIDO.set(`${persona.id}|${fecha}`, { registros: r, automaticos: a });
       setRegistros(r);
       setAutomaticos(a);
       setVuelta((v) => v + 1);
@@ -137,8 +141,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     }
   }, [persona.id, fecha]);
   useEffect(() => {
-    setRegistros(null);
-    setAutomaticos([]);
+    // Lo último que se trajo de ese día se muestra enseguida (al volver de otra pestaña) mientras se actualiza.
+    const ya = YA_TRAIDO.get(`${persona.id}|${fecha}`);
+    setRegistros(ya?.registros ?? null);
+    setAutomaticos(ya?.automaticos ?? []);
     void traer();
   }, [traer]);
   // Una toma marcada desde el aviso del teléfono también se ve en el Día.
@@ -268,7 +274,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </div>
       ) : null}
       {/* "¿Cómo te sentís?" lo contesta cada uno: no se muestra en el día de alguien que se supervisa. */}
-      {fecha === hoy && !persona.supervisada ? (
+      {/* Hasta saber si ya contestó hace poco no se muestra nada: si no, las caritas aparecen y se van. */}
+      {fecha === hoy && !persona.supervisada && registros !== null ? (
         contestadoHacePoco ? (
           <button className="algo-puntual" onClick={() => setSintiendo({ momento: 'ahora', estado: null })}>
             {t('😴 ¿Algo puntual? Con sueño, con hambre, con energía…')}
