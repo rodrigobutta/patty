@@ -14,6 +14,8 @@ process.chdir(path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const FONDO = '#efeafc';
+/** El fondo del ícono con el teléfono en modo oscuro. */
+const FONDO_OSCURO = '#1c1a24';
 const RES = 'android/app/src/main/res';
 const tmp = mkdtempSync(path.join(tmpdir(), 'patty-iconos-'));
 
@@ -62,6 +64,14 @@ writeFileSync(
   `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO}</color>\n    <color name="patty_acento">#6b4fbb</color>\n</resources>\n`,
 );
 
+// Modo oscuro en Android: el lanzador toma los colores de values-night, así el fondo del ícono adaptable (y el de
+// todas las caras) se pone oscuro solo cuando el teléfono está en modo oscuro.
+mkdirSync(`${RES}/values-night`, { recursive: true });
+writeFileSync(
+  `${RES}/values-night/icono_fondo.xml`,
+  `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO_OSCURO}</color>\n</resources>\n`,
+);
+
 // iPhone: un solo ícono de 1024, sin transparencia (Apple no la acepta): se pasa por JPEG con sips para sacarle el
 // canal alfa. En iPhone el ícono no cambia de cara (iOS avisa con un cartel cada vez que se cambia).
 const IOS = 'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png';
@@ -69,5 +79,24 @@ png(svgMascota('feliz', { lado: 1024, fondo: FONDO, zona: 300 }), 1024, IOS);
 const jpg = path.join(tmp, 'icono-ios.jpg');
 execFileSync('sips', ['-s', 'format', 'jpeg', IOS, '--out', jpg], { stdio: 'ignore' });
 execFileSync('sips', ['-s', 'format', 'png', jpg, '--out', IOS], { stdio: 'ignore' });
+// Y su versión oscura (iOS 18 en adelante la usa con el modo oscuro).
+const IOS_OSCURO = 'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-oscuro.png';
+png(svgMascota('feliz', { lado: 1024, fondo: FONDO_OSCURO, zona: 300 }), 1024, IOS_OSCURO);
+execFileSync('sips', ['-s', 'format', 'jpeg', IOS_OSCURO, '--out', jpg], { stdio: 'ignore' });
+execFileSync('sips', ['-s', 'format', 'png', jpg, '--out', IOS_OSCURO], { stdio: 'ignore' });
+writeFileSync(
+  'ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json',
+  JSON.stringify(
+    {
+      images: [
+        { filename: 'AppIcon-512@2x.png', idiom: 'universal', platform: 'ios', size: '1024x1024' },
+        { appearances: [{ appearance: 'luminosity', value: 'dark' }], filename: 'AppIcon-oscuro.png', idiom: 'universal', platform: 'ios', size: '1024x1024' },
+      ],
+      info: { author: 'xcode', version: 1 },
+    },
+    null,
+    2,
+  ) + '\n',
+);
 rmSync(tmp, { recursive: true, force: true });
 console.log('Íconos generados.');
