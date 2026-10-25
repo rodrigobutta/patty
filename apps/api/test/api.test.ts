@@ -417,3 +417,15 @@ describe('análisis de patrones', () => {
     expect(r.body.resumen).toMatch(/Todavía hay 0 días/);
   });
 });
+
+describe('borrar y deshacer', () => {
+  it('un registro borrado se puede restaurar', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const r = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Agua', categoria_id: categorias.bebida, inicio: '2026-10-21T15:00:00.000Z' })).body;
+    await ana.del(`/api/registros/${r.id}`);
+    expect((await ana.get(`/api/registros?persona=${personaId}&desde=2026-10-21`)).body).toHaveLength(0);
+    expect((await ana.post(`/api/registros/${r.id}/restaurar`)).status).toBe(200);
+    expect((await ana.get(`/api/registros?persona=${personaId}&desde=2026-10-21`)).body).toHaveLength(1);
+    expect((await ana.post(`/api/registros/${r.id}/restaurar`)).status).toBe(404);
+  });
+});

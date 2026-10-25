@@ -19,6 +19,7 @@ import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
+import { FilaDeslizable } from '../ui/FilaDeslizable';
 import { Caritas, esMalo, Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
@@ -156,6 +157,37 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     return true;
   };
 
+  /**
+   * Deslizar para borrar: se borra sin preguntar y aparece "Deshacer" unos segundos (es más rápido que confirmar, y
+   * si fue sin querer se recupera).
+   */
+  const [deshacer, setDeshacer] = useState<{ ids: number[]; texto: string } | null>(null);
+  const quitar = async (r: Registro) => {
+    const todos = [r, ...partesDe(r, registros ?? [])];
+    setRegistros((l) => l?.filter((x) => !todos.some((t) => t.id === x.id)) ?? null);
+    try {
+      for (const x of todos) await api('DELETE', `/api/registros/${x.id}`);
+      setDeshacer({ ids: todos.map((x) => x.id), texto: `Borrado: ${r.concepto}` });
+      avisarAnotado();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    void traer();
+  };
+  useEffect(() => {
+    if (!deshacer) return;
+    const t = setTimeout(() => setDeshacer(null), 6000);
+    return () => clearTimeout(t);
+  }, [deshacer]);
+  const restaurar = async () => {
+    if (!deshacer) return;
+    const ids = deshacer.ids;
+    setDeshacer(null);
+    for (const id of ids) await api('POST', `/api/registros/${id}/restaurar`).catch(() => {});
+    avisarAnotado();
+    void traer();
+  };
+
   // Tocar el aviso de la noche abre la encuesta del día de hoy.
   useAlTocarAviso(
     useCallback(() => {
@@ -274,7 +306,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             return (
               <Fragment key={r.id}>
                 {nuevaFranja ? <li className="franja" aria-hidden><span>{f.emoji}</span> {f.nombre}</li> : null}
-              <li className={`tocable ${vistos.current && !vistos.current.has(r.id) ? 'recien' : vistos.current ? '' : 'entra'}`} style={{ ['--n' as string]: Math.min(i, 12) }} onClick={() => setEditando(r)} onContextMenu={(e) => { e.preventDefault(); void borrar(r); }}>
+              <FilaDeslizable
+                className={`tocable ${vistos.current && !vistos.current.has(r.id) ? 'recien' : vistos.current ? '' : 'entra'}`}
+                style={{ ['--n' as string]: Math.min(i, 12) }}
+                alTocar={() => setEditando(r)}
+                alBorrar={() => void quitar(r)}
+              >
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
                 <span className="icono">{cat?.icono}</span>
                 <span className="que">
@@ -282,7 +319,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                   {detalle(r, cat?.tipo_valor) ? <span className="valor-chip">{detalle(r, cat?.tipo_valor)}</span> : null}
                   {r.nota ? <span className="suave chico"> — {r.nota}</span> : null}
                 </span>
-              </li>
+              </FilaDeslizable>
               </Fragment>
             );
           })}
@@ -364,6 +401,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </>
       ) : null}
       <button className="fab" onClick={() => setCargando('normal')} aria-label="Anotar">＋</button>
+      {deshacer ? (
+        <div className="barra-deshacer" role="status">
+          <span>{deshacer.texto}</span>
+          <button onClick={() => void restaurar()}>Deshacer</button>
+        </div>
+      ) : null}
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />

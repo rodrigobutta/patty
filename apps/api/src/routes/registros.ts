@@ -146,6 +146,17 @@ export const rutasRegistros = new Hono<Env>()
     });
     return c.json({ ok: true });
   })
+  .post('/:id/restaurar', async (c) => {
+    // Deshacer un borrado (el "Deshacer" que aparece después de deslizar para borrar).
+    const id = idParam(c);
+    await c.var.db.transaction(async (tx) => {
+      const r = await una<{ persona_id: number }>(tx, sql`SELECT persona_id FROM registros WHERE id = ${id} AND borrado IS NOT NULL`);
+      if (!r) throw new ErrorApi('No existe.', 404);
+      await persona(tx, c.var.usuario, r.persona_id, true);
+      await tx.execute(sql`UPDATE registros SET borrado = NULL WHERE id = ${id}`);
+    });
+    return c.json({ ok: true });
+  })
   .post('/foto', async (c) => {
     // {persona_id, imagen (base64, JPEG/PNG/WebP), tipo, texto?, fecha?}: lo que se ve en la foto (un plato de comida,
     // una bebida, un remedio) como registros propuestos, igual que contarlo. No guarda nada ni la foto.
