@@ -1,7 +1,9 @@
 // La aplicación HTTP: la API en /api y la web compilada (STATIC_DIR) para todo lo demás.
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { esIdioma, idiomaDe, traducir, type Idioma } from 'shared';
 import { config } from './config.js';
 import { obtenerDb } from './db/client.js';
 import { tokenDePedido, usuarioDeToken } from './auth/sesion.js';
@@ -47,11 +49,16 @@ async function archivo(ruta: string): Promise<Response | null> {
   return new Response(await readFile(ruta), { headers: { 'Content-Type': TIPOS[ext] ?? 'application/octet-stream', 'Cache-Control': cache } });
 }
 
+/** El idioma de un pedido: el que manda la app (X-Idioma) o el del navegador. */
+function idiomaDelPedido(x: string | undefined, accept: string | undefined): Idioma {
+  return esIdioma(x) ? x : idiomaDe(accept);
+}
+
 export function crearApp(): Hono<Env> {
   const app = new Hono<Env>();
 
   app.onError((e, c) => {
-    if (e instanceof ErrorApi) return c.json({ error: e.message }, e.status as 400);
+    if (e instanceof ErrorApi) return c.json({ error: traducir(idiomaDelPedido(c.req.header('X-Idioma'), c.req.header('Accept-Language')), e.message) }, e.status as 400);
     const codigo = codigoPg(e);
     if (codigo === '23505') return c.json({ error: 'Ya existe.' }, 409);
     if (codigo === '23503') return c.json({ error: 'Hace referencia a algo que no existe.' }, 400);
@@ -63,6 +70,7 @@ export function crearApp(): Hono<Env> {
   api.use('*', async (c, next) => {
     c.set('db', obtenerDb());
     c.set('token', tokenDePedido(c.req.header('Cookie'), c.req.header('Authorization')));
+    c.set('idioma', idiomaDelPedido(c.req.header('X-Idioma'), c.req.header('Accept-Language')));
     c.header('Cache-Control', 'no-store');
     await next();
   });
@@ -74,6 +82,10 @@ export function crearApp(): Hono<Env> {
     const u = await usuarioDeToken(c.var.db, c.var.token);
     if (!u) throw new ErrorApi('Tenés que entrar con tu usuario.', 401);
     c.set('usuario', u);
+    // El idioma de la app, para los avisos que manda el servidor (solo cuando cambia).
+    if (c.req.header('X-Idioma') && (u as { idioma?: string }).idioma !== c.var.idioma) {
+      await c.var.db.execute(sql`UPDATE usuarios SET idioma = ${c.var.idioma} WHERE id = ${u.id}`);
+    }
     await next();
   });
   api.route('/admin', rutasAdmin);

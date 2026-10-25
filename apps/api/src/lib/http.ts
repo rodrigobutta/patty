@@ -1,6 +1,6 @@
 // Lo que comparten las rutas: el tipo del contexto de Hono y cómo leer el pedido.
 import type { Context } from 'hono';
-import type { Usuario } from 'shared';
+import type { Idioma, Usuario } from 'shared';
 import type { Db } from '../db/client.js';
 import { ErrorApi } from './errores.js';
 
@@ -9,6 +9,8 @@ export interface Env {
     db: Db;
     usuario: Usuario;
     token: string | null;
+    /** El idioma de quien pide (X-Idioma, o Accept-Language): los errores y los textos se arman en ese idioma. */
+    idioma: Idioma;
   };
 }
 

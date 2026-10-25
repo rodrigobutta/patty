@@ -1,5 +1,7 @@
 // Cliente de la API. En la web la sesión va en una cookie; en la app empaquetada (VITE_API_URL apunta a otro dominio)
-// se guarda el token y se manda como "Authorization: Bearer".
+// se guarda el token y se manda como "Authorization: Bearer". Cada pedido dice el idioma (X-Idioma): el servidor
+// contesta los errores y los textos que arma (resúmenes, avisos) en ese idioma.
+import { idioma, t } from './lib/idioma';
 export const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) || '').replace(/\/$/, '');
 const CON_TOKEN = API_BASE !== '';
 
@@ -36,7 +38,7 @@ export class ErrorApi extends Error {
 }
 
 export async function api<T = unknown>(metodo: 'GET' | 'POST' | 'PUT' | 'DELETE', ruta: string, cuerpo?: unknown): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { 'X-Idioma': idioma() };
   if (cuerpo !== undefined) headers['Content-Type'] = 'application/json';
   const token = CON_TOKEN ? leerToken() : null;
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -49,7 +51,7 @@ export async function api<T = unknown>(metodo: 'GET' | 'POST' | 'PUT' | 'DELETE'
       credentials: CON_TOKEN ? 'omit' : 'same-origin',
     });
   } catch {
-    throw new ErrorApi('No hay conexión con el servidor.', 0);
+    throw new ErrorApi(t('No hay conexión con el servidor.'), 0);
   }
   const datos = r.status === 204 ? null : await r.json().catch(() => null);
   if (!r.ok) {

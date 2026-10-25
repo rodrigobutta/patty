@@ -85,6 +85,13 @@
       "when": 1792885246052,
       "tag": "0011_avisar_sin_anotar",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792888436216,
+      "tag": "0012_idioma",
+      "breakpoints": true
     }
   ]
 }

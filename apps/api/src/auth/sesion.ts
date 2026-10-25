@@ -31,7 +31,7 @@ export async function usuarioDeToken(tx: Tx, token: string | null): Promise<Usua
   if (!token) return null;
   const u = await una<Usuario & { reciente: boolean }>(
     tx,
-    sql`SELECT u.id, u.usuario, u.nombre, u.rol, u.email,
+    sql`SELECT u.id, u.usuario, u.nombre, u.rol, u.email, u.idioma,
                (u.ultimo_acceso IS NOT NULL AND u.ultimo_acceso > now() - interval '5 minutes') AS reciente
         FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
         WHERE s.token = ${token} AND s.vence > now() AND u.activo`,

@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "idioma" text DEFAULT 'es' NOT NULL;

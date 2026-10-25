@@ -1,4 +1,5 @@
 // Reglas y tipos que comparten la API y la web.
+export * from './i18n.js';
 
 /**
  * Qué se anota con cada concepto:
