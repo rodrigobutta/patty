@@ -11,6 +11,7 @@ import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
+import { IconoCamara } from '../ui/Iconos';
 
 interface Elegido {
   concepto_id?: number;
@@ -397,7 +398,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
         <p className="leyenda-voz">{leyenda}</p>
         {oido && (estado === 'escuchando' || estado === 'transcribiendo' || estado === 'ordenando') ? <blockquote className="oido">{oido}</blockquote> : null}
         {!paraResponder ? (
-          <button className="btn foto-boton" onClick={() => void tomarFoto()} disabled={ocupado || estado === 'escuchando'}>📷 O mandale una foto (de tu plato, por ejemplo)</button>
+          <button className="btn foto-boton" onClick={() => void tomarFoto()} disabled={ocupado || estado === 'escuchando'}><IconoCamara tamano={20} /> O mandale una foto (de tu plato, por ejemplo)</button>
         ) : null}
         <button className="enlace" onClick={() => setModo('escribir')} disabled={estado === 'escuchando'}>✍️ Prefiero escribir</button>
       </div>
@@ -412,7 +413,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
         <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
           placeholder="Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»" />
         <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? 'Ordenando…' : 'Ordenarlo'}</button>
-        <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}>📷 {texto.trim() ? 'Ordenarlo con una foto' : 'Mandale una foto'}</button>
+        <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? 'Ordenarlo con una foto' : 'Mandale una foto'}</button>
         {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>🎙️ Prefiero hablar</button> : null}
       </>
     );

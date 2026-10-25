@@ -48,3 +48,33 @@ export function IconoPatrones({ activo, avance, nivel }: { activo: boolean; avan
     </svg>
   );
 }
+
+/** La cámara (para cargar con una foto), con el mismo trazo redondeado. */
+export function IconoCamara({ tamano = 26 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <path d="M4.5 8.5a2 2 0 0 1 2-2h1.6l1.3-2h5.2l1.3 2h1.6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2z" />
+      <circle cx="12" cy="13" r="3.4" />
+      <circle cx="17" cy="9.3" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** El micrófono (para contarle a Patty hablando). */
+export function IconoMicrofono({ tamano = 24 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" />
+    </svg>
+  );
+}
+
+/** El lápiz (contarle escribiendo, cuando no hay micrófono). */
+export function IconoLapiz({ tamano = 24 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <path d="M15.5 4.5l4 4L9 19l-5 1 1-5z M13.5 6.5l4 4" />
+    </svg>
+  );
+}

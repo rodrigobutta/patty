@@ -13,6 +13,7 @@ import { hoyEn, horaEn, nombreDia, sumarDias } from '../lib/fechas';
 import { avisarAnotado } from '../mascota/cara';
 import type { Cara } from '../mascota/dibujo';
 import { Mascota } from '../mascota/Mascota';
+import { IconoCamara, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { Cargar } from './Cargar';
 import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
@@ -356,10 +357,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {sesion?.ia ? (
         <>
           <button className="contale" onClick={() => setCargando('contar')}>
-            <span aria-hidden>{hayVoz(sesion.voz) ? '🎙️' : '✍️'}</span>
+            {hayVoz(sesion.voz) ? <IconoMicrofono /> : <IconoLapiz />}
             Contale a Patty
           </button>
-          <button className="camara-flotante" onClick={() => setCargando('foto')} aria-label="Sacale una foto a lo que comiste">📷</button>
+          <button className="camara-flotante" onClick={() => setCargando('foto')} aria-label="Sacale una foto a lo que comiste"><IconoCamara /></button>
         </>
       ) : null}
       <button className="fab" onClick={() => setCargando('normal')} aria-label="Anotar">＋</button>
