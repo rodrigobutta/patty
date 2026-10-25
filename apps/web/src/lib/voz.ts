@@ -60,11 +60,31 @@ async function grabar(alTexto: (t: string) => void, alTerminar: (error?: string)
     }
   };
   grabador.start(1000); // de a un segundo: algunos WebView no entregan nada si se pide todo junto al final
-  return { parar: () => grabador.state !== 'inactive' && grabador.stop() };
+  // Para la onda: un analizador sobre el mismo audio (no cambia lo que se graba).
+  let contexto: AudioContext | null = null;
+  let onda: AnalyserNode | undefined;
+  try {
+    contexto = new AudioContext();
+    onda = contexto.createAnalyser();
+    onda.fftSize = 1024;
+    onda.smoothingTimeConstant = 0.6;
+    contexto.createMediaStreamSource(flujo).connect(onda);
+  } catch {
+    onda = undefined;
+  }
+  return {
+    parar: () => {
+      void contexto?.close().catch(() => {});
+      if (grabador.state !== 'inactive') grabador.stop();
+    },
+    onda,
+  };
 }
 
 export interface Escucha {
   parar(): void;
+  /** Lo que capta el micrófono, para dibujar la onda mientras se escucha (si se puede leer el audio). */
+  onda?: AnalyserNode;
 }
 
 /**

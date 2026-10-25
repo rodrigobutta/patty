@@ -618,3 +618,10 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .foto-mandada { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: var(--radio); margin-bottom: 10px; }
 .mirando-foto .foto-mandada { animation: latir-foto 1.4s ease-in-out infinite; }
 @keyframes latir-foto { 50% { opacity: 0.75; transform: scale(0.985); } }
+/* La onda de lo que escucha, detrás del micrófono. */
+.centro-voz { position: relative; display: grid; place-items: center; width: 100%; }
+.centro-voz .boton-voz { position: relative; z-index: 1; }
+.onda-voz { position: absolute; left: 0; right: 0; top: 50%; height: 120px; width: 100%; transform: translateY(-50%); color: var(--acento);
+  opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+.onda-voz.activa { opacity: 1; }
+.voz.chica .onda-voz { height: 70px; }

@@ -11,7 +11,8 @@ import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
-import { IconoCamara } from '../ui/Iconos';
+import { IconoCamara, IconoMicrofono } from '../ui/Iconos';
+import { OndaVoz } from '../ui/OndaVoz';
 
 interface Elegido {
   concepto_id?: number;
@@ -258,6 +259,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
   const [estado, setEstado] = useState<'quieto' | 'escuchando' | 'transcribiendo' | 'ordenando' | 'guardando'>('quieto');
   const [error, setError] = useState('');
   const escucha = useRef<Escucha | null>(null);
+  /** Lo que capta el micrófono, para la onda de fondo. */
+  const [onda, setOnda] = useState<AnalyserNode | undefined>(undefined);
 
   /** La foto que se mandó (se manda de nuevo con cada aclaración). */
   const [foto, setFoto] = useState<Foto | null>(null);
@@ -331,6 +334,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
       },
       { servidor: vozServidor, alTranscribir: () => setEstado('transcribiendo') },
     );
+    setOnda(escucha.current?.onda);
   };
 
   // Desde el botón de la cámara del Día: se abre la cámara apenas se abre.
@@ -392,9 +396,12 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
   const entrada = (paraResponder: boolean) =>
     modo === 'voz' ? (
       <div className={`voz${paraResponder ? ' chica' : ''}`}>
+        <span className="centro-voz">
+        <OndaVoz analizador={onda} activa={estado === 'escuchando'} />
         <button className={`boton-voz ${estado}`} onClick={() => void escucharAhora()} disabled={ocupado} aria-label={leyenda}>
-          <span aria-hidden>{ocupado ? '⏳' : '🎙️'}</span>
+          {ocupado ? <span aria-hidden>⏳</span> : <IconoMicrofono tamano={paraResponder ? 30 : 48} />}
         </button>
+        </span>
         <p className="leyenda-voz">{leyenda}</p>
         {oido && (estado === 'escuchando' || estado === 'transcribiendo' || estado === 'ordenando') ? <blockquote className="oido">{oido}</blockquote> : null}
         {!paraResponder ? (
