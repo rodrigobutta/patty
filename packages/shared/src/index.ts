@@ -719,3 +719,41 @@ export function cuantos(unidad: string): string {
   const femenina = /(a|dad|tad|ión|z|is)$/i.test(sg);
   return `¿${femenina ? 'Cuántas' : 'Cuántos'} ${plural(unidad)}?`;
 }
+
+// ---------- Calendario por capas ----------
+
+/** Las capas del calendario de Patrones: qué se pinta en cada día. */
+export const CAPAS_CALENDARIO = [
+  { clave: 'sueno', nombre: 'Horas de sueño', icono: '😴' },
+  { clave: 'animo', nombre: 'Ánimo', icono: '🙂' },
+  { clave: 'dolores', nombre: 'Dolores', icono: '🤕' },
+  { clave: 'ejercicio', nombre: 'Ejercicio', icono: '🏃' },
+  { clave: 'chatarra', nombre: 'Comida chatarra', icono: '🍔' },
+  { clave: 'clima', nombre: 'Clima', icono: '🌤️' },
+  { clave: 'temperatura', nombre: 'Temperatura', icono: '🌡️' },
+  { clave: 'pasos', nombre: 'Pasos', icono: '👟' },
+  { clave: 'pantalla', nombre: 'Pantalla', icono: '📱' },
+] as const;
+export type CapaCalendario = (typeof CAPAS_CALENDARIO)[number]['clave'];
+
+export interface CalendarioCapa {
+  capa: CapaCalendario;
+  desde: string;
+  hasta: string;
+  /** Cómo se pinta: por número (de menos a más), con un emoji por día, o sí/no. */
+  tipo: 'numero' | 'emoji' | 'si_no';
+  unidad: string | null;
+  /** Si "más" es mejor (más sueño, más pasos) o peor (más dolor, más chatarra): para elegir los colores. */
+  mejor: 'mas' | 'menos' | 'neutro';
+  dias: Array<{ fecha: string; valor: number | null; emoji?: string; detalle?: string }>;
+  /** Una frase con el resumen del período ("promedio 7 h 10 min", "12 de 30 días con ejercicio"). */
+  resumen: string;
+}
+
+/** Palabras que hacen que una comida o bebida cuente como chatarra (el nombre normalizado las contiene). */
+export const PALABRAS_CHATARRA = [
+  'pizza', 'hamburguesa', 'papas fritas', 'papitas', 'pancho', 'hot dog', 'nuggets', 'empanada frita', 'milanesa frita',
+  'fritura', 'frito', 'chizito', 'snack', 'palitos', 'galletitas', 'alfajor', 'golosina', 'chocolate', 'caramelo',
+  'helado', 'torta', 'factura', 'medialuna', 'donut', 'dona', 'gaseosa', 'coca', 'pepsi', 'sprite', 'fanta', 'energizante',
+  'cerveza', 'fernet', 'vino', 'mcdonald', 'burger', 'lomito', 'choripan', 'chori', 'nachos', 'pochoclo',
+];

@@ -181,3 +181,25 @@ describe('estadísticas', () => {
     expect(s.dias.map((d: any) => d.suma)).toEqual([1, 2]);
   });
 });
+
+describe('calendario por capas', () => {
+  it('sueño de me acosté/me levanté, chatarra por palabras y ánimo con carita', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const post = (b: any) => ana.post('/api/registros', { persona_id: personaId, ...b });
+    // Se acostó el 20 a las 23:30 (AR = 02:30Z del 21) y se levantó el 21 a las 07:00 (10:00Z).
+    await post({ concepto_nombre: 'Me acosté', categoria_id: categorias.sueno, inicio: '2026-10-21T02:30:00.000Z' });
+    await post({ concepto_nombre: 'Me levanté', categoria_id: categorias.sueno, inicio: '2026-10-21T10:00:00.000Z' });
+    await post({ concepto_nombre: 'Pizza', categoria_id: categorias.comida, inicio: '2026-10-21T23:00:00.000Z' });
+    await post({ concepto_nombre: 'Ensalada', categoria_id: categorias.comida, inicio: '2026-10-22T15:00:00.000Z' });
+    await post({ concepto_nombre: 'Cómo me siento', categoria_id: categorias.animo, inicio: '2026-10-21T15:00:00.000Z', intensidad: 10 });
+    const q = (capa: string) => ana.get(`/api/estadisticas/calendario?persona=${personaId}&capa=${capa}&desde=2026-10-01&hasta=2026-10-31`);
+    const sueno = (await q('sueno')).body;
+    expect(sueno.dias).toEqual([{ fecha: '2026-10-21', valor: 7.5, detalle: '7 h 30 min' }]);
+    expect(sueno.resumen).toContain('7 h 30 min');
+    const chatarra = (await q('chatarra')).body;
+    expect(chatarra.dias).toEqual([{ fecha: '2026-10-21', valor: 1, detalle: 'Pizza' }]);
+    expect((await q('animo')).body.dias[0]).toMatchObject({ fecha: '2026-10-21', emoji: '😄' });
+    expect((await q('inventada')).status).toBe(400);
+    expect((await q('clima')).body.resumen).toContain('prendelo');
+  });
+});

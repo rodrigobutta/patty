@@ -4,6 +4,7 @@ import { avanceProgreso, nombreRasgo, type Hallazgo, type Persona, type Progreso
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { Buscar } from './Buscar';
+import { Calendario } from './Calendario';
 import { Numeros } from './Numeros';
 import { RuedaProgreso } from './RuedaProgreso';
 
@@ -17,7 +18,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const [analizando, setAnalizando] = useState(false);
   const [error, setError] = useState('');
   /** La sub-vista: los patrones, los números, o el buscador (con lo que se eligió desde los números). */
-  const [vista, setVista] = useState<'patrones' | 'numeros' | 'buscar'>('patrones');
+  const [vista, setVista] = useState<'patrones' | 'numeros' | 'calendario' | 'buscar'>('patrones');
   const [buscado, setBuscado] = useState<number | null>(null);
 
   const traer = useCallback(async () => {
@@ -78,6 +79,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
     <div className="segmentos ancho subvistas">
       <button className={vista === 'patrones' ? 'activa' : ''} onClick={() => setVista('patrones')}>✨ Patrones</button>
       <button className={vista === 'numeros' ? 'activa' : ''} onClick={() => setVista('numeros')}>📊 Números</button>
+      <button className={vista === 'calendario' ? 'activa' : ''} onClick={() => setVista('calendario')}>📅 Calendario</button>
       <button className={vista === 'buscar' ? 'activa' : ''} onClick={() => setVista('buscar')}>🔎 Buscar</button>
     </div>
   );
@@ -86,6 +88,14 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
       <section className="patrones">
         {pestanas}
         <Numeros persona={persona} alElegir={(id) => { setBuscado(id); setVista('buscar'); }} />
+      </section>
+    );
+  }
+  if (vista === 'calendario') {
+    return (
+      <section className="patrones">
+        {pestanas}
+        <Calendario persona={persona} />
       </section>
     );
   }
