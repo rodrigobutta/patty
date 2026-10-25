@@ -68,7 +68,7 @@ export async function pedirJson<T>(opciones: {
     if (e instanceof Anthropic.APIConnectionError) throw new ErrorApi('No se pudo conectar con la IA.', 502);
     if (e instanceof Anthropic.APIError) {
       console.error('IA: error de la API:', e.status, e.message);
-      throw new ErrorApi(`La IA respondió con un error (${e.status}).`, 502);
+      throw new ErrorApi('La IA respondió con un error ({estado}).', 502, { estado: e.status });
     }
     throw e;
   }

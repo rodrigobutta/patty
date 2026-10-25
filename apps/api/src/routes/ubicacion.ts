@@ -39,7 +39,7 @@ async function fuenteUbicacion(tx: Tx, personaId: number): Promise<number> {
 
 function coordenada(v: unknown, campo: string, limite: number): number {
   const n = numeroONulo(v, campo);
-  if (n === null || Math.abs(n) > limite) throw new ErrorApi(`${campo}: ubicación inválida.`);
+  if (n === null || Math.abs(n) > limite) throw new ErrorApi('{campo}: ubicación inválida.', 400, { campo });
   return n;
 }
 
@@ -221,7 +221,7 @@ export const rutasUbicacion = new Hono<Env>()
       const cat = await una<{ id: number }>(tx, sql`SELECT id FROM categorias WHERE clave = 'lugar'`);
       const { concepto } = await obtenerOCrearConcepto(tx, { nombre, categoriaId: cat!.id, tipoValor: 'duracion', unidad: 'min', usuarioId: c.var.usuario.id });
       const ya = await una(tx, sql`SELECT 1 FROM lugares WHERE persona_id = ${p.id} AND concepto_id = ${concepto.id}`);
-      if (ya) throw new ErrorApi(`Ya hay un lugar «${concepto.nombre}».`, 409);
+      if (ya) throw new ErrorApi('Ya hay un lugar «{nombre}».', 409, { nombre: concepto.nombre });
       const [l] = await tx
         .insert(lugares)
         .values({ persona_id: p.id, concepto_id: concepto.id, lat: redondear(lat), lon: redondear(lon), radio_m: radio(d.radio_m) })

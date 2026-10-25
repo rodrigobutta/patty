@@ -2,11 +2,15 @@
 // comida chatarra, clima, temperatura, pasos, pantalla). Más fuerte es más; verde cuando más es mejor (sueño, pasos),
 // rojizo cuando es peor (dolores, chatarra). Tocar un día muestra el detalle.
 import { useEffect, useMemo, useState } from 'react';
-import { CAPAS_CALENDARIO, type CalendarioCapa, type CapaCalendario, type Persona } from 'shared';
+import { CAPAS_CALENDARIO, unidadPara, type CalendarioCapa, type CapaCalendario, type Persona } from 'shared';
 import { api } from '../api';
 import { hoyEn } from '../lib/fechas';
+import { idioma, locale, t } from '../lib/idioma';
 
-const DIAS_SEMANA = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+/** Las iniciales de lunes a domingo, en el idioma de la app (el 1/1/2024 fue lunes). */
+const DIAS_SEMANA = Array.from({ length: 7 }, (_, i) =>
+  new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', weekday: 'narrow' }).format(new Date(Date.UTC(2024, 0, 1 + i, 12))).toUpperCase(),
+);
 const diaSemana = (fecha: string) => (new Date(fecha + 'T12:00:00Z').getUTCDay() + 6) % 7;
 const sumarMes = (anioMes: string, n: number) => {
   const d = new Date(anioMes + '-15T12:00:00Z');
@@ -15,7 +19,7 @@ const sumarMes = (anioMes: string, n: number) => {
 };
 const finDeMes = (anioMes: string) => `${anioMes}-${String(new Date(Date.UTC(Number(anioMes.slice(0, 4)), Number(anioMes.slice(5, 7)), 0)).getUTCDate()).padStart(2, '0')}`;
 const nombreMes = (anioMes: string) =>
-  new Intl.DateTimeFormat('es-AR', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(anioMes + '-15T12:00:00Z')).replace(/^./, (x) => x.toUpperCase());
+  new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(anioMes + '-15T12:00:00Z')).replace(/^./, (x) => x.toUpperCase());
 const corto = (v: number, unidad: string | null) =>
   unidad === '°C' ? `${Math.round(v)}°` : unidad === 'pasos' ? (v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(Math.round(v))) : unidad === 'min' && v >= 60 ? `${Math.round(v / 6) / 10}h` : unidad === '/10' ? String(Math.round(v)) : String(Math.round(v * 10) / 10);
 
@@ -53,15 +57,15 @@ export function Calendario({ persona }: { persona: Persona }) {
       <div className="chips capas">
         {CAPAS_CALENDARIO.map((c) => (
           <button key={c.clave} className={`chip${capa === c.clave ? ' activa' : ''}`} onClick={() => setCapa(c.clave)}>
-            <span aria-hidden>{c.icono}</span> {c.nombre}
+            <span aria-hidden>{c.icono}</span> {t(c.nombre)}
           </button>
         ))}
       </div>
       <div className={`tarjeta calendario capa-${datos?.mejor ?? 'neutro'}`}>
         <div className="cabeza-mes">
-          <button className="btn-icono" onClick={() => setMes(sumarMes(mes, -1))} aria-label="Mes anterior">‹</button>
+          <button className="btn-icono" onClick={() => setMes(sumarMes(mes, -1))} aria-label={t('Mes anterior')}>‹</button>
           <strong>{info.icono} {nombreMes(mes)}</strong>
-          <button className="btn-icono" onClick={() => setMes(sumarMes(mes, 1))} disabled={mes >= hoy.slice(0, 7)} aria-label="Mes siguiente">›</button>
+          <button className="btn-icono" onClick={() => setMes(sumarMes(mes, 1))} disabled={mes >= hoy.slice(0, 7)} aria-label={t('Mes siguiente')}>›</button>
         </div>
         <div className="grilla-mes" key={`${capa}${mes}`}>
           {DIAS_SEMANA.map((x, i) => <span key={`c${i}`} className="dia-semana">{x}</span>)}
@@ -85,19 +89,19 @@ export function Calendario({ persona }: { persona: Persona }) {
         </div>
         {d && elegido ? (
           <p className="detalle-dia">
-            {new Intl.DateTimeFormat('es-AR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(elegido + 'T12:00:00Z'))}:{' '}
-            <strong>{d.detalle ?? (d.valor !== null ? `${Math.round(d.valor * 10) / 10}${datos?.unidad ? ' ' + datos.unidad : ''}` : '')}</strong>
+            {new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(elegido + 'T12:00:00Z'))}:{' '}
+            <strong>{d.detalle ?? (d.valor !== null ? `${(Math.round(d.valor * 10) / 10).toLocaleString(locale())}${datos?.unidad ? ' ' + unidadPara(Math.round(d.valor * 10) / 10, datos.unidad, idioma()) : ''}` : '')}</strong>
           </p>
         ) : datos ? (
           <p className="suave centro resumen-capa">{datos.resumen}</p>
         ) : (
-          <p className="suave centro">Cargando…</p>
+          <p className="suave centro">{t('Cargando…')}</p>
         )}
         {datos?.tipo === 'numero' && datos.dias.length ? (
           <div className="leyenda-capa" aria-hidden>
-            <span className="suave chico">{datos.mejor === 'menos' ? 'poco' : 'menos'}</span>
+            <span className="suave chico">{datos.mejor === 'menos' ? t('poco') : t('menos')}</span>
             {[0.3, 0.5, 0.7, 0.9, 1].map((k) => <span key={k} className="muestra" style={{ ['--fuerza' as string]: k }} />)}
-            <span className="suave chico">{datos.mejor === 'menos' ? 'mucho' : 'más'}</span>
+            <span className="suave chico">{datos.mejor === 'menos' ? t('mucho') : t('más')}</span>
           </div>
         ) : null}
       </div>

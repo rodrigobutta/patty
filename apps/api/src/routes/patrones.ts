@@ -1,7 +1,7 @@
 // Análisis de patrones de una persona y los hallazgos que se van acumulando.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { nombreRasgo, perfilTexto, type Hallazgo, type Persona, type Progreso, type ResultadoAnalisis } from 'shared';
+import { nombreRasgo, perfilTexto, traducir, type Hallazgo, type Persona, type Progreso, type ResultadoAnalisis } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { analisis, hallazgos } from '../db/schema.js';
 import { explicarHallazgos } from '../ia/analizar.js';
@@ -79,12 +79,13 @@ export const rutasPatrones = new Hono<Env>()
           WHERE c.id IN (SELECT DISTINCT concepto_id FROM serie_diaria WHERE persona_id = ${p.id})`,
     );
     const r = buscarPatrones(datos, conceptos, desde, hasta);
+    const idioma = c.var.idioma;
     const nombre = new Map(conceptos.map((x) => [x.id, x.nombre]));
     const tipo = new Map(conceptos.map((x) => [x.id, x.tipo_valor]));
     const conNombres = r.candidatos.map((x) => ({
       ...x,
-      causa: nombreRasgo(nombre.get(x.causa_id)!, tipo.get(x.causa_id)!, x.causa_modo),
-      efecto: nombreRasgo(nombre.get(x.efecto_id)!, tipo.get(x.efecto_id)!, x.efecto_modo),
+      causa: nombreRasgo(nombre.get(x.causa_id)!, tipo.get(x.causa_id)!, x.causa_modo, idioma),
+      efecto: nombreRasgo(nombre.get(x.efecto_id)!, tipo.get(x.efecto_id)!, x.efecto_modo, idioma),
     }));
 
     // La IA es opcional: si no está o falla, quedan los textos armados por el motor.
@@ -96,13 +97,13 @@ export const rutasPatrones = new Hono<Env>()
       try {
         ia = await explicarHallazgos({
           persona: p.nombre, perfil: perfilTexto((await una<Persona>(db, sql`SELECT to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones FROM personas WHERE id = ${p.id}`))!), desde, hasta, diasActivos: r.dias_activos, paresEvaluados: r.pares_evaluados,
-          candidatos: conNombres.slice(0, 25), frecuentes,
+          candidatos: conNombres.slice(0, 25), frecuentes, idioma,
         });
       } catch (e) {
         console.error('Análisis: la IA no pudo explicar los hallazgos:', e instanceof Error ? e.message : e);
       }
     }
-    const explicacion = new Map(ia?.hallazgos.map((h) => [h.indice, `${h.explicacion}${h.plausibilidad === 'baja' ? ' (puede ser casualidad)' : ''}`]));
+    const explicacion = new Map(ia?.hallazgos.map((h) => [h.indice, `${h.explicacion}${h.plausibilidad === 'baja' ? traducir(idioma, ' (puede ser casualidad)') : ''}`]));
 
     const resultado = await db.transaction(async (tx) => {
       const [a] = await tx
@@ -116,12 +117,12 @@ export const rutasPatrones = new Hono<Env>()
         const { causa, efecto, ...stats } = x;
         const [h] = await tx
           .insert(hallazgos)
-          .values({ persona_id: p.id, ...stats, explicacion: explicacion.get(i) ?? describir(x, causa, efecto), analisis_id: a.id })
+          .values({ persona_id: p.id, ...stats, explicacion: explicacion.get(i) ?? describir(x, causa, efecto, idioma), analisis_id: a.id })
           .onConflictDoUpdate({
             target: [hallazgos.persona_id, hallazgos.causa_id, hallazgos.causa_modo, hallazgos.efecto_id, hallazgos.efecto_modo, hallazgos.desfase_dias],
             set: {
               ...stats,
-              explicacion: explicacion.get(i) ?? describir(x, causa, efecto),
+              explicacion: explicacion.get(i) ?? describir(x, causa, efecto, idioma),
               analisis_id: a.id,
               actualizado: sql`now()`,
             },
@@ -141,7 +142,7 @@ export const rutasPatrones = new Hono<Env>()
       resumen:
         ia?.resumen ??
         (r.dias_activos < DIAS_MINIMOS
-          ? `Todavía hay ${r.dias_activos} días anotados. Con ${DIAS_MINIMOS} o más ya se pueden empezar a buscar patrones.`
+          ? traducir(idioma, 'Todavía hay {n} días anotados. Con {minimo} o más ya se pueden empezar a buscar patrones.', { n: r.dias_activos, minimo: DIAS_MINIMOS })
           : null),
       sugerencias: ia?.sugerencias ?? [],
     };

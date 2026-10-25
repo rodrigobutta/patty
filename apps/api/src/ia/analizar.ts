@@ -1,5 +1,6 @@
 // La IA mira los candidatos que encontró el motor y los explica en palabras: cuáles parecen razonables, qué otra cosa
 // podría explicarlos (un confusor) y qué convendría anotar o probar para confirmarlos.
+import type { Idioma } from 'shared';
 import type { Candidato } from '../patrones/motor.js';
 import { pedirJson } from './cliente.js';
 
@@ -42,6 +43,8 @@ export function explicarHallazgos(datos: {
   paresEvaluados: number;
   candidatos: Array<Candidato & { causa: string; efecto: string }>;
   frecuentes: Array<{ nombre: string; dias: number }>;
+  /** El idioma de la app: el resumen, las explicaciones y las sugerencias van en ese idioma. */
+  idioma?: Idioma;
 }): Promise<Explicaciones> {
   const sistema =
     'Sos Patty, el asistente de una app donde una persona anota su día (comidas, sueño, actividad, clima, dolores, ánimo) ' +
@@ -49,7 +52,10 @@ export function explicarHallazgos(datos: {
     'pasa los candidatos con sus números. Tu trabajo es explicarlos en castellano rioplatense, claro y sin tecnicismos, ' +
     'con prudencia: son correlaciones en pocos datos, no diagnósticos. Marcá como plausibilidad baja lo que probablemente ' +
     'sea azar o se explique por otra cosa (un confusor: por ejemplo, el fin de semana), y alta lo que tiene sentido y está ' +
-    'bien sostenido por los números. "Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.';
+    'bien sostenido por los números. "Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.' +
+    (datos.idioma === 'en'
+      ? ' La persona usa la app en inglés: escribí el resumen, las explicaciones y las sugerencias en inglés (claro y simple).'
+      : '');
   const lineas = [
     ...(datos.perfil ? [`Sobre la persona (lo contó ella; usalo para entender mejor, no para diagnosticar): ${datos.perfil}.`] : []),
     `Persona: ${datos.persona}. Período: ${datos.desde} a ${datos.hasta}, ${datos.diasActivos} días con anotaciones.`,

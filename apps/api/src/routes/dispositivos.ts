@@ -2,7 +2,8 @@
 // tiene programados sus propios recordatorios), y se puede pedir un aviso de prueba.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { filas } from '../db/client.js';
+import { esIdioma, traducir } from 'shared';
+import { filas, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, texto, type Env } from '../lib/http.js';
 import { enviarAviso, pushDisponible } from '../push/firebase.js';
@@ -44,9 +45,12 @@ export const rutasDispositivos = new Hono<Env>()
     if (!pushDisponible()) throw new ErrorApi('El servidor todavía no tiene Firebase configurado.');
     const lista = await filas<{ id: number; token: string }>(c.var.db, sql`SELECT id, token FROM dispositivos WHERE usuario_id = ${c.var.usuario.id}`);
     if (!lista.length) throw new ErrorApi('Este usuario no tiene ningún teléfono registrado para avisos.');
+    // En el idioma guardado del usuario (el de la app), como los demás avisos que manda el servidor.
+    const guardado = (await una<{ idioma: string }>(c.var.db, sql`SELECT idioma FROM usuarios WHERE id = ${c.var.usuario.id}`))?.idioma;
+    const cuerpoAviso = traducir(esIdioma(guardado) ? guardado : c.var.idioma, '¡Hola! Así te van a llegar los avisos 🦉');
     let ok = 0;
     for (const d of lista) {
-      const r = await enviarAviso(d.token, { titulo: 'Patty', cuerpo: '¡Hola! Así te van a llegar los avisos 🦉', datos: { tipo: 'prueba' } });
+      const r = await enviarAviso(d.token, { titulo: 'Patty', cuerpo: cuerpoAviso, datos: { tipo: 'prueba' } });
       if (r === 'ok') ok++;
       if (r === 'invalido') await c.var.db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
     }

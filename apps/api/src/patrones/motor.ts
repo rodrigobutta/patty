@@ -11,7 +11,7 @@
 //   p_valor = test exacto de Fisher de una cola (que la causa sube la probabilidad del efecto)
 //   q_valor = corrección de Benjamini-Hochberg por la cantidad de pares probados (hay muchos: algunos salen por azar).
 // Con desfase 0 (mismo día) solo cuenta si la causa se anotó antes que el efecto.
-import type { Modo, RolCategoria, TipoValor } from 'shared';
+import { traducir, type Idioma, type Modo, type RolCategoria, type TipoValor } from 'shared';
 import { diasEntre } from '../lib/fechas.js';
 
 export interface FilaDiaria {
@@ -295,8 +295,17 @@ export function buscarPatrones(
 }
 
 /** Texto simple de un hallazgo, para cuando no hay IA. `causa` y `efecto` ya vienen nombrados ("Energía baja"). */
-export function describir(x: Candidato, causa: string, efecto: string): string {
-  const cuando = x.desfase_dias === 0 ? 'ese mismo día, más tarde' : x.desfase_dias === 1 ? 'al día siguiente' : `${x.desfase_dias} días después`;
+export function describir(x: Candidato, causa: string, efecto: string, idioma: Idioma = 'es'): string {
+  const t = (texto: string, vars?: Record<string, string | number>) => traducir(idioma, texto, vars);
+  const cuando = x.desfase_dias === 0 ? t('ese mismo día, más tarde') : x.desfase_dias === 1 ? t('al día siguiente') : t('{n} días después', { n: x.desfase_dias });
   const pct = (v: number) => `${Math.round(v * 100)}%`;
-  return `Los días con «${causa}», ${cuando} hubo «${efecto}» el ${pct(x.prob_con)} de las veces (${x.soporte} de ${x.dias_causa}); el resto de los días, el ${pct(x.prob_sin)}.`;
+  return t('Los días con «{causa}», {cuando} hubo «{efecto}» el {con} de las veces ({soporte} de {dias}); el resto de los días, el {sin}.', {
+    causa,
+    cuando,
+    efecto,
+    con: pct(x.prob_con),
+    soporte: x.soporte,
+    dias: x.dias_causa,
+    sin: pct(x.prob_sin),
+  });
 }

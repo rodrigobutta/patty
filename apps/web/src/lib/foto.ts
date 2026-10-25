@@ -2,6 +2,7 @@
 // nativa usa la cámara del teléfono; en la web, el selector de archivos (que en el celular también abre la cámara). Se
 // achica a 1280 px en JPEG antes de mandarla: alcanza para reconocer un plato y no gasta datos. La foto no se guarda.
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { t } from './idioma';
 import { esNativa } from './nativo';
 
 export interface Foto {
@@ -27,7 +28,7 @@ function achicar(url: string): Promise<Foto> {
       const salida = c.toDataURL('image/jpeg', 0.72);
       ok({ datos: salida.split(',')[1], tipo: 'image/jpeg', url: salida });
     };
-    img.onerror = () => mal(new Error('No se pudo leer la foto.'));
+    img.onerror = () => mal(new Error(t('No se pudo leer la foto.')));
     img.src = url;
   });
 }
@@ -42,16 +43,16 @@ export async function sacarFoto(): Promise<Foto | null> {
         quality: 75,
         width: LADO,
         correctOrientation: true,
-        promptLabelHeader: 'Foto para Patty',
-        promptLabelPicture: 'Sacar una foto',
-        promptLabelPhoto: 'Elegir de la galería',
-        promptLabelCancel: 'Cancelar',
+        promptLabelHeader: t('Foto para Patty'),
+        promptLabelPicture: t('Sacar una foto'),
+        promptLabelPhoto: t('Elegir de la galería'),
+        promptLabelCancel: t('Cancelar'),
       });
       return f.dataUrl ? achicar(f.dataUrl) : null;
     } catch (e) {
       // Cancelar la cámara también llega como error.
       if (/cancel/i.test((e as Error).message ?? '')) return null;
-      throw new Error('No se pudo usar la cámara. Revisá el permiso de cámara de Patty en los ajustes del teléfono.');
+      throw new Error(t('No se pudo usar la cámara. Revisá el permiso de cámara de Patty en los ajustes del teléfono.'));
     }
   }
   return new Promise((ok, mal) => {
@@ -62,7 +63,7 @@ export async function sacarFoto(): Promise<Foto | null> {
       if (!archivo) return ok(null);
       const r = new FileReader();
       r.onload = () => achicar(String(r.result)).then(ok, mal);
-      r.onerror = () => mal(new Error('No se pudo leer la foto.'));
+      r.onerror = () => mal(new Error(t('No se pudo leer la foto.')));
       r.readAsDataURL(archivo);
     };
     input.click();

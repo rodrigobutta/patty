@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { entrarConGoogleNativo, googleNativo, montarGoogle } from '../lib/google';
+import { t } from '../lib/idioma';
 
 export function Cuenta() {
   const { sesion, usuario, avisar } = useEstado();
@@ -15,7 +16,7 @@ export function Cuenta() {
     try {
       const r = await api<{ email: string }>('POST', '/api/usuarios/yo/google', { credential });
       setEmail(r.email);
-      avisar('Google vinculado');
+      avisar(t('Google vinculado'));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -31,10 +32,10 @@ export function Cuenta() {
     <div className="tarjeta">
       <h3>🔑 Google</h3>
       {email ? (
-        <p className="chico">✅ Podés entrar con Google como <strong>{email}</strong>.</p>
+        <p className="chico">✅ {t('Podés entrar con Google como')} <strong>{email}</strong>.</p>
       ) : (
         <>
-          <p className="suave chico">Vinculá tu cuenta de Google para entrar con un toque, sin usuario y clave.</p>
+          <p className="suave chico">{t('Vinculá tu cuenta de Google para entrar con un toque, sin usuario y clave.')}</p>
           {googleNativo() ? (
             <button
               className="btn ancho"
@@ -44,7 +45,7 @@ export function Cuenta() {
                   .catch((e: Error) => !/cancel/i.test(e.message) && setError(e.message))
               }
             >
-              Vincular con Google
+              {t('Vincular con Google')}
             </button>
           ) : (
             <div ref={boton} className="google" />

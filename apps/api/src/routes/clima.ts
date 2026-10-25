@@ -73,7 +73,7 @@ export async function resumirDias(tx: Tx, p: PersonaAcceso, fuenteHoras: number,
 
 function coordenada(v: unknown, campo: string, limite: number): number {
   const n = numeroONulo(v, campo);
-  if (n === null || Math.abs(n) > limite) throw new ErrorApi(`${campo}: ubicación inválida.`);
+  if (n === null || Math.abs(n) > limite) throw new ErrorApi('{campo}: ubicación inválida.', 400, { campo });
   return n;
 }
 

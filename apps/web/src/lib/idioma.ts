@@ -1,6 +1,6 @@
 // El idioma de la app: el que se eligió en Más o, si no, el del teléfono. `t("Anotar")` devuelve el texto en ese
 // idioma (el castellano es la clave; ver packages/shared/src/i18n). Cambiar el idioma recarga la app.
-import { idiomaDe, traducir, type Idioma } from 'shared';
+import { idiomaDe, traducir, traducirDato, type Idioma } from 'shared';
 
 const CLAVE = 'idioma';
 
@@ -28,8 +28,12 @@ export function ponerIdioma(i: Idioma | 'auto'): void {
   location.reload();
 }
 
-/** El texto en el idioma de la app. */
-export const t = (texto: string, vars?: Record<string, string | number>): string => traducir(actual, texto, vars);
+/**
+ * El texto en el idioma de la app. Sirve también para nombres de datos (categorías, conceptos del sistema, "Tele en TN",
+ * "Uso de Instagram"); lo que escribió la persona queda igual.
+ */
+export const t = (texto: string, vars?: Record<string, string | number>): string =>
+  vars ? traducir(actual, texto, vars) : traducirDato(texto, actual);
 
 /** Para Intl (fechas, números): "es-AR" o "en-US". */
 export const locale = (): string => (actual === 'en' ? 'en-US' : 'es-AR');

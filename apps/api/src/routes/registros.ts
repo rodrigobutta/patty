@@ -39,7 +39,7 @@ function valores(d: NuevoRegistro, c: Concepto, p: PersonaAcceso) {
   if (intensidad !== null && (!Number.isInteger(intensidad) || intensidad < 0 || intensidad > 10)) {
     throw new ErrorApi('La intensidad va de 0 a 10.');
   }
-  if (c.tipo_valor === 'intensidad' && intensidad === null) throw new ErrorApi(`¿Qué intensidad (0 a 10) tuvo ${c.nombre.toLowerCase()}?`);
+  if (c.tipo_valor === 'intensidad' && intensidad === null) throw new ErrorApi('¿Qué intensidad (0 a 10) tuvo {nombre}?', 400, { nombre: c.nombre.toLowerCase() });
   if (c.tipo_valor === 'hora') valor = minutosDelDia(inicio, p.zona_horaria);
   if (c.tipo_valor === 'duracion' && valor === null && fin) valor = Math.round((fin.getTime() - inicio.getTime()) / 60000);
   return {
@@ -166,11 +166,11 @@ export const rutasRegistros = new Hono<Env>()
     const datos = texto(d.imagen).replace(/^data:[^;]+;base64,/, '');
     if (!datos || !/^[A-Za-z0-9+/=]+$/.test(datos)) throw new ErrorApi('Falta la foto.');
     if (datos.length > 7_000_000) throw new ErrorApi('La foto es muy grande.');
-    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined, { tipo, datos }));
+    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined, { tipo, datos }, c.var.idioma));
   })
   .post('/interpretar', async (c) => {
     // "Desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos, sin guardar.
     const d = await cuerpo(c);
     const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
-    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined));
+    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined, undefined, c.var.idioma));
   });

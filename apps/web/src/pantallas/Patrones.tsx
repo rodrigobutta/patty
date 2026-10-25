@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { avanceProgreso, nombreRasgo, type Hallazgo, type Persona, type Progreso, type ResultadoAnalisis } from 'shared';
 import { api } from '../api';
+import { locale, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { Buscar } from './Buscar';
 import { Calendario } from './Calendario';
@@ -9,7 +10,7 @@ import { Numeros } from './Numeros';
 import { RuedaProgreso } from './RuedaProgreso';
 
 const Q_FIRME = 0.1;
-const cuando = (d: number) => (d === 0 ? 'el mismo día' : d === 1 ? 'al día siguiente' : `${d} días después`);
+const cuando = (d: number) => (d === 0 ? t('el mismo día') : d === 1 ? t('al día siguiente') : t('{n} días después', { n: d }));
 
 export function Patrones({ persona, progreso }: { persona: Persona; progreso: Progreso | null }) {
   const { sesion, usuario } = useEstado();
@@ -58,17 +59,17 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const posibles = hallazgos?.filter((h) => !firmes.includes(h)) ?? [];
   const tarjeta = (h: Hallazgo) => (
     <article key={h.id} className={`tarjeta hallazgo ${h.estado}`}>
-      <h3>{nombreRasgo(h.causa, h.causa_tipo, h.causa_modo)} <span className="flecha">→</span> {nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo)}</h3>
-      <p className="suave chico">{cuando(h.desfase_dias)} · {h.soporte} de {h.dias_causa} veces · ×{h.lift.toFixed(1)} más probable{h.q_valor > 0.2 ? ' · puede ser casualidad' : ''}</p>
-      <div className="barras" aria-label={`${Math.round(h.prob_con * 100)}% con, ${Math.round(h.prob_sin * 100)}% sin`}>
-        <div><span style={{ width: `${h.prob_con * 100}%` }} className="con" />con {Math.round(h.prob_con * 100)}%</div>
-        <div><span style={{ width: `${h.prob_sin * 100}%` }} className="sin" />sin {Math.round(h.prob_sin * 100)}%</div>
+      <h3>{nombreRasgo(t(h.causa), h.causa_tipo, h.causa_modo)} <span className="flecha">→</span> {nombreRasgo(t(h.efecto), h.efecto_tipo, h.efecto_modo)}</h3>
+      <p className="suave chico">{cuando(h.desfase_dias)} · {t('{n} de {total} veces', { n: h.soporte, total: h.dias_causa })} · {t('×{n} más probable', { n: h.lift.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}{h.q_valor > 0.2 ? ` · ${t('puede ser casualidad')}` : ''}</p>
+      <div className="barras" aria-label={t('{con}% con, {sin}% sin', { con: Math.round(h.prob_con * 100), sin: Math.round(h.prob_sin * 100) })}>
+        <div><span style={{ width: `${h.prob_con * 100}%` }} className="con" />{t('con {n}%', { n: Math.round(h.prob_con * 100) })}</div>
+        <div><span style={{ width: `${h.prob_sin * 100}%` }} className="sin" />{t('sin {n}%', { n: Math.round(h.prob_sin * 100) })}</div>
       </div>
       {h.explicacion ? <p>{h.explicacion}</p> : null}
       {usuario?.rol !== 'lector' ? (
         <div className="fila">
-          <button className={`btn chico ${h.estado === 'confirmado' ? 'primario' : ''}`} onClick={() => marcar(h, h.estado === 'confirmado' ? 'nuevo' : 'confirmado')}>👍 Me pasa</button>
-          <button className={`btn chico ${h.estado === 'descartado' ? 'primario' : ''}`} onClick={() => marcar(h, h.estado === 'descartado' ? 'nuevo' : 'descartado')}>👎 No creo</button>
+          <button className={`btn chico ${h.estado === 'confirmado' ? 'primario' : ''}`} onClick={() => marcar(h, h.estado === 'confirmado' ? 'nuevo' : 'confirmado')}>👍 {t('Me pasa')}</button>
+          <button className={`btn chico ${h.estado === 'descartado' ? 'primario' : ''}`} onClick={() => marcar(h, h.estado === 'descartado' ? 'nuevo' : 'descartado')}>👎 {t('No creo')}</button>
         </div>
       ) : null}
     </article>
@@ -77,10 +78,10 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const listo = progreso ? avanceProgreso(progreso).nivel > 0 : true;
   const pestanas = (
     <div className="segmentos ancho subvistas">
-      <button className={vista === 'patrones' ? 'activa' : ''} onClick={() => setVista('patrones')}>✨ Patrones</button>
-      <button className={vista === 'numeros' ? 'activa' : ''} onClick={() => setVista('numeros')}>📊 Números</button>
-      <button className={vista === 'calendario' ? 'activa' : ''} onClick={() => setVista('calendario')}>📅 Calendario</button>
-      <button className={vista === 'buscar' ? 'activa' : ''} onClick={() => setVista('buscar')}>🔎 Buscar</button>
+      <button className={vista === 'patrones' ? 'activa' : ''} onClick={() => setVista('patrones')}>✨ {t('Patrones')}</button>
+      <button className={vista === 'numeros' ? 'activa' : ''} onClick={() => setVista('numeros')}>📊 {t('Números')}</button>
+      <button className={vista === 'calendario' ? 'activa' : ''} onClick={() => setVista('calendario')}>📅 {t('Calendario')}</button>
+      <button className={vista === 'buscar' ? 'activa' : ''} onClick={() => setVista('buscar')}>🔎 {t('Buscar')}</button>
     </div>
   );
   if (vista === 'numeros') {
@@ -112,14 +113,14 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
       {pestanas}
       {progreso ? <div className="tarjeta">{<RuedaProgreso progreso={progreso} />}</div> : null}
       <div className="tarjeta">
-        <h2>Patrones de {persona.nombre}</h2>
+        <h2>{t('Patrones de {nombre}', { nombre: persona.nombre })}</h2>
         <p className="suave">
-          Patty compara los días en que pasó algo con los que no, y mira si al rato o unos días después aparece otra cosa más seguido.
-          {sesion?.ia ? ' La IA explica lo que encuentra.' : ''}
+          {t('Patty compara los días en que pasó algo con los que no, y mira si al rato o unos días después aparece otra cosa más seguido.')}
+          {sesion?.ia ? ` ${t('La IA explica lo que encuentra.')}` : ''}
         </p>
         {usuario?.rol !== 'lector' ? (
           <button className={`btn ancho ${listo ? 'primario' : ''}`} onClick={analizar} disabled={analizando || !listo}>
-            {analizando ? 'Buscando patrones…' : listo ? 'Buscar patrones' : 'Todavía me faltan datos'}
+            {analizando ? t('Buscando patrones…') : listo ? t('Buscar patrones') : t('Todavía me faltan datos')}
           </button>
         ) : null}
         {error ? <p className="neg">{error}</p> : null}
@@ -130,20 +131,20 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
       {firmes.map(tarjeta)}
       {posibles.length ? (
         <details className="posibles">
-          <summary>{posibles.length} posibles, todavía con pocos datos</summary>
+          <summary>{t('{n} posibles, todavía con pocos datos', { n: posibles.length })}</summary>
           {posibles.map(tarjeta)}
         </details>
       ) : null}
 
-      {hallazgos && !firmes.length && !analizando && listo ? <p className="suave centro">Todavía no hay patrones claros. Seguí anotando: cuantos más días, más fácil es verlos.</p> : null}
+      {hallazgos && !firmes.length && !analizando && listo ? <p className="suave centro">{t('Todavía no hay patrones claros. Seguí anotando: cuantos más días, más fácil es verlos.')}</p> : null}
 
       {ultimo?.sugerencias?.length ? (
         <div className="tarjeta">
-          <h3>Para afinar</h3>
+          <h3>{t('Para afinar')}</h3>
           <ul>{ultimo.sugerencias.map((s) => <li key={s}>{s}</li>)}</ul>
         </div>
       ) : null}
-      <p className="suave chico centro">Son relaciones en tus datos, no diagnósticos. Si algo te preocupa, consultalo con un profesional.</p>
+      <p className="suave chico centro">{t('Son relaciones en tus datos, no diagnósticos. Si algo te preocupa, consultalo con un profesional.')}</p>
     </section>
   );
 }

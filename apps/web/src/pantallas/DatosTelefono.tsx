@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { useEstado } from '../estado';
 import { datosActivados, ponerDatos, sincronizar, Telefono } from '../lib/telefono';
+import { t } from '../lib/idioma';
 
 type Permisos = Awaited<ReturnType<typeof Telefono.permisos>>;
 
@@ -28,7 +29,7 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
     setMandando(true);
     try {
       const n = await sincronizar(persona.id);
-      avisar(n ? `Listo: ${n} datos de los últimos 7 días` : 'Falta dar algún permiso');
+      avisar(n ? t('Listo: {n} datos de los últimos 7 días', { n }) : t('Falta dar algún permiso'));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -44,34 +45,33 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
 
   return (
     <div className="tarjeta">
-      <h3>📱 Uso del teléfono y llamadas</h3>
+      <h3>{t('📱 Uso del teléfono y llamadas')}</h3>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => prender(e.target.checked)} />
-        <span>Anotar cada día el tiempo de pantalla, los minutos de cada app y las llamadas de este teléfono.</span>
+        <span>{t('Anotar cada día el tiempo de pantalla, los minutos de cada app y las llamadas de este teléfono.')}</span>
       </label>
       <p className="suave chico">
-        De las llamadas solo se cuentan cuántas y cuánto duraron (no números ni nombres). Una app entra con su nombre si
-        se usó 5 minutos o más en el día. Se manda al abrir Patty, los últimos 7 días.
+        {t('De las llamadas solo se cuentan cuántas y cuánto duraron (no números ni nombres). Una app entra con su nombre si se usó 5 minutos o más en el día. Se manda al abrir Patty, los últimos 7 días.')}
       </p>
       {permisos ? (
         <div className="columna">
           {permisos.uso === 'granted' ? (
-            <span className="chico">✅ Uso de apps</span>
+            <span className="chico">{t('✅ Uso de apps')}</span>
           ) : (
-            <button className="btn" onClick={() => void Telefono.pedirPermisoUso()}>Permitir uso de apps</button>
+            <button className="btn" onClick={() => void Telefono.pedirPermisoUso()}>{t('Permitir uso de apps')}</button>
           )}
           {permisos.llamadas === 'granted' ? (
-            <span className="chico">✅ Llamadas</span>
+            <span className="chico">{t('✅ Llamadas')}</span>
           ) : (
-            <button className="btn" onClick={() => void Telefono.pedirPermisoLlamadas().then(setPermisos)}>Permitir llamadas</button>
+            <button className="btn" onClick={() => void Telefono.pedirPermisoLlamadas().then(setPermisos)}>{t('Permitir llamadas')}</button>
           )}
         </div>
       ) : null}
       {permisos?.uso !== 'granted' ? (
-        <p className="suave chico">«Permitir uso de apps» abre Ajustes: buscá Patty en la lista y prendé «Permitir acceso al uso».</p>
+        <p className="suave chico">{t('«Permitir uso de apps» abre Ajustes: buscá Patty en la lista y prendé «Permitir acceso al uso».')}</p>
       ) : null}
       {activo ? (
-        <button className="btn" disabled={mandando} onClick={() => void mandar()}>{mandando ? 'Mandando…' : 'Mandar ahora'}</button>
+        <button className="btn" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Mandando…') : t('Mandar ahora')}</button>
       ) : null}
       {error ? <p className="neg">{error}</p> : null}
     </div>

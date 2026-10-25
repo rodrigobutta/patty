@@ -1,7 +1,8 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
 import { useEffect, useRef, useState } from 'react';
-import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
+import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
 import { api } from '../api';
+import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
 import { horaAhora, horaEn, hoyEn, instanteDelDia, nombreDia } from '../lib/fechas';
@@ -80,14 +81,14 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
   };
 
   return (
-    <div className="hoja" role="dialog" aria-label="Anotar">
+    <div className="hoja" role="dialog" aria-label={t('Anotar')}>
       <div className="hoja-cabeza">
         <div className="segmentos">
-          <button className={modo === 'rapido' ? 'activa' : ''} onClick={() => setModo('rapido')}>Rápido</button>
-          <button className={modo === 'tele' ? 'activa' : ''} onClick={() => setModo('tele')}>📺 Tele</button>
-          {sesion?.ia ? <button className={modo === 'texto' ? 'activa' : ''} onClick={() => setModo('texto')}>Contarlo ✨</button> : null}
+          <button className={modo === 'rapido' ? 'activa' : ''} onClick={() => setModo('rapido')}>{t('Rápido')}</button>
+          <button className={modo === 'tele' ? 'activa' : ''} onClick={() => setModo('tele')}>{t('📺 Tele')}</button>
+          {sesion?.ia ? <button className={modo === 'texto' ? 'activa' : ''} onClick={() => setModo('texto')}>{t('Contarlo ✨')}</button> : null}
         </div>
-        <button className="btn-icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
+        <button className="btn-icono" onClick={alCerrar} aria-label={t('Cerrar')}>✕</button>
       </div>
 
       {modo === 'texto' ? (
@@ -95,21 +96,21 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
-        <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { festejar(`¡Anotado! ${elegido.nombre}`); alGuardar(); }} />
+        <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { festejar(t('¡Anotado! {que}', { que: t(elegido.nombre) })); alGuardar(); }} />
       ) : (
         <>
           <div className="chips">
             {categorias.map((c) => (
               <button key={c.id} className={`chip ${categoria?.id === c.id ? 'activa' : ''}`} onClick={() => setCategoria(categoria?.id === c.id ? null : c)}>
-                {c.icono} {c.nombre}
+                {c.icono} {t(c.nombre)}
               </button>
             ))}
           </div>
           {pidiendoCategoria ? (
             <div className="tarjeta">
-              <p>¿En qué categoría va «{pidiendoCategoria}»?</p>
+              <p>{t('¿En qué categoría va «{que}»?', { que: pidiendoCategoria })}</p>
               <div className="chips">
-                {categorias.map((c) => <button key={c.id} className="chip" onClick={() => crear(pidiendoCategoria, c)}>{c.icono} {c.nombre}</button>)}
+                {categorias.map((c) => <button key={c.id} className="chip" onClick={() => crear(pidiendoCategoria, c)}>{c.icono} {t(c.nombre)}</button>)}
               </div>
             </div>
           ) : (
@@ -128,19 +129,24 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
 function PreguntaCantidad({ elegido, alElegir }: { elegido: Elegido; alElegir(unidad: string | null): void }) {
   const [otra, setOtra] = useState('');
   const unidades = UNIDADES_SUGERIDAS[elegido.categoria.clave] ?? [];
-  const verbo = elegido.categoria.clave === 'bebida' ? 'tomaste' : elegido.categoria.clave === 'medicacion' ? 'tomaste' : 'comiste';
+  const tomado = elegido.categoria.clave === 'bebida' || elegido.categoria.clave === 'medicacion';
+  const nombre = t(elegido.nombre);
   return (
     <div className="tarjeta pregunta-cantidad">
-      <p>¿Querés anotar cuánto {verbo} de «{elegido.nombre}»? Te lo pregunto solo esta vez.</p>
+      <p>
+        {tomado
+          ? t('¿Querés anotar cuánto tomaste de «{que}»? Te lo pregunto solo esta vez.', { que: nombre })
+          : t('¿Querés anotar cuánto comiste de «{que}»? Te lo pregunto solo esta vez.', { que: nombre })}
+      </p>
       <div className="chips envolver">
-        {unidades.map((u) => <button key={u} className="chip" onClick={() => alElegir(u)}>En {u}</button>)}
-        <button className="chip" onClick={() => alElegir(null)}>No, solo que {elegido.categoria.clave === 'bebida' ? 'lo tomé' : 'lo comí'}</button>
+        {unidades.map((u) => <button key={u} className="chip" onClick={() => alElegir(u)}>{t('En {u}', { u: unidadPara(2, u, idioma()) })}</button>)}
+        <button className="chip" onClick={() => alElegir(null)}>{elegido.categoria.clave === 'bebida' ? t('No, solo que lo tomé') : t('No, solo que lo comí')}</button>
       </div>
       <label>
-        Otra unidad
+        {t('Otra unidad')}
         <span className="fila">
-          <input value={otra} onChange={(e) => setOtra(e.target.value)} placeholder="ej: rodajas, cucharadas" />
-          <button className="btn" disabled={!otra.trim()} onClick={() => alElegir(otra.trim().toLowerCase())}>Usar</button>
+          <input value={otra} onChange={(e) => setOtra(e.target.value)} placeholder={t('ej: rodajas, cucharadas')} />
+          <button className="btn" disabled={!otra.trim()} onClick={() => alElegir(otra.trim().toLowerCase())}>{t('Usar')}</button>
         </span>
       </label>
     </div>
@@ -158,7 +164,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
   /** Lo que se contestó a "¿lleva cantidad?" en esta carga (se guarda en el concepto al anotar). */
   const [decision, setDecision] = useState<{ unidad: string | null } | null>(null);
   const preguntar = !elegido.cantidad_decidida && !decision && elegido.categoria.clave in UNIDADES_SUGERIDAS;
-  const t = elegido.tipo_valor;
+  const tv = elegido.tipo_valor;
 
   const decidir = (unidad: string | null) => {
     setDecision({ unidad });
@@ -166,7 +172,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
   };
 
   const guardar = async () => {
-    if (t === 'intensidad' && intensidad === null) return setError('Elegí la intensidad.');
+    if (tv === 'intensidad' && intensidad === null) return setError(t('Elegí la intensidad.'));
     setEnviando(true);
     const inicio = instanteDelDia(fecha, hora, persona.zona_horaria);
     try {
@@ -195,36 +201,36 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
 
   return (
     <div className="valor">
-      <button className="volver" onClick={alVolver}>‹ {elegido.categoria.icono} {elegido.nombre}{elegido.concepto_id ? '' : ' (nuevo)'}</button>
+      <button className="volver" onClick={alVolver}>‹ {elegido.categoria.icono} {t(elegido.nombre)}{elegido.concepto_id ? '' : ' ' + t('(nuevo)')}</button>
       {preguntar ? <PreguntaCantidad elegido={elegido} alElegir={decidir} /> : null}
-      {preguntar ? null : t === 'intensidad' ? (
+      {preguntar ? null : tv === 'intensidad' ? (
         <fieldset className="escala">
-          <legend>Intensidad</legend>
+          <legend>{t('Intensidad')}</legend>
           {Array.from({ length: 11 }, (_, i) => (
             <button key={i} className={intensidad === i ? 'activa' : ''} style={{ ['--i' as string]: i }} onClick={() => setIntensidad(i)}>{i}</button>
           ))}
-          <div className="escala-pie suave chico"><span>nada</span><span>insoportable</span></div>
+          <div className="escala-pie suave chico"><span>{t('nada')}</span><span>{t('insoportable')}</span></div>
         </fieldset>
       ) : null}
-      {!preguntar && (t === 'cantidad' || t === 'medida' || t === 'duracion') ? (
+      {!preguntar && (tv === 'cantidad' || tv === 'medida' || tv === 'duracion') ? (
         <label>
-          {t === 'duracion' ? 'Minutos' : elegido.unidad ? cuantos(elegido.unidad) : 'Cantidad'}
+          {tv === 'duracion' ? t('Minutos') : elegido.unidad ? cuantos(elegido.unidad, idioma()) : t('Cantidad')}
           <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} autoFocus />
-          {t === 'duracion' ? (
+          {tv === 'duracion' ? (
             <div className="chips">{[10, 15, 30, 45, 60, 90].map((m) => <button key={m} className="chip" onClick={() => setValor(String(m))}>{m}</button>)}</div>
-          ) : t === 'cantidad' ? (
+          ) : tv === 'cantidad' ? (
             <div className="chips">{[1, 2, 3, 4, 5].map((m) => <button key={m} className="chip" onClick={() => setValor(String(m))}>{m}</button>)}</div>
           ) : null}
         </label>
       ) : null}
       {preguntar ? null : (
         <>
-          <label>{t === 'hora' ? 'Hora' : 'Cuándo'}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
-          <label>Nota (opcional)<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="detalle, lugar, con quién…" /></label>
+          <label>{tv === 'hora' ? t('Hora') : t('Cuándo')}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
+          <label>{t('Nota (opcional)')}<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder={t('detalle, lugar, con quién…')} /></label>
         </>
       )}
       {error ? <p className="neg">{error}</p> : null}
-      {preguntar ? null : <button className="btn primario ancho" onClick={guardar} disabled={enviando}>Anotar</button>}
+      {preguntar ? null : <button className="btn primario ancho" onClick={guardar} disabled={enviando}>{t('Anotar')}</button>}
     </div>
   );
 }
@@ -305,12 +311,12 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
 
   /** Lo nuevo que se cuenta: si ya había propuesta con dudas, va como respuesta a esas dudas; si no, es el relato. */
   const contar = (nuevo: string) => {
-    const t = nuevo.trim();
-    if (!t) return;
+    const n = nuevo.trim();
+    if (!n) return;
     if (propuesta) {
       const preguntas = dudas.length ? ` (a tus preguntas: ${dudas.join(' / ')})` : '';
-      void interpretar(`${texto}\n\nAclaración${preguntas}: ${t}`);
-    } else void interpretar(t);
+      void interpretar(`${texto}\n\nAclaración${preguntas}: ${n}`);
+    } else void interpretar(n);
   };
 
   const escucharAhora = async () => {
@@ -320,9 +326,9 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
     let dicho = '';
     setEstado('escuchando');
     escucha.current = await escuchar(
-      (t) => {
-        dicho = t;
-        setOido(t);
+      (txt) => {
+        dicho = txt;
+        setOido(txt);
       },
       (err) => {
         escucha.current = null;
@@ -361,20 +367,21 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
     try {
       // Primero los remedios: así, si dijo que ya tomó la primera, el registro cuenta como esa toma.
       const nuevos = remedios.filter((_, i) => !quitarRemedio.has(i));
-      for (const t of nuevos) await api('POST', '/api/tratamientos', { ...t, persona_id: persona.id });
+      for (const tr of nuevos) await api('POST', '/api/tratamientos', { ...tr, persona_id: persona.id });
       if (nuevos.length) tomasCambiaron();
       const lista = propuesta!.filter((_, i) => !quitar.has(i)).map((p) => ({ ...p, persona_id: persona.id }));
       const hechos = lista.length ? await api<Registro[]>('POST', '/api/registros/varios', { registros: lista }) : [];
       void anotarClima(persona.id, lista.map((p) => p.inicio));
       const dias = [...new Set(hechos.map((h) => h.fecha))];
       const otroDia = dias.length === 1 && dias[0] !== fecha ? dias[0] : undefined;
-      const recordar = nuevos.length ? ` Te aviso cada toma de ${nuevos.map((t) => t.concepto_nombre).join(' y ')} ⏰` : '';
+      const nombres = nuevos.map((tr) => t(tr.concepto_nombre)).join(idioma() === 'en' ? ' and ' : ' y ');
+      const recordar = nuevos.length ? ' ' + t('Te aviso cada toma de {que} ⏰', { que: nombres }) : '';
       festejar(
-        !lista.length
-          ? `¡Listo!${recordar}`
+        (!lista.length
+          ? t('¡Listo!')
           : otroDia
-            ? `¡Anotadas ${lista.length} cosas en ${nombreDia(otroDia, persona.zona_horaria).toLowerCase()}!${recordar}`
-            : `¡Anotadas ${lista.length} cosas!${recordar}`,
+            ? t('¡Anotadas {n} cosas en {dia}!', { n: lista.length, dia: nombreDia(otroDia, persona.zona_horaria).toLowerCase() })
+            : t('¡Anotadas {n} cosas!', { n: lista.length })) + recordar,
       );
       alGuardar(otroDia);
     } catch (e) {
@@ -385,11 +392,11 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
 
   const ocupado = estado !== 'quieto' && estado !== 'escuchando';
   const leyenda = {
-    quieto: propuesta ? 'Tocá y contestale' : 'Tocá y contale',
-    escuchando: 'Te escucho… tocá para terminar',
-    transcribiendo: 'Pasando a texto…',
-    ordenando: 'Ordenando…',
-    guardando: 'Guardando…',
+    quieto: propuesta ? t('Tocá y contestale') : t('Tocá y contale'),
+    escuchando: t('Te escucho… tocá para terminar'),
+    transcribiendo: t('Pasando a texto…'),
+    ordenando: t('Ordenando…'),
+    guardando: t('Guardando…'),
   }[estado];
 
   /** El micrófono grande (o, escribiendo, el cuadro de texto), para contar o para contestar. */
@@ -405,31 +412,31 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
         <p className="leyenda-voz">{leyenda}</p>
         {oido && (estado === 'escuchando' || estado === 'transcribiendo' || estado === 'ordenando') ? <blockquote className="oido">{oido}</blockquote> : null}
         {!paraResponder ? (
-          <button className="btn foto-boton" onClick={() => void tomarFoto()} disabled={ocupado || estado === 'escuchando'}><IconoCamara tamano={20} /> O mandale una foto (de tu plato, por ejemplo)</button>
+          <button className="btn foto-boton" onClick={() => void tomarFoto()} disabled={ocupado || estado === 'escuchando'}><IconoCamara tamano={20} /> {t('O mandale una foto (de tu plato, por ejemplo)')}</button>
         ) : null}
-        <button className="enlace" onClick={() => setModo('escribir')} disabled={estado === 'escuchando'}>✍️ Prefiero escribir</button>
+        <button className="enlace" onClick={() => setModo('escribir')} disabled={estado === 'escuchando'}>{t('✍️ Prefiero escribir')}</button>
       </div>
     ) : paraResponder ? (
       <div className="responder">
-        <input value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder="Ej: dos porciones, era de mi primo" onKeyDown={(e) => e.key === 'Enter' && contar(respuesta)} />
-        <button className="btn primario" disabled={ocupado || !respuesta.trim()} onClick={() => contar(respuesta)}>{estado === 'ordenando' ? 'Ordenando…' : 'Responder'}</button>
-        {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>🎙️ Prefiero hablar</button> : null}
+        <input value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder={t('Ej: dos porciones, era de mi primo')} onKeyDown={(e) => e.key === 'Enter' && contar(respuesta)} />
+        <button className="btn primario" disabled={ocupado || !respuesta.trim()} onClick={() => contar(respuesta)}>{estado === 'ordenando' ? t('Ordenando…') : t('Responder')}</button>
+        {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>{t('🎙️ Prefiero hablar')}</button> : null}
       </div>
     ) : (
       <>
         <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
-          placeholder="Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»" />
-        <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? 'Ordenando…' : 'Ordenarlo'}</button>
-        <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? 'Ordenarlo con una foto' : 'Mandale una foto'}</button>
-        {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>🎙️ Prefiero hablar</button> : null}
+          placeholder={t('Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»')} />
+        <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? t('Ordenando…') : t('Ordenarlo')}</button>
+        <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? t('Ordenarlo con una foto') : t('Mandale una foto')}</button>
+        {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>{t('🎙️ Prefiero hablar')}</button> : null}
       </>
     );
 
   if (propuesta) {
     return (
       <div className="valor">
-        {foto ? <img className="foto-mandada" src={foto.url} alt="La foto que mandaste" /> : null}
-        <p className="suave">Revisá y sacá lo que no va:</p>
+        {foto ? <img className="foto-mandada" src={foto.url} alt={t('La foto que mandaste')} /> : null}
+        <p className="suave">{t('Revisá y sacá lo que no va:')}</p>
         <ul className="lista">
           {propuesta.map((p, i) => {
             const cat = categorias.find((c) => c.id === p.categoria_id);
@@ -441,9 +448,9 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
                 </span>
                 <span className="icono">{cat?.icono}</span>
                 <span>
-                  {p.concepto_nombre}
-                  {p.nuevo ? <span className="etiqueta">nuevo</span> : null}
-                  {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${conUnidad(p.valor, p.unidad)}` : ''}
+                  {t(p.concepto_nombre)}
+                  {p.nuevo ? <span className="etiqueta">{t('nuevo')}</span> : null}
+                  {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${conUnidad(p.valor, p.unidad, 2, idioma())}` : ''}
                   {p.nota ? <span className="suave chico"> — {p.nota}</span> : null}
                 </span>
               </li>
@@ -452,18 +459,18 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
         </ul>
         {remedios.length ? (
           <>
-            <p className="suave chico">Recordatorios para programar:</p>
+            <p className="suave chico">{t('Recordatorios para programar:')}</p>
             <ul className="lista">
-              {remedios.map((t, i) => (
+              {remedios.map((tr, i) => (
                 <li key={i} className={`remedio-propuesto entra${quitarRemedio.has(i) ? ' tachado' : ''}`} style={{ ['--n' as string]: propuesta.length + i }}
                   onClick={() => setQuitarRemedio((q) => { const n = new Set(q); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
                   <span className="icono">⏰</span>
                   <span>
-                    <strong>{t.concepto_nombre}</strong>
-                    {t.dosis !== null || t.unidad ? ` ${dosisTexto(t.dosis, t.unidad)}` : ''} · {frecuenciaTexto(t)}
-                    {t.dias ? ` por ${t.dias} ${t.dias === 1 ? 'día' : 'días'}` : t.cada_horas || t.horarios.length ? ', sin fecha de fin' : ''}
-                    {t.nuevo ? <span className="etiqueta">nuevo</span> : null}
-                    <span className="suave chico renglon-sub">{resumenTomas(t, persona.zona_horaria)}</span>
+                    <strong>{t(tr.concepto_nombre)}</strong>
+                    {tr.dosis !== null || tr.unidad ? ` ${dosisTexto(tr.dosis, tr.unidad, idioma())}` : ''} · {frecuenciaTexto(tr, idioma())}
+                    {tr.dias ? ' ' + (tr.dias === 1 ? t('por 1 día') : t('por {n} días', { n: tr.dias })) : tr.cada_horas || tr.horarios.length ? t(', sin fecha de fin') : ''}
+                    {tr.nuevo ? <span className="etiqueta">{t('nuevo')}</span> : null}
+                    <span className="suave chico renglon-sub">{resumenTomas(tr, persona.zona_horaria)}</span>
                   </span>
                 </li>
               ))}
@@ -473,15 +480,15 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
         {dudas.length ? (
           <div className="nota-ia">
             {dudas.map((d) => <p key={d}>🤔 {d}</p>)}
-            <p className="suave chico">Si querés, contestale y lo suma a lo anterior; si no, anotá así.</p>
+            <p className="suave chico">{t('Si querés, contestale y lo suma a lo anterior; si no, anotá así.')}</p>
             {entrada(true)}
           </div>
         ) : null}
         {error ? <p className="neg">{error}</p> : null}
         <div className="fila">
-          <button className="btn" onClick={() => { setPropuesta(null); setRemedios([]); setDudas([]); }} disabled={ocupado}>Volver</button>
+          <button className="btn" onClick={() => { setPropuesta(null); setRemedios([]); setDudas([]); }} disabled={ocupado}>{t('Volver')}</button>
           <button className="btn confirmar" onClick={guardar} disabled={ocupado || estado === 'escuchando' || quitar.size + quitarRemedio.size === propuesta.length + remedios.length}>
-            {estado === 'guardando' ? 'Guardando…' : '¡Perfecto!'}
+            {estado === 'guardando' ? t('Guardando…') : t('¡Perfecto!')}
           </button>
         </div>
       </div>
@@ -491,8 +498,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
     <div className="valor">
       {foto && estado === 'ordenando' ? (
         <div className="mirando-foto">
-          <img className="foto-mandada" src={foto.url} alt="La foto que mandaste" />
-          <p className="suave">👀 Mirando la foto…</p>
+          <img className="foto-mandada" src={foto.url} alt={t('La foto que mandaste')} />
+          <p className="suave">{t('👀 Mirando la foto…')}</p>
         </div>
       ) : null}
       {entrada(false)}

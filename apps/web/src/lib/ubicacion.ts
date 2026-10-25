@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { puntoNuevo, type Coordenadas, type Lugar } from 'shared';
 import { api } from '../api';
 import { ingestaUrl, tokenDeLaApp } from './fuenteApp';
+import { t } from './idioma';
 import { esNativa } from './nativo';
 
 const CLAVE = 'ubicacion';
@@ -133,7 +134,7 @@ export async function seguirNativo(personaId: number, alFallar: (mensaje: string
     await BackgroundGeolocation.start(
       {
         backgroundTitle: 'Patty',
-        backgroundMessage: 'Anotando tus viajes y los lugares donde estás',
+        backgroundMessage: t('Anotando tus viajes y los lugares donde estás'),
         requestPermissions: true,
         stale: false,
         distanceFilter: 100,
@@ -143,7 +144,7 @@ export async function seguirNativo(personaId: number, alFallar: (mensaje: string
         headers: { Authorization: `Bearer ${token}` },
       },
       (_punto, error) => {
-        if (error?.code === 'NOT_AUTHORIZED') alFallar('Patty no tiene permiso de ubicación: habilitalo en los ajustes del teléfono («Permitir todo el tiempo»).');
+        if (error?.code === 'NOT_AUTHORIZED') alFallar(t('Patty no tiene permiso de ubicación: habilitalo en los ajustes del teléfono («Permitir todo el tiempo»).'));
       },
     );
   } catch (e) {

@@ -57,7 +57,7 @@ export function minutosDelDia(instante: Date, zona: string): number {
 export function leerInstante(v: unknown, campo: string): Date {
   if (v === undefined || v === null || v === '') return new Date();
   const d = new Date(String(v));
-  if (Number.isNaN(d.getTime())) throw new ErrorApi(`${campo}: fecha inválida.`);
+  if (Number.isNaN(d.getTime())) throw new ErrorApi('{campo}: fecha inválida.', 400, { campo });
   return d;
 }
 

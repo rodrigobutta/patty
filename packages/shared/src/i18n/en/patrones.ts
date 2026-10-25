@@ -1,0 +1,167 @@
+// Patrones (patrones, números, calendario, buscar, la rueda de progreso) y lo que dice la web desde apps/web/src/lib
+// (avisos del teléfono, voz, foto, ubicación, resúmenes de lo automático).
+export const PATRONES: Record<string, string> = {
+  // Patrones
+  'el mismo día': 'the same day',
+  'al día siguiente': 'the next day',
+  '{n} días después': '{n} days later',
+  '{n} de {total} veces': '{n} of {total} times',
+  '×{n} más probable': '×{n} more likely',
+  'puede ser casualidad': 'could be a coincidence',
+  '{con}% con, {sin}% sin': '{con}% with, {sin}% without',
+  'con {n}%': 'with {n}%',
+  'sin {n}%': 'without {n}%',
+  'Me pasa': 'Sounds like me',
+  'No creo': "Don't think so",
+  Números: 'Numbers',
+  Calendario: 'Calendar',
+  Buscar: 'Search',
+  'Patrones de {nombre}': "{nombre}'s patterns",
+  'Patty compara los días en que pasó algo con los que no, y mira si al rato o unos días después aparece otra cosa más seguido.':
+    "Patty compares the days when something happened with the days it didn't, and checks whether something else shows up more often soon after, or a few days later.",
+  'La IA explica lo que encuentra.': 'AI explains what it finds.',
+  'Buscando patrones…': 'Looking for patterns…',
+  'Buscar patrones': 'Find patterns',
+  'Todavía me faltan datos': 'I still need more data',
+  '{n} posibles, todavía con pocos datos': '{n} possible ones, still with little data',
+  'Todavía no hay patrones claros. Seguí anotando: cuantos más días, más fácil es verlos.':
+    'No clear patterns yet. Keep logging: the more days, the easier they are to spot.',
+  'Para afinar': 'To fine-tune',
+  'Son relaciones en tus datos, no diagnósticos. Si algo te preocupa, consultalo con un profesional.':
+    "These are connections in your data, not diagnoses. If something worries you, check with a professional.",
+
+  // Rueda de progreso
+  '{n} día': '{n} day',
+  '{n} días': '{n} days',
+  '¡Ya busco patrones! Ahora, hacia «{nivel}»': "I'm finding patterns! Next up: “{nivel}”",
+  '¡Tengo un montón de datos!': 'I have loads of data!',
+  'Juntando datos para encontrar patrones': 'Gathering data to find patterns',
+  'Con {dias} más anotados, lo que encuentre va a ser más confiable.': "With {dias} more logged, what I find will be more reliable.",
+  'Los patrones que encuentre ya están bien sostenidos. Seguí anotando para que se mantengan al día.':
+    'The patterns I find are well backed now. Keep logging to keep them up to date.',
+  'Necesito {n} días con algo anotado, y en unos {m} de ellos saber cómo te sentiste.':
+    'I need {n} days with something logged, and to know how you felt on about {m} of them.',
+  'Días anotados': 'Days logged',
+  'Con cómo te sentiste': 'With how you felt',
+  'Si anotás algo cada día, en {dias} empiezo.': "If you log something every day, I'll start in {dias}.",
+  'Me faltan {dias} contándome cómo te sentiste (las caritas del Día).': 'I need {dias} more of you telling me how you felt (the faces on the Day screen).',
+  '¡Ya casi!': 'Almost there!',
+  Niveles: 'Levels',
+
+  // Números
+  'Contando…': 'Counting…',
+  día: 'day',
+  días: 'days',
+  'Últimos {n} días': 'Last {n} days',
+  'de {n} días con algo anotado': 'of {n} days with something logged',
+  'Cosas anotadas por día': 'Things logged per day',
+  'hace {n} días': '{n} days ago',
+  hoy: 'today',
+  'Lo que más anotaste': 'What you logged most',
+  '{n} veces': '{n} times',
+  'Cómo te sentiste': 'How you felt',
+  'Dolores y molestias': 'Aches and pains',
+  'Tocá uno para ver en qué días fue.': 'Tap one to see which days it was.',
+  'te acostaste y levantaste, en promedio': 'bedtime and wake-up, on average',
+  '{n} día de lluvia': '{n} rainy day',
+  '{n} días de lluvia': '{n} rainy days',
+  '{n} mm en total': '{n} mm total',
+  '{n} h de sol': '{n} h of sun',
+  'por día, en promedio': 'per day, on average',
+  'de promedio': 'on average',
+  ', máxima {n} °C': ', high of {n} °C',
+  '{n} pasos': '{n} steps',
+  recorridos: 'traveled',
+  'de pantalla por día': 'of screen time per day',
+  '{n} llamadas': '{n} calls',
+  'en el período': 'in this period',
+  '{n}% de las tomas': '{n}% of doses',
+  '{n} de {total} marcadas como tomadas': '{n} of {total} marked as taken',
+
+  // Buscar
+  lunes: 'Mondays',
+  martes: 'Tuesdays',
+  miércoles: 'Wednesdays',
+  jueves: 'Thursdays',
+  viernes: 'Fridays',
+  sábados: 'Saturdays',
+  domingos: 'Sundays',
+  'intensidad {n}/10': 'intensity {n}/10',
+  'una vez': 'once',
+  '🔎 Buscá algo: dolor de cabeza, huevos, lluvia…': '🔎 Search for something: headache, eggs, rain…',
+  'No encuentro nada con ese nombre.': "I can't find anything by that name.",
+  'Buscando…': 'Searching…',
+  '{dias} en los últimos 6 meses': '{dias} in the last 6 months',
+  ', más seguido los {dia}': ', most often on {dia}',
+  'No pasó en los últimos 6 meses.': "It didn't happen in the last 6 months.",
+  'Mes anterior': 'Previous month',
+  'Mes siguiente': 'Next month',
+  'Los días pintados son los que pasó': 'The colored days are when it happened',
+  '(más fuerte, más intenso)': '(darker means more intense)',
+  'Tocá uno para ver el detalle.': 'Tap one to see the details.',
+  'Por mes': 'By month',
+  'Por día de la semana': 'By day of the week',
+
+  // Calendario
+  poco: 'little',
+  menos: 'less',
+  mucho: 'a lot',
+  más: 'more',
+
+  // Voz
+  'No llegó nada del micrófono. Si pasa siempre, al teléfono le falta el reconocimiento de voz de Google: instalá «Servicios de voz de Google» (Speech Services by Google) desde Play Store y probá de nuevo. Mientras tanto podés usar el micrófono del teclado.':
+    "Nothing came through from the microphone. If this keeps happening, your phone is missing Google's speech recognition: install “Speech Services by Google” from the Play Store and try again. Meanwhile, you can use your keyboard's microphone.",
+  'Patty no tiene permiso para usar el micrófono: habilitalo en los ajustes del teléfono.':
+    "Patty doesn't have permission to use the microphone: turn it on in your phone's settings.",
+  'No se grabó nada.': 'Nothing was recorded.',
+  'No se pudo pasar el audio a texto.': "Couldn't turn the audio into text.",
+  'No se entendió nada. Probá de nuevo, más cerca del micrófono.': "Couldn't make anything out. Try again, closer to the microphone.",
+  'No hay conexión para pasar el audio a texto.': 'No connection to turn the audio into text.',
+  'No se entendió. Probá de nuevo, más cerca del micrófono.': "Didn't catch that. Try again, closer to the microphone.",
+  'Este navegador no deja dictar.': "This browser doesn't support dictation.",
+  'El navegador no dio permiso para el micrófono.': "The browser didn't allow the microphone.",
+  'No se pudo dictar.': "Couldn't take dictation.",
+
+  // Recordatorios de remedios y avisos
+  'La tomé': 'Took it',
+  'En {n} min': 'In {n} min',
+  'No la tomo': 'Skip it',
+  'Es la hora de la toma de las {hora}.': "It's time for your {hora} dose.",
+  '¿Tomaste {remedio}?': 'Did you take {remedio}?',
+  'La de las {hora} todavía no está marcada.': "The {hora} dose isn't marked yet.",
+  'Te lo recuerdo de nuevo: la toma de las {hora}.': 'Just a reminder again: your {hora} dose.',
+  '¿Cómo te sentiste hoy?': 'How did you feel today?',
+  Avisos: 'Notifications',
+  'Novedades de Patty': 'News from Patty',
+  Remedios: 'Medications',
+  'Recordatorios de cada toma': 'Reminders for each dose',
+
+  // Ubicación
+  'Anotando tus viajes y los lugares donde estás': 'Logging your trips and the places you visit',
+  'Patty no tiene permiso de ubicación: habilitalo en los ajustes del teléfono («Permitir todo el tiempo»).':
+    "Patty doesn't have location permission: turn it on in your phone's settings (“Allow all the time”).",
+
+  // Resumen de lo automático (el renglón de cada fuente en el Día)
+  '{v} de pantalla': '{v} of screen time',
+  '{v} llamada': '{v} call',
+  '{v} llamadas': '{v} calls',
+  '{v} de sueño': '{v} of sleep',
+  '{v} en reposo': '{v} resting',
+  'máx {v}': 'high {v}',
+  '{v} de nubes': '{v} cloud cover',
+  '{v} de sol': '{v} of sun',
+  'sin lluvia': 'no rain',
+  '{v} de lluvia': '{v} of rain',
+  'y {n} más': 'and {n} more',
+
+  // Google, foto, sentir, conexión
+  'Google no devolvió la cuenta. Probá de nuevo.': "Google didn't return the account. Please try again.",
+  'No se pudo leer la foto.': "Couldn't read the photo.",
+  'Foto para Patty': 'Photo for Patty',
+  'Sacar una foto': 'Take a photo',
+  'Elegir de la galería': 'Choose from gallery',
+  'No se pudo usar la cámara. Revisá el permiso de cámara de Patty en los ajustes del teléfono.':
+    "Couldn't use the camera. Check Patty's camera permission in your phone's settings.",
+  'Faltan las categorías de ánimo y síntomas.': 'The mood and symptom categories are missing.',
+  'No hay conexión con el servidor.': "Can't reach the server.",
+};

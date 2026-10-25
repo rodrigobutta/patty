@@ -27,9 +27,15 @@ export const rutasVoz = new Hono<Env>().post('/', async (c) => {
   const datos = new FormData();
   datos.append('file', new Blob([audio], { type: tipo }), `dictado.${extension}`);
   datos.append('model', MODELO_VOZ);
-  datos.append('language', 'es');
+  const ingles = c.var.idioma === 'en';
+  datos.append('language', ingles ? 'en' : 'es');
   // Ayuda a que escriba bien las cosas típicas de lo que se anota.
-  datos.append('prompt', 'Alguien cuenta su día en castellano rioplatense: comidas, horarios, dolores, ánimo, actividades.');
+  datos.append(
+    'prompt',
+    ingles
+      ? 'Someone describes their day: meals, times, aches and pains, mood, activities.'
+      : 'Alguien cuenta su día en castellano rioplatense: comidas, horarios, dolores, ánimo, actividades.',
+  );
   let r: Response;
   try {
     r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -47,7 +53,7 @@ export const rutasVoz = new Hono<Env>().post('/', async (c) => {
     console.error('Voz: OpenAI respondió', r.status, detalle);
     if (detalle.includes('insufficient_quota')) throw new ErrorApi('El servicio para pasar audio a texto se quedó sin saldo: hay que cargar crédito en OpenAI.', 503);
     if (r.status === 429) throw new ErrorApi('El servicio para pasar audio a texto está saturado. Probá de nuevo en un rato.', 503);
-    throw new ErrorApi(`No se pudo pasar el audio a texto (${r.status}).`, 502);
+    throw new ErrorApi('No se pudo pasar el audio a texto ({estado}).', 502, { estado: r.status });
   }
   const { text } = (await r.json()) as { text?: string };
   return c.json({ texto: (text ?? '').trim() });

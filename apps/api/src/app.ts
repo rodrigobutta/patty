@@ -58,12 +58,13 @@ export function crearApp(): Hono<Env> {
   const app = new Hono<Env>();
 
   app.onError((e, c) => {
-    if (e instanceof ErrorApi) return c.json({ error: traducir(idiomaDelPedido(c.req.header('X-Idioma'), c.req.header('Accept-Language')), e.message) }, e.status as 400);
+    const idioma = idiomaDelPedido(c.req.header('X-Idioma'), c.req.header('Accept-Language'));
+    if (e instanceof ErrorApi) return c.json({ error: traducir(idioma, e.plantilla, e.vars) }, e.status as 400);
     const codigo = codigoPg(e);
-    if (codigo === '23505') return c.json({ error: 'Ya existe.' }, 409);
-    if (codigo === '23503') return c.json({ error: 'Hace referencia a algo que no existe.' }, 400);
+    if (codigo === '23505') return c.json({ error: traducir(idioma, 'Ya existe.') }, 409);
+    if (codigo === '23503') return c.json({ error: traducir(idioma, 'Hace referencia a algo que no existe.') }, 400);
     console.error(e);
-    return c.json({ error: 'Error inesperado del servidor.' }, 500);
+    return c.json({ error: traducir(idioma, 'Error inesperado del servidor.') }, 500);
   });
 
   const api = new Hono<Env>();
@@ -110,7 +111,7 @@ export function crearApp(): Hono<Env> {
   app.get('*', async (c) => {
     const base = config.staticDir;
     const pedido = path.normalize(path.join(base, decodeURIComponent(new URL(c.req.url).pathname)));
-    if (!pedido.startsWith(base)) return c.json({ error: 'No encontrado.' }, 404);
+    if (!pedido.startsWith(base)) return c.json({ error: traducir(idiomaDelPedido(c.req.header('X-Idioma'), c.req.header('Accept-Language')), 'No encontrado.') }, 404);
     return (await archivo(pedido)) ?? (await archivo(path.join(base, 'index.html'))) ?? c.text('Patty: falta compilar la web (STATIC_DIR).', 404);
   });
   return app;

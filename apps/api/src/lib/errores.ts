@@ -1,11 +1,17 @@
-// Errores que se devuelven al usuario como {"error": "..."} con su estado HTTP.
+// Errores que se devuelven al usuario como {"error": "..."} con su estado HTTP. El mensaje se traduce al idioma del
+// pedido (app.ts): si lleva datos, va como plantilla con {llaves} y los datos en `vars` (el `message` queda armado).
+import { traducir } from 'shared';
 
 export class ErrorApi extends Error {
+  /** El mensaje sin armar (la clave para traducirlo). */
+  readonly plantilla: string;
   constructor(
     mensaje: string,
     readonly status = 400,
+    readonly vars?: Record<string, string | number>,
   ) {
-    super(mensaje);
+    super(vars ? traducir('es', mensaje, vars) : mensaje);
+    this.plantilla = mensaje;
     this.name = 'ErrorApi';
   }
 }

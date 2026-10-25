@@ -2,6 +2,7 @@
 // no anda (Google no deja iniciar sesión dentro de una vista web), así que se usa el inicio de sesión del teléfono
 // (plugin de Capgo, con el mismo ID de cliente web): devuelve el mismo tipo de credencial y la API la verifica igual.
 import { SocialLogin } from '@capgo/capacitor-social-login';
+import { idioma, t } from './idioma';
 import { esNativa, plataforma } from './nativo';
 import { temaOscuro } from './tema';
 
@@ -22,7 +23,7 @@ export async function montarGoogle(el: HTMLElement | null, clientId: string, alE
   const g = window.google?.accounts?.id;
   if (!el || !g) return;
   g.initialize({ client_id: clientId, callback: r => alEntrar(r.credential), ux_mode: 'popup' });
-  g.renderButton(el, { theme: temaOscuro() ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: 'es' });
+  g.renderButton(el, { theme: temaOscuro() ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: idioma() });
 }
 
 export const googleNativo = () => esNativa();
@@ -43,6 +44,6 @@ export async function entrarConGoogleNativo(clientId: string): Promise<string> {
   // Sin pedir scopes: con eso ya devuelve el ID token con el mail (pedir scopes extra en Android exige tocar la MainActivity).
   const r = await SocialLogin.login({ provider: 'google', options: {} });
   const token = (r.result as { idToken?: string | null }).idToken;
-  if (!token) throw new Error('Google no devolvió la cuenta. Probá de nuevo.');
+  if (!token) throw new Error(t('Google no devolvió la cuenta. Probá de nuevo.'));
   return token;
 }

@@ -4,6 +4,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { useEffect } from 'react';
 import { avisoExacto, permisoAvisos } from './avisos';
+import { t } from './idioma';
 import { esNativa } from './nativo';
 
 const CLAVE = 'encuesta';
@@ -46,7 +47,7 @@ export async function programarAviso(c: Config = configEncuesta()): Promise<bool
         {
           id: ID_AVISO,
           title: 'Patty',
-          body: '¿Cómo te sentiste hoy?',
+          body: t('¿Cómo te sentiste hoy?'),
           schedule: { on: { hour, minute }, allowWhileIdle: true },
           extra: { encuesta: 'dia' },
           isExactNotification: exacta,

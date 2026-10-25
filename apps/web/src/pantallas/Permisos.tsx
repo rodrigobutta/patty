@@ -14,6 +14,7 @@ import { pedirPermisoSalud, ponerSalud, sincronizarSalud } from '../lib/salud';
 import { hayDatosDelTelefono, ponerDatos, sincronizar, Telefono } from '../lib/telefono';
 import { ponerSeguimiento } from '../lib/ubicacion';
 import { Mascota } from '../mascota/Mascota';
+import { t } from '../lib/idioma';
 
 const CLAVE = 'permisos-ofrecidos';
 
@@ -65,7 +66,7 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
 
   const avisos = () =>
     hacer('avisos', async () => {
-      if (!(await permisoAvisos())) return 'El teléfono no lo dejó: activalo en Ajustes → Notificaciones → Patty.';
+      if (!(await permisoAvisos())) return t('El teléfono no lo dejó: activalo en Ajustes → Notificaciones → Patty.');
       await programarRecordatorios();
     });
 
@@ -77,8 +78,8 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
       const fondo = p?.backgroundLocation === 'granted' || (p?.backgroundLocation as string) === 'always';
       if (!fondo) {
         return plataforma() === 'ios'
-          ? 'Para contar viajes con la app cerrada, en Ajustes → Patty → Ubicación elegí «Siempre».'
-          : 'Para contar viajes con la app cerrada, en los ajustes elegí «Permitir todo el tiempo».';
+          ? t('Para contar viajes con la app cerrada, en Ajustes → Patty → Ubicación elegí «Siempre».')
+          : t('Para contar viajes con la app cerrada, en los ajustes elegí «Permitir todo el tiempo».');
       }
     });
 
@@ -89,7 +90,7 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
       if (p?.uso !== 'granted') {
         // El acceso al uso de apps se da en una pantalla de Ajustes: se abre y al volver se mira de nuevo.
         await Telefono.pedirPermisoUso();
-        return 'En la lista que se abre, buscá Patty y activá «Permitir acceso al uso». Después volvé acá.';
+        return t('En la lista que se abre, buscá Patty y activá «Permitir acceso al uso». Después volvé acá.');
       }
       void sincronizar(persona.id).catch(() => {});
     });
@@ -100,12 +101,12 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
       const r = await pedirPermisoSalud();
       if (!r.disponible) {
         return plataforma() === 'android'
-          ? 'Este teléfono no tiene Health Connect. Se instala desde Play Store (es de Google) y después volvés acá.'
-          : 'Este teléfono no tiene Salud disponible.';
+          ? t('Este teléfono no tiene Health Connect. Se instala desde Play Store (es de Google) y después volvés acá.')
+          : t('Este teléfono no tiene Salud disponible.');
       }
-      if (!r.permitidos.length) return 'No se dio permiso a ningún dato. Podés volver a intentarlo cuando quieras.';
+      if (!r.permitidos.length) return t('No se dio permiso a ningún dato. Podés volver a intentarlo cuando quieras.');
       void sincronizarSalud(persona.id).catch(() => {});
-      return plataforma() === 'android' ? 'Listo. Si usás un reloj, revisá que su app comparta los datos con Health Connect.' : undefined;
+      return plataforma() === 'android' ? t('Listo. Si usás un reloj, revisá que su app comparta los datos con Health Connect.') : undefined;
     });
 
   const terminar = () => {
@@ -119,8 +120,8 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
     {
       paso: 'avisos',
       icono: '🔔',
-      titulo: 'Avisos',
-      para: 'Para recordarte cada toma de un remedio y preguntarte a la noche cómo te fue.',
+      titulo: t('Avisos'),
+      para: t('Para recordarte cada toma de un remedio y preguntarte a la noche cómo te fue.'),
       listo: p?.avisos === 'si',
       accion: avisos,
       mostrar: true,
@@ -128,8 +129,8 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
     {
       paso: 'ubicacion',
       icono: '📍',
-      titulo: 'Ubicación',
-      para: 'Para anotar el clima de cada momento y contar tus viajes y lugares, sola.',
+      titulo: t('Ubicación'),
+      para: t('Para anotar el clima de cada momento y contar tus viajes y lugares, sola.'),
       listo: p?.ubicacion === 'siempre',
       parcial: p?.ubicacion === 'en_uso',
       accion: ubicacion,
@@ -138,8 +139,8 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
     {
       paso: 'telefono',
       icono: '📱',
-      titulo: 'Uso del teléfono y llamadas',
-      para: 'Cuánto usás cada app y cuántas llamadas hacés (nunca números ni nombres).',
+      titulo: t('Uso del teléfono y llamadas'),
+      para: t('Cuánto usás cada app y cuántas llamadas hacés (nunca números ni nombres).'),
       listo: p?.uso_apps === 'si' && p?.llamadas === 'si',
       parcial: p?.uso_apps === 'si' || p?.llamadas === 'si',
       accion: telefono,
@@ -148,8 +149,8 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
     {
       paso: 'salud',
       icono: '⌚',
-      titulo: plataforma() === 'ios' ? 'Salud' : 'Reloj y salud',
-      para: 'Tu sueño, pasos y pulso, desde el reloj o el teléfono.',
+      titulo: plataforma() === 'ios' ? t('Salud') : t('Reloj y salud'),
+      para: t('Tu sueño, pasos y pulso, desde el reloj o el teléfono.'),
       listo: typeof p?.salud === 'number' && p.salud > 0,
       accion: salud,
       mostrar: true,
@@ -159,13 +160,13 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
   const listos = visibles.filter((f) => f.listo).length;
 
   return (
-    <div className={bienvenida ? 'perfil perfil-bienvenida permisos' : 'hoja perfil permisos'} role={bienvenida ? undefined : 'dialog'} aria-label="Permisos">
+    <div className={bienvenida ? 'perfil perfil-bienvenida permisos' : 'hoja perfil permisos'} role={bienvenida ? undefined : 'dialog'} aria-label={t('Permisos')}>
       <div className="hoja-cabeza">
-        <h3>{bienvenida ? 'Para que te ayude más' : 'Permisos de este teléfono'}</h3>
-        {bienvenida ? <button className="enlace" onClick={terminar}>Ahora no</button> : <button className="btn-icono" onClick={terminar} aria-label="Cerrar">✕</button>}
+        <h3>{bienvenida ? t('Para que te ayude más') : t('Permisos de este teléfono')}</h3>
+        {bienvenida ? <button className="enlace" onClick={terminar}>{t('Ahora no')}</button> : <button className="btn-icono" onClick={terminar} aria-label={t('Cerrar')}>✕</button>}
       </div>
       <p className="suave chico">
-        Con esto Patty junta datos sola y te avisa. Todo es opcional: activá lo que quieras, ahora o después desde Más.
+        {t('Con esto Patty junta datos sola y te avisa. Todo es opcional: activá lo que quieras, ahora o después desde Más.')}
       </p>
       <ul className="lista-permisos">
         {visibles.map((f) => (
@@ -177,10 +178,10 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
               {nota[f.paso] ? <span className="chico renglon-sub nota-permiso">{nota[f.paso]}</span> : null}
             </span>
             {f.listo ? (
-              <span className="tilde" aria-label="Activado">✓</span>
+              <span className="tilde" aria-label={t('Activado')}>✓</span>
             ) : (
               <button className={`btn chico ${f.parcial ? '' : 'primario'}`} disabled={ocupado !== null} onClick={f.accion}>
-                {ocupado === f.paso ? '…' : f.parcial ? 'Completar' : 'Activar'}
+                {ocupado === f.paso ? '…' : f.parcial ? t('Completar') : t('Activar')}
               </button>
             )}
           </li>
@@ -189,10 +190,10 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
       {listos === visibles.length ? (
         <div className="todo-listo">
           <Mascota cara="feliz" tamano={44} />
-          <span>¡Todo listo! Ya puedo ayudarte un montón.</span>
+          <span>{t('¡Todo listo! Ya puedo ayudarte un montón.')}</span>
         </div>
       ) : null}
-      <button className="btn primario ancho" onClick={terminar}>{listos ? 'Listo' : 'Seguir sin activar'}</button>
+      <button className="btn primario ancho" onClick={terminar}>{listos ? t('Listo') : t('Seguir sin activar')}</button>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 // que falta, dicho en días.
 import { useEffect, useState } from 'react';
 import { avanceProgreso, NIVELES_PROGRESO, type Progreso } from 'shared';
+import { t } from '../lib/idioma';
 import { Mascota } from '../mascota/Mascota';
 
 const R = 92;
@@ -13,25 +14,26 @@ export function RuedaProgreso({ progreso }: { progreso: Progreso }) {
   // Arranca vacía y se llena con animación (también al cambiar).
   const [mostrado, setMostrado] = useState(0);
   useEffect(() => {
-    const t = setTimeout(() => setMostrado(avance), 80);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => setMostrado(avance), 80);
+    return () => clearTimeout(id);
   }, [avance]);
   // El número que sube contando.
   const [numero, setNumero] = useState(0);
   useEffect(() => {
     const meta = Math.round(avance * 100);
     let n = 0;
-    const t = setInterval(() => {
+    const id = setInterval(() => {
       n = Math.min(meta, n + Math.max(1, Math.ceil(meta / 30)));
       setNumero(n);
-      if (n >= meta) clearInterval(t);
+      if (n >= meta) clearInterval(id);
     }, 30);
-    return () => clearInterval(t);
+    return () => clearInterval(id);
   }, [avance]);
 
   const faltanDias = Math.max(0, (siguiente?.dias ?? progreso.minimo) - progreso.dias);
   const faltanEfecto = Math.max(0, progreso.minimo_efecto - progreso.dias_efecto);
   const listo = nivel > 0;
+  const dias = (n: number) => (n === 1 ? t('{n} día', { n }) : t('{n} días', { n }));
 
   return (
     <div className={`rueda-progreso${listo ? ' lista' : ''}`}>
@@ -67,24 +69,24 @@ export function RuedaProgreso({ progreso }: { progreso: Progreso }) {
         </div>
       </div>
 
-      <h3>{listo ? (siguiente ? `¡Ya busco patrones! Ahora, hacia «${siguiente.nombre.toLowerCase()}»` : '¡Tengo un montón de datos!') : 'Juntando datos para encontrar patrones'}</h3>
+      <h3>{listo ? (siguiente ? t('¡Ya busco patrones! Ahora, hacia «{nivel}»', { nivel: t(siguiente.nombre).toLowerCase() }) : t('¡Tengo un montón de datos!')) : t('Juntando datos para encontrar patrones')}</h3>
       <p className="suave">
         {listo
           ? siguiente
-            ? `Con ${faltanDias} ${faltanDias === 1 ? 'día' : 'días'} más anotados, lo que encuentre va a ser más confiable.`
-            : 'Los patrones que encuentre ya están bien sostenidos. Seguí anotando para que se mantengan al día.'
-          : `Necesito ${progreso.minimo} días con algo anotado, y en unos ${progreso.minimo_efecto} de ellos saber cómo te sentiste.`}
+            ? t('Con {dias} más anotados, lo que encuentre va a ser más confiable.', { dias: dias(faltanDias) })
+            : t('Los patrones que encuentre ya están bien sostenidos. Seguí anotando para que se mantengan al día.')
+          : t('Necesito {n} días con algo anotado, y en unos {m} de ellos saber cómo te sentiste.', { n: progreso.minimo, m: progreso.minimo_efecto })}
       </p>
 
       {!listo ? (
         <ul className="requisitos">
           <li>
-            <span>📅 Días anotados</span>
+            <span>📅 {t('Días anotados')}</span>
             <span className="barrita"><span style={{ width: `${Math.min(1, progreso.dias / progreso.minimo) * 100}%` }} /></span>
             <strong>{Math.min(progreso.dias, progreso.minimo)}/{progreso.minimo}</strong>
           </li>
           <li>
-            <span>🙂 Con cómo te sentiste</span>
+            <span>🙂 {t('Con cómo te sentiste')}</span>
             <span className="barrita"><span style={{ width: `${Math.min(1, progreso.dias_efecto / progreso.minimo_efecto) * 100}%` }} /></span>
             <strong>{Math.min(progreso.dias_efecto, progreso.minimo_efecto)}/{progreso.minimo_efecto}</strong>
           </li>
@@ -93,18 +95,18 @@ export function RuedaProgreso({ progreso }: { progreso: Progreso }) {
       {!listo ? (
         <p className="chico">
           {faltanDias > 0
-            ? `Si anotás algo cada día, en ${faltanDias} ${faltanDias === 1 ? 'día' : 'días'} empiezo.`
+            ? t('Si anotás algo cada día, en {dias} empiezo.', { dias: dias(faltanDias) })
             : faltanEfecto > 0
-              ? `Me faltan ${faltanEfecto} ${faltanEfecto === 1 ? 'día' : 'días'} contándome cómo te sentiste (las caritas del Día).`
-              : '¡Ya casi!'}
+              ? t('Me faltan {dias} contándome cómo te sentiste (las caritas del Día).', { dias: dias(faltanEfecto) })
+              : t('¡Ya casi!')}
         </p>
       ) : null}
 
-      <ol className="niveles" aria-label="Niveles">
+      <ol className="niveles" aria-label={t('Niveles')}>
         {NIVELES_PROGRESO.map((n, i) => (
           <li key={n.dias} className={i < nivel ? 'hecho' : i === nivel ? 'actual' : ''}>
             <span className="punto">{i < nivel ? '✓' : n.dias}</span>
-            <span className="chico">{n.nombre}</span>
+            <span className="chico">{t(n.nombre)}</span>
           </li>
         ))}
       </ol>

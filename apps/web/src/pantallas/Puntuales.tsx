@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CUANTO, DOLORES, ESTADOS_PUNTUALES, MALESTARES, type Persona } from 'shared';
 import { api } from '../api';
+import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
 
@@ -36,7 +37,8 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
     try {
       await api('POST', '/api/registros', { persona_id: persona.id, concepto_nombre: nombre, categoria_id: cat.id, inicio, intensidad });
       void anotarClima(persona.id, [inicio]);
-      festejar(elegido === 'dolor' ? `Anotado: ${nombre.toLowerCase()}, ${cuanto.toLowerCase()}. ¡Que se te pase pronto!` : `Anotado: ${nombre.toLowerCase()}, ${cuanto.toLowerCase()}`);
+      const vars = { que: t(nombre).toLowerCase(), cuanto: t(cuanto).toLowerCase() };
+      festejar(elegido === 'dolor' ? t('Anotado: {que}, {cuanto}. ¡Que se te pase pronto!', vars) : t('Anotado: {que}, {cuanto}', vars));
       setElegido(null);
       setDolor(null);
       setOtro('');
@@ -54,49 +56,49 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
   const nombreElegido = elegido === 'otro' ? otro.trim() : elegido === 'dolor' ? (dolor === 'otro' ? otro.trim() : dolor) : elegido;
   const chipDolor = (d: { nombre: string; emoji: string }) => (
     <button key={d.nombre} className={`chip${dolor === d.nombre ? ' activa' : ''}`} onClick={() => setDolor(dolor === d.nombre ? null : d.nombre)}>
-      <span aria-hidden>{d.emoji}</span> {d.nombre.replace(/^Dolor (de )?/, '').replace(/^./, (x) => x.toUpperCase())}
+      <span aria-hidden>{d.emoji}</span> {idioma() === 'en' ? t(d.nombre) : d.nombre.replace(/^Dolor (de )?/, '').replace(/^./, (x) => x.toUpperCase())}
     </button>
   );
 
   return (
     <div className="puntuales">
-      <p className="rotulo suave chico">¿Algo puntual?</p>
+      <p className="rotulo suave chico">{t('¿Algo puntual?')}</p>
       <div className="chips envolver">
         <button className={`chip${elegido === 'dolor' ? ' activa' : ''}`} onClick={() => elegir('dolor')}>
-          <span aria-hidden>🤕</span> Con dolor o malestar
+          <span aria-hidden>🤕</span> {t('Con dolor o malestar')}
         </button>
         {ESTADOS_PUNTUALES.map((e) => (
           <button key={e.nombre} className={`chip${elegido === e.nombre ? ' activa' : ''}`} onClick={() => elegir(e.nombre)}>
-            <span aria-hidden>{e.emoji}</span> {e.nombre}
+            <span aria-hidden>{e.emoji}</span> {t(e.nombre)}
           </button>
         ))}
-        <button className={`chip${elegido === 'otro' ? ' activa' : ''}`} onClick={() => elegir('otro')}>✏️ Otro</button>
+        <button className={`chip${elegido === 'otro' ? ' activa' : ''}`} onClick={() => elegir('otro')}>{t('✏️ Otro')}</button>
       </div>
       {elegido === 'dolor' ? (
         <div className="que-duele" ref={panel}>
-          <p className="rotulo suave chico">¿Qué te duele?</p>
+          <p className="rotulo suave chico">{t('¿Qué te duele?')}</p>
           <div className="chips envolver">{DOLORES.map(chipDolor)}</div>
-          <p className="rotulo suave chico">¿O es otra cosa?</p>
+          <p className="rotulo suave chico">{t('¿O es otra cosa?')}</p>
           <div className="chips envolver">
             {MALESTARES.map(chipDolor)}
-            <button className={`chip${dolor === 'otro' ? ' activa' : ''}`} onClick={() => setDolor(dolor === 'otro' ? null : 'otro')}>✏️ Otro</button>
+            <button className={`chip${dolor === 'otro' ? ' activa' : ''}`} onClick={() => setDolor(dolor === 'otro' ? null : 'otro')}>{t('✏️ Otro')}</button>
           </div>
         </div>
       ) : null}
       {elegido === 'otro' || dolor === 'otro' ? (
-        <input value={otro} onChange={(e) => setOtro(e.target.value)} placeholder={dolor === 'otro' ? 'ej: dolor de rodilla, sinusitis, herpes' : 'ej: con frío en los pies, con ganas de salir'} autoFocus />
+        <input value={otro} onChange={(e) => setOtro(e.target.value)} placeholder={dolor === 'otro' ? t('ej: dolor de rodilla, sinusitis, herpes') : t('ej: con frío en los pies, con ganas de salir')} autoFocus />
       ) : null}
       {elegido && (elegido !== 'dolor' || dolor) ? (
         <div className="cuanto-puntual" ref={cuanto}>
           <p className="pregunta-cuanto">
-            {nombreElegido ? <>¿Cuánto? <strong>{nombreElegido}</strong></> : 'Escribí qué, y después ¿cuánto?'}
+            {nombreElegido ? <>{t('¿Cuánto?')} <strong>{t(nombreElegido)}</strong></> : t('Escribí qué, y después ¿cuánto?')}
           </p>
           <div className="botones-cuanto">
             {CUANTO.map((c) => (
-              <button key={c.nombre} className="btn primario" disabled={!nombreElegido} onClick={() => nombreElegido && void guardar(nombreElegido, c.intensidad, c.nombre)}>{c.nombre}</button>
+              <button key={c.nombre} className="btn primario" disabled={!nombreElegido} onClick={() => nombreElegido && void guardar(nombreElegido, c.intensidad, c.nombre)}>{t(c.nombre)}</button>
             ))}
           </div>
-          <p className="suave chico">Tocá uno para anotarlo.</p>
+          <p className="suave chico">{t('Tocá uno para anotarlo.')}</p>
         </div>
       ) : null}
       {error ? <p className="neg">{error}</p> : null}

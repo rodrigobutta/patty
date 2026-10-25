@@ -26,13 +26,14 @@ import { avanceProgreso } from 'shared';
 import { ofrecerPerfil, Perfil } from './pantallas/Perfil';
 import { ofrecerPermisos, Permisos } from './pantallas/Permisos';
 import { useReportarEstado } from './lib/estadoTelefono';
+import { t } from './lib/idioma';
 
 type Pestana = 'hoy' | 'patrones' | 'mas' | 'admin';
 
 const PESTANAS: Array<{ id: Pestana; nombre: string }> = [
-  { id: 'hoy', nombre: 'Día' },
-  { id: 'patrones', nombre: 'Patrones' },
-  { id: 'mas', nombre: 'Más' },
+  { id: 'hoy', nombre: t('Día') },
+  { id: 'patrones', nombre: t('Patrones') },
+  { id: 'mas', nombre: t('Más') },
 ];
 
 export function App() {
@@ -71,7 +72,7 @@ export function App() {
           if (d.supervision_id && (d.accion === 'aceptar' || d.accion === 'rechazar')) {
             void api('POST', `/api/supervision/${d.supervision_id}/responder`, { aceptar: d.accion === 'aceptar' })
               .then(() => {
-                avisar(d.accion === 'aceptar' ? 'Listo, aceptaste la supervisión' : 'Listo, no aceptaste');
+                avisar(d.accion === 'aceptar' ? t('Listo, aceptaste la supervisión') : t('Listo, no aceptaste'));
                 window.dispatchEvent(new Event('patty-supervision'));
                 return recargar();
               })
@@ -83,8 +84,8 @@ export function App() {
     [personas, elegirPersona, avisar, recargar],
   );
 
-  if (fase === 'arrancando') return <div className="centro suave">Abriendo Patty…</div>;
-  if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>Reintentar</button></div>;
+  if (fase === 'arrancando') return <div className="centro suave">{t('Abriendo Patty…')}</div>;
+  if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>{t('Reintentar')}</button></div>;
   if (fase === 'entrar' || fase === 'configurar') return <Entrar configurar={fase === 'configurar'} />;
   if (bienvenida) return <Bienvenida alTerminar={() => setBienvenida(false)} />;
   if (!persona) return <NuevaPersona primera />;
@@ -108,12 +109,12 @@ export function App() {
   return (
     <div className="app">
       <header className="barra">
-        <button className="marca" onClick={() => { setPestana('hoy'); pedirSentir(); }} aria-label="Patty: contale cómo te sentís">
+        <button className="marca" onClick={() => { setPestana('hoy'); pedirSentir(); }} aria-label={t('Patty: contale cómo te sentís')}>
           {cara ? <Mascota cara={cara} tamano={34} /> : null}
           Patty
         </button>
         {personas.length > 1 ? (
-          <select className="persona" value={persona.id} onChange={(e) => elegirPersona(Number(e.target.value))} aria-label="Persona">
+          <select className="persona" value={persona.id} onChange={(e) => elegirPersona(Number(e.target.value))} aria-label={t('Persona')}>
             {personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
         ) : (

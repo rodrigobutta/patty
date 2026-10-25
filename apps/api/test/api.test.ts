@@ -429,3 +429,15 @@ describe('borrar y deshacer', () => {
     expect((await ana.post(`/api/registros/${r.id}/restaurar`)).status).toBe(404);
   });
 });
+
+describe('idioma', () => {
+  it('con X-Idioma: en, los errores llegan en inglés (también los que llevan datos)', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    expect((await ana.get('/api/no-existe')).body.error).toBe('Ruta desconocida.');
+    ana.headers['X-Idioma'] = 'en';
+    expect((await ana.get('/api/no-existe')).body.error).toBe('Unknown route.');
+    const r = await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Dolor de cabeza', categoria_id: categorias.sintoma, inicio: 'mañana' });
+    expect(r.status).toBe(400);
+    expect(r.body.error).toBe('inicio: invalid date.');
+  });
+});

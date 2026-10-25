@@ -1,4 +1,5 @@
 // Reglas y tipos que comparten la API y la web.
+import { traducir, type Idioma } from './i18n.js';
 export * from './i18n.js';
 
 /**
@@ -280,6 +281,23 @@ export const CANALES_COMUNES = ['TN', 'C5N', 'LN+', 'A24', 'Crónica', 'Telefe',
 export const teleDeTipo = (tipo: string) => `${TELE}: ${tipo}`;
 export const teleEnCanal = (canal: string) => `${TELE} en ${canal}`;
 
+/**
+ * El nombre de un dato en el idioma de la app: los del diccionario y los que se arman ("Tele: Noticias", "Tele en TN",
+ * "Uso de Instagram"). Lo que escribió la persona queda igual.
+ */
+export function traducirDato(nombre: string, idioma: Idioma = 'es'): string {
+  if (idioma === 'es') return nombre;
+  const t = traducir(idioma, nombre);
+  if (t !== nombre) return t;
+  let m = /^Tele: (.+)$/.exec(nombre);
+  if (m) return `${traducir(idioma, TELE)}: ${traducir(idioma, m[1])}`;
+  m = /^Tele en (.+)$/.exec(nombre);
+  if (m) return traducir(idioma, 'Tele en {canal}', { canal: m[1] });
+  m = /^Uso de (.+)$/.exec(nombre);
+  if (m) return traducir(idioma, 'Uso de {app}', { app: m[1] });
+  return nombre;
+}
+
 /** Lo que llegó solo en un día (teléfono, ubicación, clima, reloj), resumido por fuente y concepto. */
 export interface DatoAutomatico {
   fuente: string;
@@ -377,7 +395,13 @@ export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'descartado';
 export type Modo = 'presente' | 'alto' | 'bajo';
 
 /** "Tomate", "Menos energía", "Me acosté tarde": cómo se nombra un rasgo de un día (alto y bajo, respecto de lo habitual). */
-export function nombreRasgo(nombre: string, tipo: TipoValor, modo: Modo): string {
+export function nombreRasgo(nombre: string, tipo: TipoValor, modo: Modo, idioma: Idioma = 'es'): string {
+  if (idioma === 'en') {
+    const n = traducirDato(nombre, idioma);
+    if (modo === 'presente') return n;
+    if (tipo === 'hora') return `${n} ${modo === 'alto' ? 'late' : 'early'}`;
+    return `${modo === 'alto' ? 'More' : 'Less'} ${n.toLocaleLowerCase('en')}`;
+  }
   if (modo === 'presente') return nombre;
   if (tipo === 'hora') return `${nombre} ${modo === 'alto' ? 'tarde' : 'temprano'}`;
   return `${modo === 'alto' ? 'Más' : 'Menos'} ${nombre.toLocaleLowerCase('es')}`;
@@ -487,19 +511,24 @@ export const UNIDADES_DOSIS = ['comprimido', 'cápsula', 'mg', 'g', 'ml', 'gotas
 export const HORAS_PARA_OLVIDADA = 3;
 
 /** "1 g", "2 comprimidos", "" */
-export function dosisTexto(dosis: number | null, unidad: string | null): string {
-  if (dosis === null) return unidad ?? '';
-  return conUnidad(dosis, unidad);
+export function dosisTexto(dosis: number | null, unidad: string | null, idioma: Idioma = 'es'): string {
+  if (dosis === null) return unidad ? traducir(idioma, unidad) : '';
+  return conUnidad(dosis, unidad, 2, idioma);
 }
 
 /** "cada 8 h", "a las 09:00 y 21:00", "cuando haga falta" */
-export function frecuenciaTexto(t: Pick<Tratamiento, 'cada_horas' | 'horarios'>): string {
-  if (t.cada_horas) return t.cada_horas === 24 ? 'una vez por día' : `cada ${Number(t.cada_horas.toFixed(1))} h`;
+export function frecuenciaTexto(t: Pick<Tratamiento, 'cada_horas' | 'horarios'>, idioma: Idioma = 'es'): string {
+  const en = idioma === 'en';
+  if (t.cada_horas) {
+    if (t.cada_horas === 24) return en ? 'once a day' : 'una vez por día';
+    return `${en ? 'every' : 'cada'} ${Number(t.cada_horas.toFixed(1))} h`;
+  }
   if (t.horarios.length) {
     const h = [...t.horarios].sort();
-    return `todos los días a las ${h.length === 1 ? h[0] : h.slice(0, -1).join(', ') + ' y ' + h.at(-1)}`;
+    const lista = h.length === 1 ? h[0] : h.slice(0, -1).join(', ') + (en ? ' and ' : ' y ') + h.at(-1);
+    return `${en ? 'every day at' : 'todos los días a las'} ${lista}`;
   }
-  return 'cuando haga falta';
+  return en ? 'as needed' : 'cuando haga falta';
 }
 
 /**
@@ -591,19 +620,22 @@ export const CONDICIONES_COMUNES = [
  * Lo que se sabe de la persona, en una línea para la IA ("mujer, 67 años, 1,60 m, 70 kg; condiciones: hipertensión").
  * Vacío si no cargó nada.
  */
-export function perfilTexto(p: Pick<Persona, 'nacimiento' | 'sexo' | 'altura_cm' | 'peso_kg' | 'condiciones'>, hoy = new Date()): string {
+export function perfilTexto(p: Pick<Persona, 'nacimiento' | 'sexo' | 'altura_cm' | 'peso_kg' | 'condiciones'>, hoy = new Date(), idioma: Idioma = 'es'): string {
+  const en = idioma === 'en';
+  const coma = (x: string) => (en ? x : x.replace('.', ','));
   const partes: string[] = [];
-  if (p.sexo) partes.push(p.sexo === 'femenino' ? 'mujer' : p.sexo === 'masculino' ? 'varón' : 'otro sexo');
+  if (p.sexo) partes.push(en ? (p.sexo === 'femenino' ? 'woman' : p.sexo === 'masculino' ? 'man' : 'other sex') : p.sexo === 'femenino' ? 'mujer' : p.sexo === 'masculino' ? 'varón' : 'otro sexo');
   if (p.nacimiento) {
     const n = new Date(p.nacimiento + 'T12:00:00Z');
     let edad = hoy.getUTCFullYear() - n.getUTCFullYear();
     if (hoy.getUTCMonth() < n.getUTCMonth() || (hoy.getUTCMonth() === n.getUTCMonth() && hoy.getUTCDate() < n.getUTCDate())) edad--;
-    if (edad >= 0 && edad < 130) partes.push(`${edad} años`);
+    if (edad >= 0 && edad < 130) partes.push(en ? `${edad} years old` : `${edad} años`);
   }
-  if (p.altura_cm) partes.push(`${(p.altura_cm / 100).toFixed(2).replace('.', ',')} m`);
-  if (p.peso_kg) partes.push(`${String(Number(p.peso_kg.toFixed(1))).replace('.', ',')} kg`);
+  if (p.altura_cm) partes.push(`${coma((p.altura_cm / 100).toFixed(2))} m`);
+  if (p.peso_kg) partes.push(`${coma(String(Number(p.peso_kg.toFixed(1))))} kg`);
   const texto = partes.join(', ');
-  const cond = p.condiciones?.length ? `condiciones: ${p.condiciones.join(', ').toLowerCase()}` : '';
+  const lista = (p.condiciones ?? []).map((c) => traducir(idioma, c)).join(', ').toLowerCase();
+  const cond = lista ? `${en ? 'conditions' : 'condiciones'}: ${lista}` : '';
   return [texto, cond].filter(Boolean).join('; ');
 }
 
@@ -703,19 +735,52 @@ export function singular(palabra: string): string {
   return p.slice(0, -1);
 }
 
+// En inglés: la unidad se traduce con el diccionario (o queda la que escribió la persona) y se pone en plural con la
+// regla del inglés. Las abreviaturas ("mg", "km/h", "°C", "IU") no cambian.
+const INVARIABLES_EN = /^(g|mg|kg|ml|l|cc|km|m|cm|mm|h|min|s|sec|iu|°c|%|hpa|aqi|uv|ppm|bpm|kcal|cal|ms)$/i;
+
+function singularIngles(p: string): string {
+  if (INVARIABLES_EN.test(p) || /[^\p{L}]/u.test(p) || !/s$/i.test(p) || /ss$/i.test(p)) return p;
+  if (/[^aeiou]ies$/i.test(p)) return p.slice(0, -3) + 'y';
+  if (/(ss|x|ch|sh)es$/i.test(p)) return p.slice(0, -2);
+  return p.slice(0, -1);
+}
+
+function pluralIngles(p: string): string {
+  if (!p || INVARIABLES_EN.test(p) || /[^\p{L}]/u.test(p)) return p;
+  if (/[^aeiou]y$/i.test(p)) return p.slice(0, -1) + 'ies';
+  if (/(s|x|z|ch|sh)$/i.test(p)) return p + 'es';
+  return p + 's';
+}
+
+/** La unidad en inglés y en singular: "vasos" → "glass", "dosis" → "dose", "mg" → "mg", "cups" → "cup". */
+function unidadIngles(unidad: string): string {
+  const u = unidad.trim();
+  const sg = singular(u);
+  const t = traducir('en', sg);
+  if (t !== sg) return t;
+  const tu = traducir('en', u);
+  return singularIngles(tu !== u ? tu : u);
+}
+
 /** La unidad como corresponde a la cantidad: 1 unidad, 2 unidades, 1 vaso, 3 vasos, 500 mg. */
-export function unidadPara(cantidad: number, unidad: string): string {
+export function unidadPara(cantidad: number, unidad: string, idioma: Idioma = 'es'): string {
+  if (idioma === 'en') {
+    const sg = unidadIngles(unidad);
+    return Math.abs(cantidad) === 1 ? sg : pluralIngles(sg);
+  }
   return Math.abs(cantidad) === 1 ? singular(unidad) : plural(unidad);
 }
 
 /** "2 unidades", "1 vaso", "1.5 litros", "500 mg"; sin unidad, solo el número. */
-export function conUnidad(cantidad: number, unidad: string | null, decimales = 2): string {
+export function conUnidad(cantidad: number, unidad: string | null, decimales = 2, idioma: Idioma = 'es'): string {
   const n = Number(cantidad.toFixed(decimales));
-  return unidad ? `${n} ${unidadPara(n, unidad)}` : String(n);
+  return unidad ? `${n} ${unidadPara(n, unidad, idioma)}` : String(n);
 }
 
 /** Para preguntar: "¿Cuántas unidades?", "¿Cuántos vasos?". */
-export function cuantos(unidad: string): string {
+export function cuantos(unidad: string, idioma: Idioma = 'es'): string {
+  if (idioma === 'en') return `How many ${pluralIngles(unidadIngles(unidad))}?`;
   const sg = singular(unidad);
   const femenina = /(a|dad|tad|ión|z|is)$/i.test(sg);
   return `¿${femenina ? 'Cuántas' : 'Cuántos'} ${plural(unidad)}?`;

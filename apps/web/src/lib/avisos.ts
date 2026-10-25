@@ -1,6 +1,7 @@
 // Los avisos del teléfono (notificaciones locales de la app nativa): permiso, si pueden ser exactos y a qué canal van.
 // Los usan la encuesta de la noche y los recordatorios de remedios; lo que venga después va por acá también.
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { t } from './idioma';
 import { esNativa } from './nativo';
 
 /** ¿Se pueden mandar avisos? Si todavía no se preguntó, lo pregunta (salvo `pedir: false`). */
@@ -30,11 +31,11 @@ let canales: Promise<void> | null = null;
 export function crearCanales(): Promise<void> {
   canales ??= (async () => {
     try {
-      await LocalNotifications.createChannel({ id: 'avisos', name: 'Avisos', description: 'Novedades de Patty', importance: 4, visibility: 0 });
+      await LocalNotifications.createChannel({ id: 'avisos', name: t('Avisos'), description: t('Novedades de Patty'), importance: 4, visibility: 0 });
       await LocalNotifications.createChannel({
         id: 'remedios',
-        name: 'Remedios',
-        description: 'Recordatorios de cada toma',
+        name: t('Remedios'),
+        description: t('Recordatorios de cada toma'),
         importance: 5,
         visibility: 0,
         vibration: true,

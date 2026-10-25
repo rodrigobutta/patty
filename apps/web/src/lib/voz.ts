@@ -3,11 +3,14 @@
 // (Web Speech), con el texto apareciendo mientras se habla. Se escucha hasta que la persona toca de nuevo el micrófono.
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import { API_BASE } from '../api';
+import { locale, t } from './idioma';
 import { esNativa } from './nativo';
 
-const IDIOMA = 'es-AR';
-const SIN_RECONOCEDOR =
-  'No llegó nada del micrófono. Si pasa siempre, al teléfono le falta el reconocimiento de voz de Google: instalá «Servicios de voz de Google» (Speech Services by Google) desde Play Store y probá de nuevo. Mientras tanto podés usar el micrófono del teclado.';
+/** El idioma del reconocedor: 'es-AR' o 'en-US', según el de la app. */
+const IDIOMA = locale();
+const SIN_RECONOCEDOR = t(
+  'No llegó nada del micrófono. Si pasa siempre, al teléfono le falta el reconocimiento de voz de Google: instalá «Servicios de voz de Google» (Speech Services by Google) desde Play Store y probá de nuevo. Mientras tanto podés usar el micrófono del teclado.',
+);
 
 interface ReconocimientoWeb {
   lang: string;
@@ -36,27 +39,27 @@ async function grabar(alTexto: (t: string) => void, alTerminar: (error?: string)
   try {
     flujo = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch {
-    alTerminar('Patty no tiene permiso para usar el micrófono: habilitalo en los ajustes del teléfono.');
+    alTerminar(t('Patty no tiene permiso para usar el micrófono: habilitalo en los ajustes del teléfono.'));
     return { parar: () => {} };
   }
-  const tipo = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((t) => MediaRecorder.isTypeSupported(t));
+  const tipo = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((x) => MediaRecorder.isTypeSupported(x));
   const grabador = new MediaRecorder(flujo, tipo ? { mimeType: tipo } : undefined);
   const partes: Blob[] = [];
   grabador.ondataavailable = (e) => e.data.size && partes.push(e.data);
   grabador.onstop = async () => {
-    flujo.getTracks().forEach((t) => t.stop());
+    flujo.getTracks().forEach((x) => x.stop());
     const audio = new Blob(partes, { type: grabador.mimeType || tipo || 'audio/webm' });
-    if (!audio.size) return alTerminar('No se grabó nada.');
+    if (!audio.size) return alTerminar(t('No se grabó nada.'));
     alTranscribir();
     try {
       const r = await fetch(`${API_BASE}/api/voz`, { method: 'POST', headers: { 'Content-Type': audio.type }, body: audio, credentials: 'same-origin' });
       const d = (await r.json().catch(() => null)) as { texto?: string; error?: string } | null;
-      if (!r.ok) return alTerminar(d?.error ?? 'No se pudo pasar el audio a texto.');
-      if (!d?.texto) return alTerminar('No se entendió nada. Probá de nuevo, más cerca del micrófono.');
+      if (!r.ok) return alTerminar(d?.error ?? t('No se pudo pasar el audio a texto.'));
+      if (!d?.texto) return alTerminar(t('No se entendió nada. Probá de nuevo, más cerca del micrófono.'));
       alTexto(d.texto);
       alTerminar();
     } catch {
-      alTerminar('No hay conexión para pasar el audio a texto.');
+      alTerminar(t('No hay conexión para pasar el audio a texto.'));
     }
   };
   grabador.start(1000); // de a un segundo: algunos WebView no entregan nada si se pide todo junto al final
@@ -100,7 +103,7 @@ export async function escuchar(
   if (esNativa()) {
     const p = await SpeechRecognition.requestPermissions();
     if (p.speechRecognition !== 'granted') {
-      alTerminar('Patty no tiene permiso para usar el micrófono: habilitalo en los ajustes del teléfono.');
+      alTerminar(t('Patty no tiene permiso para usar el micrófono: habilitalo en los ajustes del teléfono.'));
       return { parar: () => {} };
     }
     let terminado = false;
@@ -116,23 +119,23 @@ export async function escuchar(
       alTerminar(error ?? (algo ? undefined : SIN_RECONOCEDOR));
     };
     const parcial = SpeechRecognition.addListener('partialResults', (e) => {
-      const t = e.accumulatedText ?? e.matches?.[0];
-      if (t) {
+      const dicho = e.accumulatedText ?? e.matches?.[0];
+      if (dicho) {
         algo = true;
-        alTexto(t);
+        alTexto(dicho);
       }
     });
     const estado = SpeechRecognition.addListener('listeningState', (e) => {
       if (e.state === 'stopped') fin();
     });
-    const fallo = SpeechRecognition.addListener('error', () => fin('No se entendió. Probá de nuevo, más cerca del micrófono.'));
+    const fallo = SpeechRecognition.addListener('error', () => fin(t('No se entendió. Probá de nuevo, más cerca del micrófono.')));
     await SpeechRecognition.start({ language: IDIOMA, partialResults: true, popup: false }).catch((e: Error) => fin(e.message));
     return { parar: () => void SpeechRecognition.stop().catch(() => fin()) };
   }
 
   const Clase = reconocimientoWeb();
   if (!Clase) {
-    alTerminar('Este navegador no deja dictar.');
+    alTerminar(t('Este navegador no deja dictar.'));
     return { parar: () => {} };
   }
   const r = new Clase();
@@ -140,13 +143,13 @@ export async function escuchar(
   r.continuous = true;
   r.interimResults = true;
   r.onresult = (e) => {
-    let t = '';
-    for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
-    alTexto(t.trim());
+    let dicho = '';
+    for (let i = 0; i < e.results.length; i++) dicho += e.results[i][0].transcript;
+    alTexto(dicho.trim());
   };
   let error: string | undefined;
   r.onerror = (e) => {
-    error = e.error === 'not-allowed' ? 'El navegador no dio permiso para el micrófono.' : e.error === 'no-speech' ? undefined : 'No se pudo dictar.';
+    error = e.error === 'not-allowed' ? t('El navegador no dio permiso para el micrófono.') : e.error === 'no-speech' ? undefined : t('No se pudo dictar.');
   };
   r.onend = () => alTerminar(error);
   r.start();

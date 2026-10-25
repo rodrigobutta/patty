@@ -4,7 +4,7 @@
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import type { MisSupervisiones, Supervision } from 'shared';
+import { traducir, type MisSupervisiones, type Supervision } from 'shared';
 import { filas, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type C, type Env } from '../lib/http.js';
@@ -53,16 +53,16 @@ export const rutasSupervision = new Hono<Env>()
     if (!otro) throw new ErrorApi('No encontré a nadie con ese usuario o mail en Patty.');
     if (otro.id === u.id) throw new ErrorApi('No podés supervisarte a vos mismo.');
     const ya = await una<Fila>(c.var.db, sql`SELECT id, estado FROM supervisiones WHERE supervisor_id = ${u.id} AND supervisado_id = ${otro.id}`);
-    if (ya?.estado === 'aceptada') throw new ErrorApi(`Ya supervisás a ${otro.nombre}.`);
+    if (ya?.estado === 'aceptada') throw new ErrorApi('Ya supervisás a {nombre}.', 400, { nombre: otro.nombre });
     const nueva = await una<{ id: number }>(c.var.db, sql`INSERT INTO supervisiones (supervisor_id, supervisado_id) VALUES (${u.id}, ${otro.id})
       ON CONFLICT (supervisor_id, supervisado_id) DO UPDATE SET estado = 'pendiente', creado = now(), respondido = NULL
       RETURNING id`);
-    await avisarAUsuario(c.var.db, otro.id, {
+    await avisarAUsuario(c.var.db, otro.id, (i) => ({
       titulo: 'Patty',
-      cuerpo: `${u.nombre} quiere supervisarte: ver tu día y avisarte si te olvidás algo. ¿Aceptás?`,
+      cuerpo: traducir(i, '{nombre} quiere supervisarte: ver tu día y avisarte si te olvidás algo. ¿Aceptás?', { nombre: u.nombre }),
       // Con el id, el aviso trae los botones Aceptar y No (AvisosPushService).
       datos: { tipo: 'supervision', supervision_id: String(nueva!.id) },
-    });
+    }));
     return c.json({ ok: true, nombre: otro.nombre }, 201);
   })
   .post('/codigo', async (c) => {
@@ -98,7 +98,11 @@ export const rutasSupervision = new Hono<Env>()
     }
     await c.var.db.execute(sql`INSERT INTO supervisiones (supervisor_id, supervisado_id, estado, respondido) VALUES (${u.id}, ${r.usuario_id}, 'aceptada', now())
       ON CONFLICT (supervisor_id, supervisado_id) DO UPDATE SET estado = 'aceptada', respondido = now()`);
-    await avisarAUsuario(c.var.db, r.usuario_id, { titulo: 'Patty', cuerpo: `${u.nombre} ya te supervisa. Lo podés quitar cuando quieras desde Más.`, datos: { tipo: 'supervision' } });
+    await avisarAUsuario(c.var.db, r.usuario_id, (i) => ({
+      titulo: 'Patty',
+      cuerpo: traducir(i, '{nombre} ya te supervisa. Lo podés quitar cuando quieras desde Más.', { nombre: u.nombre }),
+      datos: { tipo: 'supervision' },
+    }));
     return c.json({ ok: true, nombre: r.nombre }, 201);
   })
   .post('/:id/responder', async (c) => {
@@ -110,7 +114,11 @@ export const rutasSupervision = new Hono<Env>()
     const aceptar = (await cuerpo(c)).aceptar === true;
     await c.var.db.execute(sql`UPDATE supervisiones SET estado = ${aceptar ? 'aceptada' : 'rechazada'}, respondido = now() WHERE id = ${s.id}`);
     if (aceptar) {
-      await avisarAUsuario(c.var.db, s.supervisor_id, { titulo: 'Patty', cuerpo: `${u.nombre} aceptó tu supervisión. Ya podés ver su día en Patty.`, datos: { tipo: 'supervision' } });
+      await avisarAUsuario(c.var.db, s.supervisor_id, (i) => ({
+        titulo: 'Patty',
+        cuerpo: traducir(i, '{nombre} aceptó tu supervisión. Ya podés ver su día en Patty.', { nombre: u.nombre }),
+        datos: { tipo: 'supervision' },
+      }));
     }
     return c.json({ ok: true });
   })

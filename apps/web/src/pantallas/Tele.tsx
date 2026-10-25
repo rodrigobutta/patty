@@ -4,12 +4,15 @@
 import { useEffect, useState } from 'react';
 import { CANALES_COMUNES, TELE, TIPOS_DE_TELE, teleDeTipo, teleEnCanal, type Concepto, type Persona } from 'shared';
 import { api } from '../api';
+import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
 import { horaAhora, instanteDelDia } from '../lib/fechas';
 
 const HORAS = [0.5, 1, 1.5, 2, 3, 4];
 const PREFIJO_CANAL = teleEnCanal('');
+/** "30 min", "1,5 h" (en inglés, "1.5 h"). */
+const horasTexto = (h: number) => (h < 1 ? '30 min' : `${idioma() === 'en' ? String(h) : String(h).replace('.', ',')} h`);
 
 export function Tele({ persona, fecha, alGuardar }: { persona: Persona; fecha: string; alGuardar(): void }) {
   const { categorias, festejar } = useEstado();
@@ -35,8 +38,8 @@ export function Tele({ persona, fecha, alGuardar }: { persona: Persona; fecha: s
 
   const guardar = async () => {
     if (!pantalla) return;
-    if (!tipo) return setError('¿Qué miraste?');
-    if (!horas) return setError('¿Cuánto tiempo?');
+    if (!tipo) return setError(t('¿Qué miraste?'));
+    if (!horas) return setError(t('¿Cuánto tiempo?'));
     setError('');
     setEnviando(true);
     const inicio = instanteDelDia(fecha, hora, persona.zona_horaria);
@@ -51,7 +54,8 @@ export function Tele({ persona, fecha, alGuardar }: { persona: Persona; fecha: s
         ],
       });
       void anotarClima(persona.id, [inicio]);
-      festejar(`¡Anotado! ${horas < 1 ? '30 min' : `${String(horas).replace('.', ',')} h`} de ${tipo.toLowerCase()}${canal.trim() ? ` en ${canal.trim()}` : ''}`);
+      const vars = { cuanto: horasTexto(horas), que: t(tipo).toLowerCase(), canal: t(canal.trim()) };
+      festejar(canal.trim() ? t('¡Anotado! {cuanto} de {que} en {canal}', vars) : t('¡Anotado! {cuanto} de {que}', vars));
       alGuardar();
     } catch (e) {
       setError((e as Error).message);
@@ -61,26 +65,26 @@ export function Tele({ persona, fecha, alGuardar }: { persona: Persona; fecha: s
 
   return (
     <div className="tele">
-      <p className="rotulo">¿Qué miraste?</p>
+      <p className="rotulo">{t('¿Qué miraste?')}</p>
       <div className="chips envolver">
-        {TIPOS_DE_TELE.map((t) => <button key={t} className={`chip${tipo === t ? ' activa' : ''}`} onClick={() => setTipo(t)}>{t}</button>)}
+        {TIPOS_DE_TELE.map((tp) => <button key={tp} className={`chip${tipo === tp ? ' activa' : ''}`} onClick={() => setTipo(tp)}>{t(tp)}</button>)}
       </div>
-      <p className="rotulo">¿Cuánto tiempo?</p>
+      <p className="rotulo">{t('¿Cuánto tiempo?')}</p>
       <div className="chips envolver">
         {HORAS.map((h) => (
           <button key={h} className={`chip${horas === h ? ' activa' : ''}`} onClick={() => setHoras(h)}>
-            {h < 1 ? '30 min' : `${String(h).replace('.', ',')} h`}
+            {horasTexto(h)}
           </button>
         ))}
       </div>
-      <p className="rotulo">¿En qué canal o plataforma? <span className="suave chico">(opcional)</span></p>
+      <p className="rotulo">{t('¿En qué canal o plataforma?')} <span className="suave chico">{t('(opcional)')}</span></p>
       <div className="chips envolver">
-        {canales.slice(0, 16).map((c) => <button key={c} className={`chip${canal === c ? ' activa' : ''}`} onClick={() => setCanal(canal === c ? '' : c)}>{c}</button>)}
+        {canales.slice(0, 16).map((c) => <button key={c} className={`chip${canal === c ? ' activa' : ''}`} onClick={() => setCanal(canal === c ? '' : c)}>{t(c)}</button>)}
       </div>
-      <label>Otro canal<input value={canales.includes(canal) ? '' : canal} onChange={(e) => setCanal(e.target.value)} placeholder="ej: Encuentro, Paramount+" /></label>
-      <label>Cuándo<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
+      <label>{t('Otro canal')}<input value={canales.includes(canal) ? '' : canal} onChange={(e) => setCanal(e.target.value)} placeholder={t('ej: Encuentro, Paramount+')} /></label>
+      <label>{t('Cuándo')}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
       {error ? <p className="neg">{error}</p> : null}
-      <button className="btn primario ancho" disabled={enviando} onClick={() => void guardar()}>Anotar</button>
+      <button className="btn primario ancho" disabled={enviando} onClick={() => void guardar()}>{t('Anotar')}</button>
     </div>
   );
 }

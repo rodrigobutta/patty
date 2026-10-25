@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react';
 import { Mascota } from '../mascota/Mascota';
 import type { Cara } from '../mascota/dibujo';
+import { t } from '../lib/idioma';
 
 const CLAVE = 'bienvenida-vista';
 
@@ -16,16 +17,16 @@ export function bienvenidaVista(): boolean {
 interface Paso { cara: Cara; titulo: string; texto: string; dibujo: 'chips' | 'orbita' | 'relacion' }
 
 const PASOS: Paso[] = [
-  { cara: 'feliz', titulo: 'Contame tu día', texto: 'Qué comiste, cómo dormiste, si te dolió algo. Con un toque, escribiendo o hablándome.', dibujo: 'chips' },
-  { cara: 'espera', titulo: 'Yo junto lo demás', texto: 'El clima, tus viajes, el uso del teléfono y lo que mide tu reloj llegan solos.', dibujo: 'orbita' },
-  { cara: 'feliz', titulo: 'Y busco qué se relaciona', texto: '"Cuando comés tomate, a los dos días te duele la cabeza". Cuanto más me contás, mejor te conozco.', dibujo: 'relacion' },
+  { cara: 'feliz', titulo: t('Contame tu día'), texto: t('Qué comiste, cómo dormiste, si te dolió algo. Con un toque, escribiendo o hablándome.'), dibujo: 'chips' },
+  { cara: 'espera', titulo: t('Yo junto lo demás'), texto: t('El clima, tus viajes, el uso del teléfono y lo que mide tu reloj llegan solos.'), dibujo: 'orbita' },
+  { cara: 'feliz', titulo: t('Y busco qué se relaciona'), texto: t('"Cuando comés tomate, a los dos días te duele la cabeza". Cuanto más me contás, mejor te conozco.'), dibujo: 'relacion' },
 ];
 
 function Dibujo({ tipo }: { tipo: Paso['dibujo'] }) {
   if (tipo === 'chips')
     return (
       <div className="dibujo chips-dibujo" aria-hidden>
-        {['☕ Café', '😴 Me levanté 7:30', '🍝 Fideos', '🤕 Dolor de cabeza'].map((c, i) => <span key={c} style={{ ['--i' as string]: i }}>{c}</span>)}
+        {[t('☕ Café'), t('😴 Me levanté 7:30'), t('🍝 Fideos'), t('🤕 Dolor de cabeza')].map((c, i) => <span key={c} style={{ ['--i' as string]: i }}>{c}</span>)}
       </div>
     );
   if (tipo === 'orbita')
@@ -37,7 +38,7 @@ function Dibujo({ tipo }: { tipo: Paso['dibujo'] }) {
   return (
     <div className="dibujo relacion" aria-hidden>
       <span className="nodo">🍅</span>
-      <span className="flecha"><span>2 días</span></span>
+      <span className="flecha"><span>{t('2 días')}</span></span>
       <span className="nodo">🤕</span>
     </div>
   );
@@ -67,17 +68,17 @@ export function Bienvenida({ alTerminar }: { alTerminar(): void }) {
         if (Math.abs(dx) > 60) ir(paso + (dx < 0 ? 1 : -1));
       }}
     >
-      <button className="enlace saltar" onClick={terminar}>Saltar</button>
+      <button className="enlace saltar" onClick={terminar}>{t('Saltar')}</button>
       <div className="paso" key={paso}>
         <Dibujo tipo={p.dibujo} />
         <Mascota cara={p.cara} tamano={120} className="saluda" />
         <h2>{p.titulo}</h2>
         <p>{p.texto}</p>
       </div>
-      <div className="puntos" role="tablist" aria-label="Pasos">
-        {PASOS.map((_, i) => <button key={i} className={i === paso ? 'activo' : ''} onClick={() => setPaso(i)} aria-label={`Paso ${i + 1}`} />)}
+      <div className="puntos" role="tablist" aria-label={t('Pasos')}>
+        {PASOS.map((_, i) => <button key={i} className={i === paso ? 'activo' : ''} onClick={() => setPaso(i)} aria-label={t('Paso {n}', { n: i + 1 })} />)}
       </div>
-      <button className="btn primario ancho" onClick={() => ir(paso + 1)}>{paso === PASOS.length - 1 ? '¡Empecemos!' : 'Siguiente'}</button>
+      <button className="btn primario ancho" onClick={() => ir(paso + 1)}>{paso === PASOS.length - 1 ? t('¡Empecemos!') : t('Siguiente')}</button>
     </div>
   );
 }

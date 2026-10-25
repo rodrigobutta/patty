@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useEstado } from '../estado';
 import { entrarConGoogleNativo, googleNativo, montarGoogle } from '../lib/google';
 import { Mascota } from '../mascota/Mascota';
+import { t } from '../lib/idioma';
 
 /** Lo que flota de fondo: cosas que se anotan (emoji, % desde la izquierda, % desde arriba). */
 const FLOTANTES: Array<[string, number, number]> = [['☕', 8, 14], ['😴', 82, 10], ['🍅', 88, 46], ['🤕', 6, 52], ['🚶', 14, 86], ['🌤️', 80, 84]];
@@ -64,23 +65,23 @@ export function Entrar({ configurar }: { configurar: boolean }) {
         {FLOTANTES.map(([e, x, y], i) => <span key={e} className="flota" style={{ left: `${x}%`, top: `${y}%`, ['--i' as string]: i }}>{e}</span>)}
       </div>
       <div className="saludo">
-        <div className="globo">{configurar ? '¡Hola! Empecemos 👋' : '¡Hola de nuevo! 👋'}</div>
+        <div className="globo">{configurar ? t('¡Hola! Empecemos 👋') : t('¡Hola de nuevo! 👋')}</div>
         <Mascota cara="feliz" tamano={132} className="saluda" />
       </div>
       <h1 className="marca grande">Patty</h1>
-      <p className="lema">Contame tu día y te muestro qué cosas se relacionan.</p>
+      <p className="lema">{t('Contame tu día y te muestro qué cosas se relacionan.')}</p>
       <form className="tarjeta" onSubmit={enviar}>
-        <h2>{configurar ? 'Crear el primer usuario' : 'Entrar'}</h2>
+        <h2>{configurar ? t('Crear el primer usuario') : t('Entrar')}</h2>
         {configurar ? (
-          <label>Tu nombre<input name="nombre" required autoComplete="name" autoFocus /></label>
+          <label>{t('Tu nombre')}<input name="nombre" required autoComplete="name" autoFocus /></label>
         ) : null}
-        <label>Usuario<input name="usuario" required autoCapitalize="none" autoComplete="username" /></label>
-        <label>Clave<input name="clave" type="password" required minLength={6} autoComplete={configurar ? 'new-password' : 'current-password'} /></label>
-        <button className="btn primario ancho" disabled={enviando}>{enviando ? 'Entrando…' : configurar ? 'Crear y entrar' : 'Entrar'}</button>
+        <label>{t('Usuario')}<input name="usuario" required autoCapitalize="none" autoComplete="username" /></label>
+        <label>{t('Clave')}<input name="clave" type="password" required minLength={6} autoComplete={configurar ? 'new-password' : 'current-password'} /></label>
+        <button className="btn primario ancho" disabled={enviando}>{enviando ? t('Entrando…') : configurar ? t('Crear y entrar') : t('Entrar')}</button>
         {error ? <p className="neg">{error}</p> : null}
         {sesion?.google ? (
           <>
-            <div className="sep-o"><span>o</span></div>
+            <div className="sep-o"><span>{t('o')}</span></div>
             {googleNativo() ? (
               <button type="button" className="btn ancho boton-google" onClick={() => void googleEnElTelefono()}>
                 <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden>
@@ -89,7 +90,7 @@ export function Entrar({ configurar }: { configurar: boolean }) {
                   <path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.8-6.1z" />
                   <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z" />
                 </svg>
-                Continuar con Google
+                {t('Continuar con Google')}
               </button>
             ) : (
               <div ref={google} className="google" />

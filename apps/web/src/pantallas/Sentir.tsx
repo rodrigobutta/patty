@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { CUANTO, ESTADOS, SINTOMAS_COMUNES, type Concepto, type EstadoAnimo, type Persona } from 'shared';
 import { api } from '../api';
+import { t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { guardarSentir, type Momento } from '../lib/sentir';
 import { Puntuales } from './Puntuales';
@@ -15,7 +16,7 @@ export function Caritas({ elegir }: { elegir(e: EstadoAnimo): void }) {
       {ESTADOS.map((e) => (
         <button key={e.clave} className={`carita ${e.clave}`} onClick={() => elegir(e)}>
           <span className="emoji" aria-hidden>{e.emoji}</span>
-          {e.nombre}
+          {t(e.nombre)}
         </button>
       ))}
     </div>
@@ -73,7 +74,7 @@ export function Sentir({ persona, momento, estado: inicial, fecha, alGuardar, al
     if (otro.trim()) lista.push({ nombre: otro.trim(), intensidad: CUANTO[1].intensidad });
     try {
       await guardarSentir({ persona, categorias, momento, estado: e, fecha, sintomas: lista, nota });
-      festejar(esMalo(e) ? 'Gracias por contarme. Que se mejore pronto 💜' : `¡Qué bueno! Anotado: ${e.nombre.toLowerCase()}`, esMalo(e) ? 'espera' : 'feliz');
+      festejar(esMalo(e) ? t('Gracias por contarme. Que se mejore pronto 💜') : t('¡Qué bueno! Anotado: {que}', { que: t(e.nombre).toLowerCase() }), esMalo(e) ? 'espera' : 'feliz');
       alGuardar();
     } catch (err) {
       setError((err as Error).message);
@@ -82,10 +83,10 @@ export function Sentir({ persona, momento, estado: inicial, fecha, alGuardar, al
   };
 
   return (
-    <div className="hoja sentir" role="dialog" aria-label="Cómo te sentís">
+    <div className="hoja sentir" role="dialog" aria-label={t('Cómo te sentís')}>
       <div className="hoja-cabeza">
-        <h3>{estado ? `${estado.emoji} ${estado.nombre}` : momento === 'dia' ? '¿Cómo te sentiste hoy?' : '¿Cómo te sentís?'}</h3>
-        <button className="btn-icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
+        <h3>{estado ? `${estado.emoji} ${t(estado.nombre)}` : momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís?')}</h3>
+        <button className="btn-icono" onClick={alCerrar} aria-label={t('Cerrar')}>✕</button>
       </div>
       {!estado ? (
         <>
@@ -95,24 +96,24 @@ export function Sentir({ persona, momento, estado: inicial, fecha, alGuardar, al
       ) : (
         <>
           <p>
-            {momento === 'dia' ? '¿Qué te pasó hoy?' : '¿Qué te pasa?'}{' '}
-            <span className="suave chico">Tocá una vez para poco, dos para bastante, tres para mucho.</span>
+            {momento === 'dia' ? t('¿Qué te pasó hoy?') : t('¿Qué te pasa?')}{' '}
+            <span className="suave chico">{t('Tocá una vez para poco, dos para bastante, tres para mucho.')}</span>
           </p>
           <div className="sintomas">
             {sintomas.map((s) => {
               const i = elegidos.get(s);
               return (
                 <button key={s} className={`chip${i !== undefined ? ' activa' : ''}`} onClick={() => tocar(s)}>
-                  {s}
-                  {i !== undefined ? <span className="cuanto"> · {CUANTO[i].nombre.toLowerCase()}</span> : null}
+                  {t(s)}
+                  {i !== undefined ? <span className="cuanto"> · {t(CUANTO[i].nombre).toLowerCase()}</span> : null}
                 </button>
               );
             })}
           </div>
-          <label>Otra cosa<input value={otro} onChange={(e) => setOtro(e.target.value)} placeholder="Ej: me picaban los ojos" /></label>
-          <label>Nota (opcional)<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="lo que quieras agregar" /></label>
+          <label>{t('Otra cosa')}<input value={otro} onChange={(e) => setOtro(e.target.value)} placeholder={t('Ej: me picaban los ojos')} /></label>
+          <label>{t('Nota (opcional)')}<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder={t('lo que quieras agregar')} /></label>
           <button className="btn primario ancho" disabled={guardando} onClick={() => void guardar(estado)}>
-            {guardando ? 'Guardando…' : 'Guardar'}
+            {guardando ? t('Guardando…') : t('Guardar')}
           </button>
         </>
       )}

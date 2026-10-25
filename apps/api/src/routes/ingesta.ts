@@ -36,7 +36,7 @@ export async function conceptoMedido(tx: Tx, f: Fuente, nombre: string, categori
   )?.id;
   if (!id) {
     const cat = await una<{ id: number }>(tx, sql`SELECT id FROM categorias WHERE clave = ${categoria || CATEGORIA_POR_FUENTE[f.tipo]}`);
-    if (!cat) throw new ErrorApi(`Categoría desconocida: ${categoria}`);
+    if (!cat) throw new ErrorApi('Categoría desconocida: {categoria}', 400, { categoria });
     id = (await obtenerOCrearConcepto(tx, { nombre, categoriaId: cat.id, tipoValor: 'medida', unidad })).concepto.id;
   }
   cache.set(clave, id);
@@ -93,7 +93,7 @@ export const rutasIngesta = new Hono<Env>()
       for (const [i, m] of (lista as Array<Record<string, unknown>>).entries()) {
         const nombre = texto(m?.concepto);
         const valor = numeroONulo(m?.valor, `mediciones[${i}].valor`);
-        if (!nombre || valor === null) throw new ErrorApi(`mediciones[${i}]: falta "concepto" o "valor".`);
+        if (!nombre || valor === null) throw new ErrorApi('mediciones[{i}]: falta "concepto" o "valor".', 400, { i });
         const inicio = leerInstante(m.inicio, `mediciones[${i}].inicio`);
         const unidad = texto(m.unidad) || null;
         const conceptoId = await conceptoMedido(tx, f, nombre, texto(m.categoria), unidad, cache);

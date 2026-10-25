@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { dosisTexto, type Toma } from 'shared';
 import { api } from '../api';
 import { avisoExacto, crearCanales, idDeAviso, irAlDia, permisoAvisos } from './avisos';
+import { idioma, locale, t } from './idioma';
 import { esNativa } from './nativo';
 import { avisosProgramadosHasta } from './push';
 
@@ -59,7 +60,7 @@ const idsDe = (t: Pick<Toma, 'tratamiento_id' | 'programada'>) => ({
   insistir: idDeAviso(`toma|${t.tratamiento_id}|${t.programada}|2`),
 });
 
-const hhmm = (iso: string) => new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
+const hhmm = (iso: string) => new Intl.DateTimeFormat(locale(), { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
 
 function leerProgramados(): number[] {
   try {
@@ -78,9 +79,9 @@ async function registrarTipos(): Promise<void> {
       {
         id: TIPO,
         actions: [
-          { id: 'tomada', title: 'La tomé' },
-          { id: 'posponer', title: `En ${POSPONER_MIN} min` },
-          { id: 'salteada', title: 'No la tomo', destructive: true },
+          { id: 'tomada', title: t('La tomé') },
+          { id: 'posponer', title: t('En {n} min', { n: POSPONER_MIN }) },
+          { id: 'salteada', title: t('No la tomo'), destructive: true },
         ],
       },
     ],
@@ -129,13 +130,13 @@ export function programarRecordatorios(): Promise<boolean> {
       const exacta = await avisoExacto();
       const ahora = Date.now();
       const lista: LocalNotificationSchema[] = [];
-      for (const t of tomas.slice(0, 200)) {
-        const ids = idsDe(t);
-        const cuando = Date.parse(t.programada);
-        const que = `${t.remedio}${t.dosis !== null || t.unidad ? ' ' + dosisTexto(t.dosis, t.unidad) : ''}`;
-        if (cuando > ahora + 5000) lista.push(aviso(ids.aviso, new Date(cuando), t, `💊 ${que}`, `Es la hora de la toma de las ${hhmm(t.programada)}.`, exacta));
+      for (const x of tomas.slice(0, 200)) {
+        const ids = idsDe(x);
+        const cuando = Date.parse(x.programada);
+        const que = `${x.remedio}${x.dosis !== null || x.unidad ? ' ' + dosisTexto(x.dosis, x.unidad, idioma()) : ''}`;
+        if (cuando > ahora + 5000) lista.push(aviso(ids.aviso, new Date(cuando), x, `💊 ${que}`, t('Es la hora de la toma de las {hora}.', { hora: hhmm(x.programada) }), exacta));
         const otra = cuando + INSISTIR_MIN * 60000;
-        if (otra > ahora + 5000) lista.push(aviso(ids.insistir, new Date(otra), t, `¿Tomaste ${t.remedio}?`, `La de las ${hhmm(t.programada)} todavía no está marcada.`, exacta));
+        if (otra > ahora + 5000) lista.push(aviso(ids.insistir, new Date(otra), x, t('¿Tomaste {remedio}?', { remedio: x.remedio }), t('La de las {hora} todavía no está marcada.', { hora: hhmm(x.programada) }), exacta));
       }
       if (lista.length) await LocalNotifications.schedule({ notifications: lista });
       localStorage.setItem(CLAVE_PROGRAMADOS, JSON.stringify(lista.map((n) => n.id)));
@@ -171,7 +172,7 @@ async function posponer(n: LocalNotificationSchema, toma: Extra['toma']): Promis
         ...n,
         id: idDeAviso(`toma|${toma.tratamiento_id}|${toma.programada}|${Date.now()}`),
         title: `💊 ${toma.remedio}`,
-        body: `Te lo recuerdo de nuevo: la toma de las ${hhmm(toma.programada)}.`,
+        body: t('Te lo recuerdo de nuevo: la toma de las {hora}.', { hora: hhmm(toma.programada) }),
         schedule: { at: new Date(Date.now() + POSPONER_MIN * 60000), allowWhileIdle: true },
         channelId: 'remedios',
         actionTypeId: TIPO,

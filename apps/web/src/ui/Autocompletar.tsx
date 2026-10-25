@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { normalizar, type Categoria, type Sugerencia } from 'shared';
 import { api } from '../api';
+import { t } from '../lib/idioma';
 
 interface Props {
   categoria: Categoria | null;
@@ -19,7 +20,7 @@ export function Autocompletar({ categoria, categorias, alElegir, alCrear }: Prop
 
   useEffect(() => {
     const n = ++pedido.current;
-    const t = setTimeout(async () => {
+    const espera = setTimeout(async () => {
       const q = new URLSearchParams({ q: texto, limite: '8' });
       if (categoria) q.set('categoria', String(categoria.id));
       try {
@@ -32,7 +33,7 @@ export function Autocompletar({ categoria, categorias, alElegir, alCrear }: Prop
         /* sin conexión: quedan las anteriores */
       }
     }, 120);
-    return () => clearTimeout(t);
+    return () => clearTimeout(espera);
   }, [texto, categoria]);
 
   const icono = (id: number) => categorias.find((c) => c.id === id)?.icono ?? '';
@@ -51,7 +52,7 @@ export function Autocompletar({ categoria, categorias, alElegir, alCrear }: Prop
         ref={entrada}
         autoFocus
         value={texto}
-        placeholder={categoria ? `¿Qué ${categoria.nombre.toLowerCase()}?` : 'Escribí qué fue: tomate, dolor de cabeza, caminar…'}
+        placeholder={categoria ? t('¿Qué {que}?', { que: t(categoria.nombre).toLowerCase() }) : t('Escribí qué fue: tomate, dolor de cabeza, caminar…')}
         onChange={(e) => setTexto(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') setMarcada((m) => Math.min(m + 1, opciones - 1));
@@ -64,7 +65,7 @@ export function Autocompletar({ categoria, categorias, alElegir, alCrear }: Prop
         }}
         enterKeyHint="go"
         autoCapitalize="sentences"
-        aria-label="Qué fue"
+        aria-label={t('Qué fue')}
         role="combobox"
         aria-expanded={opciones > 0}
       />
@@ -72,13 +73,14 @@ export function Autocompletar({ categoria, categorias, alElegir, alCrear }: Prop
         {sugerencias.map((s, i) => (
           <li key={s.id} role="option" aria-selected={i === marcada} className={i === marcada ? 'marcada' : ''} onClick={() => elegir(i)}>
             <span className="icono">{icono(s.categoria_id)}</span>
-            {s.nombre}
+            {t(s.nombre)}
             {s.usos ? <span className="suave chico"> · {s.usos}</span> : null}
           </li>
         ))}
         {puedeCrear ? (
           <li role="option" aria-selected={marcada === sugerencias.length} className={`crear ${marcada === sugerencias.length ? 'marcada' : ''}`} onClick={() => elegir(sugerencias.length)}>
-            <span className="icono">＋</span>Crear «{texto.trim()}»{categoria ? ` en ${categoria.nombre}` : ''}
+            <span className="icono">＋</span>
+            {categoria ? t('Crear «{que}» en {cat}', { que: texto.trim(), cat: t(categoria.nombre) }) : t('Crear «{que}»', { que: texto.trim() })}
           </li>
         ) : null}
       </ul>

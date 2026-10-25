@@ -1,4 +1,5 @@
 // Fechas en la zona horaria de la persona que se está anotando.
+import { locale, t } from './idioma';
 
 /** El día de Patty arranca a las 5: a la 1 de la mañana todavía es "hoy" el día anterior (igual que en la API). */
 export const HORA_INICIO_DIA = 5;
@@ -25,12 +26,12 @@ export function horaEn(iso: string, zona: string): string {
   return new Intl.DateTimeFormat('es-AR', { timeZone: zona, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
 }
 
-/** "Hoy", "Ayer" o "sáb 18 oct". */
+/** "Hoy", "Ayer" o "sáb 18 oct" (en el idioma de la app). */
 export function nombreDia(fecha: string, zona: string): string {
   const hoy = hoyEn(zona);
-  if (fecha === hoy) return 'Hoy';
-  if (fecha === sumarDias(hoy, -1)) return 'Ayer';
-  return new Intl.DateTimeFormat('es-AR', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(fecha + 'T12:00:00Z'));
+  if (fecha === hoy) return t('Hoy');
+  if (fecha === sumarDias(hoy, -1)) return t('Ayer');
+  return new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(fecha + 'T12:00:00Z'));
 }
 
 /** El instante ISO de una fecha y hora ("13:30") locales de la zona. */

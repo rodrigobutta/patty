@@ -1,7 +1,7 @@
 // Carga en texto libre: "desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos.
 // No guarda nada: la app los muestra para que la persona los revise y después los manda a /api/registros/varios.
 import { sql } from 'drizzle-orm';
-import { frecuenciaTexto, normalizar, TIPOS_VALOR, type Categoria } from 'shared';
+import { frecuenciaTexto, normalizar, TIPOS_VALOR, type Categoria, type Idioma } from 'shared';
 import { filas, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -94,7 +94,14 @@ const diaDeLaSemana = (fecha: string) =>
  * `referencia`: el día que la persona estaba mirando en la app al contarlo (AAAA-MM-DD). Si no dice cuándo pasó, es
  * ese día; si dice "ayer", "el sábado", "anoche", se cuenta desde hoy.
  */
-export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, referencia?: string, imagen?: { tipo: 'image/jpeg' | 'image/png' | 'image/webp'; datos: string }) {
+export async function interpretarTexto(
+  tx: Tx,
+  p: PersonaAcceso,
+  texto: string,
+  referencia?: string,
+  imagen?: { tipo: 'image/jpeg' | 'image/png' | 'image/webp'; datos: string },
+  idioma: Idioma = 'es',
+) {
   if (!texto && !imagen) throw new ErrorApi('Escribí qué pasó.');
   if (texto.length > 4000) throw new ErrorApi('El texto es muy largo (máximo 4000 letras).');
   const cats = await filas<Categoria>(tx, sql`SELECT * FROM categorias ORDER BY orden`);
@@ -136,7 +143,11 @@ export async function interpretarTexto(tx: Tx, p: PersonaAcceso, texto: string, 
     'repitas, y no vuelvas a preguntar lo que ya se aclaró. Si alguna pregunta anterior quedó sin contestar, volvé a ' +
     'preguntarla mientras siga faltando algo que importa (sobre todo en remedios: dosis y cada cuánto o a qué hora; y ' +
     'cantidades que se pidieron); lo que es solo un detalle, dejalo pasar sin insistir. Preguntá todo lo que falta de ' +
-    'una vez, en preguntas cortas, cada una sobre una sola cosa.';
+    'una vez, en preguntas cortas, cada una sobre una sola cosa.' +
+    (idioma === 'en'
+      ? ' La persona usa la app en inglés: escribí las dudas en inglés. Los conceptos nuevos van en el idioma en que ' +
+        'escribe la persona (si escribe en inglés, "Tomato", "Headache"); los que ya existen, con su nombre exacto de la lista.'
+      : '');
   const consigna = [
     `Hoy es ${diaDeLaSemana(hoy)} ${hoy} y son las ${String(Math.floor(hora / 60)).padStart(2, '0')}:${String(hora % 60).padStart(2, '0')} para ${p.nombre}.`,
     ...(referencia && referencia !== hoy

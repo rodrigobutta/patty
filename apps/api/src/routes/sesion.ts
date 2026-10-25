@@ -66,7 +66,7 @@ export const rutasSesion = new Hono<Env>()
     const id = await c.var.db.transaction(async (tx) => {
       await tx.execute(sql`LOCK TABLE usuarios IN EXCLUSIVE MODE`);
       if (await hayUsuarios(tx)) {
-        throw new ErrorApi(`La cuenta ${g.email} no tiene acceso. Pedile a un administrador que la agregue.`, 403);
+        throw new ErrorApi('La cuenta {email} no tiene acceso. Pedile a un administrador que la agregue.', 403, { email: g.email });
       }
       // Primera vez: el primero que entra con Google queda como administrador.
       const [n] = await tx

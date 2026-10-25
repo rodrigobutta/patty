@@ -39,7 +39,7 @@ export const texto = (v: unknown): string => (typeof v === 'string' ? v.trim() :
 export function numeroONulo(v: unknown, campo: string): number | null {
   if (v === undefined || v === null || v === '') return null;
   const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
-  if (!Number.isFinite(n)) throw new ErrorApi(`${campo}: tiene que ser un número.`);
+  if (!Number.isFinite(n)) throw new ErrorApi('{campo}: tiene que ser un número.', 400, { campo });
   return n;
 }
 

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { dosisTexto, HORAS_PARA_OLVIDADA, type Persona, type Toma, type Tratamiento } from 'shared';
 import { api } from '../api';
+import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { horaEn } from '../lib/fechas';
 import { desmarcarToma, marcarToma, tomasCambiaron, useAlCambiarTomas } from '../lib/remedios';
@@ -15,20 +16,20 @@ const ANTES_MIN = 60;
 
 type Situacion = 'tomada' | 'salteada' | 'olvidada' | 'atrasada' | 'ahora' | 'despues';
 
-function situacion(t: Toma, ahora: number): Situacion {
-  if (t.estado) return t.estado;
-  const x = Date.parse(t.programada);
+function situacion(tm: Toma, ahora: number): Situacion {
+  if (tm.estado) return tm.estado;
+  const x = Date.parse(tm.programada);
   if (ahora - x > HORAS_PARA_OLVIDADA * 3600000) return 'olvidada';
   if (ahora - x > 15 * 60000) return 'atrasada';
   return x - ahora <= ANTES_MIN * 60000 ? 'ahora' : 'despues';
 }
 
 const LEYENDA: Record<Situacion, string> = {
-  tomada: 'tomada',
-  salteada: 'no la tomaste',
-  olvidada: 'sin marcar',
-  atrasada: 'atrasada',
-  ahora: 'ahora',
+  tomada: t('tomada'),
+  salteada: t('no la tomaste'),
+  olvidada: t('sin marcar'),
+  atrasada: t('atrasada'),
+  ahora: t('ahora'),
   despues: '',
 };
 
@@ -56,11 +57,11 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
 
   const traer = useCallback(async () => {
     try {
-      const [t, l] = await Promise.all([
+      const [tm, l] = await Promise.all([
         api<Toma[]>('GET', `/api/tratamientos/tomas?persona=${persona.id}&fecha=${fecha}`),
         fecha === hoy ? api<Tratamiento[]>('GET', `/api/tratamientos?persona=${persona.id}`) : Promise.resolve([]),
       ]);
-      setTomas(t);
+      setTomas(tm);
       setCuandoHaceFalta(l.filter((x) => x.activo && !x.cada_horas && !x.horarios.length));
     } catch {
       /* sin conexión: el Día sigue igual */
@@ -77,15 +78,15 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
   if (!tomas.length && !cuandoHaceFalta.length) return null;
   const ahora = Date.now();
 
-  const marcar = async (t: Toma, estado: 'tomada' | 'salteada') => {
-    const clave = t.tratamiento_id + t.programada;
+  const marcar = async (tm: Toma, estado: 'tomada' | 'salteada') => {
+    const clave = tm.tratamiento_id + tm.programada;
     setOcupado(clave);
     try {
       // Si es de hace rato, se anota a la hora en que tocaba (se acuerda de que la tomó, no la toma ahora).
-      const vieja = ahora - Date.parse(t.programada) > HORAS_PARA_OLVIDADA * 3600000;
-      await marcarToma(t, estado, vieja ? t.programada : undefined);
-      if (estado === 'tomada') festejar(`¡Bien! ${t.remedio} tomado 💊`);
-      else avisar('Anotado que no la tomaste');
+      const vieja = ahora - Date.parse(tm.programada) > HORAS_PARA_OLVIDADA * 3600000;
+      await marcarToma(tm, estado, vieja ? tm.programada : undefined);
+      if (estado === 'tomada') festejar(t('¡Bien! {que} tomado 💊', { que: t(tm.remedio) }));
+      else avisar(t('Anotado que no la tomaste'));
       alCambiar();
     } catch (e) {
       avisar((e as Error).message);
@@ -94,21 +95,21 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
     }
   };
 
-  const desmarcar = async (t: Toma) => {
-    if (!confirm(`¿Desmarcar la toma de ${t.remedio} de las ${horaEn(t.programada, persona.zona_horaria)}?`)) return;
+  const desmarcar = async (tm: Toma) => {
+    if (!confirm(t('¿Desmarcar la toma de {que} de las {hora}?', { que: t(tm.remedio), hora: horaEn(tm.programada, persona.zona_horaria) }))) return;
     try {
-      await desmarcarToma(t);
+      await desmarcarToma(tm);
       alCambiar();
     } catch (e) {
       avisar((e as Error).message);
     }
   };
 
-  const tomarAhora = async (t: Tratamiento) => {
-    setOcupado(`prn${t.id}`);
+  const tomarAhora = async (tm: Tratamiento) => {
+    setOcupado(`prn${tm.id}`);
     try {
-      await api('POST', '/api/registros', { persona_id: persona.id, concepto_id: t.concepto_id, inicio: new Date().toISOString(), valor: t.dosis, unidad: t.unidad });
-      festejar(`¡Anotado! ${t.remedio} 💊`);
+      await api('POST', '/api/registros', { persona_id: persona.id, concepto_id: tm.concepto_id, inicio: new Date().toISOString(), valor: tm.dosis, unidad: tm.unidad });
+      festejar(t('¡Anotado! {que} 💊', { que: t(tm.remedio) }));
       tomasCambiaron();
       alCambiar();
     } catch (e) {
@@ -118,10 +119,10 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
     }
   };
 
-  const tomadas = tomas.filter((t) => t.estado === 'tomada').length;
-  const vencidas = tomas.filter((t) => Date.parse(t.programada) <= ahora).length;
-  const paraTomar = tomas.filter((t) => ['ahora', 'atrasada'].includes(situacion(t, ahora))).length;
-  const proxima = tomas.find((t) => situacion(t, ahora) === 'despues');
+  const tomadas = tomas.filter((tm) => tm.estado === 'tomada').length;
+  const vencidas = tomas.filter((tm) => Date.parse(tm.programada) <= ahora).length;
+  const paraTomar = tomas.filter((tm) => ['ahora', 'atrasada'].includes(situacion(tm, ahora))).length;
+  const proxima = tomas.find((tm) => situacion(tm, ahora) === 'despues');
   const cambiarAbierto = () => {
     setAbierto(!abierto);
     try {
@@ -134,40 +135,40 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
   return (
     <div className={`tarjeta remedios-dia${abierto ? ' abierto' : ''}`}>
       <button className="cabeza-plegable" onClick={cambiarAbierto} aria-expanded={abierto}>
-        <span className="titulo-plegable">💊 Remedios</span>
+        <span className="titulo-plegable">{t('💊 Remedios')}</span>
         <span className="suave chico resumen-plegable">
-          {paraTomar ? <span className="para-tomar">{paraTomar} para tomar</span> : null}
-          {tomas.length ? `${tomadas} de ${fecha === hoy ? vencidas || tomas.length : tomas.length} tomadas` : 'cuando haga falta'}
-          {proxima && !paraTomar ? ` · próxima ${horaEn(proxima.programada, persona.zona_horaria)}` : ''}
+          {paraTomar ? <span className="para-tomar">{t('{n} para tomar', { n: paraTomar })}</span> : null}
+          {tomas.length ? t('{n} de {total} tomadas', { n: tomadas, total: fecha === hoy ? vencidas || tomas.length : tomas.length }) : t('cuando haga falta')}
+          {proxima && !paraTomar ? ' · ' + t('próxima {hora}', { hora: horaEn(proxima.programada, persona.zona_horaria) }) : ''}
         </span>
         <span className="suave" aria-hidden>{abierto ? '▴' : '▾'}</span>
       </button>
       {abierto ? (
       <>
       <ul className="lista tomas">
-        {tomas.map((t) => {
-          const s = situacion(t, ahora);
-          const clave = t.tratamiento_id + t.programada;
+        {tomas.map((tm) => {
+          const s = situacion(tm, ahora);
+          const clave = tm.tratamiento_id + tm.programada;
           return (
             <li key={clave} className={`toma ${s}`}>
-              <span className="hora">{horaEn(t.programada, persona.zona_horaria)}</span>
+              <span className="hora">{horaEn(tm.programada, persona.zona_horaria)}</span>
               <span className="que">
-                {t.remedio}
-                {t.dosis !== null || t.unidad ? <span className="valor-chip">{dosisTexto(t.dosis, t.unidad)}</span> : null}
+                {t(tm.remedio)}
+                {tm.dosis !== null || tm.unidad ? <span className="valor-chip">{dosisTexto(tm.dosis, tm.unidad, idioma())}</span> : null}
                 {LEYENDA[s] ? (
                   <span className={`estado-toma ${s}`}>
                     {s === 'tomada' ? '✓ ' : ''}
                     {LEYENDA[s]}
-                    {s === 'tomada' && t.tomada ? ` ${horaEn(t.tomada, persona.zona_horaria)}` : ''}
+                    {s === 'tomada' && tm.tomada ? ` ${horaEn(tm.tomada, persona.zona_horaria)}` : ''}
                   </span>
                 ) : null}
               </span>
-              {!puede ? null : t.estado ? (
-                <button className="enlace chico" onClick={() => void desmarcar(t)}>Deshacer</button>
+              {!puede ? null : tm.estado ? (
+                <button className="enlace chico" onClick={() => void desmarcar(tm)}>{t('Deshacer')}</button>
               ) : s !== 'despues' ? (
                 <span className="botones-toma">
-                  <button className="btn chico primario" disabled={ocupado === clave} onClick={() => void marcar(t, 'tomada')}>La tomé</button>
-                  <button className="btn chico" disabled={ocupado === clave} onClick={() => void marcar(t, 'salteada')} aria-label="No la tomo">No</button>
+                  <button className="btn chico primario" disabled={ocupado === clave} onClick={() => void marcar(tm, 'tomada')}>{t('La tomé')}</button>
+                  <button className="btn chico" disabled={ocupado === clave} onClick={() => void marcar(tm, 'salteada')} aria-label={t('No la tomo')}>{t('No')}</button>
                 </span>
               ) : null}
             </li>
@@ -176,9 +177,9 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
       </ul>
       {puede && cuandoHaceFalta.length ? (
         <div className="chips envolver cuando-hace-falta">
-          {cuandoHaceFalta.map((t) => (
-            <button key={t.id} className="chip" disabled={ocupado === `prn${t.id}`} onClick={() => void tomarAhora(t)}>
-              ＋ Tomé {t.remedio}{t.dosis !== null ? ` ${dosisTexto(t.dosis, t.unidad)}` : ''}
+          {cuandoHaceFalta.map((tm) => (
+            <button key={tm.id} className="chip" disabled={ocupado === `prn${tm.id}`} onClick={() => void tomarAhora(tm)}>
+              {t('＋ Tomé {que}', { que: t(tm.remedio) })}{tm.dosis !== null ? ` ${dosisTexto(tm.dosis, tm.unidad, idioma())}` : ''}
             </button>
           ))}
         </div>

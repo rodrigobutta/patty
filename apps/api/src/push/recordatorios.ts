@@ -3,7 +3,7 @@
 // queda después de eso (un crónico y una semana sin abrir Patty) lo manda el servidor por push: a la hora de la toma y,
 // si no se marcó, a la media hora. Corre cada minuto.
 import { sql } from 'drizzle-orm';
-import { dosisTexto } from 'shared';
+import { dosisTexto, esIdioma, traducir, type Idioma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, fechaLocal, localAInstante } from '../lib/fechas.js';
 import { COLUMNAS, DESDE, tomasDe, type Fila } from '../routes/tratamientos.js';
@@ -21,7 +21,11 @@ interface Dispositivo {
   id: number;
   token: string;
   avisos_hasta: string | null;
+  /** El idioma de la app de su usuario: los avisos van en ese idioma. */
+  idioma?: string;
 }
+
+const idiomaDe = (d: { idioma?: string | null }): Idioma => (esIdioma(d.idioma) ? d.idioma : 'es');
 
 /**
  * Los teléfonos de quienes anotan a la persona (los recordatorios) o de quienes la supervisan (los avisos de que algo
@@ -30,7 +34,7 @@ interface Dispositivo {
 function dispositivosDe(db: Db, personaId: number, supervisores: boolean) {
   return filas<Dispositivo>(
     db,
-    sql`SELECT d.id, d.token, d.avisos_hasta FROM dispositivos d JOIN usuarios u ON u.id = d.usuario_id
+    sql`SELECT d.id, d.token, d.avisos_hasta, u.idioma FROM dispositivos d JOIN usuarios u ON u.id = d.usuario_id
         WHERE u.activo AND EXISTS (SELECT 1 FROM accesos pu WHERE pu.persona_id = ${personaId} AND pu.usuario_id = u.id
                                    AND pu.por_supervision = ${supervisores})`,
   );
@@ -70,16 +74,25 @@ export async function revisarTomas(db: Db, ahora = new Date()): Promise<number> 
     const programada = Date.parse(t.programada);
     const tr = porId.get(t.tratamiento_id)!;
     const hora = hhmm(t.programada, tr.zona);
-    const que = `${t.remedio}${t.dosis !== null || t.unidad ? ' ' + dosisTexto(t.dosis, t.unidad) : ''}`;
+    const que = (i: Idioma) => `${t.remedio}${t.dosis !== null || t.unidad ? ' ' + dosisTexto(t.dosis, t.unidad, i) : ''}`;
     const datos = { tipo: 'toma', tratamiento_id: String(t.tratamiento_id), programada: t.programada, persona_id: String(t.persona_id) };
+    const v = { hora, remedio: t.remedio, nombre: tr.persona_nombre };
     const momentos = [
-      { cuando: programada, tipo: 'hora', supervisores: false, aviso: { titulo: `💊 ${que}`, cuerpo: `Es la hora de la toma de las ${hora}.` } },
-      { cuando: programada + INSISTIR_MIN * 60000, tipo: 'insistir', supervisores: false, aviso: { titulo: `¿Tomaste ${t.remedio}?`, cuerpo: `La de las ${hora} todavía no está marcada.` } },
+      { cuando: programada, tipo: 'hora', supervisores: false, aviso: (i: Idioma) => ({ titulo: `💊 ${que(i)}`, cuerpo: traducir(i, 'Es la hora de la toma de las {hora}.', v) }) },
+      {
+        cuando: programada + INSISTIR_MIN * 60000,
+        tipo: 'insistir',
+        supervisores: false,
+        aviso: (i: Idioma) => ({ titulo: traducir(i, '¿Tomaste {remedio}?', v), cuerpo: traducir(i, 'La de las {hora} todavía no está marcada.', v) }),
+      },
       {
         cuando: programada + AVISAR_SUPERVISOR_MIN * 60000,
         tipo: 'supervisor',
         supervisores: true,
-        aviso: { titulo: `💊 ${tr.persona_nombre} no marcó ${t.remedio}`, cuerpo: `La toma de las ${hora} sigue sin marcar. Podés mandarle un aviso desde Patty.` },
+        aviso: (i: Idioma) => ({
+          titulo: traducir(i, '💊 {nombre} no marcó {remedio}', v),
+          cuerpo: traducir(i, 'La toma de las {hora} sigue sin marcar. Podés mandarle un aviso desde Patty.', v),
+        }),
       },
     ];
     for (const m of momentos) {
@@ -88,7 +101,7 @@ export async function revisarTomas(db: Db, ahora = new Date()): Promise<number> 
       for (const d of (m.supervisores ? deSupervisores : propios).get(t.persona_id)!) {
         // Si el teléfono ya lo tiene programado por su cuenta, no se repite.
         if (!m.supervisores && d.avisos_hasta && Date.parse(d.avisos_hasta) >= m.cuando) continue;
-        if (await avisarUnaVez(db, d, `toma|${t.tratamiento_id}|${t.programada}|${m.tipo}`, { ...m.aviso, datos, canal: 'remedios' })) enviados++;
+        if (await avisarUnaVez(db, d, `toma|${t.tratamiento_id}|${t.programada}|${m.tipo}`, { ...m.aviso(idiomaDe(d)), datos, canal: 'remedios' })) enviados++;
       }
     }
   }
@@ -109,7 +122,12 @@ export async function revisarDiasSinAnotar(db: Db, ahora = new Date()): Promise<
     const dia = diaDePatty(ahora, p.zona);
     if (await una(db, sql`SELECT 1 AS x FROM registros WHERE persona_id = ${p.id} AND fecha = ${dia} AND borrado IS NULL LIMIT 1`)) continue;
     for (const d of await dispositivosDe(db, p.id, true)) {
-      const aviso = { titulo: `📝 ${p.nombre} no anotó nada hoy`, cuerpo: 'Quizás le venga bien un aviso para que le cuente a Patty cómo fue su día.', datos: { tipo: 'sin_anotar', persona_id: String(p.id) } };
+      const i = idiomaDe(d);
+      const aviso = {
+        titulo: traducir(i, '📝 {nombre} no anotó nada hoy', { nombre: p.nombre }),
+        cuerpo: traducir(i, 'Quizás le venga bien un aviso para que le cuente a Patty cómo fue su día.'),
+        datos: { tipo: 'sin_anotar', persona_id: String(p.id) },
+      };
       if (await avisarUnaVez(db, d, `sinanotar|${p.id}|${dia}`, aviso)) enviados++;
     }
   }
@@ -120,12 +138,13 @@ export async function revisarDiasSinAnotar(db: Db, ahora = new Date()): Promise<
 const HORA_TE_EXTRANO = '19:00';
 
 /** Lo que dice el aviso según cuántos días lleva sin anotar (y su nombre, para que suene a Patty). */
-export function avisoTeExtrano(nombre: string, diasSin: number | null): { titulo: string; cuerpo: string } {
-  const pila = nombre.split(' ')[0];
-  if (diasSin === null) return { titulo: '😢 ¿Arrancamos?', cuerpo: `${pila}, todavía no me contaste nada. Empezá por algo fácil: ¿a qué hora te levantaste hoy?` };
-  if (diasSin <= 1) return { titulo: '😢 Hoy no me contaste nada', cuerpo: `${pila}, ¿qué comiste, cómo dormiste, cómo te sentís? Con un toque alcanza.` };
-  if (diasSin <= 3) return { titulo: `😢 Hace ${diasSin} días que no sé de vos`, cuerpo: '¿Me contás cómo venís? Aunque sea una cosa, así no pierdo el hilo.' };
-  return { titulo: '😢 Te extraño', cuerpo: `Hace ${diasSin} días que no anotás nada. Cuando quieras, contale a Patty cómo estás.` };
+export function avisoTeExtrano(nombre: string, diasSin: number | null, idioma: Idioma = 'es'): { titulo: string; cuerpo: string } {
+  const v = { pila: nombre.split(' ')[0], n: diasSin ?? 0 };
+  const t = (titulo: string, cuerpo: string) => ({ titulo: traducir(idioma, titulo, v), cuerpo: traducir(idioma, cuerpo, v) });
+  if (diasSin === null) return t('😢 ¿Arrancamos?', '{pila}, todavía no me contaste nada. Empezá por algo fácil: ¿a qué hora te levantaste hoy?');
+  if (diasSin <= 1) return t('😢 Hoy no me contaste nada', '{pila}, ¿qué comiste, cómo dormiste, cómo te sentís? Con un toque alcanza.');
+  if (diasSin <= 3) return t('😢 Hace {n} días que no sé de vos', '¿Me contás cómo venís? Aunque sea una cosa, así no pierdo el hilo.');
+  return t('😢 Te extraño', 'Hace {n} días que no anotás nada. Cuando quieras, contale a Patty cómo estás.');
 }
 
 /**
@@ -133,9 +152,9 @@ export function avisoTeExtrano(nombre: string, diasSin: number | null): { titulo
  * días, todos los días; después de una semana sin anotar, uno por semana (para no cansar).
  */
 export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<number> {
-  const personas = await filas<{ id: number; nombre: string; zona: string; usuario_id: number; ultima: string | null; creado: string }>(
+  const personas = await filas<{ id: number; nombre: string; zona: string; usuario_id: number; idioma: string; ultima: string | null; creado: string }>(
     db,
-    sql`SELECT p.id, p.nombre, p.zona_horaria AS zona, pu.usuario_id, p.creado,
+    sql`SELECT p.id, p.nombre, p.zona_horaria AS zona, pu.usuario_id, u.idioma, p.creado,
                (SELECT to_char(max(r.fecha), 'YYYY-MM-DD') FROM registros r WHERE r.persona_id = p.id AND r.borrado IS NULL) AS ultima
         FROM personas p JOIN persona_usuarios pu ON pu.persona_id = p.id AND pu.rol = 'dueno'
         JOIN usuarios u ON u.id = pu.usuario_id AND u.activo AND u.avisar_sin_anotar
@@ -152,7 +171,7 @@ export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<numb
     // Recién creada (hoy) y sin nada: todavía no molestamos.
     if (diasSin === null && Date.now() - Date.parse(p.creado) < 12 * 3600000) continue;
     if (diasSin !== null && diasSin > 7 && diasSin % 7 !== 0) continue;
-    const { titulo, cuerpo } = avisoTeExtrano(p.nombre, diasSin);
+    const { titulo, cuerpo } = avisoTeExtrano(p.nombre, diasSin, idiomaDe(p));
     const lista = await filas<Dispositivo>(db, sql`SELECT id, token, avisos_hasta FROM dispositivos WHERE usuario_id = ${p.usuario_id}`);
     for (const d of lista) {
       if (await avisarUnaVez(db, d, `teextrano|${p.id}|${dia}`, { titulo, cuerpo, datos: { tipo: 'te_extrano', cara: 'triste', persona_id: String(p.id) } })) enviados++;

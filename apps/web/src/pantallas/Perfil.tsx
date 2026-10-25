@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { CONDICIONES_COMUNES, type Persona } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
+import { t } from '../lib/idioma';
 
 const CLAVE = (id: number) => `perfil-ofrecido-${id}`;
 
@@ -39,8 +40,8 @@ export function Perfil({ persona, bienvenida = false, alTerminar }: { persona: P
 
   const alternar = (c: string) => setCondiciones((l) => (l.includes(c) ? l.filter((x) => x !== c) : [...l, c]));
   const agregarOtra = () => {
-    const t = otra.trim();
-    if (t && !condiciones.some((c) => c.toLowerCase() === t.toLowerCase())) setCondiciones((l) => [...l, t[0].toUpperCase() + t.slice(1)]);
+    const nueva = otra.trim();
+    if (nueva && !condiciones.some((c) => c.toLowerCase() === nueva.toLowerCase())) setCondiciones((l) => [...l, nueva[0].toUpperCase() + nueva.slice(1)]);
     setOtra('');
   };
 
@@ -62,7 +63,7 @@ export function Perfil({ persona, bienvenida = false, alTerminar }: { persona: P
         condiciones: [...condiciones, ...extra],
       });
       await recargar();
-      avisar('¡Gracias! Lo voy a tener en cuenta');
+      avisar(t('¡Gracias! Lo voy a tener en cuenta'));
       salir();
     } catch (e) {
       setError((e as Error).message);
@@ -72,39 +73,40 @@ export function Perfil({ persona, bienvenida = false, alTerminar }: { persona: P
 
   const otras = condiciones.filter((c) => !CONDICIONES_COMUNES.includes(c));
   return (
-    <div className={bienvenida ? 'perfil perfil-bienvenida' : 'hoja perfil'} role={bienvenida ? undefined : 'dialog'} aria-label="Datos de la persona">
+    <div className={bienvenida ? 'perfil perfil-bienvenida' : 'hoja perfil'} role={bienvenida ? undefined : 'dialog'} aria-label={t('Datos de la persona')}>
       <div className="hoja-cabeza">
-        <h3>{bienvenida ? 'Un poquito sobre vos' : `Datos de ${persona.nombre}`}</h3>
-        {bienvenida ? <button className="enlace" onClick={salir}>Ahora no</button> : <button className="btn-icono" onClick={alTerminar} aria-label="Cerrar">✕</button>}
+        <h3>{bienvenida ? t('Un poquito sobre vos') : t('Datos de {nombre}', { nombre: persona.nombre })}</h3>
+        {bienvenida ? <button className="enlace" onClick={salir}>{t('Ahora no')}</button> : <button className="btn-icono" onClick={alTerminar} aria-label={t('Cerrar')}>✕</button>}
       </div>
       <p className="suave chico">
-        Todo opcional. Patty no es una app médica: lo usa solo para entender mejor {propia ? 'tus' : 'sus'} patrones. Lo podés cambiar
-        cuando quieras desde Más.
+        {propia
+          ? t('Todo opcional. Patty no es una app médica: lo usa solo para entender mejor tus patrones. Lo podés cambiar cuando quieras desde Más.')
+          : t('Todo opcional. Patty no es una app médica: lo usa solo para entender mejor sus patrones. Lo podés cambiar cuando quieras desde Más.')}
       </p>
       <div className="fila-datos">
-        <label>Nacimiento<input type="date" value={nacimiento} onChange={(e) => setNacimiento(e.target.value)} /></label>
-        <label>Altura (cm)<input inputMode="numeric" value={altura} onChange={(e) => setAltura(e.target.value)} placeholder="165" /></label>
-        <label>Peso (kg)<input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="70" /></label>
+        <label>{t('Nacimiento')}<input type="date" value={nacimiento} onChange={(e) => setNacimiento(e.target.value)} /></label>
+        <label>{t('Altura (cm)')}<input inputMode="numeric" value={altura} onChange={(e) => setAltura(e.target.value)} placeholder="165" /></label>
+        <label>{t('Peso (kg)')}<input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="70" /></label>
       </div>
-      <div className="segmentos ancho sexo" role="group" aria-label="Sexo">
+      <div className="segmentos ancho sexo" role="group" aria-label={t('Sexo')}>
         {(['femenino', 'masculino', 'otro'] as const).map((s) => (
           <button key={s} className={sexo === s ? 'activa' : ''} onClick={() => setSexo(sexo === s ? null : s)}>
-            {s === 'femenino' ? 'Mujer' : s === 'masculino' ? 'Varón' : 'Otro'}
+            {s === 'femenino' ? t('Mujer') : s === 'masculino' ? t('Varón') : t('Otro')}
           </button>
         ))}
       </div>
-      <p className="rotulo suave chico">¿{propia ? 'Tenés' : 'Tiene'} alguna condición crónica?</p>
+      <p className="rotulo suave chico">{propia ? t('¿Tenés alguna condición crónica?') : t('¿Tiene alguna condición crónica?')}</p>
       <div className="chips envolver">
         {[...CONDICIONES_COMUNES, ...otras].map((c) => (
-          <button key={c} className={`chip chico${condiciones.includes(c) ? ' activa' : ''}`} onClick={() => alternar(c)}>{c}</button>
+          <button key={c} className={`chip chico${condiciones.includes(c) ? ' activa' : ''}`} onClick={() => alternar(c)}>{t(c)}</button>
         ))}
       </div>
       <span className="fila otra-condicion">
-        <input value={otra} onChange={(e) => setOtra(e.target.value)} placeholder="Otra (escribila)" onKeyDown={(e) => e.key === 'Enter' && agregarOtra()} />
-        <button className="btn" disabled={!otra.trim()} onClick={agregarOtra}>Agregar</button>
+        <input value={otra} onChange={(e) => setOtra(e.target.value)} placeholder={t('Otra (escribila)')} onKeyDown={(e) => e.key === 'Enter' && agregarOtra()} />
+        <button className="btn" disabled={!otra.trim()} onClick={agregarOtra}>{t('Agregar')}</button>
       </span>
       {error ? <p className="neg">{error}</p> : null}
-      <button className="btn primario ancho" disabled={enviando} onClick={() => void guardar()}>{enviando ? 'Guardando…' : 'Guardar'}</button>
+      <button className="btn primario ancho" disabled={enviando} onClick={() => void guardar()}>{enviando ? t('Guardando…') : t('Guardar')}</button>
     </div>
   );
 }

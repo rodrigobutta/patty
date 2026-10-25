@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { useEstado } from '../estado';
 import { plataforma } from '../lib/nativo';
+import { t } from '../lib/idioma';
 import { LEER, pedirPermisoSalud, permisosSalud, ponerSalud, saludActivada, sincronizarSalud } from '../lib/salud';
 
 const NOMBRES: Record<string, string> = {
@@ -19,7 +20,7 @@ export function DatosSalud({ persona }: { persona: Persona }) {
   const [permitidos, setPermitidos] = useState<string[] | null>(null);
   const [error, setError] = useState('');
   const [mandando, setMandando] = useState(false);
-  const almacen = plataforma() === 'ios' ? 'Salud' : 'Health Connect';
+  const almacen = plataforma() === 'ios' ? t('Salud') : 'Health Connect';
 
   useEffect(() => {
     void permisosSalud().then(setPermitidos);
@@ -30,8 +31,8 @@ export function DatosSalud({ persona }: { persona: Persona }) {
     setMandando(true);
     try {
       const n = await sincronizarSalud(persona.id);
-      if (n) avisar(`Listo: ${n} datos de los últimos 7 días`);
-      else setError(`${almacen} no tiene datos de los últimos 7 días: la app de tu reloj todavía no le está mandando nada. Abrí la app del reloj y buscá la opción de compartir con ${almacen}.`);
+      if (n) avisar(t('Listo: {n} datos de los últimos 7 días', { n }));
+      else setError(t('{almacen} no tiene datos de los últimos 7 días: la app de tu reloj todavía no le está mandando nada. Abrí la app del reloj y buscá la opción de compartir con {almacen}.', { almacen }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -46,10 +47,10 @@ export function DatosSalud({ persona }: { persona: Persona }) {
     if (!si) return;
     try {
       const r = await pedirPermisoSalud();
-      if (!r.disponible) return setError(`${almacen} no está disponible en este teléfono${r.motivo ? ` (${r.motivo})` : ''}.`);
+      if (!r.disponible) return setError(t('{almacen} no está disponible en este teléfono', { almacen }) + (r.motivo ? ` (${r.motivo})` : '') + '.');
       setPermitidos(r.permitidos);
       if (r.permitidos.length) void mandar();
-      else setError(`No diste permiso para leer nada de ${almacen}.`);
+      else setError(t('No diste permiso para leer nada de {almacen}.', { almacen }));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -57,34 +58,34 @@ export function DatosSalud({ persona }: { persona: Persona }) {
 
   return (
     <div className="tarjeta">
-      <h3>⌚ Reloj y salud</h3>
+      <h3>{t('⌚ Reloj y salud')}</h3>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => void prender(e.target.checked)} />
-        <span>Traer de {almacen} el sueño, los pasos, el pulso, las calorías y más, un resumen por día.</span>
+        <span>{t('Traer de {almacen} el sueño, los pasos, el pulso, las calorías y más, un resumen por día.', { almacen })}</span>
       </label>
       <p className="suave chico">
-        Patty lee lo que la app de tu reloj deja en {almacen}
+        {t('Patty lee lo que la app de tu reloj deja en {almacen}', { almacen })}
         {plataforma() === 'ios'
-          ? ' (Apple Watch y la mayoría de los relojes lo hacen).'
-          : ': Samsung Health, Fitbit, Google Fit, Mi Fitness, Zepp, OHealth y otras lo hacen; fijate en la app del reloj que esté prendido "Health Connect".'}{' '}
-        Se manda al abrir Patty, los últimos 7 días.
+          ? t(' (Apple Watch y la mayoría de los relojes lo hacen).')
+          : t(': Samsung Health, Fitbit, Google Fit, Mi Fitness, Zepp, OHealth y otras lo hacen; fijate en la app del reloj que esté prendido "Health Connect".')}{' '}
+        {t('Se manda al abrir Patty, los últimos 7 días.')}
       </p>
       {permitidos ? (
         <p className="chico">
           {permitidos.length
-            ? `Puede leer: ${permitidos.map((p) => NOMBRES[p] ?? p).join(', ')}.`
+            ? t('Puede leer: {lista}.', { lista: permitidos.map((p) => (NOMBRES[p] ? t(NOMBRES[p]) : p)).join(', ') })
             : activo
-              ? `Sin permisos todavía para ${LEER.length} tipos de datos.`
+              ? t('Sin permisos todavía para {n} tipos de datos.', { n: LEER.length })
               : ''}
         </p>
       ) : null}
       {activo ? (
         <div className="columna">
-          <button className="btn" disabled={mandando} onClick={() => void mandar()}>{mandando ? 'Mandando…' : 'Mandar ahora'}</button>
-          <button className="btn" onClick={() => void prender(true)}>Permisos</button>
+          <button className="btn" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Mandando…') : t('Mandar ahora')}</button>
+          <button className="btn" onClick={() => void prender(true)}>{t('Permisos')}</button>
           {plataforma() === 'android' ? (
             // En Android 14+ Health Connect no tiene ícono: vive dentro de Ajustes. Desde acá se abre directo.
-            <button className="btn" onClick={() => void Health.openHealthConnectSettings().catch(() => {})}>Abrir Health Connect</button>
+            <button className="btn" onClick={() => void Health.openHealthConnectSettings().catch(() => {})}>{t('Abrir Health Connect')}</button>
           ) : null}
         </div>
       ) : null}

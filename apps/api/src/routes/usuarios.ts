@@ -37,7 +37,7 @@ export const rutasUsuarios = new Hono<Env>()
   .post('/yo/google', async (c) => {
     const g = await verificarGoogle(texto((await cuerpo(c)).credential));
     const otro = await una<{ id: number }>(c.var.db, sql`SELECT id FROM usuarios WHERE lower(email) = ${g.email} AND id <> ${c.var.usuario.id}`);
-    if (otro) throw new ErrorApi(`La cuenta ${g.email} ya es de otro usuario.`, 409);
+    if (otro) throw new ErrorApi('La cuenta {email} ya es de otro usuario.', 409, { email: g.email });
     await c.var.db.execute(sql`UPDATE usuarios SET email = ${g.email} WHERE id = ${c.var.usuario.id}`);
     return c.json({ ok: true, email: g.email });
   })

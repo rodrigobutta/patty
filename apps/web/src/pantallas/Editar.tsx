@@ -1,8 +1,9 @@
 // Cambiar algo ya anotado: la hora, la cantidad o los minutos, la intensidad (o cómo te sentías) y la nota. Lo que
 // fue (el concepto) no se cambia acá: para eso se borra y se anota de nuevo.
 import { useState } from 'react';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS, ESTADOS_PUNTUALES, estadoDe, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS, ESTADOS_PUNTUALES, estadoDe, unidadPara, type Persona, type Registro } from 'shared';
 import { api } from '../api';
+import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { horaEn, instanteDelDia } from '../lib/fechas';
 
@@ -34,7 +35,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
   const guardar = async () => {
     setError('');
     const n = valor.trim() === '' ? null : Number(valor.replace(',', '.'));
-    if (n !== null && !Number.isFinite(n)) return setError('La cantidad tiene que ser un número.');
+    if (n !== null && !Number.isFinite(n)) return setError(t('La cantidad tiene que ser un número.'));
     setGuardando(true);
     const inicio = instanteDelDia(r.fecha, hora, persona.zona_horaria);
     const cambio = (x: Registro, propio: boolean) =>
@@ -52,7 +53,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
     try {
       await cambio(r, true);
       for (const p of partes) await cambio(p, false);
-      avisar('Cambiado');
+      avisar(t('Cambiado'));
       alGuardar();
     } catch (e) {
       setError((e as Error).message);
@@ -61,10 +62,10 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
   };
 
   return (
-    <div className="hoja" role="dialog" aria-label={`Cambiar ${r.concepto}`}>
+    <div className="hoja" role="dialog" aria-label={t('Cambiar {que}', { que: t(r.concepto) })}>
       <div className="hoja-cabeza">
-        <h3>{cat?.icono} {r.concepto}</h3>
-        <button className="btn-icono" onClick={alCerrar} aria-label="Cerrar">✕</button>
+        <h3>{cat?.icono} {t(r.concepto)}</h3>
+        <button className="btn-icono" onClick={alCerrar} aria-label={t('Cerrar')}>✕</button>
       </div>
       <div className="valor">
         {esSentir ? (
@@ -72,36 +73,40 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
             {ESTADOS.map((e) => (
               <button key={e.clave} className={`carita${intensidad !== null && estadoDe(intensidad).clave === e.clave ? ' activa' : ''}`} onClick={() => setIntensidad(e.intensidad)}>
                 <span className="emoji" aria-hidden>{e.emoji}</span>
-                {e.nombre}
+                {t(e.nombre)}
               </button>
             ))}
           </div>
         ) : esPuntual ? (
           <div className="segmentos ancho">
             {CUANTO.map((c) => (
-              <button key={c.nombre} className={intensidad !== null && Math.abs(intensidad - c.intensidad) <= 1 ? 'activa' : ''} onClick={() => setIntensidad(c.intensidad)}>{c.nombre}</button>
+              <button key={c.nombre} className={intensidad !== null && Math.abs(intensidad - c.intensidad) <= 1 ? 'activa' : ''} onClick={() => setIntensidad(c.intensidad)}>{t(c.nombre)}</button>
             ))}
           </div>
         ) : llevaIntensidad ? (
           <fieldset className="escala">
-            <legend>Intensidad</legend>
+            <legend>{t('Intensidad')}</legend>
             {Array.from({ length: 11 }, (_, i) => (
               <button key={i} className={intensidad === i ? 'activa' : ''} style={{ ['--i' as string]: i }} onClick={() => setIntensidad(i)}>{i}</button>
             ))}
-            <div className="escala-pie suave chico"><span>nada</span><span>insoportable</span></div>
+            <div className="escala-pie suave chico"><span>{t('nada')}</span><span>{t('insoportable')}</span></div>
           </fieldset>
         ) : null}
         {llevaValor ? (
           <label>
-            {r.unidad === 'min' || cat?.tipo_valor === 'duracion' ? 'Minutos' : `Cantidad${r.unidad ? ` (${r.unidad})` : ''}`}
+            {r.unidad === 'min' || cat?.tipo_valor === 'duracion'
+              ? t('Minutos')
+              : r.unidad
+                ? t('Cantidad ({u})', { u: idioma() === 'en' ? unidadPara(2, r.unidad, idioma()) : r.unidad })
+                : t('Cantidad')}
             <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
           </label>
         ) : null}
-        <label>{cat?.tipo_valor === 'hora' ? 'Hora' : 'Cuándo'}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
-        <label>Nota<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="detalle, lugar, con quién…" /></label>
+        <label>{cat?.tipo_valor === 'hora' ? t('Hora') : t('Cuándo')}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
+        <label>{t('Nota')}<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder={t('detalle, lugar, con quién…')} /></label>
         {error ? <p className="neg">{error}</p> : null}
-        <button className="btn primario ancho" disabled={guardando} onClick={() => void guardar()}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
-        <button className="borrar-chico" disabled={guardando} onClick={() => void alBorrar()}>🗑 Borrar</button>
+        <button className="btn primario ancho" disabled={guardando} onClick={() => void guardar()}>{guardando ? t('Guardando…') : t('Guardar cambios')}</button>
+        <button className="borrar-chico" disabled={guardando} onClick={() => void alBorrar()}>{t('🗑 Borrar')}</button>
       </div>
     </div>
   );

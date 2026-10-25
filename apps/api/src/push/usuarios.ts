@@ -1,14 +1,24 @@
 // Mandar un aviso push a todos los teléfonos de un usuario (y olvidar los que ya no existen).
 import { sql } from 'drizzle-orm';
-import { filas, type Db, type Tx } from '../db/client.js';
+import { esIdioma, type Idioma } from 'shared';
+import { filas, una, type Db, type Tx } from '../db/client.js';
 import { enviarAviso, type Aviso } from './firebase.js';
 
-/** Devuelve a cuántos teléfonos llegó. Sin Firebase o sin teléfonos, 0 (no es un error). */
-export async function avisarAUsuario(db: Db | Tx, usuarioId: number, a: Aviso): Promise<number> {
+/**
+ * Devuelve a cuántos teléfonos llegó. Sin Firebase o sin teléfonos, 0 (no es un error). Si el aviso es una función,
+ * se arma en el idioma de la app del usuario.
+ */
+export async function avisarAUsuario(db: Db | Tx, usuarioId: number, a: Aviso | ((idioma: Idioma) => Aviso)): Promise<number> {
   const lista = await filas<{ id: number; token: string }>(db, sql`SELECT id, token FROM dispositivos WHERE usuario_id = ${usuarioId}`);
+  if (!lista.length) return 0;
+  let aviso: Aviso;
+  if (typeof a === 'function') {
+    const u = await una<{ idioma: string }>(db, sql`SELECT idioma FROM usuarios WHERE id = ${usuarioId}`);
+    aviso = a(esIdioma(u?.idioma) ? u.idioma : 'es');
+  } else aviso = a;
   let ok = 0;
   for (const d of lista) {
-    const r = await enviarAviso(d.token, a);
+    const r = await enviarAviso(d.token, aviso);
     if (r === 'ok') ok++;
     if (r === 'invalido') await db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
   }

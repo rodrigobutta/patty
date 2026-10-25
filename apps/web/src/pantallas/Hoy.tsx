@@ -7,6 +7,7 @@ import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, conUnidad, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
 import { api } from '../api';
+import { idioma, locale, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { agruparAutomaticos, duracion, resumenDelGrupo } from '../lib/automatico';
 import { hoyEn, horaEn, nombreDia, sumarDias } from '../lib/fechas';
@@ -29,8 +30,8 @@ const ICONOS_FUENTE: Record<string, string> = { telefono: '📱', ubicacion: '�
 
 const PEDIDOS: Record<Cara, string> = {
   feliz: '',
-  espera: '¿Cómo va el día? Contame algo y me pongo contenta.',
-  triste: 'Hace días que no me contás nada… Anotá algo, aunque sea a qué hora te levantaste.',
+  espera: t('¿Cómo va el día? Contame algo y me pongo contenta.'),
+  triste: t('Hace días que no me contás nada… Anotá algo, aunque sea a qué hora te levantaste.'),
 };
 
 /** «Tele: Noticias» y «Tele en TN» van con su «Tele»: en el Día se ve uno solo (y se borran juntos). */
@@ -39,9 +40,9 @@ const partesDe = (r: Registro, todos: Registro[]) => (r.concepto === TELE ? todo
 
 /** En qué parte del día pasó algo (el día de Patty empieza a las 5). */
 const FRANJAS = [
-  { desde: 5, nombre: 'Mañana', emoji: '🌅' },
-  { desde: 12, nombre: 'Tarde', emoji: '☀️' },
-  { desde: 19, nombre: 'Noche', emoji: '🌙' },
+  { desde: 5, nombre: t('Mañana'), emoji: '🌅' },
+  { desde: 12, nombre: t('Tarde'), emoji: '☀️' },
+  { desde: 19, nombre: t('Noche'), emoji: '🌙' },
 ];
 function franja(inicio: string, zona: string) {
   const h = Number(horaEn(inicio, zona).slice(0, 2));
@@ -50,21 +51,21 @@ function franja(inicio: string, zona: string) {
 
 /** "sábado 24 de octubre" */
 const fechaLarga = (fecha: string) =>
-  new Intl.DateTimeFormat('es-AR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(fecha + 'T12:00:00Z'));
+  new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(fecha + 'T12:00:00Z'));
 
 function detalle(r: Registro, tipo: string | undefined): string {
   if (r.intensidad !== null && (r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI)) {
     const e = estadoDe(r.intensidad);
-    return `${e.emoji} ${e.nombre}`;
+    return `${e.emoji} ${t(e.nombre)}`;
   }
   // "Con sueño" y compañía se anotan como poco, bastante o mucho: se muestran igual.
   if (r.intensidad !== null && ESTADOS_PUNTUALES.some((e) => e.nombre === r.concepto)) {
-    return CUANTO.reduce((a, b) => (Math.abs(b.intensidad - r.intensidad!) < Math.abs(a.intensidad - r.intensidad!) ? b : a)).nombre.toLowerCase();
+    return t(CUANTO.reduce((a, b) => (Math.abs(b.intensidad - r.intensidad!) < Math.abs(a.intensidad - r.intensidad!) ? b : a)).nombre).toLowerCase();
   }
   if (r.intensidad !== null) return `${r.intensidad}/10`;
   if (r.valor === null || tipo === 'hora') return '';
   if (tipo === 'duracion' || r.unidad === 'min') return duracion(r.valor);
-  return conUnidad(r.valor, r.unidad);
+  return conUnidad(r.valor, r.unidad, 2, idioma());
 }
 
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
@@ -109,11 +110,11 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     toque.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
   const terminarToque = (e: React.TouchEvent) => {
-    const t = toque.current;
+    const ini = toque.current;
     toque.current = null;
-    if (!t || cargando || sintiendo || editando) return;
-    const dx = e.changedTouches[0].clientX - t.x;
-    const dy = e.changedTouches[0].clientY - t.y;
+    if (!ini || cargando || sintiendo || editando) return;
+    const dx = e.changedTouches[0].clientX - ini.x;
+    const dy = e.changedTouches[0].clientY - ini.y;
     if (Math.abs(dx) > 70 && Math.abs(dy) < 50) irA(dx > 0 ? -1 : 1);
   };
 
@@ -149,9 +150,9 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
 
   /** Borra (y sus partes, si es la tele). Devuelve false si al final no se quiso borrar. */
   const borrar = async (r: Registro): Promise<boolean> => {
-    if (!confirm(`¿Borrar «${r.concepto}» de las ${horaEn(r.inicio, persona.zona_horaria)}?`)) return false;
+    if (!confirm(t('¿Borrar «{que}» de las {hora}?', { que: t(r.concepto), hora: horaEn(r.inicio, persona.zona_horaria) }))) return false;
     for (const x of [r, ...partesDe(r, registros ?? [])]) await api('DELETE', `/api/registros/${x.id}`);
-    avisar('Borrado');
+    avisar(t('Borrado'));
     avisarAnotado();
     void traer();
     return true;
@@ -164,10 +165,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const [deshacer, setDeshacer] = useState<{ ids: number[]; texto: string } | null>(null);
   const quitar = async (r: Registro) => {
     const todos = [r, ...partesDe(r, registros ?? [])];
-    setRegistros((l) => l?.filter((x) => !todos.some((t) => t.id === x.id)) ?? null);
+    setRegistros((l) => l?.filter((x) => !todos.some((o) => o.id === x.id)) ?? null);
     try {
       for (const x of todos) await api('DELETE', `/api/registros/${x.id}`);
-      setDeshacer({ ids: todos.map((x) => x.id), texto: `Borrado: ${r.concepto}` });
+      setDeshacer({ ids: todos.map((x) => x.id), texto: t('Borrado: {que}', { que: t(r.concepto) }) });
       avisarAnotado();
     } catch (e) {
       setError((e as Error).message);
@@ -176,8 +177,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   };
   useEffect(() => {
     if (!deshacer) return;
-    const t = setTimeout(() => setDeshacer(null), 6000);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => setDeshacer(null), 6000);
+    return () => clearTimeout(id);
   }, [deshacer]);
   const restaurar = async () => {
     if (!deshacer) return;
@@ -222,7 +223,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     if (esMalo(e)) return setSintiendo({ momento, estado: e });
     try {
       await guardarSentir({ persona, categorias, momento, estado: e, fecha });
-      festejar(`¡Qué bueno! Anotado: ${e.nombre.toLowerCase()}`);
+      festejar(t('¡Qué bueno! Anotado: {que}', { que: t(e.nombre).toLowerCase() }));
       void traer();
       avisarAnotado();
     } catch (err) {
@@ -247,30 +248,30 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   return (
     <section className="dia" onTouchStart={empezarToque} onTouchEnd={terminarToque}>
       <div className="navdia">
-        <button className="btn-icono" onClick={() => irA(-1)} aria-label="Día anterior">‹</button>
+        <button className="btn-icono" onClick={() => irA(-1)} aria-label={t('Día anterior')}>‹</button>
         <div className="titulo-dia" key={fecha}>
           <h2>{nombreDia(fecha, persona.zona_horaria)}</h2>
           <p className="suave chico">{fechaLarga(fecha)}</p>
         </div>
-        <button className="btn-icono" onClick={() => irA(1)} disabled={fecha >= hoy} aria-label="Día siguiente">›</button>
+        <button className="btn-icono" onClick={() => irA(1)} disabled={fecha >= hoy} aria-label={t('Día siguiente')}>›</button>
       </div>
       <div className={`contenido-dia${direccion ? ` entra-${direccion}` : ''}`} key={fecha}>
       {error ? <p className="neg">{error}</p> : null}
       {persona.supervisada ? (
         <div className="supervisando">
-          <span>👀 Estás viendo el día de <strong>{persona.nombre}</strong></span>
-          <button className="btn chico" onClick={() => setAvisandole(true)}>📣 Avisarle</button>
+          <span>{t('👀 Estás viendo el día de')} <strong>{persona.nombre}</strong></span>
+          <button className="btn chico" onClick={() => setAvisandole(true)}>{t('📣 Avisarle')}</button>
         </div>
       ) : null}
       {/* "¿Cómo te sentís?" lo contesta cada uno: no se muestra en el día de alguien que se supervisa. */}
       {fecha === hoy && !persona.supervisada ? (
         contestadoHacePoco ? (
           <button className="algo-puntual" onClick={() => setSintiendo({ momento: 'ahora', estado: null })}>
-            😴 ¿Algo puntual? Con sueño, con hambre, con energía…
+            {t('😴 ¿Algo puntual? Con sueño, con hambre, con energía…')}
           </button>
         ) : (
           <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
-            <h3>{momento === 'dia' ? '¿Cómo te sentiste hoy?' : '¿Cómo te sentís ahora?'}</h3>
+            <h3>{momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís ahora?')}</h3>
             <Caritas elegir={(e) => void sentir(e)} />
             {momento === 'ahora' ? <Puntuales persona={persona} alGuardar={() => { void traer(); avisarAnotado(); }} /> : null}
           </div>
@@ -278,18 +279,18 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       ) : null}
       <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
       {registros === null ? (
-        <ul className="lista esqueleto" aria-label="Cargando">
+        <ul className="lista esqueleto" aria-label={t('Cargando')}>
           {[0, 1, 2].map((i) => <li key={i}><span className="brillo hora" /><span className="brillo icono" /><span className="brillo que" /></li>)}
         </ul>
       ) : registros.length === 0 ? (
         <div className="vacio">
           {fecha === hoy && cara ? <Mascota cara={cara} tamano={120} className="grande" /> : null}
-          <p>Nada anotado {fecha === hoy ? 'todavía hoy' : 'este día'}.</p>
+          <p>{fecha === hoy ? t('Nada anotado todavía hoy.') : t('Nada anotado este día.')}</p>
           {fecha === hoy && cara && PEDIDOS[cara] ? <p>{PEDIDOS[cara]}</p> : null}
           <p className="suave">
             {fecha === hoy
-              ? 'Tocá ＋ para anotar a qué hora te levantaste, qué comiste, cómo te sentiste…'
-              : '¿Te acordás de algo? Contáselo a Patty o tocá ＋: queda anotado en este día.'}
+              ? t('Tocá ＋ para anotar a qué hora te levantaste, qué comiste, cómo te sentiste…')
+              : t('¿Te acordás de algo? Contáselo a Patty o tocá ＋: queda anotado en este día.')}
           </p>
         </div>
       ) : (
@@ -315,7 +316,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
                 <span className="icono">{cat?.icono}</span>
                 <span className="que">
-                  {r.concepto}
+                  {t(r.concepto)}
                   {detalle(r, cat?.tipo_valor) ? <span className="valor-chip">{detalle(r, cat?.tipo_valor)}</span> : null}
                   {r.nota ? <span className="suave chico"> — {r.nota}</span> : null}
                 </span>
@@ -327,14 +328,14 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       )}
       {automaticos.length ? (
         <div className="tarjeta automatico">
-          <h3 className="chico suave">Llegó solo</h3>
+          <h3 className="chico suave">{t('Llegó solo')}</h3>
           <ul className="lista">
             {agruparAutomaticos(automaticos).map((g) => (
               <li key={g.fuente} className="grupo-auto">
                 <button className="renglon-auto" onClick={() => setAbierto(abierto === g.fuente ? null : g.fuente)} aria-expanded={abierto === g.fuente}>
                   <span className="icono">{ICONOS_FUENTE[g.tipo] ?? '📊'}</span>
                   <span className="que">
-                    {g.fuente}
+                    {t(g.fuente)}
                     <span className="suave chico resumen-auto">{resumenDelGrupo(g)}</span>
                   </span>
                   <span className="suave" aria-hidden>{abierto === g.fuente ? '▴' : '▾'}</span>
@@ -344,7 +345,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                     {g.lineas.map((l) => (
                       <li key={l.concepto}>
                         <span className="icono">{categorias.find((c) => c.id === l.categoria_id)?.icono}</span>
-                        <span className="que">{l.concepto}</span>
+                        <span className="que">{t(l.concepto)}</span>
                         <span className="valor-chip">{l.valor}</span>
                       </li>
                     ))}
@@ -395,16 +396,16 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         <>
           <button className="contale" onClick={() => setCargando('contar')}>
             {hayVoz(sesion.voz) ? <IconoMicrofono /> : <IconoLapiz />}
-            Contale a Patty
+            {t('Contale a Patty')}
           </button>
-          <button className="camara-flotante" onClick={() => setCargando('foto')} aria-label="Sacale una foto a lo que comiste"><IconoCamara /></button>
+          <button className="camara-flotante" onClick={() => setCargando('foto')} aria-label={t('Sacale una foto a lo que comiste')}><IconoCamara /></button>
         </>
       ) : null}
-      <button className="fab" onClick={() => setCargando('normal')} aria-label="Anotar">＋</button>
+      <button className="fab" onClick={() => setCargando('normal')} aria-label={t('Anotar')}>＋</button>
       {deshacer ? (
         <div className="barra-deshacer" role="status">
           <span>{deshacer.texto}</span>
-          <button onClick={() => void restaurar()}>Deshacer</button>
+          <button onClick={() => void restaurar()}>{t('Deshacer')}</button>
         </div>
       ) : null}
       {cargando ? (

@@ -4,6 +4,7 @@ import { COMO_ME_SENTI, COMO_ME_SIENTO, type Categoria, type EstadoAnimo, type P
 import { api } from '../api';
 import { anotarClima } from './clima';
 import { hoyEn, instanteDelDia } from './fechas';
+import { t } from './idioma';
 
 export type Momento = 'ahora' | 'dia';
 
@@ -18,7 +19,7 @@ export async function guardarSentir(o: {
 }): Promise<void> {
   const animo = o.categorias.find((c) => c.clave === 'animo');
   const sintoma = o.categorias.find((c) => c.clave === 'sintoma');
-  if (!animo || !sintoma) throw new Error('Faltan las categorías de ánimo y síntomas.');
+  if (!animo || !sintoma) throw new Error(t('Faltan las categorías de ánimo y síntomas.'));
   // Hoy, a esta hora; si se contesta tarde la encuesta de otro día, a la noche de ese día.
   const inicio = o.fecha === hoyEn(o.persona.zona_horaria) ? new Date().toISOString() : instanteDelDia(o.fecha, '22:00', o.persona.zona_horaria);
   await api('POST', '/api/registros/varios', {

@@ -24,7 +24,7 @@ export async function persona(tx: Tx, u: Usuario, personaId: number, escribir: b
   if (!p) throw new ErrorApi('No existe esa persona o no tenés acceso.', 404);
   if (escribir) {
     exigirRol(u, 'editor');
-    if (p.rol === 'lector') throw new ErrorApi(`Solo podés ver lo de ${p.nombre}.`, 403);
+    if (p.rol === 'lector') throw new ErrorApi('Solo podés ver lo de {nombre}.', 403, { nombre: p.nombre });
   }
   return p;
 }
