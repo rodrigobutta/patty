@@ -1,6 +1,6 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
 import { useEffect, useRef, useState } from 'react';
-import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor } from 'shared';
+import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
@@ -12,6 +12,7 @@ import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
+import { DondeComida, etiquetaDonde } from '../ui/DondeComida';
 import { IconoCamara, IconoMicrofono } from '../ui/Iconos';
 import { OndaVoz } from '../ui/OndaVoz';
 
@@ -51,6 +52,8 @@ interface Propuesta {
   unidad: string | null;
   intensidad: number | null;
   nota: string | null;
+  donde?: Donde | null;
+  lugar?: string | null;
 }
 
 export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto = false }: {
@@ -158,6 +161,10 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
   const [intensidad, setIntensidad] = useState<number | null>(null);
   const [valor, setValor] = useState('');
   const [nota, setNota] = useState('');
+  /** Comidas y bebidas: dónde fue. */
+  const esComida = ['comida', 'bebida'].includes(inicial.categoria.clave);
+  const [donde, setDonde] = useState<Donde | null>(null);
+  const [lugar, setLugar] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [elegido, setElegido] = useState(inicial);
@@ -186,6 +193,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
         valor: valor === '' ? null : Number(valor.replace(',', '.')),
         unidad: elegido.unidad,
         nota: nota || null,
+        ...(esComida ? { donde, lugar: lugar.trim() || null } : {}),
       });
       // Lo que se contestó queda para las próximas veces (si es nuevo, recién ahora tiene id).
       if (decision) {
@@ -226,6 +234,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
       {preguntar ? null : (
         <>
           <label>{tv === 'hora' ? t('Hora') : t('Cuándo')}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
+          {esComida ? <DondeComida personaId={persona.id} donde={donde} lugar={lugar} alCambiar={(d, l) => { setDonde(d); setLugar(l); }} /> : null}
           <label>{t('Nota (opcional)')}<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder={t('detalle, lugar, con quién…')} /></label>
         </>
       )}
@@ -451,6 +460,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
                   {t(p.concepto_nombre)}
                   {p.nuevo ? <span className="etiqueta">{t('nuevo')}</span> : null}
                   {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${conUnidad(p.valor, p.unidad, 2, idioma())}` : ''}
+                  {etiquetaDonde(p.donde, p.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(p.donde, p.lugar)}</span> : null}
                   {p.nota ? <span className="suave chico"> — {p.nota}</span> : null}
                 </span>
               </li>

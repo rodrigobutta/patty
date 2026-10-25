@@ -441,3 +441,29 @@ describe('idioma', () => {
     expect(r.body.error).toBe('inicio: invalid date.');
   });
 });
+
+describe('dónde se comió', () => {
+  it('casera, afuera o delivery con el lugar; entra a la serie diaria y se sugiere después', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const r = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Pizza', categoria_id: categorias.comida, inicio: '2026-10-21T23:00:00.000Z', donde: 'afuera', lugar: 'Kentucky' })).body;
+    expect(r).toMatchObject({ donde: 'afuera', lugar: 'Kentucky' });
+    // solo con el lugar, es afuera
+    const s = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Sushi', categoria_id: categorias.comida, inicio: '2026-10-22T23:00:00.000Z', lugar: 'Sushi Club' })).body;
+    expect(s).toMatchObject({ donde: 'afuera', lugar: 'Sushi Club' });
+    // a una bebida o comida casera no se le guarda lugar
+    const c = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Guiso', categoria_id: categorias.comida, inicio: '2026-10-22T15:00:00.000Z', donde: 'casa', lugar: 'X' })).body;
+    expect(c).toMatchObject({ donde: 'casa', lugar: null });
+    // a un dolor no
+    const d = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Dolor de cabeza', categoria_id: categorias.sintoma, intensidad: 3, donde: 'afuera' })).body;
+    expect(d.donde).toBeNull();
+    const db = (await import('../src/db/client.js')).obtenerDb();
+    const { sql } = await import('drizzle-orm');
+    const serie = await db.execute(sql`SELECT k.nombre FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id WHERE s.persona_id = ${personaId} AND s.fecha = '2026-10-21'`);
+    expect([...serie].map((x: any) => x.nombre).sort()).toEqual(['Comida afuera', 'Comida en Kentucky', 'Pizza']);
+    // cambiarlo: pasa a delivery sin lugar
+    await ana.put(`/api/registros/${r.id}`, { inicio: r.inicio, donde: 'delivery', lugar: null });
+    const lista = (await ana.get(`/api/registros?persona=${personaId}&desde=2026-10-21`)).body;
+    expect(lista[0]).toMatchObject({ donde: 'delivery', lugar: null });
+    expect((await ana.get(`/api/registros/lugares-comida?persona=${personaId}`)).body.map((x: any) => x.lugar)).toEqual(['Sushi Club']);
+  });
+});

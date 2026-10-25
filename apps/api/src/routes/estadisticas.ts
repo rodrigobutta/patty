@@ -67,6 +67,17 @@ export const rutasEstadisticas = new Hono<Env>()
     const trat = await filas<Fila>(db, sql`SELECT ${COLUMNAS} ${DESDE} WHERE t.persona_id = ${p.id} AND t.borrado IS NULL`);
     const tomas = await tomasDe(db, trat, desdeI, hastaI);
 
+    const dondes = await filas<{ donde: string; veces: number }>(
+      db,
+      sql`SELECT r.datos->>'donde' AS donde, count(*)::int AS veces FROM registros r WHERE ${enRango} AND r.datos->>'donde' IS NOT NULL GROUP BY 1`,
+    );
+    const lugaresComida = await filas<{ lugar: string; veces: number }>(
+      db,
+      sql`SELECT r.datos->>'lugar' AS lugar, count(*)::int AS veces FROM registros r WHERE ${enRango} AND r.datos->>'lugar' IS NOT NULL
+          GROUP BY 1 ORDER BY 2 DESC LIMIT 8`,
+    );
+    const cuantas = (k: string) => dondes.find((x) => x.donde === k)?.veces ?? 0;
+
     const r: Estadisticas = {
       desde,
       hasta,
@@ -95,6 +106,7 @@ export const rutasEstadisticas = new Hono<Env>()
         llamadas: de('Llamadas').reduce((a, l) => a + (l.suma ?? 0), 0),
       },
       remedios: { programadas: tomas.length, tomadas: tomas.filter((t) => t.estado === 'tomada').length },
+      donde: { casa: cuantas('casa'), afuera: cuantas('afuera'), delivery: cuantas('delivery'), lugares: lugaresComida },
     };
     return c.json(r);
   })
@@ -189,6 +201,24 @@ export const rutasEstadisticas = new Hono<Env>()
       }
       const dias = [...porDia].map(([fecha, d]) => ({ fecha, valor: d.valor, detalle: d.nombres.join(', ') }));
       r = { tipo: 'numero', unidad: null, mejor: 'menos', dias, resumen: dias.length ? t('{n} días con comida chatarra (pizza, gaseosa, golosinas…).', { n: dias.length }) : t('Nada de comida chatarra en el período.') };
+    } else if (capa === 'afuera') {
+      const l = await filas<{ fecha: string; valor: number; detalle: string | null; delivery: number }>(
+        db,
+        sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, count(*)::int AS valor, string_agg(DISTINCT r.datos->>'lugar', ', ') AS detalle,
+                   count(*) FILTER (WHERE r.datos->>'donde' = 'delivery')::int AS delivery
+            FROM registros r WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.${enRango} AND r.datos->>'donde' IN ('afuera', 'delivery')
+            GROUP BY r.fecha`,
+      );
+      const dias = l.map((d) => ({ fecha: d.fecha, valor: d.valor, emoji: d.delivery === d.valor ? '🛵' : '🍽️', detalle: d.detalle ?? traducir(idioma, d.delivery === d.valor ? 'Delivery' : 'Afuera') }));
+      r = {
+        tipo: 'emoji',
+        unidad: null,
+        mejor: 'neutro',
+        dias,
+        resumen: dias.length
+          ? traducir(idioma, '{n} días comiste afuera o pediste.', { n: dias.length })
+          : traducir(idioma, 'Ninguna comida de afuera anotada. Al anotar una comida podés decir dónde fue.'),
+      };
     } else if (capa === 'clima') {
       const lluvia = new Map((await serie(['Lluvia del día'])).map((d) => [d.fecha, d.valor]));
       const sol = new Map((await serie(['Horas de sol'])).map((d) => [d.fecha, d.valor]));

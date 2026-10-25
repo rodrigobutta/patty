@@ -293,6 +293,8 @@ export function traducirDato(nombre: string, idioma: Idioma = 'es'): string {
   if (m) return `${traducir(idioma, TELE)}: ${traducir(idioma, m[1])}`;
   m = /^Tele en (.+)$/.exec(nombre);
   if (m) return traducir(idioma, 'Tele en {canal}', { canal: m[1] });
+  m = /^Comida en (.+)$/.exec(nombre);
+  if (m) return traducir(idioma, 'Comida en {lugar}', { lugar: m[1] });
   m = /^Uso de (.+)$/.exec(nombre);
   if (m) return traducir(idioma, 'Uso de {app}', { app: m[1] });
   return nombre;
@@ -354,7 +356,21 @@ export interface Registro {
   unidad: string | null;
   nota: string | null;
   origen: string;
+  /** Solo comidas y bebidas: dónde fue y en qué lugar (si se dijo). */
+  donde?: Donde | null;
+  lugar?: string | null;
 }
+
+/** Dónde fue una comida o bebida: casera, afuera (restaurante, casa de alguien) o pedida. */
+export const DONDE_COMIDA = [
+  { clave: 'casa', nombre: 'Casera', concepto: 'Comida casera', icono: '🏠' },
+  { clave: 'afuera', nombre: 'Afuera', concepto: 'Comida afuera', icono: '🍽️' },
+  { clave: 'delivery', nombre: 'Delivery', concepto: 'Comida por delivery', icono: '🛵' },
+] as const;
+export type Donde = (typeof DONDE_COMIDA)[number]['clave'];
+export const esDonde = (x: unknown): x is Donde => DONDE_COMIDA.some((d) => d.clave === x);
+/** El concepto con el que entra a los patrones cada lugar donde se comió ("Comida en La Parolaccia"). */
+export const comidaEn = (lugar: string) => `Comida en ${lugar}`;
 
 export interface NuevoRegistro {
   persona_id: number;
@@ -368,6 +384,8 @@ export interface NuevoRegistro {
   intensidad?: number | null;
   unidad?: string | null;
   nota?: string | null;
+  donde?: Donde | null;
+  lugar?: string | null;
 }
 
 /** Un lugar con nombre de una persona (Casa, Supermercado, Farmacia). Cada uno es un concepto de «Lugares y salidas». */
@@ -696,6 +714,8 @@ export interface Estadisticas {
   clima: { dias_con_datos: number; dias_lluvia: number; mm: number; sol_promedio: number | null; temp_media: number | null; temp_max: number | null };
   movimiento: { pasos_promedio: number | null; km: number; pantalla_promedio: number | null; llamadas: number };
   remedios: { programadas: number; tomadas: number };
+  /** Comidas y bebidas según dónde fueron, y los lugares donde más se comió. */
+  donde: { casa: number; afuera: number; delivery: number; lugares: Array<{ lugar: string; veces: number }> };
 }
 
 /** Los días en que pasó algo puntual (para el calendario del buscador). */
@@ -795,6 +815,7 @@ export const CAPAS_CALENDARIO = [
   { clave: 'dolores', nombre: 'Dolores', icono: '🤕' },
   { clave: 'ejercicio', nombre: 'Ejercicio', icono: '🏃' },
   { clave: 'chatarra', nombre: 'Comida chatarra', icono: '🍔' },
+  { clave: 'afuera', nombre: 'Comer afuera', icono: '🍽️' },
   { clave: 'clima', nombre: 'Clima', icono: '🌤️' },
   { clave: 'temperatura', nombre: 'Temperatura', icono: '🌡️' },
   { clave: 'pasos', nombre: 'Pasos', icono: '👟' },

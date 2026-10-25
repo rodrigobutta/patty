@@ -1,7 +1,7 @@
 // "Números" (en Patrones): lo que se ve en los datos de los últimos 30 o 90 días, sin buscar relaciones: cuánto se
 // anotó, lo que más se repite, ánimo, dolores, sueño, clima, movimiento y remedios. Tocar algo lo abre en el buscador.
 import { useEffect, useState } from 'react';
-import { conUnidad, ESTADOS, estadoDe, type Estadisticas, type Persona } from 'shared';
+import { conUnidad, DONDE_COMIDA, ESTADOS, estadoDe, type Estadisticas, type Persona } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { duracion } from '../lib/automatico';
@@ -70,6 +70,37 @@ export function Numeros({ persona, alElegir }: { persona: Persona; alElegir(conc
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {e.donde && e.donde.casa + e.donde.afuera + e.donde.delivery ? (
+        <div className="tarjeta">
+          <h3>{t('Dónde comiste')}</h3>
+          <div className="caritas-barras">
+            {DONDE_COMIDA.map((d) => {
+              const n = e.donde[d.clave];
+              const max = Math.max(1, e.donde.casa, e.donde.afuera, e.donde.delivery);
+              return (
+                <div key={d.clave}>
+                  <span className="columna-barra"><span style={{ height: `${(n / max) * 100}%` }} /></span>
+                  <span className="emoji">{d.icono}</span>
+                  <strong>{n}</strong>
+                  <span className="suave chico">{t(d.nombre)}</span>
+                </div>
+              );
+            })}
+          </div>
+          {e.donde.lugares.length ? (
+            <ul className="ranking">
+              {e.donde.lugares.map((l, i) => (
+                <li key={l.lugar} style={{ ['--i' as string]: i }}>
+                  <span className="icono">🍽️</span>
+                  <span className="que">{l.lugar}</span>
+                  <span className="cifra"><span><strong>{l.veces}</strong> {l.veces === 1 ? t('vez') : t('veces')}</span></span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
 

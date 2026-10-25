@@ -92,6 +92,13 @@
       "when": 1792888436216,
       "tag": "0012_idioma",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792892161248,
+      "tag": "0013_serie_con_donde",
+      "breakpoints": true
     }
   ]
 }

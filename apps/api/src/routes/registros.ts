@@ -1,7 +1,7 @@
 // Lo que se anota de cada persona. Un registro es "este concepto, a esta hora, con este valor".
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import type { Concepto, DatoAutomatico, NuevoRegistro, Registro, Usuario } from 'shared';
+import { comidaEn, DONDE_COMIDA, esDonde, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { registros } from '../db/schema.js';
 import { interpretarTexto } from '../ia/interpretar.js';
@@ -13,7 +13,7 @@ import { obtenerOCrearConcepto } from './conceptos.js';
 import { vincularToma } from './tratamientos.js';
 
 const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char(r.fecha, 'YYYY-MM-DD') AS fecha,
-  r.valor, r.intensidad, r.unidad, r.nota, r.origen,
+  r.valor, r.intensidad, r.unidad, r.nota, r.origen, r.datos->>'donde' AS donde, r.datos->>'lugar' AS lugar,
   (SELECT c.nombre FROM conceptos c WHERE c.id = r.concepto_id) AS concepto,
   (SELECT c.categoria_id FROM conceptos c WHERE c.id = r.concepto_id) AS categoria_id`;
 
@@ -53,6 +53,29 @@ function valores(d: NuevoRegistro, c: Concepto, p: PersonaAcceso) {
   };
 }
 
+/**
+ * Dónde fue una comida o bebida (casera, afuera, delivery) y en qué lugar. Se guarda en `datos` con los conceptos
+ * "Comida afuera" y "Comida en {lugar}", que la vista serie_diaria suma como si fueran registros: así entran a los
+ * patrones ("cuando comés afuera…") sin agregar renglones al Día. Devuelve undefined si no corresponde tocarlo.
+ */
+async function datosComida(tx: Tx, u: Usuario, d: NuevoRegistro, c: Concepto): Promise<Record<string, unknown> | null | undefined> {
+  if (!('donde' in d) && !('lugar' in d)) return undefined;
+  const cat = await una<{ clave: string }>(tx, sql`SELECT clave FROM categorias WHERE id = ${c.categoria_id}`);
+  if (!cat || !['comida', 'bebida'].includes(cat.clave)) return undefined;
+  const lugar = texto(d.lugar).slice(0, 60) || null;
+  const donde = esDonde(d.donde) ? d.donde : lugar ? 'afuera' : null;
+  if (!donde) return null;
+  const comida = await una<{ id: number }>(tx, sql`SELECT id FROM categorias WHERE clave = 'comida'`);
+  const def = DONDE_COMIDA.find((x) => x.clave === donde)!;
+  const dondeConcepto = (await obtenerOCrearConcepto(tx, { nombre: def.concepto, categoriaId: comida!.id, tipoValor: 'evento', unidad: null, usuarioId: u.id })).concepto;
+  const datos: Record<string, unknown> = { donde, donde_concepto_id: dondeConcepto.id };
+  if (lugar && donde !== 'casa') {
+    const l = (await obtenerOCrearConcepto(tx, { nombre: comidaEn(lugar), categoriaId: comida!.id, tipoValor: 'evento', unidad: null, usuarioId: u.id })).concepto;
+    Object.assign(datos, { lugar, lugar_concepto_id: l.id });
+  }
+  return datos;
+}
+
 export async function guardarRegistro(
   tx: Tx,
   u: Usuario,
@@ -62,9 +85,10 @@ export async function guardarRegistro(
 ): Promise<Registro> {
   const p = await persona(tx, u, Number(d.persona_id), true);
   const c = await conceptoDe(tx, d, u);
+  const comida = await datosComida(tx, u, d, c);
   const [r] = await tx
     .insert(registros)
-    .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id })
+    .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(comida ? { datos: comida } : {}) })
     .returning({ id: registros.id });
   await tx.execute(sql`UPDATE conceptos SET usos = usos + 1, ultimo_uso = now() WHERE id = ${c.id}`);
   const hecho = (await una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${r.id}`))!;
@@ -93,6 +117,18 @@ export const rutasRegistros = new Hono<Env>()
         sql`SELECT ${COLUMNAS} FROM registros r
             WHERE r.persona_id = ${p.id} AND r.fecha BETWEEN ${desde} AND ${hasta} AND r.borrado IS NULL
             ORDER BY r.inicio, r.id`,
+      ),
+    );
+  })
+  .get('/lugares-comida', async (c) => {
+    // ?persona=1: los lugares donde se comió antes (para sugerirlos), los más usados y recientes primero.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    return c.json(
+      await filas<{ lugar: string; donde: string; veces: number }>(
+        c.var.db,
+        sql`SELECT datos->>'lugar' AS lugar, max(datos->>'donde') AS donde, count(*)::int AS veces FROM registros
+            WHERE persona_id = ${p.id} AND borrado IS NULL AND datos->>'lugar' IS NOT NULL
+            GROUP BY datos->>'lugar' ORDER BY count(*) DESC, max(inicio) DESC LIMIT 30`,
       ),
     );
   })
@@ -133,7 +169,12 @@ export const rutasRegistros = new Hono<Env>()
     const r = await c.var.db.transaction(async (tx) => {
       const actual = await propio(tx, c.var.usuario, id);
       const concepto = await conceptoDe(tx, { ...d, concepto_id: d.concepto_id ?? (d.concepto_nombre ? undefined : actual.concepto_id) }, c.var.usuario);
+      const comida = await datosComida(tx, c.var.usuario, d, concepto);
       await tx.update(registros).set({ concepto_id: concepto.id, ...valores(d, concepto, actual.persona) }).where(sql`id = ${id}`);
+      // Dónde se comió: se reemplaza (o se saca) solo si vino en el pedido.
+      if (comida !== undefined) {
+        await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'donde' - 'donde_concepto_id' - 'lugar' - 'lugar_concepto_id') || ${JSON.stringify(comida ?? {})}::jsonb WHERE id = ${id}`);
+      }
       return una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${id}`);
     });
     return c.json(r);

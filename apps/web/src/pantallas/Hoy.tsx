@@ -21,6 +21,7 @@ import { Puntuales } from './Puntuales';
 import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
+import { etiquetaDonde } from '../ui/DondeComida';
 import { Caritas, esMalo, Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
@@ -318,6 +319,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                 <span className="que">
                   {t(r.concepto)}
                   {detalle(r, cat?.tipo_valor) ? <span className="valor-chip">{detalle(r, cat?.tipo_valor)}</span> : null}
+                  {etiquetaDonde(r.donde, r.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(r.donde, r.lugar)}</span> : null}
                   {r.nota ? <span className="suave chico"> — {r.nota}</span> : null}
                 </span>
               </FilaDeslizable>

@@ -28,8 +28,10 @@ const ESQUEMA = {
           unidad: nulo('string', 'Unidad del valor'),
           intensidad: nulo('integer', 'De 0 a 10, para dolores, molestias y ánimo'),
           nota: nulo('string', 'Detalle que no entra en el concepto (lugar del dolor, con quién, marca)'),
+          donde: { anyOf: [{ type: 'string', enum: ['casa', 'afuera', 'delivery'] }, { type: 'null' }], description: 'Solo comidas y bebidas: casera, afuera o pedida' },
+          lugar: nulo('string', 'Solo comidas y bebidas de afuera o delivery: el restaurante, bar, casa de alguien o de dónde se pidió'),
         },
-        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota'],
+        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar'],
         additionalProperties: false,
       },
     },
@@ -71,6 +73,8 @@ interface Respuesta {
     unidad: string | null;
     intensidad: number | null;
     nota: string | null;
+    donde?: 'casa' | 'afuera' | 'delivery' | null;
+    lugar?: string | null;
   }>;
   tratamientos: Array<{
     remedio: string;
@@ -135,6 +139,9 @@ export async function interpretarTexto(
     'primera toma del tratamiento es esa. Lo que tiene (anginas, gripe) puede ir como registro de molestia. No des ' +
     'consejos médicos ni cambies dosis: anotá lo que dice. Si falta algo importante para recordarle (la dosis, cada ' +
     'cuánto), preguntalo en dudas. ' +
+    'En comidas y bebidas, si se sabe dónde fue: donde = casa si fue casera o en casa; afuera si fue en un ' +
+    'restaurante, bar, la oficina o la casa de otra persona; delivery si se pidió. En lugar, el nombre si se dijo ' +
+    '("Mostaza", "lo de mi vieja", "Sushi Club", "PedidosYa"), no en la nota. Si no se dice nada, null en los dos. ' +
     'Si viene una foto, mirá qué se ve y anotalo: en un plato de comida, cada comida o ingrediente principal que se ' +
     'reconozca (con una cantidad estimada si se puede, por ejemplo 2 empanadas, 1 vaso), una bebida, la caja de un ' +
     'remedio (su nombre). La hora es ahora, salvo que el texto diga otra cosa. Si no se distingue bien qué es, ' +
@@ -207,6 +214,8 @@ export async function interpretarTexto(
           unidad: x.unidad,
           intensidad: x.intensidad === null ? null : Math.max(0, Math.min(10, Math.round(x.intensidad))),
           nota: x.nota,
+          donde: x.donde ?? null,
+          lugar: x.lugar ?? null,
         };
       }),
   };
