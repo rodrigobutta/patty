@@ -480,8 +480,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
         {error ? <p className="neg">{error}</p> : null}
         <div className="fila">
           <button className="btn" onClick={() => { setPropuesta(null); setRemedios([]); setDudas([]); }} disabled={ocupado}>Volver</button>
-          <button className="btn primario" onClick={guardar} disabled={ocupado || estado === 'escuchando' || quitar.size + quitarRemedio.size === propuesta.length + remedios.length}>
-            {estado === 'guardando' ? 'Guardando…' : `Anotar ${propuesta.length - quitar.size + remedios.length - quitarRemedio.size}`}
+          <button className="btn confirmar" onClick={guardar} disabled={ocupado || estado === 'escuchando' || quitar.size + quitarRemedio.size === propuesta.length + remedios.length}>
+            {estado === 'guardando' ? 'Guardando…' : '¡Perfecto!'}
           </button>
         </div>
       </div>
