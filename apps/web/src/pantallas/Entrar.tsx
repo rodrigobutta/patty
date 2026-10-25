@@ -1,4 +1,5 @@
-// La entrada: el búho saluda, una frase de qué es Patty, y entrar con usuario y clave o con Google.
+// La entrada: el búho saluda, una frase de qué es Patty, y entrar con Google (lo principal: en Android casi todos
+// tienen la cuenta en el teléfono) o, detrás de un enlace, con usuario y clave.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { useEstado } from '../estado';
@@ -13,6 +14,8 @@ export function Entrar({ configurar }: { configurar: boolean }) {
   const { sesion, entro } = useEstado();
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
+  // Con Google disponible, es lo principal; usuario y clave quedan detrás de un enlace.
+  const [conClave, setConClave] = useState(false);
   const google = useRef<HTMLDivElement>(null);
 
   const conGoogle = async (credential: string) => {
@@ -27,7 +30,7 @@ export function Entrar({ configurar }: { configurar: boolean }) {
   useEffect(() => {
     if (!sesion?.google || googleNativo()) return;
     void montarGoogle(google.current, sesion.google, (c) => void conGoogle(c));
-  }, [sesion?.google]);
+  }, [sesion?.google, conClave]);
 
   const googleEnElTelefono = async () => {
     if (!sesion?.google) return;
@@ -70,34 +73,51 @@ export function Entrar({ configurar }: { configurar: boolean }) {
       </div>
       <h1 className="marca grande">Patty</h1>
       <p className="lema">{t('Contame tu día y te muestro qué cosas se relacionan.')}</p>
-      <form className="tarjeta" onSubmit={enviar}>
-        <h2>{configurar ? t('Crear el primer usuario') : t('Entrar')}</h2>
-        {configurar ? (
-          <label>{t('Tu nombre')}<input name="nombre" required autoComplete="name" autoFocus /></label>
-        ) : null}
-        <label>{t('Usuario')}<input name="usuario" required autoCapitalize="none" autoComplete="username" /></label>
-        <label>{t('Clave')}<input name="clave" type="password" required minLength={6} autoComplete={configurar ? 'new-password' : 'current-password'} /></label>
-        <button className="btn primario ancho" disabled={enviando}>{enviando ? t('Entrando…') : configurar ? t('Crear y entrar') : t('Entrar')}</button>
-        {error ? <p className="neg">{error}</p> : null}
-        {sesion?.google ? (
-          <>
-            <div className="sep-o"><span>{t('o')}</span></div>
-            {googleNativo() ? (
-              <button type="button" className="btn ancho boton-google" onClick={() => void googleEnElTelefono()}>
-                <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden>
-                  <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.8 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
-                  <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z" />
-                  <path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.8-6.1z" />
-                  <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z" />
-                </svg>
-                {t('Continuar con Google')}
-              </button>
-            ) : (
-              <div ref={google} className="google" />
-            )}
-          </>
-        ) : null}
-      </form>
+      {sesion?.google && !conClave ? (
+        <div className="tarjeta entrar-google">
+          <h2>{configurar ? t('Empecemos') : t('Entrá a Patty')}</h2>
+          <p className="suave chico">{t('Con tu cuenta de Google, en un toque. Si es la primera vez, se crea tu cuenta.')}</p>
+          {googleNativo() ? (
+            <button type="button" className="btn ancho boton-google grande" onClick={() => void googleEnElTelefono()}>
+              <LogoGoogle />
+              {t('Continuar con Google')}
+            </button>
+          ) : (
+            <div ref={google} className="google" />
+          )}
+          {error ? <p className="neg">{error}</p> : null}
+          <button type="button" className="enlace chico prefiero-clave" onClick={() => { setError(''); setConClave(true); }}>
+            {t('Prefiero entrar con usuario y contraseña')}
+          </button>
+        </div>
+      ) : (
+        <form className="tarjeta" onSubmit={enviar}>
+          <h2>{configurar ? t('Crear el primer usuario') : t('Entrar')}</h2>
+          {configurar ? (
+            <label>{t('Tu nombre')}<input name="nombre" required autoComplete="name" autoFocus /></label>
+          ) : null}
+          <label>{t('Usuario')}<input name="usuario" required autoCapitalize="none" autoComplete="username" autoFocus={!configurar} /></label>
+          <label>{t('Clave')}<input name="clave" type="password" required minLength={6} autoComplete={configurar ? 'new-password' : 'current-password'} /></label>
+          <button className="btn primario ancho" disabled={enviando}>{enviando ? t('Entrando…') : configurar ? t('Crear y entrar') : t('Entrar')}</button>
+          {error ? <p className="neg">{error}</p> : null}
+          {sesion?.google ? (
+            <button type="button" className="enlace chico prefiero-clave" onClick={() => { setError(''); setConClave(false); }}>
+              {t('← Mejor con Google')}
+            </button>
+          ) : null}
+        </form>
+      )}
     </div>
+  );
+}
+
+function LogoGoogle() {
+  return (
+    <svg viewBox="0 0 48 48" width="22" height="22" aria-hidden>
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.8 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z" />
+      <path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.8-6.1z" />
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z" />
+    </svg>
   );
 }

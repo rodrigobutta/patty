@@ -62,16 +62,21 @@ export const rutasSesion = new Hono<Env>()
   .post('/entrar-google', async (c) => {
     const g = await verificarGoogle(texto((await cuerpo(c)).credential));
     const fila = await una<{ id: number }>(c.var.db, sql`SELECT id FROM usuarios WHERE lower(email) = ${g.email} AND activo LIMIT 1`);
-    if (fila) return conSesion(c, fila.id);
+    if (fila) {
+      // La foto puede haber cambiado en Google: se actualiza cada vez que entra.
+      if (g.foto) await c.var.db.execute(sql`UPDATE usuarios SET foto = ${g.foto} WHERE id = ${fila.id}`);
+      return conSesion(c, fila.id);
+    }
+    if (await una(c.var.db, sql`SELECT 1 AS x FROM usuarios WHERE lower(email) = ${g.email}`)) {
+      throw new ErrorApi('La cuenta {email} está desactivada. Pedile a un administrador que la active.', 403, { email: g.email });
+    }
     const id = await c.var.db.transaction(async (tx) => {
       await tx.execute(sql`LOCK TABLE usuarios IN EXCLUSIVE MODE`);
-      if (await hayUsuarios(tx)) {
-        throw new ErrorApi('La cuenta {email} no tiene acceso. Pedile a un administrador que la agregue.', 403, { email: g.email });
-      }
-      // Primera vez: el primero que entra con Google queda como administrador.
+      // Con Google cualquiera puede crearse la cuenta (ve solo lo suyo). El primero de todos queda como administrador.
+      const rol = (await hayUsuarios(tx)) ? 'editor' : 'admin';
       const [n] = await tx
         .insert(usuarios)
-        .values({ usuario: g.email, nombre: g.nombre, email: g.email, clave: await hashClave(randomBytes(16).toString('hex')), rol: 'admin' })
+        .values({ usuario: g.email, nombre: g.nombre, email: g.email, foto: g.foto, clave: await hashClave(randomBytes(16).toString('hex')), rol })
         .returning({ id: usuarios.id });
       return n.id;
     });

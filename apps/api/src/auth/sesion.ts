@@ -1,7 +1,7 @@
 // Sesiones: un token al azar que va en la cookie "sesion" (web) o en "Authorization: Bearer" (app con Capacitor).
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
-import type { RolUsuario, Usuario } from 'shared';
+import { apodoDe, type RolUsuario, type Usuario } from 'shared';
 import { una, type Tx } from '../db/client.js';
 import { sesiones } from '../db/schema.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -31,7 +31,7 @@ export async function usuarioDeToken(tx: Tx, token: string | null): Promise<Usua
   if (!token) return null;
   const u = await una<Usuario & { reciente: boolean }>(
     tx,
-    sql`SELECT u.id, u.usuario, u.nombre, u.rol, u.email, u.idioma,
+    sql`SELECT u.id, u.usuario, u.nombre, u.rol, u.email, u.idioma, u.foto, u.apodo AS apodo_elegido,
                (u.ultimo_acceso IS NOT NULL AND u.ultimo_acceso > now() - interval '5 minutes') AS reciente
         FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
         WHERE s.token = ${token} AND s.vence > now() AND u.activo`,
@@ -41,7 +41,7 @@ export async function usuarioDeToken(tx: Tx, token: string | null): Promise<Usua
   if (!u.reciente) await tx.execute(sql`UPDATE usuarios SET ultimo_acceso = now() WHERE id = ${u.id}`);
   const { reciente, ...usuario } = u;
   void reciente;
-  return usuario;
+  return { ...usuario, apodo: apodoDe(usuario.nombre, usuario.apodo_elegido) };
 }
 
 /** Crea una sesión y devuelve el token. */

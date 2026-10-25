@@ -99,6 +99,13 @@
       "when": 1792892161248,
       "tag": "0013_serie_con_donde",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792895123068,
+      "tag": "0014_foto_y_apodo",
+      "breakpoints": true
     }
   ]
 }

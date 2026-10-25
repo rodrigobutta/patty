@@ -23,7 +23,7 @@ export async function montarGoogle(el: HTMLElement | null, clientId: string, alE
   const g = window.google?.accounts?.id;
   if (!el || !g) return;
   g.initialize({ client_id: clientId, callback: r => alEntrar(r.credential), ux_mode: 'popup' });
-  g.renderButton(el, { theme: temaOscuro() ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: idioma() });
+  g.renderButton(el, { theme: temaOscuro() ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: String(Math.min(320, el.clientWidth || 320)), locale: idioma() });
 }
 
 export const googleNativo = () => esNativa();

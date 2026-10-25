@@ -38,12 +38,12 @@ export const rutasUsuarios = new Hono<Env>()
     const g = await verificarGoogle(texto((await cuerpo(c)).credential));
     const otro = await una<{ id: number }>(c.var.db, sql`SELECT id FROM usuarios WHERE lower(email) = ${g.email} AND id <> ${c.var.usuario.id}`);
     if (otro) throw new ErrorApi('La cuenta {email} ya es de otro usuario.', 409, { email: g.email });
-    await c.var.db.execute(sql`UPDATE usuarios SET email = ${g.email} WHERE id = ${c.var.usuario.id}`);
-    return c.json({ ok: true, email: g.email });
+    await c.var.db.execute(sql`UPDATE usuarios SET email = ${g.email}, foto = coalesce(${g.foto}, foto) WHERE id = ${c.var.usuario.id}`);
+    return c.json({ ok: true, email: g.email, foto: g.foto });
   })
   .get('/', async (c) => {
     exigirRol(c.var.usuario, 'admin');
-    return c.json(await filas(c.var.db, sql`SELECT id, usuario, nombre, email, rol, activo, creado FROM usuarios ORDER BY nombre`));
+    return c.json(await filas(c.var.db, sql`SELECT id, usuario, nombre, email, foto, rol, activo, creado FROM usuarios ORDER BY nombre`));
   })
   .post('/', async (c) => {
     exigirRol(c.var.usuario, 'admin');
@@ -72,15 +72,20 @@ export const rutasUsuarios = new Hono<Env>()
     return c.json({ ok: true });
   })
   .get('/yo/preferencias', async (c) => {
-    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar FROM usuarios WHERE id = ${c.var.usuario.id}`));
+    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar, apodo FROM usuarios WHERE id = ${c.var.usuario.id}`));
   })
   .put('/yo/preferencias', async (c) => {
-    // {avisar_sin_anotar}: lo que cada uno elige de los avisos que manda el servidor.
+    // {avisar_sin_anotar, apodo}: lo que cada uno elige de los avisos que manda el servidor y cómo quiere que le digan.
     const d = await cuerpo(c);
     if (typeof d.avisar_sin_anotar === 'boolean') {
       await c.var.db.execute(sql`UPDATE usuarios SET avisar_sin_anotar = ${d.avisar_sin_anotar} WHERE id = ${c.var.usuario.id}`);
     }
-    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar FROM usuarios WHERE id = ${c.var.usuario.id}`));
+    if (d.apodo !== undefined) {
+      const apodo = texto(d.apodo) || null;
+      if (apodo && apodo.length > 30) throw new ErrorApi('El apodo es muy largo (máximo 30 letras).');
+      await c.var.db.execute(sql`UPDATE usuarios SET apodo = ${apodo} WHERE id = ${c.var.usuario.id}`);
+    }
+    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar, apodo FROM usuarios WHERE id = ${c.var.usuario.id}`));
   })
   .post('/yo/clave', async (c) => {
     const d = await cuerpo(c);

@@ -29,9 +29,9 @@ describe('avisos push de remedios', () => {
     enviados.length = 0;
     expect(await revisarTomas(db, new Date('2026-10-08T12:01:00.000Z'))).toBe(1);
     expect(await revisarTomas(db, new Date('2026-10-08T12:02:00.000Z'))).toBe(0); // no se repite
-    expect(enviados[0]).toMatchObject({ token: 'tel-1', a: { titulo: '💊 Vitamina D 1 comprimido', cuerpo: 'Es la hora de la toma de las 09:00.', canal: 'remedios' } });
+    expect(enviados[0]).toMatchObject({ token: 'tel-1', a: { titulo: '💊 Vitamina D 1 comprimido', cuerpo: 'Anita, es la hora de la toma de las 09:00.', canal: 'remedios' } });
     expect(await revisarTomas(db, new Date('2026-10-08T12:31:00.000Z'))).toBe(1);
-    expect(enviados[1].a.titulo).toBe('¿Tomaste Vitamina D?');
+    expect(enviados[1].a.titulo).toBe('Anita, ¿tomaste Vitamina D?');
 
     // Marcada: no se insiste.
     await ana.post(`/api/tratamientos/${t.body.id}/tomas`, { programada: '2026-10-09T12:00:00.000Z', estado: 'tomada' });
@@ -61,7 +61,7 @@ describe('aviso de "te extraño"', () => {
     await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Agua', categoria_id: categorias.bebida, inicio: '2026-10-23T15:00:00.000Z' });
     expect(await revisarTeExtrano(db, new Date('2026-10-23T22:01:00.000Z'))).toBe(0);
     // apagado: nada
-    expect((await ana.put('/api/usuarios/yo/preferencias', { avisar_sin_anotar: false })).body).toEqual({ avisar_sin_anotar: false });
+    expect((await ana.put('/api/usuarios/yo/preferencias', { avisar_sin_anotar: false })).body).toEqual({ avisar_sin_anotar: false, apodo: null });
     expect(await revisarTeExtrano(db, new Date('2026-10-25T22:01:00.000Z'))).toBe(0);
     expect(avisoTeExtrano('Rodrigo Butta', 1).titulo).toBe('😢 Hoy no me contaste nada');
     expect(avisoTeExtrano('Rodrigo', 9).titulo).toBe('😢 Te extraño');

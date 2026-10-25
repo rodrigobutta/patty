@@ -3,7 +3,7 @@
 // queda después de eso (un crónico y una semana sin abrir Patty) lo manda el servidor por push: a la hora de la toma y,
 // si no se marcó, a la media hora. Corre cada minuto.
 import { sql } from 'drizzle-orm';
-import { dosisTexto, esIdioma, traducir, type Idioma } from 'shared';
+import { apodoDe, dosisTexto, esIdioma, traducir, type Idioma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, fechaLocal, localAInstante } from '../lib/fechas.js';
 import { COLUMNAS, DESDE, tomasDe, type Fila } from '../routes/tratamientos.js';
@@ -65,6 +65,13 @@ export async function revisarTomas(db: Db, ahora = new Date()): Promise<number> 
   const tomas = (await tomasDe(db, lista, desde, new Date(ahora.getTime() + 1000))).filter((t) => t.estado === null);
   let enviados = 0;
   const propios = new Map<number, Dispositivo[]>();
+  // El apodo de la dueña o el dueño de cada persona, para que el aviso le hable por su nombre.
+  const apodos = new Map(
+    (await filas<{ persona_id: number; nombre: string; apodo: string | null }>(
+      db,
+      sql`SELECT pu.persona_id, u.nombre, u.apodo FROM persona_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id WHERE pu.rol = 'dueno'`,
+    )).map((f) => [f.persona_id, apodoDe(f.nombre, f.apodo)]),
+  );
   const deSupervisores = new Map<number, Dispositivo[]>();
   for (const t of tomas) {
     if (!propios.has(t.persona_id)) {
@@ -76,14 +83,14 @@ export async function revisarTomas(db: Db, ahora = new Date()): Promise<number> 
     const hora = hhmm(t.programada, tr.zona);
     const que = (i: Idioma) => `${t.remedio}${t.dosis !== null || t.unidad ? ' ' + dosisTexto(t.dosis, t.unidad, i) : ''}`;
     const datos = { tipo: 'toma', tratamiento_id: String(t.tratamiento_id), programada: t.programada, persona_id: String(t.persona_id) };
-    const v = { hora, remedio: t.remedio, nombre: tr.persona_nombre };
+    const v = { hora, remedio: t.remedio, nombre: tr.persona_nombre, apodo: apodos.get(t.persona_id) ?? '' };
     const momentos = [
-      { cuando: programada, tipo: 'hora', supervisores: false, aviso: (i: Idioma) => ({ titulo: `💊 ${que(i)}`, cuerpo: traducir(i, 'Es la hora de la toma de las {hora}.', v) }) },
+      { cuando: programada, tipo: 'hora', supervisores: false, aviso: (i: Idioma) => ({ titulo: `💊 ${que(i)}`, cuerpo: v.apodo ? traducir(i, '{apodo}, es la hora de la toma de las {hora}.', v) : traducir(i, 'Es la hora de la toma de las {hora}.', v) }) },
       {
         cuando: programada + INSISTIR_MIN * 60000,
         tipo: 'insistir',
         supervisores: false,
-        aviso: (i: Idioma) => ({ titulo: traducir(i, '¿Tomaste {remedio}?', v), cuerpo: traducir(i, 'La de las {hora} todavía no está marcada.', v) }),
+        aviso: (i: Idioma) => ({ titulo: v.apodo ? traducir(i, '{apodo}, ¿tomaste {remedio}?', v) : traducir(i, '¿Tomaste {remedio}?', v), cuerpo: traducir(i, 'La de las {hora} todavía no está marcada.', v) }),
       },
       {
         cuando: programada + AVISAR_SUPERVISOR_MIN * 60000,
@@ -137,9 +144,9 @@ export async function revisarDiasSinAnotar(db: Db, ahora = new Date()): Promise<
 /** A esta hora (de la persona), si no anotó nada en el día, Patty le pide que le cuente (con la cara triste). */
 const HORA_TE_EXTRANO = '19:00';
 
-/** Lo que dice el aviso según cuántos días lleva sin anotar (y su nombre, para que suene a Patty). */
+/** Lo que dice el aviso según cuántos días lleva sin anotar (y su apodo, para que suene a Patty). */
 export function avisoTeExtrano(nombre: string, diasSin: number | null, idioma: Idioma = 'es'): { titulo: string; cuerpo: string } {
-  const v = { pila: nombre.split(' ')[0], n: diasSin ?? 0 };
+  const v = { pila: nombre, n: diasSin ?? 0 };
   const t = (titulo: string, cuerpo: string) => ({ titulo: traducir(idioma, titulo, v), cuerpo: traducir(idioma, cuerpo, v) });
   if (diasSin === null) return t('😢 ¿Arrancamos?', '{pila}, todavía no me contaste nada. Empezá por algo fácil: ¿a qué hora te levantaste hoy?');
   if (diasSin <= 1) return t('😢 Hoy no me contaste nada', '{pila}, ¿qué comiste, cómo dormiste, cómo te sentís? Con un toque alcanza.');
@@ -152,9 +159,9 @@ export function avisoTeExtrano(nombre: string, diasSin: number | null, idioma: I
  * días, todos los días; después de una semana sin anotar, uno por semana (para no cansar).
  */
 export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<number> {
-  const personas = await filas<{ id: number; nombre: string; zona: string; usuario_id: number; idioma: string; ultima: string | null; creado: string }>(
+  const personas = await filas<{ id: number; nombre: string; zona: string; usuario_id: number; idioma: string; ultima: string | null; creado: string; u_nombre: string; apodo: string | null }>(
     db,
-    sql`SELECT p.id, p.nombre, p.zona_horaria AS zona, pu.usuario_id, u.idioma, p.creado,
+    sql`SELECT p.id, p.nombre, p.zona_horaria AS zona, pu.usuario_id, u.idioma, p.creado, u.nombre AS u_nombre, u.apodo,
                (SELECT to_char(max(r.fecha), 'YYYY-MM-DD') FROM registros r WHERE r.persona_id = p.id AND r.borrado IS NULL) AS ultima
         FROM personas p JOIN persona_usuarios pu ON pu.persona_id = p.id AND pu.rol = 'dueno'
         JOIN usuarios u ON u.id = pu.usuario_id AND u.activo AND u.avisar_sin_anotar
@@ -171,7 +178,7 @@ export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<numb
     // Recién creada (hoy) y sin nada: todavía no molestamos.
     if (diasSin === null && Date.now() - Date.parse(p.creado) < 12 * 3600000) continue;
     if (diasSin !== null && diasSin > 7 && diasSin % 7 !== 0) continue;
-    const { titulo, cuerpo } = avisoTeExtrano(p.nombre, diasSin, idiomaDe(p));
+    const { titulo, cuerpo } = avisoTeExtrano(apodoDe(p.u_nombre, p.apodo), diasSin, idiomaDe(p));
     const lista = await filas<Dispositivo>(db, sql`SELECT id, token, avisos_hasta FROM dispositivos WHERE usuario_id = ${p.usuario_id}`);
     for (const d of lista) {
       if (await avisarUnaVez(db, d, `teextrano|${p.id}|${dia}`, { titulo, cuerpo, datos: { tipo: 'te_extrano', cara: 'triste', persona_id: String(p.id) } })) enviados++;

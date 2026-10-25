@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { avisoExacto, permisoAvisos } from './avisos';
 import { t } from './idioma';
 import { esNativa } from './nativo';
+import { apodoGuardado } from './apodo';
 
 const CLAVE = 'encuesta';
 const ID_AVISO = 2210;
@@ -47,7 +48,7 @@ export async function programarAviso(c: Config = configEncuesta()): Promise<bool
         {
           id: ID_AVISO,
           title: 'Patty',
-          body: t('¿Cómo te sentiste hoy?'),
+          body: apodoGuardado() ? t('{apodo}, ¿cómo te sentiste hoy?', { apodo: apodoGuardado() }) : t('¿Cómo te sentiste hoy?'),
           schedule: { on: { hour, minute }, allowWhileIdle: true },
           extra: { encuesta: 'dia' },
           isExactNotification: exacta,

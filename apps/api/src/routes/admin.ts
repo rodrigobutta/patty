@@ -47,7 +47,7 @@ export const rutasAdmin = new Hono<Env>()
     return c.json(
       await filas(
         c.var.db,
-        sql`SELECT u.id, u.usuario, u.nombre, u.email, u.rol, u.activo, u.creado, u.ultimo_acceso,
+        sql`SELECT u.id, u.usuario, u.nombre, u.email, u.foto, u.rol, u.activo, u.creado, u.ultimo_acceso,
                    (SELECT count(*) FROM persona_usuarios pu WHERE pu.usuario_id = u.id AND pu.rol = 'dueno')::int AS personas,
                    (SELECT count(*) FROM registros r WHERE r.creado_por = u.id AND r.borrado IS NULL)::int AS registros,
                    (SELECT count(*) FROM registros r WHERE r.creado_por = u.id AND r.borrado IS NULL AND r.creado > now() - interval '7 days')::int AS registros_semana,

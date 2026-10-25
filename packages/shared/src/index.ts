@@ -141,6 +141,12 @@ export interface Usuario {
   nombre: string;
   rol: RolUsuario;
   email: string | null;
+  /** La foto de la cuenta de Google (si entró con Google). */
+  foto?: string | null;
+  /** Cómo le dice Patty: el apodo que eligió o el diminutivo de su nombre. */
+  apodo?: string;
+  /** El apodo que eligió él mismo (null: se usa el diminutivo automático). */
+  apodo_elegido?: string | null;
 }
 
 export interface Sesion {
@@ -995,4 +1001,48 @@ export function estacionDe(fecha: string, zona: string): Estacion {
   const norte: Estacion = md >= '12-21' || md < '03-21' ? 'invierno' : md < '06-21' ? 'primavera' : md < '09-21' ? 'verano' : 'otono';
   if (!hemisferioSur(zona)) return norte;
   return ({ invierno: 'verano', primavera: 'otono', verano: 'invierno', otono: 'primavera' } as const)[norte];
+}
+
+// ---------- Apodos ----------
+
+/** Diminutivos y apodos comunes en castellano (rioplatense) de los nombres más usados. */
+const APODOS: Record<string, string> = {
+  agustin: 'Agus', agustina: 'Agus', alejandro: 'Ale', alejandra: 'Ale', alexis: 'Alex', alberto: 'Beto', andres: 'Andy', andrea: 'Andre',
+  antonio: 'Toni', antonella: 'Anto', barbara: 'Barbi', beatriz: 'Bea', bernardo: 'Berni', carolina: 'Caro', catalina: 'Cata',
+  cecilia: 'Ceci', claudio: 'Clau', claudia: 'Clau', constanza: 'Coni', cristian: 'Cris', cristina: 'Cris', daniel: 'Dani', daniela: 'Dani',
+  eduardo: 'Edu', emiliano: 'Emi', emilia: 'Emi', enrique: 'Quique', esteban: 'Teban', eugenia: 'Euge', ezequiel: 'Eze', federico: 'Fede',
+  fernando: 'Fer', fernanda: 'Fer', florencia: 'Flor', francisco: 'Fran', francisca: 'Fran', franco: 'Fran', gabriel: 'Gabi', gabriela: 'Gabi',
+  gonzalo: 'Gonza', graciela: 'Graci', guadalupe: 'Guada', guillermo: 'Guille', gustavo: 'Gus', ignacio: 'Nacho', ines: 'Ine', isabel: 'Isa',
+  jacinto: 'Jacho', javier: 'Javi', jeronimo: 'Jero', joaquin: 'Joaco', jorge: 'Coco', jose: 'Pepe', josefina: 'Jose', juan: 'Juan',
+  juliana: 'Juli', julian: 'Juli', julieta: 'Juli', leandro: 'Lea', leonardo: 'Leo', lorena: 'Lore', lucas: 'Luqui', lucia: 'Lu',
+  luciana: 'Lu', luciano: 'Lucho', luis: 'Lucho', magdalena: 'Magui', manuel: 'Manu', manuela: 'Manu', marcelo: 'Marce', marcela: 'Marce',
+  margarita: 'Marga', maria: 'Mari', mariana: 'Marian', martin: 'Tincho', martina: 'Tini', matias: 'Mati', mercedes: 'Meche', micaela: 'Mica',
+  miguel: 'Migue', milagros: 'Mili', natalia: 'Nati', nicolas: 'Nico', nicole: 'Nico', norberto: 'Beto', pablo: 'Pablito', patricia: 'Pato',
+  patricio: 'Pato', paula: 'Pau', pilar: 'Pili', rafael: 'Rafa', ramiro: 'Rama', ricardo: 'Richard', roberto: 'Beto', rocio: 'Ro',
+  rodrigo: 'Rodri', rosario: 'Charo', santiago: 'Santi', sebastian: 'Seba', sergio: 'Checho', sofia: 'Sofi', soledad: 'Sole',
+  susana: 'Su', teresa: 'Tere', tomas: 'Tomi', valentin: 'Valen', valentina: 'Valen', valeria: 'Vale', veronica: 'Vero', victoria: 'Vicky',
+  ximena: 'Xime', jimena: 'Jime', yamila: 'Yami', camila: 'Cami', camilo: 'Cami', facundo: 'Facu', maximiliano: 'Maxi', maximo: 'Maxi',
+  bautista: 'Bauti', benjamin: 'Benja', gregorio: 'Goyo', dolores: 'Lola', consuelo: 'Chelo', ana: 'Anita', sara: 'Sari',
+  elizabeth: 'Eli', elena: 'Ele', silvina: 'Silvi', silvia: 'Silvi', laura: 'Lau', lautaro: 'Lauti', luana: 'Lua', mateo: 'Mateo',
+  michael: 'Mike', william: 'Will', robert: 'Rob', richard: 'Rich', katherine: 'Kate', jennifer: 'Jen', christopher: 'Chris',
+  matthew: 'Matt', anthony: 'Tony', joseph: 'Joe', james: 'Jim', thomas: 'Tom', nicholas: 'Nick', alexander: 'Alex', samuel: 'Sam',
+  samantha: 'Sam', jonathan: 'Jon', rebecca: 'Becky', margaret: 'Maggie', patrick: 'Pat',
+};
+
+/**
+ * Cómo le dice Patty a una persona: el apodo que eligió o, si no, el diminutivo de su primer nombre ("Rodrigo Butta" →
+ * "Rodri", "María José" → "Majo"). Si no se conoce un diminutivo, el primer nombre tal cual.
+ */
+export function apodoDe(nombre: string, elegido?: string | null): string {
+  if (elegido?.trim()) return elegido.trim();
+  const limpio = nombre.includes('@') ? nombre.split('@')[0].replace(/[._\d]+/g, ' ') : nombre;
+  const partes = limpio.trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return '';
+  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const dos = partes.slice(0, 2).map(norm).join(' ');
+  const compuestos: Record<string, string> = { 'maria jose': 'Majo', 'maria laura': 'Malu', 'maria luz': 'Malu', 'maria eugenia': 'Euge', 'maria florencia': 'Flor', 'maria paz': 'Mapi', 'juan pablo': 'Juampi', 'juan manuel': 'Juanma', 'juan martin': 'Juanma', 'juan cruz': 'Juancho', 'juan ignacio': 'Juani', 'maria belen': 'Belu', 'ana paula': 'Anapau' };
+  if (compuestos[dos]) return compuestos[dos];
+  const primero = partes[0];
+  const apodo = APODOS[norm(primero)];
+  return apodo ?? primero.charAt(0).toUpperCase() + primero.slice(1);
 }

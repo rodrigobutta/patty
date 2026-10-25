@@ -41,6 +41,10 @@ export const usuarios = pgTable(
     usuario: text('usuario').notNull().unique(),
     nombre: text('nombre').notNull(),
     email: text('email'),
+    /** La foto de la cuenta de Google (URL), si entró con Google. */
+    foto: text('foto'),
+    /** Cómo quiere que le diga Patty (si no, el diminutivo de su nombre). */
+    apodo: text('apodo'),
     clave: text('clave').notNull(),
     rol: text('rol', { enum: ['admin', 'editor', 'lector'] }).notNull().default('editor'),
     activo: boolean('activo').notNull().default(true),

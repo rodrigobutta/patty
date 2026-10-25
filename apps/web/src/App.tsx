@@ -19,6 +19,7 @@ import { Entrar } from './pantallas/Entrar';
 import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
+import { Avatar } from './ui/Avatar';
 import { Patrones } from './pantallas/Patrones';
 import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
 import { useProgreso } from './lib/progreso';
@@ -120,6 +121,11 @@ export function App() {
         ) : (
           <span className="persona">{persona.nombre}</span>
         )}
+        {sesion?.usuario ? (
+          <button className="btn-avatar" onClick={() => setPestana('mas')} aria-label={t('Tu cuenta')}>
+            <Avatar foto={sesion.usuario.foto} nombre={sesion.usuario.apodo || sesion.usuario.nombre} tamano={32} />
+          </button>
+        ) : null}
       </header>
       <main>
         {pestana === 'admin' && sesion?.usuario?.rol === 'admin' ? (

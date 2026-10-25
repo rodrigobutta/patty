@@ -5,6 +5,8 @@ import { ErrorApi } from '../lib/errores.js';
 export interface CuentaGoogle {
   email: string;
   nombre: string;
+  /** La foto de perfil (URL), si la cuenta tiene. */
+  foto: string | null;
 }
 
 export async function verificarGoogle(credencial: string): Promise<CuentaGoogle> {
@@ -32,5 +34,6 @@ export async function verificarGoogle(credencial: string): Promise<CuentaGoogle>
   }
   if (Number(info.exp || 0) < Date.now() / 1000) throw new ErrorApi('La credencial de Google venció. Probá de nuevo.', 401);
   const email = String(info.email).toLowerCase();
-  return { email, nombre: (info.name as string) || String(info.email).split('@')[0] };
+  const foto = typeof info.picture === 'string' && info.picture.startsWith('https://') ? info.picture : null;
+  return { email, nombre: (info.name as string) || String(info.email).split('@')[0], foto };
 }

@@ -10,6 +10,7 @@ import { avisoExacto, crearCanales, idDeAviso, irAlDia, permisoAvisos } from './
 import { idioma, locale, t } from './idioma';
 import { esNativa } from './nativo';
 import { avisosProgramadosHasta } from './push';
+import { apodoGuardado } from './apodo';
 
 const CLAVE_ACTIVOS = 'recordatorios-remedios';
 const CLAVE_PROGRAMADOS = 'avisos-remedios';
@@ -134,9 +135,9 @@ export function programarRecordatorios(): Promise<boolean> {
         const ids = idsDe(x);
         const cuando = Date.parse(x.programada);
         const que = `${x.remedio}${x.dosis !== null || x.unidad ? ' ' + dosisTexto(x.dosis, x.unidad, idioma()) : ''}`;
-        if (cuando > ahora + 5000) lista.push(aviso(ids.aviso, new Date(cuando), x, `💊 ${que}`, t('Es la hora de la toma de las {hora}.', { hora: hhmm(x.programada) }), exacta));
+        if (cuando > ahora + 5000) lista.push(aviso(ids.aviso, new Date(cuando), x, `💊 ${que}`, (apodoGuardado() ? t('{apodo}, es la hora de la toma de las {hora}.', { apodo: apodoGuardado(), hora: hhmm(x.programada) }) : t('Es la hora de la toma de las {hora}.', { hora: hhmm(x.programada) })), exacta));
         const otra = cuando + INSISTIR_MIN * 60000;
-        if (otra > ahora + 5000) lista.push(aviso(ids.insistir, new Date(otra), x, t('¿Tomaste {remedio}?', { remedio: x.remedio }), t('La de las {hora} todavía no está marcada.', { hora: hhmm(x.programada) }), exacta));
+        if (otra > ahora + 5000) lista.push(aviso(ids.insistir, new Date(otra), x, (apodoGuardado() ? t('{apodo}, ¿tomaste {remedio}?', { apodo: apodoGuardado(), remedio: x.remedio }) : t('¿Tomaste {remedio}?', { remedio: x.remedio })), t('La de las {hora} todavía no está marcada.', { hora: hhmm(x.programada) }), exacta));
       }
       if (lista.length) await LocalNotifications.schedule({ notifications: lista });
       localStorage.setItem(CLAVE_PROGRAMADOS, JSON.stringify(lista.map((n) => n.id)));

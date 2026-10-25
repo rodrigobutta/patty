@@ -675,3 +675,16 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .ciclo-dia .pregunta-ciclo { margin: 4px 0 6px; font-weight: 600; }
 .ciclo-dia .btn.ancho { margin: 4px 0 8px; }
 .datos-ciclo { list-style: none; margin: 10px 0 6px; padding: 0; display: grid; gap: 6px; font-size: 0.92em; }
+
+/* ---------- Foto y apodo ---------- */
+.avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; object-fit: cover; flex: none; background: var(--acento); color: var(--sobre-acento); font-weight: 700; }
+.btn-avatar { margin-left: 8px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 50%; line-height: 0; }
+.btn-avatar .avatar { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--borde); }
+.cuenta-perfil { display: flex; gap: 14px; align-items: flex-start; }
+.cuenta-perfil .que { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cuenta-perfil .apodo { margin-top: 10px; }
+.entrar-google { text-align: center !important; }
+.entrar-google h2 { margin-bottom: 4px; }
+.entrar-google .google, .entrar-google .boton-google { margin: 16px 0 6px; }
+.boton-google.grande { padding: 14px; font-size: 1.05em; font-weight: 600; border-radius: 999px; box-shadow: 0 4px 14px rgb(40 20 90 / 0.12); }
+.prefiero-clave { display: block; margin: 14px auto 0; opacity: 0.75; }

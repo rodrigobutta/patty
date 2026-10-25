@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Categoria, Persona, Sesion, Usuario } from 'shared';
 import { olvidarDispositivo } from './lib/push';
+import { guardarApodo } from './lib/apodo';
 import { api, cuandoSePierdaLaSesion, guardarToken } from './api';
 import type { Cara } from './mascota/dibujo';
 
@@ -20,6 +21,8 @@ interface Estado {
   categorias: Categoria[];
   elegirPersona(id: number): void;
   recargar(): Promise<void>;
+  /** Cambia datos del usuario en memoria (después de guardarlos: el apodo, la foto). */
+  cambiarUsuario(cambios: Partial<Usuario>): void;
   entro(token?: string): Promise<void>;
   salir(): Promise<void>;
   aviso: string;
@@ -77,6 +80,7 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
     try {
       const s = await api<Sesion>('GET', '/api/sesion');
       setSesion(s);
+      guardarApodo(s.usuario?.apodo);
       if (s.configurar) return setFase('configurar');
       if (!s.usuario) return setFase('entrar');
       await recargar();
@@ -118,8 +122,12 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
 
   // Si no se eligió ninguna, la propia (no la de alguien que se supervisa).
   const persona = personas.find((p) => p.id === personaId) ?? personas.find((p) => p.propia) ?? personas[0] ?? null;
+  const cambiarUsuario = useCallback((cambios: Partial<Usuario>) => {
+    if (cambios.apodo !== undefined) guardarApodo(cambios.apodo);
+    setSesion((s) => (s?.usuario ? { ...s, usuario: { ...s.usuario, ...cambios } } : s));
+  }, []);
   const valor: Estado = {
-    fase, error, sesion, usuario: sesion?.usuario ?? null, personas, persona, categorias, elegirPersona, recargar, entro, salir, aviso, avisar, festejo, festejar, terminarFestejo,
+    fase, error, sesion, usuario: sesion?.usuario ?? null, personas, persona, categorias, elegirPersona, recargar, cambiarUsuario, entro, salir, aviso, avisar, festejo, festejar, terminarFestejo,
   };
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }

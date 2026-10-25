@@ -6,6 +6,7 @@ import { conUnidad } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { idioma, locale, t } from '../lib/idioma';
+import { Avatar } from '../ui/Avatar';
 
 interface Resumen {
   usuarios: number;
@@ -29,6 +30,7 @@ interface FilaUsuario {
   usuario: string;
   nombre: string;
   email: string | null;
+  foto?: string | null;
   rol: 'admin' | 'editor' | 'lector';
   activo: boolean;
   creado: string;
@@ -252,6 +254,7 @@ function VistaUsuarios({ alElegir }: { alElegir(id: number): void }) {
         <ul className="lista admin-usuarios">
           {lista.map((u) => (
             <li key={u.id} className={u.activo ? '' : 'tachado'} onClick={() => alElegir(u.id)}>
+              <Avatar foto={u.foto} nombre={u.nombre} tamano={36} />
               <span className="que">
                 <strong>{u.nombre}</strong> <span className="suave chico">{u.usuario}{u.email ? ` · ${u.email}` : ''}</span>
                 <span className="suave chico renglon-sub">

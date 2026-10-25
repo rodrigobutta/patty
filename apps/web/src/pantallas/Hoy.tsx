@@ -72,6 +72,8 @@ function detalle(r: Registro, tipo: string | undefined): string {
 
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
   const { categorias, avisar, festejar, sesion } = useEstado();
+  // En el día propio, Patty le habla por su apodo.
+  const apodo = persona.propia ? sesion?.usuario?.apodo ?? '' : '';
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
   const [registros, setRegistros] = useState<Registro[] | null>(null);
   const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>([]);
@@ -273,7 +275,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           </button>
         ) : (
           <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
-            <h3>{momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís ahora?')}</h3>
+            <h3>{apodo ? (momento === 'dia' ? t('{apodo}, ¿cómo te sentiste hoy?', { apodo }) : t('{apodo}, ¿cómo te sentís ahora?', { apodo })) : momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís ahora?')}</h3>
             <Caritas elegir={(e) => void sentir(e)} />
             {momento === 'ahora' ? <Puntuales persona={persona} alGuardar={() => { void traer(); avisarAnotado(); }} /> : null}
           </div>
