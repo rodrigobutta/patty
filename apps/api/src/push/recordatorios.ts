@@ -1,9 +1,10 @@
 // Los recordatorios de remedios que manda el servidor. El teléfono programa los suyos para la semana siguiente cada vez
 // que se abre la app (con botones para contestar sin abrirla) y avisa hasta cuándo los tiene (`avisos_hasta`). Lo que
 // queda después de eso (un crónico y una semana sin abrir Patty) lo manda el servidor por push: a la hora de la toma y,
-// si no se marcó, a la media hora. Corre cada minuto.
+// si no se marcó, a la media hora. En Android con push, el teléfono no programa nada y los manda todos el servidor, que
+// sabe qué se marcó: así junta en un solo aviso las tomas olvidadas. Corre cada minuto.
 import { sql } from 'drizzle-orm';
-import { apodoDe, dosisTexto, esIdioma, traducir, type Idioma } from 'shared';
+import { apodoDe, dosisTexto, esIdioma, traducir, type Idioma, type Toma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, fechaLocal, localAInstante } from '../lib/fechas.js';
 import { COLUMNAS, DESDE, tomasDe, type Fila } from '../routes/tratamientos.js';
@@ -40,10 +41,16 @@ function dispositivosDe(db: Db, personaId: number, supervisores: boolean) {
   );
 }
 
-/** Manda un aviso a un teléfono una sola vez por `clave` (aunque haya varios servidores o se revise dos veces). */
-export async function avisarUnaVez(db: Db, d: Dispositivo, clave: string, a: Aviso): Promise<boolean> {
-  const nuevo = await una(db, sql`INSERT INTO avisos_enviados (clave) VALUES (${`${clave}|${d.id}`}) ON CONFLICT DO NOTHING RETURNING clave`);
-  if (!nuevo) return false;
+/**
+ * Manda un aviso a un teléfono una sola vez por `clave` (aunque haya varios servidores o se revise dos veces). Con
+ * `claves`, se manda si alguna todavía no se mandó (un aviso que junta varias tomas).
+ */
+export async function avisarUnaVez(db: Db, d: Dispositivo, clave: string, a: Aviso, claves: string[] = [clave]): Promise<boolean> {
+  let nueva = false;
+  for (const k of claves) {
+    if (await una(db, sql`INSERT INTO avisos_enviados (clave) VALUES (${`${k}|${d.id}`}) ON CONFLICT DO NOTHING RETURNING clave`)) nueva = true;
+  }
+  if (!nueva) return false;
   const r = await enviarAviso(d.token, a);
   if (r === 'invalido') await db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
   return r === 'ok';
@@ -51,9 +58,77 @@ export async function avisarUnaVez(db: Db, d: Dispositivo, clave: string, a: Avi
 
 const hhmm = (iso: string, zona: string) => new Intl.DateTimeFormat('es-AR', { timeZone: zona, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
 
-/** Revisa las tomas de los últimos minutos y manda los avisos que falten. Devuelve cuántos mandó. */
+/** Las tomas sin marcar de hasta este tiempo atrás entran en el aviso que las junta ("tenés 3 tomas sin marcar"). */
+const PENDIENTES_HORAS = 12;
+
+type Momento = 'hora' | 'insistir' | 'supervisor';
+
+/** "Paracetamol 500 mg de las 06:03 y 12:03; Ibuprofeno de las 08:00" (por remedio, en orden). */
+function listaDeTomas(tomas: Toma[], zona: string, i: Idioma): string {
+  const porRemedio = new Map<string, string[]>();
+  for (const t of [...tomas].sort((a, b) => a.programada.localeCompare(b.programada))) {
+    const que = `${t.remedio}${t.dosis !== null || t.unidad ? ' ' + dosisTexto(t.dosis, t.unidad, i) : ''}`;
+    porRemedio.set(que, [...(porRemedio.get(que) ?? []), hhmm(t.programada, zona)]);
+  }
+  const y = i === 'en' ? ' and ' : ' y ';
+  const unir = (l: string[]) => (l.length > 1 ? `${l.slice(0, -1).join(', ')}${y}${l.at(-1)}` : l[0]);
+  return [...porRemedio].map(([que, horas]) => traducir(i, '{que} de las {horas}', { que, horas: unir(horas) })).join('; ');
+}
+
+/**
+ * El aviso de una persona en este momento. Con una sola toma sin marcar, el de siempre ("es la hora", "¿la tomaste?");
+ * con varias, uno solo que las junta. Va con una etiqueta fija por persona: en el teléfono cada aviso nuevo reemplaza al
+ * anterior en vez de apilarse.
+ */
+export function avisoDeTomas(
+  pendientes: Toma[],
+  momento: Momento,
+  v: { apodo: string; nombre: string; zona: string },
+  i: Idioma,
+): Aviso {
+  const etiqueta = `${momento === 'supervisor' ? 'remedios-sup' : 'remedios'}|${pendientes[0].persona_id}`;
+  const datos: Record<string, string> = {
+    tipo: 'toma',
+    persona_id: String(pendientes[0].persona_id),
+    tomas: JSON.stringify(pendientes.map((t) => ({ tratamiento_id: t.tratamiento_id, programada: t.programada }))),
+    ...(momento === 'supervisor'
+      ? { supervision: 'si' }
+      : { boton_tomada: pendientes.length === 1 ? traducir(i, 'La tomé') : traducir(i, 'Las tomé todas'), boton_salteada: traducir(i, 'No la tomo') }),
+  };
+  const ultima = [...pendientes].sort((a, b) => b.programada.localeCompare(a.programada))[0];
+  if (pendientes.length === 1) {
+    const t = ultima;
+    const x = { hora: hhmm(t.programada, v.zona), remedio: t.remedio, nombre: v.nombre, apodo: v.apodo };
+    const que = `${t.remedio}${t.dosis !== null || t.unidad ? ' ' + dosisTexto(t.dosis, t.unidad, i) : ''}`;
+    Object.assign(datos, { tratamiento_id: String(t.tratamiento_id), programada: t.programada });
+    const textos =
+      momento === 'hora'
+        ? { titulo: `💊 ${que}`, cuerpo: v.apodo ? traducir(i, '{apodo}, es la hora de la toma de las {hora}.', x) : traducir(i, 'Es la hora de la toma de las {hora}.', x) }
+        : momento === 'insistir'
+          ? { titulo: v.apodo ? traducir(i, '{apodo}, ¿tomaste {remedio}?', x) : traducir(i, '¿Tomaste {remedio}?', x), cuerpo: traducir(i, 'La de las {hora} todavía no está marcada.', x) }
+          : { titulo: traducir(i, '💊 {nombre} no marcó {remedio}', x), cuerpo: traducir(i, 'La toma de las {hora} sigue sin marcar. Podés mandarle un aviso desde Patty.', x) };
+    return { ...textos, datos, canal: 'remedios', etiqueta };
+  }
+  const x = { n: pendientes.length, apodo: v.apodo, nombre: v.nombre, lista: listaDeTomas(pendientes, v.zona, i) };
+  if (momento === 'supervisor') {
+    return { titulo: traducir(i, '💊 {nombre} tiene {n} tomas sin marcar', x), cuerpo: traducir(i, '{lista}. Podés mandarle un aviso desde Patty.', x), datos, canal: 'remedios', etiqueta };
+  }
+  return {
+    titulo: v.apodo ? traducir(i, '{apodo}, te estás olvidando {n} tomas', x) : traducir(i, 'Te estás olvidando {n} tomas', x),
+    cuerpo: traducir(i, '{lista}. Marcalas cuando las tomes.', x),
+    datos,
+    canal: 'remedios',
+    etiqueta,
+  };
+}
+
+/**
+ * Revisa las tomas de los últimos minutos y manda los avisos que falten: a la hora de la toma, a la media hora si no
+ * se marcó y, a la hora, a quienes supervisan. Si en un mismo momento tocan varias (o quedaron otras sin marcar), va
+ * un solo aviso por persona que las junta. Devuelve cuántos mandó.
+ */
 export async function revisarTomas(db: Db, ahora = new Date()): Promise<number> {
-  const desde = new Date(ahora.getTime() - (AVISAR_SUPERVISOR_MIN + TOLERANCIA_MIN) * 60000);
+  const desde = new Date(ahora.getTime() - Math.max(PENDIENTES_HORAS * 60, AVISAR_SUPERVISOR_MIN + TOLERANCIA_MIN) * 60000);
   const lista = await filas<Fila>(
     db,
     sql`SELECT ${COLUMNAS} ${DESDE} WHERE t.borrado IS NULL AND t.terminado IS NULL AND (t.fin IS NULL OR t.fin > ${desde.toISOString()})
@@ -62,9 +137,7 @@ export async function revisarTomas(db: Db, ahora = new Date()): Promise<number> 
   );
   if (!lista.length) return 0;
   const porId = new Map(lista.map((t) => [t.id, t]));
-  const tomas = (await tomasDe(db, lista, desde, new Date(ahora.getTime() + 1000))).filter((t) => t.estado === null);
-  let enviados = 0;
-  const propios = new Map<number, Dispositivo[]>();
+  const pendientes = (await tomasDe(db, lista, desde, new Date(ahora.getTime() + 1000))).filter((t) => t.estado === null);
   // El apodo de la dueña o el dueño de cada persona, para que el aviso le hable por su nombre.
   const apodos = new Map(
     (await filas<{ persona_id: number; nombre: string; apodo: string | null }>(
@@ -72,44 +145,40 @@ export async function revisarTomas(db: Db, ahora = new Date()): Promise<number> 
       sql`SELECT pu.persona_id, u.nombre, u.apodo FROM persona_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id WHERE pu.rol = 'dueno'`,
     )).map((f) => [f.persona_id, apodoDe(f.nombre, f.apodo)]),
   );
-  const deSupervisores = new Map<number, Dispositivo[]>();
-  for (const t of tomas) {
-    if (!propios.has(t.persona_id)) {
-      propios.set(t.persona_id, await dispositivosDe(db, t.persona_id, false));
-      deSupervisores.set(t.persona_id, await dispositivosDe(db, t.persona_id, true));
-    }
+
+  // Lo que toca ahora, por persona y momento (con el margen por si el servidor estuvo caído un rato).
+  const eventos = new Map<string, { persona: number; momento: Momento; cuando: number[]; claves: string[] }>();
+  for (const t of pendientes) {
     const programada = Date.parse(t.programada);
-    const tr = porId.get(t.tratamiento_id)!;
-    const hora = hhmm(t.programada, tr.zona);
-    const que = (i: Idioma) => `${t.remedio}${t.dosis !== null || t.unidad ? ' ' + dosisTexto(t.dosis, t.unidad, i) : ''}`;
-    const datos = { tipo: 'toma', tratamiento_id: String(t.tratamiento_id), programada: t.programada, persona_id: String(t.persona_id) };
-    const v = { hora, remedio: t.remedio, nombre: tr.persona_nombre, apodo: apodos.get(t.persona_id) ?? '' };
-    const momentos = [
-      { cuando: programada, tipo: 'hora', supervisores: false, aviso: (i: Idioma) => ({ titulo: `💊 ${que(i)}`, cuerpo: v.apodo ? traducir(i, '{apodo}, es la hora de la toma de las {hora}.', v) : traducir(i, 'Es la hora de la toma de las {hora}.', v) }) },
-      {
-        cuando: programada + INSISTIR_MIN * 60000,
-        tipo: 'insistir',
-        supervisores: false,
-        aviso: (i: Idioma) => ({ titulo: v.apodo ? traducir(i, '{apodo}, ¿tomaste {remedio}?', v) : traducir(i, '¿Tomaste {remedio}?', v), cuerpo: traducir(i, 'La de las {hora} todavía no está marcada.', v) }),
-      },
-      {
-        cuando: programada + AVISAR_SUPERVISOR_MIN * 60000,
-        tipo: 'supervisor',
-        supervisores: true,
-        aviso: (i: Idioma) => ({
-          titulo: traducir(i, '💊 {nombre} no marcó {remedio}', v),
-          cuerpo: traducir(i, 'La toma de las {hora} sigue sin marcar. Podés mandarle un aviso desde Patty.', v),
-        }),
-      },
+    const momentos: Array<[Momento, number]> = [
+      ['hora', programada],
+      ['insistir', programada + INSISTIR_MIN * 60000],
+      ['supervisor', programada + AVISAR_SUPERVISOR_MIN * 60000],
     ];
-    for (const m of momentos) {
-      // Solo lo que ya tocaba (con un margen, por si el servidor estuvo caído un rato).
-      if (m.cuando > ahora.getTime() || m.cuando < ahora.getTime() - TOLERANCIA_MIN * 60000) continue;
-      for (const d of (m.supervisores ? deSupervisores : propios).get(t.persona_id)!) {
-        // Si el teléfono ya lo tiene programado por su cuenta, no se repite.
-        if (!m.supervisores && d.avisos_hasta && Date.parse(d.avisos_hasta) >= m.cuando) continue;
-        if (await avisarUnaVez(db, d, `toma|${t.tratamiento_id}|${t.programada}|${m.tipo}`, { ...m.aviso(idiomaDe(d)), datos, canal: 'remedios' })) enviados++;
-      }
+    for (const [momento, cuando] of momentos) {
+      if (cuando > ahora.getTime() || cuando < ahora.getTime() - TOLERANCIA_MIN * 60000) continue;
+      const k = `${t.persona_id}|${momento}`;
+      const e = eventos.get(k) ?? { persona: t.persona_id, momento, cuando: [], claves: [] };
+      e.cuando.push(cuando);
+      e.claves.push(`toma|${t.tratamiento_id}|${t.programada}|${momento}`);
+      eventos.set(k, e);
+    }
+  }
+
+  let enviados = 0;
+  for (const e of eventos.values()) {
+    const supervisores = e.momento === 'supervisor';
+    // En el aviso van todas las que siguen sin marcar (a quien supervisa, las que ya pasaron la hora de aviso).
+    const suyas = pendientes.filter(
+      (t) => t.persona_id === e.persona && Date.parse(t.programada) <= ahora.getTime() - (supervisores ? AVISAR_SUPERVISOR_MIN * 60000 - TOLERANCIA_MIN * 60000 : 0),
+    );
+    if (!suyas.length) continue;
+    const tr = porId.get(suyas[0].tratamiento_id)!;
+    for (const d of await dispositivosDe(db, e.persona, supervisores)) {
+      // Si el teléfono ya lo tiene programado por su cuenta, no se repite.
+      if (!supervisores && d.avisos_hasta && e.cuando.every((c) => Date.parse(d.avisos_hasta!) >= c)) continue;
+      const aviso = avisoDeTomas(suyas, e.momento, { apodo: supervisores ? '' : apodos.get(e.persona) ?? '', nombre: tr.persona_nombre, zona: tr.zona }, idiomaDe(d));
+      if (await avisarUnaVez(db, d, e.claves.join('+'), aviso, e.claves)) enviados++;
     }
   }
   return enviados;

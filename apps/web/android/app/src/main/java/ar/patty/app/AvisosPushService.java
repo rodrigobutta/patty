@@ -23,6 +23,8 @@ public class AvisosPushService extends FirebaseMessagingService {
 
     /** Marca en el intent de que se abrió la app tocando un aviso (MascotaPlugin se lo pasa a la web). */
     public static final String EXTRA_TOCADO = "patty_aviso_tocado";
+    /** Los avisos con etiqueta (los de remedios de una persona) usan siempre este id: el nuevo reemplaza al anterior. */
+    public static final int ID_CON_ETIQUETA = 1;
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage m) {
@@ -50,7 +52,8 @@ public class AvisosPushService extends FirebaseMessagingService {
         abrir.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         for (Map.Entry<String, String> e : datos.entrySet()) abrir.putExtra(e.getKey(), e.getValue());
         abrir.putExtra(EXTRA_TOCADO, true);
-        int id = (int) (System.currentTimeMillis() & 0x7fffffff);
+        String etiqueta = datos.get("etiqueta");
+        int id = etiqueta != null ? (etiqueta.hashCode() & 0x0fffffff) * 4 : (int) (System.currentTimeMillis() & 0x7fffffff);
         PendingIntent pi = PendingIntent.getActivity(this, id, abrir, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, canal)
@@ -77,8 +80,16 @@ public class AvisosPushService extends FirebaseMessagingService {
             b.addAction(0, "Aceptar", conAccion(datos, "aceptar", id, id + 1));
             b.addAction(0, "No", conAccion(datos, "rechazar", id, id + 2));
         }
+        // Las tomas de remedios se contestan desde el aviso: una sola ("La tomé" / "No la tomo") o todas juntas.
+        if ("toma".equals(datos.get("tipo")) && datos.get("tomas") != null && !"si".equals(datos.get("supervision"))) {
+            boolean una = datos.get("tratamiento_id") != null;
+            String si = datos.get("boton_tomada") != null ? datos.get("boton_tomada") : (una ? "La tomé" : "Las tomé todas");
+            b.addAction(0, si, conAccion(datos, "tomada", id, id + 1));
+            if (una) b.addAction(0, datos.get("boton_salteada") != null ? datos.get("boton_salteada") : "No la tomo", conAccion(datos, "salteada", id, id + 2));
+        }
         try {
-            nm.notify(id, b.build());
+            if (etiqueta != null) nm.notify(etiqueta, ID_CON_ETIQUETA, b.build());
+            else nm.notify(id, b.build());
         } catch (SecurityException e) {
             // Sin permiso de avisos: no hay nada que hacer.
         }

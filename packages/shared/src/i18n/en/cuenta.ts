@@ -12,4 +12,13 @@ export const CUENTA: Record<string, string> = {
   '{apodo}, es la hora de la toma de las {hora}.': '{apodo}, it’s time for your {hora} dose.',
   '{apodo}, ¿tomaste {remedio}?': '{apodo}, did you take {remedio}?',
   'La cuenta {email} está desactivada. Pedile a un administrador que la active.': 'The account {email} is disabled. Ask an administrator to enable it.',
+  '{que} de las {horas}': '{que} at {horas}',
+  '💊 {nombre} tiene {n} tomas sin marcar': '💊 {nombre} has {n} unmarked doses',
+  '{lista}. Podés mandarle un aviso desde Patty.': '{lista}. You can send them a nudge from Patty.',
+  '{apodo}, te estás olvidando {n} tomas': '{apodo}, you’re missing {n} doses',
+  'Te estás olvidando {n} tomas': 'You’re missing {n} doses',
+  '{lista}. Marcalas cuando las tomes.': '{lista}. Mark them when you take them.',
+  'Las tomé todas': 'I took them all',
+  '¡Bien! Marqué {n} tomas 💊': 'Great! Marked {n} doses 💊',
+  '¡Bien! Anotado 💊': 'Great! Logged 💊',
 };

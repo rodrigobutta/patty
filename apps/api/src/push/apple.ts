@@ -45,6 +45,8 @@ export function enviarAvisoApple(dispositivo: string, a: Aviso): Promise<'ok' | 
         'apns-topic': TEMA,
         'apns-push-type': 'alert',
         'apns-priority': '10',
+        // La misma etiqueta reemplaza al aviso anterior (los de remedios de una persona).
+        ...(a.etiqueta ? { 'apns-collapse-id': a.etiqueta.slice(0, 64) } : {}),
         'content-type': 'application/json',
       });
       let estado = 0;

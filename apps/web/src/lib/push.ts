@@ -13,6 +13,7 @@ const CLAVE_HASTA = 'avisos-hasta';
 
 const Mascota = registerPlugin<{
   hayFirebase(): Promise<{ si: boolean }>;
+  sacarAvisos(o: { prefijo: string }): Promise<void>;
   addListener(evento: 'avisoTocado', f: (datos: Record<string, string>) => void): Promise<{ remove(): Promise<void> }>;
 }>('Mascota');
 
@@ -45,6 +46,14 @@ export async function mandarDispositivo(): Promise<void> {
   const token = leer(CLAVE_TOKEN);
   if (!token) return;
   await api('POST', '/api/dispositivos', { token, plataforma: plataforma(), avisos_hasta: leer(CLAVE_HASTA) }).catch(() => {});
+}
+
+/** Si este teléfono recibe avisos push (ya se registró y le pasó su token al servidor). */
+export const recibePush = (): boolean => Boolean(leer(CLAVE_TOKEN));
+
+/** Saca del teléfono los avisos push de remedios (al marcar las tomas en la app: ya no hace falta que sigan ahí). */
+export function sacarAvisosDeRemedios(): void {
+  if (plataforma() === 'android') void Mascota.sacarAvisos({ prefijo: 'remedios|' }).catch(() => {});
 }
 
 /** Hasta cuándo este teléfono ya tiene programados los recordatorios (lo llama lib/remedios al programarlos). */

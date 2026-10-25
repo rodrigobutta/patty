@@ -5,7 +5,7 @@ import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { alPedirIrAlDia } from './lib/avisos';
 import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
 import { alTocarAvisoPush, usePush } from './lib/push';
-import { useRecordatorios } from './lib/remedios';
+import { marcarToma, useRecordatorios } from './lib/remedios';
 import { pedirSentir } from './lib/sentir';
 import { useSalud } from './lib/salud';
 import { useDatosDelTelefono } from './lib/telefono';
@@ -79,6 +79,15 @@ export function App() {
               })
               .catch((e: Error) => avisar(e.message));
           }
+        }
+        // "La tomé", "No la tomo" o "Las tomé todas" tocado en el aviso de remedios.
+        if (d.tipo === 'toma' && d.tomas && (d.accion === 'tomada' || d.accion === 'salteada')) {
+          const estado = d.accion;
+          void (async () => {
+            const tomas = JSON.parse(d.tomas) as Array<{ tratamiento_id: number; programada: string }>;
+            for (const x of tomas) await marcarToma(x, estado);
+            avisar(estado === 'salteada' ? t('Anotado que no la tomaste') : tomas.length > 1 ? t('¡Bien! Marqué {n} tomas 💊', { n: tomas.length }) : t('¡Bien! Anotado 💊'));
+          })().catch((e: Error) => avisar(e.message));
         }
         if (d.persona_id && personas.some((p) => p.id === Number(d.persona_id))) elegirPersona(Number(d.persona_id));
       }),

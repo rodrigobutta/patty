@@ -62,10 +62,10 @@ public class MascotaPlugin extends Plugin {
         }
         intent.removeExtra(AvisosPushService.EXTRA_TOCADO);
         int aviso = intent.getIntExtra("aviso_id", 0);
-        if (aviso != 0) {
-            android.app.NotificationManager nm = (android.app.NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-            nm.cancel(aviso);
-        }
+        android.app.NotificationManager nm = (android.app.NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        String etiqueta = intent.getStringExtra("etiqueta");
+        if (etiqueta != null && intent.getStringExtra("accion") != null) nm.cancel(etiqueta, AvisosPushService.ID_CON_ETIQUETA);
+        else if (aviso != 0) nm.cancel(aviso);
         notifyListeners("avisoTocado", datos, true);
     }
 
@@ -80,6 +80,19 @@ public class MascotaPlugin extends Plugin {
         com.getcapacitor.JSObject r = new com.getcapacitor.JSObject();
         r.put("si", id != 0);
         call.resolve(r);
+    }
+
+    /** Saca los avisos push cuya etiqueta empieza con `prefijo` (los de remedios, cuando se marcan las tomas en la app). */
+    @PluginMethod
+    public void sacarAvisos(PluginCall call) {
+        String prefijo = call.getString("prefijo", "");
+        android.app.NotificationManager nm = (android.app.NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            for (android.service.notification.StatusBarNotification n : nm.getActiveNotifications()) {
+                if (n.getTag() != null && n.getTag().startsWith(prefijo)) nm.cancel(n.getTag(), n.getId());
+            }
+        }
+        call.resolve();
     }
 
     @PluginMethod

@@ -8,6 +8,32 @@ afterAll(() => cerrarDb());
 afterEach(() => usarEnvioPrueba(null));
 
 describe('avisos push de remedios', () => {
+  it('con varias tomas sin marcar manda un solo aviso que las junta, con la misma etiqueta para reemplazar al anterior', async () => {
+    const { ana, personaId } = await conAdmin();
+    const enviados: Aviso[] = [];
+    usarEnvioPrueba(async (_t, a) => {
+      enviados.push(a);
+      return 'ok';
+    });
+    // Paracetamol cada 6 horas desde las 00:03 (Buenos Aires) e ibuprofeno a las 06:03.
+    await ana.post('/api/tratamientos', { persona_id: personaId, concepto_nombre: 'Paracetamol', dosis: 500, unidad: 'mg', cada_horas: 6, inicio: '2026-10-25T03:03:00.000Z' });
+    await ana.post('/api/tratamientos', { persona_id: personaId, concepto_nombre: 'Ibuprofeno', horarios: ['06:03'], inicio: '2026-10-25T03:00:00.000Z' });
+    await ana.post('/api/dispositivos', { token: 'tel', plataforma: 'android' });
+    const db = obtenerDb();
+    expect(await revisarTomas(db, new Date('2026-10-25T03:04:00.000Z'))).toBe(1);
+    expect(enviados[0]).toMatchObject({ titulo: '💊 Paracetamol 500 mg', cuerpo: 'Anita, es la hora de la toma de las 00:03.', etiqueta: `remedios|${personaId}` });
+    // A las 06:03 tocan dos más y la de las 00:03 sigue sin marcar: un solo aviso con las tres.
+    enviados.length = 0;
+    expect(await revisarTomas(db, new Date('2026-10-25T09:04:00.000Z'))).toBe(1);
+    expect(enviados).toHaveLength(1);
+    expect(enviados[0]).toMatchObject({
+      titulo: 'Anita, te estás olvidando 3 tomas',
+      cuerpo: 'Paracetamol 500 mg de las 00:03 y 06:03; Ibuprofeno de las 06:03. Marcalas cuando las tomes.',
+      etiqueta: `remedios|${personaId}`,
+    });
+    expect(JSON.parse(enviados[0].datos!.tomas)).toHaveLength(3);
+  });
+
   it('manda la toma y el "¿la tomaste?" una sola vez, solo después de lo que el teléfono ya tiene programado', async () => {
     const { ana, personaId } = await conAdmin();
     const enviados: Array<{ token: string; a: Aviso }> = [];

@@ -8,8 +8,8 @@ import { dosisTexto, type Toma } from 'shared';
 import { api } from '../api';
 import { avisoExacto, crearCanales, idDeAviso, irAlDia, permisoAvisos } from './avisos';
 import { idioma, locale, t } from './idioma';
-import { esNativa } from './nativo';
-import { avisosProgramadosHasta } from './push';
+import { esNativa, plataforma } from './nativo';
+import { avisosProgramadosHasta, recibePush, sacarAvisosDeRemedios } from './push';
 import { apodoGuardado } from './apodo';
 
 const CLAVE_ACTIVOS = 'recordatorios-remedios';
@@ -120,6 +120,12 @@ export function programarRecordatorios(): Promise<boolean> {
         avisosProgramadosHasta(new Date('9999-12-31T00:00:00Z'));
         return true;
       }
+      // En Android con push, los manda todos el servidor: sabe qué se marcó y junta las tomas olvidadas en un solo
+      // aviso que reemplaza al anterior (programados acá se apilaban uno por toma).
+      if (plataforma() === 'android' && recibePush()) {
+        avisosProgramadosHasta(new Date());
+        return permisoAvisos();
+      }
       const tomas = await api<Toma[]>('GET', `/api/tratamientos/proximas?horas=${HORAS}`);
       const hasta = new Date(Date.now() + HORAS * 3600000);
       if (!tomas.length) {
@@ -157,6 +163,8 @@ export async function marcarToma(t: Pick<Toma, 'tratamiento_id' | 'programada'>,
   if (esNativa()) {
     const ids = idsDe(t);
     await LocalNotifications.cancel({ notifications: [{ id: ids.aviso }, { id: ids.insistir }] }).catch(() => {});
+    await LocalNotifications.removeDeliveredNotifications({ notifications: [{ id: ids.aviso }, { id: ids.insistir }] as never }).catch(() => {});
+    sacarAvisosDeRemedios();
   }
   tomasCambiaron();
 }
@@ -184,6 +192,18 @@ async function posponer(n: LocalNotificationSchema, toma: Extra['toma']): Promis
   });
 }
 
+/** Saca del teléfono los avisos de tomas ya mostrados (con la app abierta, el Día los tiene a la vista). */
+async function limpiarAvisosViejos(): Promise<void> {
+  try {
+    const { notifications } = await LocalNotifications.getDeliveredNotifications();
+    const viejos = notifications.filter((n) => (n.extra as Extra | undefined)?.toma || n.title?.startsWith('💊'));
+    if (viejos.length) await LocalNotifications.removeDeliveredNotifications({ notifications: viejos });
+  } catch {
+    /* no importa */
+  }
+  sacarAvisosDeRemedios();
+}
+
 /** Al arrancar la app: programar los recordatorios y contestar lo que se toque en los avisos. */
 export function useRecordatorios(listo: boolean): void {
   useEffect(() => {
@@ -196,9 +216,12 @@ export function useRecordatorios(listo: boolean): void {
       else if (a.actionId === 'posponer') void posponer(a.notification, toma).catch(() => {});
       else irAlDia();
     });
+    // Al abrir la app se ve todo en el Día: los avisos de tomas que ya pasaron no hace falta que sigan apilados.
+    void limpiarAvisosViejos();
     // Al volver a la app (después de días sin abrirla, o de marcar desde otro teléfono) se reprograma.
     let ultima = Date.now();
     const volver = () => {
+      if (document.visibilityState === 'visible') void limpiarAvisosViejos();
       if (document.visibilityState !== 'visible' || Date.now() - ultima < 10 * 60000) return;
       ultima = Date.now();
       void programarRecordatorios();

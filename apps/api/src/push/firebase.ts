@@ -62,6 +62,8 @@ export interface Aviso {
   datos?: Record<string, string>;
   /** Canal de Android (los mismos que crea la app: "remedios"). */
   canal?: string;
+  /** Avisos con la misma etiqueta se reemplazan en el teléfono en vez de apilarse (los de remedios de una persona). */
+  etiqueta?: string;
 }
 
 /** Para las pruebas: reemplaza el envío real. */
@@ -87,8 +89,8 @@ export async function enviarAviso(token: string, a: Aviso): Promise<'ok' | 'inva
         message: {
           token,
           notification: { title: a.titulo, body: a.cuerpo },
-          data: a.datos ?? {},
-          android: { priority: 'high', notification: { channel_id: a.canal ?? 'avisos', visibility: 'PRIVATE' } },
+          data: { ...(a.datos ?? {}), ...(a.etiqueta ? { etiqueta: a.etiqueta } : {}) },
+          android: { priority: 'high', notification: { channel_id: a.canal ?? 'avisos', visibility: 'PRIVATE', ...(a.etiqueta ? { tag: a.etiqueta } : {}) } },
         },
       }),
     });
