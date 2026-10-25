@@ -256,6 +256,75 @@ export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<numb
   return enviados;
 }
 
+/** A esta hora (de la persona) se avisa, como mucho uno por día, de un permiso que falta. */
+const HORA_PERMISOS = '12:00';
+/** Cada permiso se recuerda como mucho estas veces (en 30 días) y con estos días entre uno y otro. */
+const PERMISO_VECES = 3;
+const PERMISO_CADA_DIAS = 3;
+
+export type PermisoFaltante = 'ubicacion' | 'telefono' | 'salud';
+
+/** Qué le falta a un teléfono, en orden de importancia, según lo que la app contó de él (ver lib/estadoTelefono). */
+export function permisosFaltantes(plataforma: string, p: Record<string, unknown>): PermisoFaltante[] {
+  if (plataforma !== 'android' && plataforma !== 'ios') return [];
+  const r: PermisoFaltante[] = [];
+  if (p.ubicacion && p.ubicacion !== 'siempre') r.push('ubicacion');
+  if (plataforma === 'android' && (p.uso_apps === 'no' || p.llamadas === 'no')) r.push('telefono');
+  if (p.salud === 0) r.push('salud');
+  return r;
+}
+
+export function avisoDePermiso(permiso: PermisoFaltante, apodo: string, i: Idioma): Aviso {
+  const v = { apodo };
+  const textos: Record<PermisoFaltante, [string, string]> = {
+    ubicacion: ['📍 Activá la ubicación «siempre»', apodo ? '{apodo}, así anoto el clima y tus lugares sola, aunque no abras la app. Tocá y te explico cómo.' : 'Así anoto el clima y tus lugares sola, aunque no abras la app. Tocá y te explico cómo.'],
+    telefono: ['📱 Falta el acceso al uso del teléfono', 'Para contar cuánto usás cada app y las llamadas (nunca números ni nombres). Tocá y te digo cómo.'],
+    salud: ['⌚ Conectá el reloj o la salud del teléfono', 'Para sumar tu sueño, pasos y pulso solos. Tocá y te muestro cómo.'],
+  };
+  const [titulo, cuerpo] = textos[permiso];
+  return { titulo: traducir(i, titulo, v), cuerpo: traducir(i, cuerpo, v), datos: { tipo: 'permiso', permiso, cara: 'espera' } };
+}
+
+/**
+ * A las 12 de cada uno: si a un teléfono le falta un permiso (ubicación "siempre", uso del teléfono, salud), un aviso
+ * que al tocarlo explica cómo darlo en ese teléfono. Uno por día como mucho, y cada permiso a lo sumo 3 veces.
+ */
+export async function revisarPermisos(db: Db, ahora = new Date()): Promise<number> {
+  const lista = await filas<{
+    instalacion: string; plataforma: string; permisos: Record<string, unknown>; dispositivo: number; token: string; avisos_hasta: string | null;
+    idioma: string; nombre: string; apodo: string | null; zona: string | null;
+  }>(
+    db,
+    sql`SELECT i.id AS instalacion, i.plataforma, i.estado->'permisos' AS permisos, d.id AS dispositivo, d.token, d.avisos_hasta,
+               u.idioma, u.nombre, u.apodo,
+               (SELECT p.zona_horaria FROM personas p JOIN persona_usuarios pu ON pu.persona_id = p.id AND pu.rol = 'dueno'
+                WHERE pu.usuario_id = u.id ORDER BY p.id LIMIT 1) AS zona
+        FROM instalaciones i JOIN dispositivos d ON d.token = i.estado->>'token' AND d.usuario_id = i.usuario_id
+        JOIN usuarios u ON u.id = i.usuario_id AND u.activo
+        WHERE i.actualizado > now() - interval '14 days'`,
+  );
+  let enviados = 0;
+  for (const x of lista) {
+    const zona = x.zona ?? 'America/Argentina/Buenos_Aires';
+    const desde = localAInstante(fechaLocal(ahora, zona), HORA_PERMISOS, zona).getTime();
+    if (ahora.getTime() < desde || ahora.getTime() > desde + TOLERANCIA_MIN * 60000) continue;
+    const dia = fechaLocal(ahora, zona);
+    if (await una(db, sql`SELECT 1 AS x FROM avisos_enviados WHERE clave LIKE ${`permiso|${x.instalacion}|%|${dia}|%`} LIMIT 1`)) continue;
+    for (const permiso of permisosFaltantes(x.plataforma, x.permisos ?? {})) {
+      const previos = await filas<{ enviado: string }>(
+        db,
+        sql`SELECT creado AS enviado FROM avisos_enviados WHERE clave LIKE ${`permiso|${x.instalacion}|${permiso}|%`} ORDER BY creado DESC`,
+      );
+      if (previos.length >= PERMISO_VECES) continue;
+      if (previos.length && ahora.getTime() - Date.parse(previos[0].enviado) < (PERMISO_CADA_DIAS - 0.5) * 86400000) continue;
+      const d = { id: x.dispositivo, token: x.token, avisos_hasta: x.avisos_hasta };
+      if (await avisarUnaVez(db, d, `permiso|${x.instalacion}|${permiso}|${dia}`, avisoDePermiso(permiso, apodoDe(x.nombre, x.apodo), idiomaDe(x)))) enviados++;
+      break; // uno por día
+    }
+  }
+  return enviados;
+}
+
 /** Arranca la revisión de cada minuto (si hay Firebase configurado). */
 export function arrancarRecordatorios(db: Db): void {
   if (!pushDisponible()) {
@@ -268,8 +337,9 @@ export function arrancarRecordatorios(db: Db): void {
       await revisarTomas(db);
       await revisarDiasSinAnotar(db);
       await revisarTeExtrano(db);
+      await revisarPermisos(db);
       // Una vez por día, lo viejo se borra.
-      if (vueltas++ % 1440 === 0) await db.execute(sql`DELETE FROM avisos_enviados WHERE enviado < now() - interval '30 days'`);
+      if (vueltas++ % 1440 === 0) await db.execute(sql`DELETE FROM avisos_enviados WHERE creado < now() - interval '30 days'`);
     } catch (e) {
       console.error('Error revisando recordatorios:', e);
     }

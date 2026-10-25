@@ -93,3 +93,31 @@ describe('aviso de "te extraño"', () => {
     expect(avisoTeExtrano('Rodrigo', 9).titulo).toBe('😢 Te extraño');
   });
 });
+
+describe('avisos de permisos que faltan', () => {
+  it('a las 12, uno por día, con el permiso que falta; cada uno como mucho 3 veces', async () => {
+    const { ana } = await conAdmin();
+    const enviados: Aviso[] = [];
+    usarEnvioPrueba(async (_t, a) => {
+      enviados.push(a);
+      return 'ok';
+    });
+    await ana.post('/api/personas', { nombre: 'Ana' });
+    await ana.post('/api/dispositivos', { token: 'tel', plataforma: 'android' });
+    await ana.post('/api/dispositivos/estado', {
+      instalacion: 'abcdef0123', plataforma: 'android', push_token: 'tel',
+      permisos: { avisos: 'si', ubicacion: 'en_uso', uso_apps: 'no', llamadas: 'si', salud: 3 },
+    });
+    const { revisarPermisos } = await import('../src/push/recordatorios.js');
+    const db = obtenerDb();
+    expect(await revisarPermisos(db, new Date())).toBeGreaterThanOrEqual(0); // fuera de hora no importa
+    enviados.length = 0;
+    // 12:01 en Buenos Aires = 15:01 UTC
+    expect(await revisarPermisos(db, new Date('2026-10-26T15:01:00.000Z'))).toBe(1);
+    expect(await revisarPermisos(db, new Date('2026-10-26T15:02:00.000Z'))).toBe(0); // uno por día
+    expect(enviados[0]).toMatchObject({ titulo: '📍 Activá la ubicación «siempre»', datos: { tipo: 'permiso', permiso: 'ubicacion' } });
+    // Al otro día, el siguiente (la ubicación espera 3 días)
+    expect(await revisarPermisos(db, new Date('2026-10-27T15:01:00.000Z'))).toBe(1);
+    expect(enviados[1].datos?.permiso).toBe('telefono');
+  });
+});

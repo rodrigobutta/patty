@@ -25,7 +25,7 @@ import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
 import { useProgreso } from './lib/progreso';
 import { avanceProgreso } from 'shared';
 import { ofrecerPerfil, Perfil } from './pantallas/Perfil';
-import { ofrecerPermisos, Permisos } from './pantallas/Permisos';
+import { ofrecerPermisos, pedirGuia, Permisos, type Paso } from './pantallas/Permisos';
 import { useReportarEstado } from './lib/estadoTelefono';
 import { t } from './lib/idioma';
 
@@ -79,6 +79,11 @@ export function App() {
               })
               .catch((e: Error) => avisar(e.message));
           }
+        }
+        // Un permiso que falta: Más, con los pasos para darlo en este teléfono.
+        if (d.tipo === 'permiso' && ['avisos', 'ubicacion', 'telefono', 'salud'].includes(d.permiso)) {
+          setPestana('mas');
+          pedirGuia(d.permiso as Paso);
         }
         // "La tomé", "No la tomo" o "Las tomé todas" tocado en el aviso de remedios.
         if (d.tipo === 'toma' && d.tomas && (d.accion === 'tomada' || d.accion === 'salteada')) {

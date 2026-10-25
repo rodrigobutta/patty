@@ -117,7 +117,7 @@ export async function reportarEstado(ya = false): Promise<void> {
   if (!ya && Date.now() - ultimoEnvio < 10 * 60000) return;
   ultimoEnvio = Date.now();
   try {
-    await api('POST', '/api/dispositivos/estado', { instalacion: instalacion(), ...(await leerEstado()) });
+    await api('POST', '/api/dispositivos/estado', { instalacion: instalacion(), push_token: leer('push-token'), ...(await leerEstado()) });
   } catch {
     /* no importa: se manda la próxima vez */
   }

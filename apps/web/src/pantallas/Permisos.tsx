@@ -1,7 +1,8 @@
 // "Para que Patty te ayude más": activar, uno por uno y explicado, lo que la app puede hacer sola (avisos, ubicación,
 // uso del teléfono y llamadas, salud). Se ofrece una vez después de la bienvenida (todo salteable) y se puede volver a
 // abrir desde Más. Cada fila dice para qué sirve, tiene su botón y queda tildada cuando el permiso está dado; al volver
-// de los ajustes del teléfono se vuelve a mirar.
+// de los ajustes del teléfono se vuelve a mirar. «¿Cómo lo activo?» muestra los pasos exactos para la marca del teléfono
+// (se abre solo al tocar el aviso de un permiso que falta).
 import { BackgroundGeolocation } from '@capgo/background-geolocation';
 import { useCallback, useEffect, useState } from 'react';
 import type { Persona } from 'shared';
@@ -15,6 +16,7 @@ import { hayDatosDelTelefono, ponerDatos, sincronizar, Telefono } from '../lib/t
 import { ponerSeguimiento } from '../lib/ubicacion';
 import { Mascota } from '../mascota/Mascota';
 import { t } from '../lib/idioma';
+import { marcaDelTelefono, NOMBRE_MARCA, pasosPara } from '../lib/guiasPermisos';
 
 const CLAVE = 'permisos-ofrecidos';
 
@@ -35,9 +37,29 @@ const yaOfrecido = () => {
   }
 };
 
-type Paso = 'avisos' | 'ubicacion' | 'telefono' | 'salud';
+export type Paso = 'avisos' | 'ubicacion' | 'telefono' | 'salud';
 
-export function Permisos({ persona, bienvenida = false, alTerminar }: { persona: Persona; bienvenida?: boolean; alTerminar(): void }) {
+/** El aviso push de un permiso que falta se tocó: Más abre los permisos con los pasos de ese a la vista. */
+let guiaPendiente: Paso | null = null;
+const EVENTO_GUIA = 'patty-guia-permiso';
+export function pedirGuia(p: Paso): void {
+  guiaPendiente = p;
+  window.dispatchEvent(new Event(EVENTO_GUIA));
+}
+/** Para Más: la guía pedida (se consume al leerla) y avisar cuando llegue otra. */
+export function tomarGuia(): Paso | null {
+  const g = guiaPendiente;
+  guiaPendiente = null;
+  return g;
+}
+export function alPedirGuia(f: () => void): () => void {
+  window.addEventListener(EVENTO_GUIA, f);
+  return () => window.removeEventListener(EVENTO_GUIA, f);
+}
+
+export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { persona: Persona; bienvenida?: boolean; guia?: Paso; alTerminar(): void }) {
+  const [abierta, setAbierta] = useState<Paso | null>(guia ?? null);
+  const marca = marcaDelTelefono();
   const [estado, setEstado] = useState<EstadoTelefono | null>(null);
   const [ocupado, setOcupado] = useState<Paso | null>(null);
   const [nota, setNota] = useState<Partial<Record<Paso, string>>>({});
@@ -176,6 +198,17 @@ export function Permisos({ persona, bienvenida = false, alTerminar }: { persona:
               <strong>{f.titulo}</strong>
               <span className="suave chico renglon-sub">{f.para}</span>
               {nota[f.paso] ? <span className="chico renglon-sub nota-permiso">{nota[f.paso]}</span> : null}
+              {pasosPara(f.paso, marca).length ? (
+                <button className="enlace chico como-activar" onClick={() => setAbierta(abierta === f.paso ? null : f.paso)} aria-expanded={abierta === f.paso}>
+                  {abierta === f.paso ? t('Ocultar los pasos') : t('¿Cómo lo activo?')}
+                </button>
+              ) : null}
+              {abierta === f.paso ? (
+                <span className="guia-permiso" ref={(el) => { if (el && guia === f.paso) el.scrollIntoView({ block: 'center' }); }}>
+                  <span className="suave chico">{t('En tu {marca}:', { marca: NOMBRE_MARCA[marca] })}</span>
+                  <ol>{pasosPara(f.paso, marca).map((x) => <li key={x}>{x}</li>)}</ol>
+                </span>
+              ) : null}
             </span>
             {f.listo ? (
               <span className="tilde" aria-label={t('Activado')}>✓</span>

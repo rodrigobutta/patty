@@ -691,3 +691,6 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .subvistas button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
 .subvistas button svg { flex: none; opacity: 0.8; }
 .subvistas button.activa svg { opacity: 1; }
+.como-activar { display: inline-block; margin-top: 4px; padding: 0; text-align: left; }
+.guia-permiso { display: block; margin-top: 6px; padding: 10px 12px; border-radius: 12px; background: var(--acento-suave); }
+.guia-permiso ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 0.9em; }

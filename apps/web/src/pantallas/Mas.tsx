@@ -17,7 +17,7 @@ import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
 import { Perfil } from './Perfil';
-import { Permisos } from './Permisos';
+import { alPedirGuia, Permisos, tomarGuia, type Paso } from './Permisos';
 import { Remedios } from './Remedios';
 import { Supervision } from './Supervision';
 import { NuevaPersona } from './NuevaPersona';
@@ -29,6 +29,18 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const [nueva, setNueva] = useState(false);
   const [perfil, setPerfil] = useState(false);
   const [permisos, setPermisos] = useState(false);
+  const [guia, setGuia] = useState<Paso | undefined>(undefined);
+  // Tocar el aviso de un permiso que falta abre los permisos con sus pasos.
+  useEffect(() => {
+    const abrir = () => {
+      const g = tomarGuia();
+      if (!g) return;
+      setGuia(g);
+      setPermisos(true);
+    };
+    abrir();
+    return alPedirGuia(abrir);
+  }, []);
   const [tema, setTema] = useState<Tema>(temaActual());
   const [fuentes, setFuentes] = useState<Fuente[]>([]);
   const [token, setToken] = useState<{ nombre: string; token: string } | null>(null);
@@ -85,8 +97,8 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           <button className="btn ancho" onClick={() => setPermisos(true)}>{t('🔐 Revisar los permisos de este teléfono')}</button>
           {permisos ? (
             <>
-              <div className="velo" onClick={() => setPermisos(false)} />
-              <Permisos persona={persona} alTerminar={() => setPermisos(false)} />
+              <div className="velo" onClick={() => { setPermisos(false); setGuia(undefined); }} />
+              <Permisos key={guia ?? 'todos'} persona={persona} guia={guia} alTerminar={() => { setPermisos(false); setGuia(undefined); }} />
             </>
           ) : null}
         </>
