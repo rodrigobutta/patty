@@ -78,3 +78,52 @@ export function IconoLapiz({ tamano = 24 }: { tamano?: number }) {
     </svg>
   );
 }
+
+// ---------- Las sub-vistas de Patrones ----------
+
+/** Patrones: dos cosas unidas, con un destello (lo que encontró). */
+export function IconoRelacion({ tamano = 18 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <circle cx="7" cy="15.5" r="3" />
+      <circle cx="16" cy="9" r="3" />
+      <path d="M9.4 13.8l4.2-3" />
+      <path d="M18.5 15.5v4M16.5 17.5h4" strokeWidth={1.8} />
+    </svg>
+  );
+}
+
+/** Números: barras de alturas distintas sobre una base. */
+export function IconoNumeros({ tamano = 18 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <path d="M4 20h16" />
+      <rect x="5.5" y="12" width="3" height="5" rx="1.2" />
+      <rect x="10.5" y="6" width="3" height="11" rx="1.2" />
+      <rect x="15.5" y="9.5" width="3" height="7.5" rx="1.2" />
+    </svg>
+  );
+}
+
+/** Calendario: el mes con algunos días marcados. */
+export function IconoCalendario({ tamano = 18 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="4" />
+      <path d="M8 3v3.5M16 3v3.5M3.5 10h17" />
+      {[[8, 14], [12, 14], [16, 14], [8, 17.5], [12, 17.5]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="0.9" fill="currentColor" stroke="none" opacity={i === 1 || i === 3 ? 1 : 0.45} />
+      ))}
+    </svg>
+  );
+}
+
+/** Buscar: la lupa. */
+export function IconoBuscar({ tamano = 18 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <circle cx="10.5" cy="10.5" r="6" />
+      <path d="M15 15l5 5" />
+    </svg>
+  );
+}

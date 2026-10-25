@@ -8,6 +8,7 @@ import { Buscar } from './Buscar';
 import { Calendario } from './Calendario';
 import { Numeros } from './Numeros';
 import { RuedaProgreso } from './RuedaProgreso';
+import { IconoBuscar, IconoCalendario, IconoNumeros, IconoRelacion } from '../ui/Iconos';
 
 const Q_FIRME = 0.1;
 const cuando = (d: number) => (d === 0 ? t('el mismo día') : d === 1 ? t('al día siguiente') : t('{n} días después', { n: d }));
@@ -78,10 +79,10 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const listo = progreso ? avanceProgreso(progreso).nivel > 0 : true;
   const pestanas = (
     <div className="segmentos ancho subvistas">
-      <button className={vista === 'patrones' ? 'activa' : ''} onClick={() => setVista('patrones')}>✨ {t('Patrones')}</button>
-      <button className={vista === 'numeros' ? 'activa' : ''} onClick={() => setVista('numeros')}>📊 {t('Números')}</button>
-      <button className={vista === 'calendario' ? 'activa' : ''} onClick={() => setVista('calendario')}>📅 {t('Calendario')}</button>
-      <button className={vista === 'buscar' ? 'activa' : ''} onClick={() => setVista('buscar')}>🔎 {t('Buscar')}</button>
+      <button className={vista === 'patrones' ? 'activa' : ''} onClick={() => setVista('patrones')}><IconoRelacion /> {t('Patrones')}</button>
+      <button className={vista === 'numeros' ? 'activa' : ''} onClick={() => setVista('numeros')}><IconoNumeros /> {t('Números')}</button>
+      <button className={vista === 'calendario' ? 'activa' : ''} onClick={() => setVista('calendario')}><IconoCalendario /> {t('Calendario')}</button>
+      <button className={vista === 'buscar' ? 'activa' : ''} onClick={() => setVista('buscar')}><IconoBuscar /> {t('Buscar')}</button>
     </div>
   );
   if (vista === 'numeros') {
