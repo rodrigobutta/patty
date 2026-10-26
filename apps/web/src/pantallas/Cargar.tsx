@@ -356,6 +356,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     const n = nuevo.trim();
     if (!n) return;
     if (propuesta) {
+      respondio.current = true;
       const preguntas = dudas.length ? ` (a tus preguntas: ${dudas.map((d) => d.pregunta).join(' / ')})` : '';
       void interpretar(`${texto}\n\nAclaración${preguntas}: ${n}`);
     } else void interpretar(n);
@@ -424,8 +425,12 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
         (!lista.length
           ? t('¡Listo!')
           : otroDia
-            ? t('¡Anotadas {n} cosas en {dia}!', { n: lista.length, dia: nombreDia(otroDia, persona.zona_horaria).toLowerCase() })
-            : t('¡Anotadas {n} cosas!', { n: lista.length })) + recordar,
+            ? lista.length === 1
+              ? t('¡Anotado en {dia}!', { dia: nombreDia(otroDia, persona.zona_horaria).toLowerCase() })
+              : t('¡Anotadas {n} cosas en {dia}!', { n: lista.length, dia: nombreDia(otroDia, persona.zona_horaria).toLowerCase() })
+            : lista.length === 1
+              ? t('¡Anotado!')
+              : t('¡Anotadas {n} cosas!', { n: lista.length })) + recordar,
       );
       alGuardar(otroDia);
     } catch (e) {
@@ -433,6 +438,15 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       setEstado('quieto');
     }
   };
+
+  // Si ya contestó lo que Patty preguntaba y no quedan dudas, se guarda solo (con el festejo de siempre): no hace
+  // falta buscar el botón verde. Si quedan preguntas, se espera a que conteste de nuevo.
+  const respondio = useRef(false);
+  useEffect(() => {
+    if (!respondio.current || estado !== 'quieto' || !propuesta) return;
+    respondio.current = false;
+    if (!dudas.length && propuesta.length + remedios.length > 0) void guardar();
+  });
 
   const ocupado = estado !== 'quieto' && estado !== 'escuchando';
   const leyenda = {

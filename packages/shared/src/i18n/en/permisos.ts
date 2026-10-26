@@ -69,4 +69,6 @@ export const PERMISOS: Record<string, string> = {
   '📍 Estás en {lugar}': '📍 You’re at {lugar}',
   Contestar: 'Answer',
   'Tocá una respuesta, o contestale con tus palabras. Si no, anotá así.': 'Tap an answer, or reply in your own words. Otherwise, save it as is.',
+  '¡Anotado!': 'Logged!',
+  '¡Anotado en {dia}!': 'Logged on {dia}!',
 };
