@@ -368,9 +368,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         <Plegable
           plegado={contestadoHacePoco && !sentirAbierto}
           boton={
-            <button className="algo-puntual" onClick={() => setSentirAbierto(true)}>
-              <span>{t('😴 ¿Algo puntual? Con sueño, con hambre, con energía…')}</span>
-              <span className="flechita" aria-hidden="true">▾</span>
+            // Plegado: el búho "dice" en un globito que le cuentes cómo te sentís; tocándolo vuelve el bloque entero.
+            <button className="globo-sentir" onClick={() => setSentirAbierto(true)}>
+              <Mascota cara={cara === 'dormida' || !cara ? 'feliz' : cara} tamano={44} />
+              <span className="globo">{t('Contame cómo te sentís')}</span>
             </button>
           }
         >
