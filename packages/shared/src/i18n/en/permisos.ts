@@ -237,4 +237,11 @@ export const PERMISOS: Record<string, string> = {
   'con {lista}': 'with {lista}',
   '👥 Con quién': '👥 Who with',
   'detalle, marca, cómo fue…': 'details, brand, how it went…',
+  '🩺 Tus datos de salud': '🩺 Your health details',
+  'Tus datos de salud': 'Your health details',
+  'Edad, peso, altura y condiciones': 'Age, weight, height and conditions',
+  '🩺 Datos de {nombre}': '🩺 {nombre}’s details',
+  '👥 Tu gente y personas': '👥 Your people',
+  'Tu gente y personas': 'Your people',
+  'Con quién estás y de quién se anota': 'Who you’re with and whose day you log',
 };
