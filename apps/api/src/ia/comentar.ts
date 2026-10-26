@@ -41,7 +41,25 @@ export async function comentarDia(db: Db, p: { id: number; nombre: string; zona_
         ORDER BY r.inicio DESC LIMIT ${MAX_FILAS}`,
   );
   if (!anotado.length) return 0;
-  if (!(await primeraVez(db, `comentarios|${p.id}|${hoy}`))) return 0;
+  const clave = `comentarios-dia|${p.id}|${hoy}`;
+  if (!(await primeraVez(db, clave))) return 0;
+  try {
+    return await armar(db, p, idioma, hoy, desde, anotado);
+  } catch (e) {
+    // Si falló (la IA, la base), se puede volver a intentar más tarde.
+    await db.execute(sql`DELETE FROM avisos_enviados WHERE clave = ${clave}`);
+    throw e;
+  }
+}
+
+async function armar(
+  db: Db,
+  p: { id: number; nombre: string },
+  idioma: Idioma,
+  hoy: string,
+  desde: string,
+  anotado: Array<{ fecha: string; hora: string; que: string; categoria: string; valor: number | null; unidad: string | null; intensidad: number | null; nota: string | null }>,
+): Promise<number> {
 
   const anteriores = await filas<{ texto: string }>(
     db,

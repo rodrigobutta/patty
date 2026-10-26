@@ -169,6 +169,13 @@
       "when": 1793018753278,
       "tag": "0023_comentarios",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793019668114,
+      "tag": "0024_zonas_actuales",
+      "breakpoints": true
     }
   ]
 }

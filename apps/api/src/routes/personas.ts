@@ -8,7 +8,7 @@ import { filas } from '../db/client.js';
 import { fuentes, personas, personaUsuarios } from '../db/schema.js';
 import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
-import { esFecha, zonaValida } from '../lib/fechas.js';
+import { esFecha, zonaValida, zonaCanonica } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
 
 function datosPersona(d: Record<string, unknown>, nueva: boolean) {
@@ -18,7 +18,7 @@ function datosPersona(d: Record<string, unknown>, nueva: boolean) {
     if (!v.nombre) throw new ErrorApi('Poné el nombre de la persona.');
   }
   if ('zona_horaria' in d) {
-    v.zona_horaria = texto(d.zona_horaria);
+    v.zona_horaria = zonaCanonica(texto(d.zona_horaria));
     if (!zonaValida(v.zona_horaria)) throw new ErrorApi('Zona horaria inválida.');
   }
   if ('nacimiento' in d) {

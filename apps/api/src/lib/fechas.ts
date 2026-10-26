@@ -19,6 +19,23 @@ function formato(zona: string): Intl.DateTimeFormat {
   return f;
 }
 
+/**
+ * Los nombres viejos de algunas zonas ("America/Buenos_Aires", que es el que da Android) que Postgres puede no conocer
+ * (en el servidor, AT TIME ZONE falla): se guardan con el nombre actual.
+ */
+const ZONAS_VIEJAS: Record<string, string> = {
+  'America/Buenos_Aires': 'America/Argentina/Buenos_Aires',
+  'America/Catamarca': 'America/Argentina/Catamarca',
+  'America/Cordoba': 'America/Argentina/Cordoba',
+  'America/Rosario': 'America/Argentina/Cordoba',
+  'America/Jujuy': 'America/Argentina/Jujuy',
+  'America/Mendoza': 'America/Argentina/Mendoza',
+  'Asia/Calcutta': 'Asia/Kolkata',
+  'Asia/Saigon': 'Asia/Ho_Chi_Minh',
+  'Asia/Katmandu': 'Asia/Kathmandu',
+};
+export const zonaCanonica = (zona: string): string => ZONAS_VIEJAS[zona] ?? zona;
+
 export function zonaValida(zona: string): boolean {
   try {
     formato(zona);
