@@ -1115,12 +1115,16 @@ export function comidaDeLaHora(minutos: number): 'desayuno' | 'almuerzo' | 'meri
  */
 export function calcularPuntos(o: {
   fecha: string;
-  registros: Array<{ categoria: string; minutos: number }>;
+  registros: Array<{ categoria: string; minutos: number; concepto?: string }>;
   medidas: string[];
   tomas: { total: number; marcadas: number };
 }): PuntosDia {
   const cats = new Set(o.registros.map((r) => r.categoria));
-  const comidas = new Set(o.registros.filter((r) => r.categoria === 'comida').map((r) => comidaDeLaHora(r.minutos)));
+  // Una comida cuenta en la franja de su hora; una bebida también (dos cafés a la tarde son la merienda), menos el agua.
+  const esAgua = (c?: string) => Boolean(c && normalizar(c).startsWith('agua'));
+  const comidas = new Set(
+    o.registros.filter((r) => r.categoria === 'comida' || (r.categoria === 'bebida' && !esAgua(r.concepto))).map((r) => comidaDeLaHora(r.minutos)),
+  );
   const conRemedios = o.tomas.total > 0;
   const otras = o.registros.filter((r) => !['comida', 'animo', 'sueno', 'medicacion', 'actividad', 'bebida'].includes(r.categoria)).length;
   const maxExtras = ITEMS_PUNTOS.extras.puntos + (conRemedios ? 0 : ITEMS_PUNTOS.remedios.puntos);

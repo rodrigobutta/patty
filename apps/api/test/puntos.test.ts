@@ -52,3 +52,20 @@ describe('puntos del día', () => {
     expect((await ana.get('/api/puntos/tablero')).body.general.total).toBe(1);
   });
 });
+
+describe('las bebidas también cuentan como comida del momento', () => {
+  it('dos cafés a la tarde son la merienda; el agua no', () => {
+    const p = calcularPuntos({
+      fecha: '2026-10-25',
+      registros: [
+        { categoria: 'bebida', concepto: 'Café', minutos: 17 * 60 },
+        { categoria: 'bebida', concepto: 'Agua', minutos: 9 * 60 },
+      ],
+      medidas: [],
+      tomas: { total: 0, marcadas: 0 },
+    });
+    expect(p.items.find((i) => i.clave === 'merienda')?.puntos).toBe(10);
+    expect(p.items.find((i) => i.clave === 'desayuno')?.puntos).toBe(0);
+    expect(p.items.find((i) => i.clave === 'bebida')?.puntos).toBe(5);
+  });
+});

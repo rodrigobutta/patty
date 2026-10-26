@@ -11,9 +11,9 @@ import { COLUMNAS, DESDE, tomasDe, type Fila } from './tratamientos.js';
 
 /** Los puntos de cada día entre `desde` y `hasta` (AAAA-MM-DD), en orden. */
 export async function puntosDe(tx: Tx, p: { id: number; zona_horaria: string }, desde: string, hasta: string): Promise<PuntosDia[]> {
-  const registros = await filas<{ fecha: string; categoria: string; inicio: string }>(
+  const registros = await filas<{ fecha: string; categoria: string; inicio: string; concepto: string }>(
     tx,
-    sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, k.clave AS categoria, r.inicio FROM registros r
+    sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, k.clave AS categoria, r.inicio, c.nombre AS concepto FROM registros r
         JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
         WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.fecha BETWEEN ${desde} AND ${hasta}`,
   );
@@ -36,7 +36,7 @@ export async function puntosDe(tx: Tx, p: { id: number; zona_horaria: string }, 
     r.push(
       calcularPuntos({
         fecha: f,
-        registros: registros.filter((x) => x.fecha === f).map((x) => ({ categoria: x.categoria, minutos: minutosDelDia(new Date(x.inicio), p.zona_horaria) })),
+        registros: registros.filter((x) => x.fecha === f).map((x) => ({ categoria: x.categoria, concepto: x.concepto, minutos: minutosDelDia(new Date(x.inicio), p.zona_horaria) })),
         medidas: medidas.filter((x) => x.fecha === f).map((x) => x.categoria),
         tomas: { total: delDia.length, marcadas: delDia.filter((t) => t.marcada).length },
       }),

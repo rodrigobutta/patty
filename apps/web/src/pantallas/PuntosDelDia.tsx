@@ -116,7 +116,6 @@ export function PuntosDelDia({ persona }: { persona: Persona }) {
   return (
     <>
       <button className={`mini-puntos${ganancia ? ' gana' : ''}`} key={ganancia?.id ?? 0} onClick={() => setAbierta(true)} aria-label={t('{n} puntos de 100', { n: hoy.puntos })}>
-        <span className="relleno" style={{ width: `${Math.max(8, hoy.puntos)}%` }} />
         <span className="estrella" aria-hidden>⭐</span>
         <span className="numero">{mostrado}</span>
         {ganancia ? (
