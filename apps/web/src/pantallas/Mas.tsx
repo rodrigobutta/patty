@@ -27,7 +27,7 @@ import { COMMIT, VERSION, versionNativa } from '../lib/version';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
-type Seccion = 'datos' | 'remedios' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
+type Seccion = 'datos' | 'lugares' | 'remedios' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
@@ -153,10 +153,12 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         </label>
         <p className="chico ejemplo-permiso">{t('💡 Por ejemplo: «con presión baja te duele más la cabeza» o «los días de lluvia tenés menos energía».')}</p>
       </div>
-      {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
       {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
       {persona && esNativa() ? <DatosSalud persona={persona} /> : null}
 
+  </>);
+  if (seccion === 'lugares') return pantalla(t('📍 Lugares'), <>
+      {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
   </>);
   if (seccion === 'remedios') return pantalla(t('💊 Remedios'), <>
       {persona ? (
@@ -309,6 +311,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const opciones: Array<{ clave: Seccion; icono: string; titulo: string; sub: string; ver?: boolean }> = [
     { clave: 'salud', icono: '🩺', titulo: t('Tus datos de salud'), sub: t('Edad, peso, altura y condiciones'), ver: Boolean(persona) },
     { clave: 'datos', icono: '📡', titulo: t('Lo que Patty junta sola'), sub: t('Permisos, clima, ubicación, teléfono y salud') },
+    { clave: 'lugares', icono: '📍', titulo: t('Lugares'), sub: t('Casa, trabajo y los lugares a los que vas'), ver: Boolean(persona) },
     { clave: 'remedios', icono: '💊', titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
     { clave: 'avisos', icono: '🔔', titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
     { clave: 'supervision', icono: '👨‍👩‍👧', titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },

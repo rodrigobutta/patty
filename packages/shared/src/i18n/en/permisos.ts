@@ -410,4 +410,7 @@ export const PERMISOS: Record<string, string> = {
   'Es el mismo lugar que:': 'It is the same place as:',
   'Elegí…': 'Choose…',
   'Sin datos todavía.': 'No data yet.',
+  '📍 Lugares': '📍 Places',
+  'Lugares': 'Places',
+  'Casa, trabajo y los lugares a los que vas': 'Home, work and the places you go',
 };
