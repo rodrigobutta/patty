@@ -48,12 +48,15 @@ const esSentir = (r: Registro) => r.concepto === COMO_ME_SIENTO || r.concepto ==
  * al decir cómo se sentía ("Mal" y después "cansancio, dolor de cabeza", a la misma hora) — se guardan aparte para los
  * patrones, pero es una sola cosa.
  */
-const partesDe = (r: Registro, todos: Registro[], sintomaId?: number) =>
-  r.concepto === TELE
+const partesDe = (r: Registro, todos: Registro[], sintomaId?: number, genteId?: number) => [
+  ...(r.concepto === TELE
     ? todos.filter((o) => esParteDeTele(o) && o.inicio === r.inicio)
     : esSentir(r) && sintomaId !== undefined
       ? todos.filter((o) => o.categoria_id === sintomaId && o.inicio === r.inicio)
-      : [];
+      : []),
+  // Con quién estuvo (anotado junto con esto, a la misma hora): va con el registro y se muestra abajo.
+  ...(genteId !== undefined && r.categoria_id !== genteId ? todos.filter((o) => o.categoria_id === genteId && o.inicio === r.inicio) : []),
+];
 const cuantoDe = (intensidad: number) => CUANTO.reduce((a, b) => (Math.abs(b.intensidad - intensidad) < Math.abs(a.intensidad - intensidad) ? b : a)).nombre;
 
 /** En qué parte del día pasó algo (el día de Patty empieza a las 5). */
@@ -92,6 +95,7 @@ function detalle(r: Registro, tipo: string | undefined): string {
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
   const { categorias, avisar, festejar, sesion } = useEstado();
   const sintomaId = categorias.find((c) => c.clave === 'sintoma')?.id;
+  const genteId = categorias.find((c) => c.clave === 'gente')?.id;
   // En el día propio, Patty le habla por su apodo.
   const apodo = persona.propia ? sesion?.usuario?.apodo ?? '' : '';
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
@@ -228,7 +232,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   /** Borra (y sus partes, si es la tele). Devuelve false si al final no se quiso borrar. */
   const borrar = async (r: Registro): Promise<boolean> => {
     if (!confirm(t('¿Borrar «{que}» de las {hora}?', { que: t(r.concepto), hora: horaEn(r.inicio, persona.zona_horaria) }))) return false;
-    for (const x of [r, ...partesDe(r, registros ?? [], sintomaId)]) await api('DELETE', `/api/registros/${x.id}`);
+    for (const x of [r, ...partesDe(r, registros ?? [], sintomaId, genteId)]) await api('DELETE', `/api/registros/${x.id}`);
     avisar(t('Borrado'));
     avisarAnotado();
     void traer();
@@ -241,7 +245,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
    */
   const [deshacer, setDeshacer] = useState<{ ids: number[]; texto: string } | null>(null);
   const quitar = async (r: Registro) => {
-    const todos = [r, ...partesDe(r, registros ?? [], sintomaId)];
+    const todos = [r, ...partesDe(r, registros ?? [], sintomaId, genteId)];
     setRegistros((l) => l?.filter((x) => !todos.some((o) => o.id === x.id)) ?? null);
     try {
       for (const x of todos) await api('DELETE', `/api/registros/${x.id}`);
@@ -377,6 +381,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           {registros
             .filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio))
             .filter((r) => r.categoria_id !== sintomaId || !registros.some((o) => esSentir(o) && o.inicio === r.inicio))
+            .filter((r) => r.categoria_id !== genteId || !registros.some((o) => o.categoria_id !== genteId && o.inicio === r.inicio))
             // Lo más reciente arriba: lo que se acaba de anotar se ve primero.
             .slice()
             .reverse()
@@ -407,6 +412,11 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                   ) : null}
                   {etiquetaDonde(r.donde, r.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(r.donde, r.lugar)}</span> : null}
                   {r.nota ? <span className="suave chico"> — {r.nota}</span> : null}
+                  {genteId !== undefined && r.categoria_id !== genteId && registros.some((o) => o.categoria_id === genteId && o.inicio === r.inicio) ? (
+                    <span className="partes-sentir">
+                      👥 {t('con {lista}', { lista: registros.filter((o) => o.categoria_id === genteId && o.inicio === r.inicio).map((o) => o.concepto).join(idioma() === 'en' ? ', ' : ', ') })}
+                    </span>
+                  ) : null}
                 </span>
               </FilaDeslizable>
               </Fragment>
@@ -453,7 +463,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           <Editar
             persona={persona}
             registro={editando}
-            partes={partesDe(editando, registros ?? [], sintomaId)}
+            partes={partesDe(editando, registros ?? [], sintomaId, genteId)}
             alCerrar={() => setEditando(null)}
             alGuardar={() => { setEditando(null); void traer(); }}
             alBorrar={async () => {

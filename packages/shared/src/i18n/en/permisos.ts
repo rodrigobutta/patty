@@ -234,4 +234,7 @@ export const PERMISOS: Record<string, string> = {
   '🏃 ¿Te moviste hoy? Contame qué hiciste': '🏃 Did you move today? Tell me what you did',
   '🥤 ¿Qué tomaste hoy?': '🥤 What did you drink today?',
   '💊 ¿Qué remedios tomaste?': '💊 Which meds did you take?',
+  'con {lista}': 'with {lista}',
+  '👥 Con quién': '👥 Who with',
+  'detalle, marca, cómo fue…': 'details, brand, how it went…',
 };

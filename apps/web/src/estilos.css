@@ -845,3 +845,5 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .barra .persona { margin: 0 auto; }
 .hoja.puntos-dia { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
 .pista-carga { margin: 0 0 8px; text-align: center; font-size: 18px; font-weight: 800; color: var(--acento); }
+.con-quien { margin: 6px 0 4px; }
+.rotulo-campo { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
