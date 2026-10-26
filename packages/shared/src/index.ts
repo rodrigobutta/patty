@@ -1078,7 +1078,7 @@ export function apodoDe(nombre: string, elegido?: string | null): string {
 
 // ---------- Puntos del día ----------
 
-/** Lo que suma puntos en un día: lo esencial (comidas, cómo te sentís, sueño) vale más. Máximo 100. */
+/** Lo que suma puntos en un día: lo esencial (comidas, cómo te sentís, sueño) vale más. La meta es 100; cada cosa más suma 2 (se puede pasar). */
 export type ItemPuntos = 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'animo' | 'sueno' | 'remedios' | 'movimiento' | 'bebida' | 'extras';
 
 export const ITEMS_PUNTOS: Record<ItemPuntos, { nombre: string; icono: string; puntos: number }> = {
@@ -1091,7 +1091,7 @@ export const ITEMS_PUNTOS: Record<ItemPuntos, { nombre: string; icono: string; p
   remedios: { nombre: 'Remedios al día', icono: '💊', puntos: 10 },
   movimiento: { nombre: 'Movimiento', icono: '🏃', puntos: 5 },
   bebida: { nombre: 'Qué tomaste', icono: '🥤', puntos: 5 },
-  extras: { nombre: 'Algo más', icono: '✨', puntos: 10 },
+  extras: { nombre: 'Algo más', icono: '✨', puntos: 2 },
 };
 
 export interface PuntosDia {
@@ -1111,7 +1111,7 @@ export function comidaDeLaHora(minutos: number): 'desayuno' | 'almuerzo' | 'meri
 
 /**
  * Los puntos de un día con lo anotado (categoría y hora local de cada registro), las categorías que llegaron solas
- * (sueño o pasos del reloj) y las tomas de remedios del día. Sin remedios, sus 10 puntos van a "algo más".
+ * (sueño o pasos del reloj) y las tomas de remedios del día. Cada anotación de más suma 2, sin tope.
  */
 export function calcularPuntos(o: {
   fecha: string;
@@ -1126,8 +1126,6 @@ export function calcularPuntos(o: {
     o.registros.filter((r) => r.categoria === 'comida' || (r.categoria === 'bebida' && !esAgua(r.concepto))).map((r) => comidaDeLaHora(r.minutos)),
   );
   const conRemedios = o.tomas.total > 0;
-  const otras = o.registros.filter((r) => !['comida', 'animo', 'sueno', 'medicacion', 'actividad', 'bebida'].includes(r.categoria)).length;
-  const maxExtras = ITEMS_PUNTOS.extras.puntos + (conRemedios ? 0 : ITEMS_PUNTOS.remedios.puntos);
   const items: PuntosDia['items'] = [];
   const poner = (clave: ItemPuntos, si: boolean | number, maximo = ITEMS_PUNTOS[clave].puntos) =>
     items.push({ clave, maximo, puntos: typeof si === 'number' ? Math.min(maximo, Math.round(si)) : si ? maximo : 0 });
@@ -1137,7 +1135,12 @@ export function calcularPuntos(o: {
   if (conRemedios) poner('remedios', (o.tomas.marcadas / o.tomas.total) * ITEMS_PUNTOS.remedios.puntos);
   poner('movimiento', cats.has('actividad') || o.medidas.includes('actividad'));
   poner('bebida', cats.has('bebida'));
-  poner('extras', otras * 2, maxExtras);
+  // Todo lo demás suma 2 por cada cosa, sin tope (otra vez cómo te sentís, más actividades, dolores, baño…): así cada
+  // anotación se nota. Las tomas de remedios no, porque ya cuentan en "remedios al día".
+  const usadas =
+    comidas.size + Number(cats.has('animo')) + Number(cats.has('sueno')) + Number(cats.has('actividad')) + Number(cats.has('bebida'));
+  const otras = Math.max(0, o.registros.filter((r) => r.categoria !== 'medicacion').length - usadas);
+  items.push({ clave: 'extras', puntos: otras * 2, maximo: otras * 2 });
   return { fecha: o.fecha, puntos: items.reduce((a, b) => a + b.puntos, 0), items };
 }
 

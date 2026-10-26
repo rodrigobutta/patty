@@ -149,7 +149,7 @@ export function PuntosDelDia({ persona }: { persona: Persona }) {
             r="34"
             className="arco-puntos"
             strokeDasharray={largo}
-            strokeDashoffset={largo * (1 - hoy.puntos / 100)}
+            strokeDashoffset={largo * (1 - Math.min(1, hoy.puntos / 100))}
             style={{ ['--largo' as string]: largo }}
             transform="rotate(-90 40 40)"
           />

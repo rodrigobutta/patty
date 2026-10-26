@@ -6,7 +6,7 @@ import { Cliente, conAdmin } from './ayudas.js';
 const ZONA = 'America/Argentina/Buenos_Aires';
 
 describe('puntos del día', () => {
-  it('suman más las comidas, cómo te sentís y el sueño; sin remedios, «algo más» vale el doble', () => {
+  it('suman más las comidas, cómo te sentís y el sueño; cada cosa de más suma 2', () => {
     const p = calcularPuntos({
       fecha: '2026-10-25',
       registros: [
@@ -20,8 +20,10 @@ describe('puntos del día', () => {
       tomas: { total: 0, marcadas: 0 },
     });
     expect(p.puntos).toBe(30 + 15 + 15 + 2);
+    // un "cómo me siento" más también suma
+    expect(calcularPuntos({ fecha: '2026-10-25', registros: [{ categoria: 'animo', minutos: 600 }, { categoria: 'animo', minutos: 900 }], medidas: [], tomas: { total: 0, marcadas: 0 } }).puntos).toBe(15 + 2);
     expect(p.items.find((i) => i.clave === 'merienda')).toMatchObject({ puntos: 0, maximo: 10 });
-    expect(p.items.find((i) => i.clave === 'extras')).toMatchObject({ puntos: 2, maximo: 20 });
+    expect(p.items.find((i) => i.clave === 'extras')).toMatchObject({ puntos: 2 });
     expect(p.items.some((i) => i.clave === 'remedios')).toBe(false);
   });
 
