@@ -1,6 +1,6 @@
 // Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
 // lo avanzado (tokens para que otros dispositivos manden datos).
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
 import { climaActivado, ponerClima, ubicacion } from '../lib/clima';
@@ -25,11 +25,18 @@ import { COMMIT, VERSION, versionNativa } from '../lib/version';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
+type Seccion = 'datos' | 'remedios' | 'avisos' | 'supervision' | 'personas' | 'cuenta' | 'avanzado';
+
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
   const [nueva, setNueva] = useState(false);
   const [perfil, setPerfil] = useState(false);
   const [permisos, setPermisos] = useState(false);
+  /** La sub-pantalla abierta (null: el menú). */
+  const [seccion, setSeccion] = useState<Seccion | null>(null);
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [seccion]);
   const [nativa, setNativa] = useState<string | null>(null);
   useEffect(() => void versionNativa().then(setNativa), []);
   const [guia, setGuia] = useState<Paso | undefined>(undefined);
@@ -39,6 +46,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       const g = tomarGuia();
       if (!g) return;
       setGuia(g);
+      setSeccion('datos');
       setPermisos(true);
     };
     abrir();
@@ -92,9 +100,18 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     if (!(await instalarApp())) alert(esIOS() ? t('En el iPhone: tocá Compartir y después «Agregar a inicio».') : t('Desde el menú del navegador: «Instalar app» o «Agregar a la pantalla de inicio».'));
   };
 
-  return (
-    <section className="mas">
-      <h2 className="seccion">{t('Lo que Patty junta sola')}</h2>
+  /** Una sub-pantalla con su título y la flecha para volver al menú. */
+  const pantalla = (titulo: string, contenido: ReactNode, sinTituloRepetido = false) => (
+    <section className={`mas sub-mas${sinTituloRepetido ? ' sin-titulo-repetido' : ''}`}>
+      <div className="cabeza-sub">
+        <button className="btn-icono" onClick={() => setSeccion(null)} aria-label={t('Volver')}>‹</button>
+        <h2>{titulo}</h2>
+      </div>
+      {contenido}
+    </section>
+  );
+
+  if (seccion === 'datos') return pantalla(t('📡 Lo que Patty junta sola'), <>
       {esNativa() && persona ? (
         <>
           <button className="btn ancho" onClick={() => setPermisos(true)}>{t('🔐 Revisar los permisos de este teléfono')}</button>
@@ -121,14 +138,16 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
       {persona && esNativa() ? <DatosSalud persona={persona} /> : null}
 
+  </>);
+  if (seccion === 'remedios') return pantalla(t('💊 Remedios'), <>
       {persona ? (
         <>
-          <h2 className="seccion">{t('Remedios')}</h2>
           <Remedios persona={persona} puedeEscribir={usuario?.rol !== 'lector'} />
         </>
       ) : null}
 
-      <h2 className="seccion">{t('Avisos')}</h2>
+  </>, true);
+  if (seccion === 'avisos') return pantalla(t('🔔 Avisos'), <>
       <div className="tarjeta">
         <h3>{t('😢 Si no anoté nada')}</h3>
         <label className="opcion">
@@ -174,10 +193,11 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         {error ? <p className="neg">{error}</p> : null}
       </div>
 
-      <h2 className="seccion">{t('Supervisión')}</h2>
+  </>);
+  if (seccion === 'supervision') return pantalla(t('👀 Supervisión'), <>
       <Supervision />
-
-      <h2 className="seccion">{t('Personas')}</h2>
+  </>, true);
+  if (seccion === 'personas') return pantalla(t('🧍 Personas y datos'), <>
       <div className="tarjeta">
         <p className="suave chico">{t('De quién se anota el día. Tocá una para cambiar.')}</p>
         <ul className="lista">
@@ -205,11 +225,8 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         </div>
       ) : null}
 
-      {usuario?.rol === 'admin' && alAdministrar ? (
-        <button className="btn ancho admin-entrar" onClick={alAdministrar}>{t('🛠️ Administración: usuarios y actividad')}</button>
-      ) : null}
-
-      <h2 className="seccion">{t('Tu cuenta')}</h2>
+  </>);
+  if (seccion === 'cuenta') return pantalla(t('👤 Tu cuenta'), <>
       <Cuenta />
       <div className="tarjeta">
         <h3>{t('🎨 Tema')}</h3>
@@ -227,12 +244,11 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           ))}
         </div>
       </div>
-      {!instalada() && !esNativa() ? <button className="btn ancho" onClick={instalar}>{t('📲 Instalar Patty en el teléfono')}</button> : null}
-      <button className="btn ancho salir" onClick={salir}>{t('Salir ({nombre})', { nombre: usuario?.nombre ?? '' })}</button>
 
+  </>);
+  if (seccion === 'avanzado') return pantalla(t('⚙️ Otros dispositivos'), <>
       {usuario?.rol !== 'lector' ? (
-        <details className="avanzado">
-          <summary>{t('Avanzado: conectar otro dispositivo')}</summary>
+        <div className="avanzado">
           <p className="suave chico">
             {t('Para un reloj, un atajo del teléfono o un servicio que mande datos por su cuenta a')}{' '}
             <code>{(API_BASE || location.origin) + '/api/ingesta'}</code>. {t('Cada uno con su token. La app ya manda lo suyo: esto es para otros dispositivos.')}
@@ -257,8 +273,41 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
             <button className="btn" onClick={() => nuevaFuente('reloj', 'Reloj')}>{t('⌚ Nuevo token para un reloj')}</button>
             <button className="btn" onClick={() => nuevaFuente('telefono', 'Atajo del teléfono')}>{t('📱 Nuevo token para un atajo')}</button>
           </div>
-        </details>
+        </div>
       ) : null}
+  </>);
+
+  const opciones: Array<{ clave: Seccion; icono: string; titulo: string; sub: string; ver?: boolean }> = [
+    { clave: 'datos', icono: '📡', titulo: t('Lo que Patty junta sola'), sub: t('Permisos, clima, ubicación, teléfono y salud') },
+    { clave: 'remedios', icono: '💊', titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
+    { clave: 'avisos', icono: '🔔', titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
+    { clave: 'supervision', icono: '👀', titulo: t('Supervisión'), sub: t('Acompañar a alguien o que te acompañen') },
+    { clave: 'personas', icono: '🧍', titulo: t('Personas y datos'), sub: t('De quién se anota y su perfil') },
+    { clave: 'cuenta', icono: '👤', titulo: t('Tu cuenta'), sub: t('Foto, apodo, tema, idioma') },
+    { clave: 'avanzado', icono: '⚙️', titulo: t('Otros dispositivos'), sub: t('Relojes y atajos con token'), ver: usuario?.rol !== 'lector' },
+  ];
+
+  return (
+    <section className="mas">
+      <ul className="menu-mas">
+        {opciones.filter((o) => o.ver !== false).map((o) => (
+          <li key={o.clave}>
+            <button onClick={() => setSeccion(o.clave)}>
+              <span className="icono-menu" aria-hidden>{o.icono}</span>
+              <span className="que">
+                <strong>{o.titulo}</strong>
+                <span className="suave chico">{o.sub}</span>
+              </span>
+              <span className="suave" aria-hidden>›</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {usuario?.rol === 'admin' && alAdministrar ? (
+        <button className="btn ancho admin-entrar" onClick={alAdministrar}>{t('🛠️ Administración: usuarios y actividad')}</button>
+      ) : null}
+      {!instalada() && !esNativa() ? <button className="btn ancho" onClick={instalar}>{t('📲 Instalar Patty en el teléfono')}</button> : null}
+      <button className="btn ancho salir" onClick={salir}>{t('Salir ({nombre})', { nombre: usuario?.nombre ?? '' })}</button>
       <p className="version-app">
         Patty {VERSION}{COMMIT ? ` · ${COMMIT}` : ''}{nativa && nativa !== VERSION ? ` · ${t('app instalada {v}', { v: nativa })}` : ''}
       </p>
