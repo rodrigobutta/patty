@@ -21,7 +21,7 @@ import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
-import { PuntosDelDia } from './PuntosDelDia';
+import { EVENTO_CONTAR } from './PuntosDelDia';
 import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
@@ -188,6 +188,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     [persona.zona_horaria],
   );
   const [vuelta, setVuelta] = useState(0);
+  // Desde la hoja de puntos (en la barra de arriba): "Contale a Patty".
+  useEffect(() => {
+    const f = () => setCargando('contar');
+    window.addEventListener(EVENTO_CONTAR, f);
+    return () => window.removeEventListener(EVENTO_CONTAR, f);
+  }, []);
   // El encabezado del día queda fijo arriba y se achica con el scroll, de a poco (como los títulos grandes del
   // iPhone): `--k` va de 0 (arriba de todo) a 1 (después de 70 px de scroll).
   const navdia = useRef<HTMLDivElement>(null);
@@ -342,7 +348,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           </div>
         )
       ) : null}
-      {fecha === hoy && persona.propia ? <PuntosDelDia persona={persona} vuelta={vuelta} alAnotar={() => setCargando('contar')} /> : null}
       <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
       {fecha === hoy ? <CicloDelDia persona={persona} registros={registros ?? []} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} /> : null}
       {registros === null ? (

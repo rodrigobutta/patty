@@ -21,6 +21,7 @@ import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
 import { Avatar } from './ui/Avatar';
 import { CartelVersion } from './ui/CartelVersion';
+import { PuntosDelDia } from './pantallas/PuntosDelDia';
 import { Patrones } from './pantallas/Patrones';
 import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
 import { useProgreso } from './lib/progreso';
@@ -145,6 +146,7 @@ export function App() {
         ) : (
           <span className="persona">{persona.nombre}</span>
         )}
+        {propia ? <PuntosDelDia persona={propia} /> : null}
         {sesion?.usuario ? (
           <button className="btn-avatar" onClick={() => setPestana('mas')} aria-label={t('Tu cuenta')}>
             <Avatar foto={sesion.usuario.foto} nombre={sesion.usuario.apodo || sesion.usuario.nombre} tamano={32} />
