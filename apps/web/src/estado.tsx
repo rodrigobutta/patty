@@ -66,7 +66,7 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
   const festejar = useCallback((texto: string, cara: Cara = 'feliz') => {
     const id = Date.now();
     setFestejo({ id, texto, cara });
-    setTimeout(() => setFestejo((f) => (f?.id === id ? null : f)), 1900);
+    setTimeout(() => setFestejo((f) => (f?.id === id ? null : f)), 2400);
   }, []);
   const terminarFestejo = useCallback(() => setFestejo(null), []);
 
