@@ -55,7 +55,23 @@ const ESQUEMA = {
         additionalProperties: false,
       },
     },
-    dudas: { type: 'array', items: { type: 'string' }, description: 'Lo que no quedó claro y conviene preguntar' },
+    dudas: {
+      type: 'array',
+      description: 'Lo que no quedó claro y conviene preguntar',
+      items: {
+        type: 'object',
+        properties: {
+          pregunta: { type: 'string', description: 'Una pregunta corta, sobre una sola cosa' },
+          opciones: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'De 2 a 5 respuestas posibles, muy cortas (1 a 4 palabras), para contestar con un toque ("Sí", "No"; "30 min", "1 hora", "2 horas"; "Casera", "Afuera"). Vacío si la respuesta es libre (un nombre, por ejemplo).',
+          },
+        },
+        required: ['pregunta', 'opciones'],
+        additionalProperties: false,
+      },
+    },
   },
   required: ['registros', 'tratamientos', 'dudas'],
   additionalProperties: false,
@@ -87,7 +103,7 @@ interface Respuesta {
     dias: number | null;
     motivo: string | null;
   }>;
-  dudas: string[];
+  dudas: Array<{ pregunta: string; opciones: string[] } | string>;
 }
 
 /** El día de la semana de una fecha AAAA-MM-DD, en castellano (para que entienda "el sábado"). */
@@ -153,7 +169,8 @@ export async function interpretarTexto(
     'repitas, y no vuelvas a preguntar lo que ya se aclaró. Si alguna pregunta anterior quedó sin contestar, volvé a ' +
     'preguntarla mientras siga faltando algo que importa (sobre todo en remedios: dosis y cada cuánto o a qué hora; y ' +
     'cantidades que se pidieron); lo que es solo un detalle, dejalo pasar sin insistir. Preguntá todo lo que falta de ' +
-    'una vez, en preguntas cortas, cada una sobre una sola cosa.' +
+    'una vez, en preguntas cortas, cada una sobre una sola cosa, y con las respuestas más probables como opciones para ' +
+    'tocar (si se puede).' +
     (idioma === 'en'
       ? ' La persona usa la app en inglés: escribí las dudas en inglés. Los conceptos nuevos van en el idioma en que ' +
         'escribe la persona (si escribe en inglés, "Tomato", "Headache"); los que ya existen, con su nombre exacto de la lista.'
@@ -177,7 +194,10 @@ export async function interpretarTexto(
   const idCat = new Map(cats.map((c) => [c.clave, c.id]));
   const medicacion = idCat.get('medicacion');
   return {
-    dudas: r.dudas,
+    // Cada duda con sus respuestas posibles, para contestar con un toque (también acepta texto suelto, por las dudas).
+    dudas: (r.dudas ?? []).map((d) =>
+      typeof d === 'string' ? { pregunta: d, opciones: [] } : { pregunta: d.pregunta, opciones: (d.opciones ?? []).filter((o) => o.trim()).slice(0, 5) },
+    ),
     tratamientos: (r.tratamientos ?? [])
       .filter((x) => x.remedio.trim() && /^\d{4}-\d{2}-\d{2}$/.test(x.primera_fecha) && /^\d{1,2}:\d{2}$/.test(x.primera_hora))
       .map((x) => {

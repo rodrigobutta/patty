@@ -730,3 +730,6 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .elegir-foto { display: flex; flex-direction: column; gap: 12px; }
 .elegir-foto .pregunta-cuanto { margin-bottom: 4px; }
 .grande-foto { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 64px; font-size: 17px; font-weight: 700; border-radius: 18px; }
+.duda p { margin: 0 0 6px; }
+.opciones-duda { margin: 0 0 12px; }
+.opciones-duda .chip { min-height: 40px; padding: 8px 14px; font-size: 15px; }

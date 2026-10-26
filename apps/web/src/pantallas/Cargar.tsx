@@ -250,6 +250,12 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
  * solo se ve el botón grande y lo que se escuchó; para escribir hay un enlace. Si Patty tiene dudas ("¿cuántas
  * porciones?"), se le contesta igual, hablando o escribiendo, y vuelve a ordenar todo con la aclaración.
  */
+/** Una pregunta de Patty sobre lo cargado, con respuestas para tocar (si las hay). */
+interface Duda {
+  pregunta: string;
+  opciones: string[];
+}
+
 function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAbrir = false }: {
   persona: Persona;
   /** El día que se estaba mirando: si no se dice cuándo pasó, es ese. */
@@ -268,7 +274,9 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
   const [oido, setOido] = useState('');
   const [respuesta, setRespuesta] = useState('');
   const [propuesta, setPropuesta] = useState<Propuesta[] | null>(null);
-  const [dudas, setDudas] = useState<string[]>([]);
+  const [dudas, setDudas] = useState<Duda[]>([]);
+  /** Las respuestas tocadas (índice de la duda → opción), para contestar con toques en vez de hablar o escribir. */
+  const [elegidas, setElegidas] = useState<Record<number, string>>({});
   const [quitar, setQuitar] = useState<Set<number>>(new Set());
   const [remedios, setRemedios] = useState<TratamientoPropuesto[]>([]);
   const [quitarRemedio, setQuitarRemedio] = useState<Set<number>>(new Set());
@@ -307,7 +315,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
     setError('');
     try {
       // Con foto, va la foto con lo que se haya contado (y las aclaraciones); si no, solo el texto.
-      const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: string[] }>(
+      const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: Array<Duda | string> }>(
         'POST',
         foto ? '/api/registros/foto' : '/api/registros/interpretar',
         foto ? { persona_id: persona.id, texto: contado, fecha, imagen: foto.datos, tipo: foto.tipo } : { persona_id: persona.id, texto: contado, fecha },
@@ -315,7 +323,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
       setTexto(contado);
       setPropuesta(r.registros);
       setRemedios(r.tratamientos ?? []);
-      setDudas(r.dudas);
+      setDudas((r.dudas ?? []).map((d) => (typeof d === 'string' ? { pregunta: d, opciones: [] } : { pregunta: d.pregunta, opciones: d.opciones ?? [] })));
+      setElegidas({});
       setQuitar(new Set());
       setQuitarRemedio(new Set());
       setRespuesta('');
@@ -326,12 +335,27 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
     }
   };
 
+  /** Contestar con las opciones tocadas ("¿Jugaste al tenis hoy? Sí. ¿Cuánto tiempo? 1 hora"). */
+  const contarElegidas = (e: Record<number, string>) =>
+    contar(Object.entries(e).map(([i, o]) => `${dudas[Number(i)].pregunta} ${o}`).join('. '));
+  /** Si es la única pregunta con opciones, contesta al toque; si hay varias, se juntan y se contesta con el botón. */
+  const tocarOpcion = (i: number, o: string) => {
+    const conOpciones = dudas.filter((d) => d.opciones.length).length;
+    if (conOpciones <= 1) return contarElegidas({ [i]: o });
+    setElegidas((x) => {
+      const n = { ...x };
+      if (n[i] === o) delete n[i];
+      else n[i] = o;
+      return n;
+    });
+  };
+
   /** Lo nuevo que se cuenta: si ya había propuesta con dudas, va como respuesta a esas dudas; si no, es el relato. */
   const contar = (nuevo: string) => {
     const n = nuevo.trim();
     if (!n) return;
     if (propuesta) {
-      const preguntas = dudas.length ? ` (a tus preguntas: ${dudas.join(' / ')})` : '';
+      const preguntas = dudas.length ? ` (a tus preguntas: ${dudas.map((d) => d.pregunta).join(' / ')})` : '';
       void interpretar(`${texto}\n\nAclaración${preguntas}: ${n}`);
     } else void interpretar(n);
   };
@@ -497,8 +521,24 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
         ) : null}
         {dudas.length ? (
           <div className="nota-ia">
-            {dudas.map((d) => <p key={d}>🤔 {d}</p>)}
-            <p className="suave chico">{t('Si querés, contestale y lo suma a lo anterior; si no, anotá así.')}</p>
+            {dudas.map((d, i) => (
+              <div key={d.pregunta} className="duda">
+                <p>🤔 {d.pregunta}</p>
+                {d.opciones.length ? (
+                  <div className="chips envolver opciones-duda">
+                    {d.opciones.map((o) => (
+                      <button key={o} className={`chip${elegidas[i] === o ? ' activa' : ''}`} disabled={ocupado} onClick={() => tocarOpcion(i, o)}>{o}</button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+            {Object.keys(elegidas).length ? (
+              <button className="btn primario ancho" disabled={ocupado} onClick={() => contarElegidas(elegidas)}>
+                {estado === 'ordenando' ? t('Ordenando…') : t('Contestar')}
+              </button>
+            ) : null}
+            <p className="suave chico">{dudas.some((d) => d.opciones.length) ? t('Tocá una respuesta, o contestale con tus palabras. Si no, anotá así.') : t('Si querés, contestale y lo suma a lo anterior; si no, anotá así.')}</p>
             {entrada(true)}
           </div>
         ) : null}
