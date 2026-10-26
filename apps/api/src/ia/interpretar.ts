@@ -5,8 +5,9 @@ import { frecuenciaTexto, normalizar, TIPOS_VALOR, type Categoria, type Idioma }
 import { filas, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
-import { fechaLocal, localAInstante, minutosDelDia } from '../lib/fechas.js';
+import { diaDePatty, fechaLocal, localAInstante, minutosDelDia } from '../lib/fechas.js';
 import { pedirJson } from './cliente.js';
+import { lineaDelDia } from '../ubicacion/linea.js';
 
 const nulo = (tipo: 'string' | 'number' | 'integer', descripcion: string) => ({ anyOf: [{ type: tipo }, { type: 'null' }], description: descripcion });
 
@@ -129,6 +130,10 @@ export async function interpretarTexto(
     tx,
     sql`SELECT id, categoria_id, nombre, nombre_norm FROM conceptos WHERE unido_a IS NULL ORDER BY usos DESC, id LIMIT 300`,
   );
+  // Dónde estuvo ese día (lugares con nombre y paradas largas), para proponer el lugar de una comida de afuera.
+  const diaHoy = diaDePatty(new Date(), p.zona_horaria);
+  const diaVisto = referencia ?? diaHoy;
+  const donde = await lineaDelDia(tx, p, diaVisto, diaHoy, idioma).catch(() => []);
   // Los lugares donde ya comió, para preguntar "¿de dónde?" con opciones conocidas.
   const lugaresComida = (
     await filas<{ lugar: string; donde: string }>(
@@ -170,6 +175,8 @@ export async function interpretarTexto(
     'Si una comida no es casera (afuera o delivery) y no se dijo de dónde, preguntá en dudas de dónde era, con los ' +
     'lugares donde ya comió como opciones (los más probables para esa comida y ese momento) y alguno nuevo típico si ' +
     'cuadra; así se van guardando los lugares, que pueden explicar cosas. Una sola pregunta por todas esas comidas. ' +
+    'Si se sabe dónde estuvo a la hora de esa comida (ver "Dónde estuvo"), y no fue delivery, proponé ese lugar como ' +
+    'primera opción: con su nombre si lo tiene, o la calle si es un lugar sin nombre (para el delivery no sirve). ' +
     'Si cuenta que le vino o que está menstruando ("me vino", "estoy indispuesta", "me bajó"), va en la categoría ciclo, ' +
     'concepto "Menstruación", con intensidad según el flujo (manchado 2, poco 4, normal 6, mucho 9; si no dice, 6). Los ' +
     'cólicos y otras molestias del ciclo van como sintoma. ' +
@@ -196,6 +203,7 @@ export async function interpretarTexto(
     ...cats.map((c) => `- ${c.clave}: ${c.nombre}, ${c.tipo_valor}`),
     'Conceptos que ya existen (categoría: nombre):',
     ...conocidos.map((c) => `- ${porCat.get(c.categoria_id)}: ${c.nombre}`),
+    ...(donde.length ? [`Dónde estuvo el ${diaVisto} (según la ubicación del teléfono):`, ...donde.map((x) => `- ${x}`)] : []),
     ...(lugaresComida.length ? ['Lugares donde ya comió (los más frecuentes primero):', ...lugaresComida.map((l) => `- ${l}`)] : []),
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     '',
