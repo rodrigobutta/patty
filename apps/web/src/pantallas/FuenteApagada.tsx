@@ -1,7 +1,7 @@
 // Los widgets del Día de lo que llegaría solo (ubicación, uso del teléfono, reloj y salud) cuando falta el permiso: se
 // ven grises, y al tocarlos una hoja muestra qué trae cada uno (con un ejemplo de cómo se vería), para qué le sirve a
 // Patty y cómo activarlo, con los pasos de la marca del teléfono.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { Persona } from 'shared';
 import { leerEstado, type EstadoTelefono } from '../lib/estadoTelefono';
 import { averiguarMarca, marcaDelTelefono, NOMBRE_MARCA, pasosPara } from '../lib/guiasPermisos';
@@ -9,6 +9,7 @@ import { t } from '../lib/idioma';
 import { plataforma } from '../lib/nativo';
 import { Mascota } from '../mascota/Mascota';
 import { activarPermiso, permisoListo, type Paso } from './Permisos';
+import { IconoCelular, IconoLugar, IconoSueno } from '../ui/IconosWidget';
 
 export type Fuente = Exclude<Paso, 'avisos'>;
 
@@ -78,15 +79,20 @@ export function useEstadoPermisos(activo: boolean): [EstadoTelefono | null, () =
 
 export const fuenteApagada = (f: Fuente, e: EstadoTelefono | null) => Boolean(e) && !permisoListo(f, e);
 
+/** El ícono dibujado de cada fuente (el mismo de los widgets con datos). */
+export const ICONO_FUENTE: Record<Fuente, () => ReactNode> = {
+  ubicacion: () => <IconoLugar />,
+  telefono: () => <IconoCelular />,
+  salud: () => <IconoSueno />,
+};
+
 export function WidgetApagado({ fuente, alTocar }: { fuente: Fuente; alTocar(): void }) {
   const i = INFO()[fuente];
   return (
-    <button className="widget-auto apagado" onClick={alTocar}>
-      <span className="widget-cabeza">
-        <span className="icono">{i.icono}</span>
-        <span className="suave chico">{i.titulo}</span>
-      </span>
-      <span className="widget-resumen">🔒 {t('Tocá para activar')}</span>
+    <button className="widget-auto apagado" onClick={alTocar} aria-label={`${i.titulo}: ${t('Tocá para activar')}`}>
+      {ICONO_FUENTE[fuente]()}
+      <span className="widget-linea">🔒 {i.titulo}</span>
+      <span className="widget-sub">{t('Tocá para activar')}</span>
     </button>
   );
 }
@@ -124,9 +130,9 @@ export function HojaActivar({ fuente, persona, alCerrar, alActivar }: { fuente: 
       </div>
       {/* El antes y después: el widget gris de hoy y cómo se va a ver con el permiso dado. */}
       <div className="activar-antes-despues" aria-hidden="true">
-        <span className="widget-auto apagado"><span className="widget-cabeza"><span className="icono">{i.icono}</span><span className="suave chico">{i.titulo}</span></span><span className="widget-resumen">🔒</span></span>
+        <span className="widget-auto apagado">{ICONO_FUENTE[fuente]()}<span className="widget-linea">🔒</span></span>
         <span className="flecha-activar">➜</span>
-        <span className="widget-auto ejemplo"><span className="widget-cabeza"><span className="icono">{i.icono}</span><span className="suave chico">{i.titulo}</span></span><span className="widget-resumen">{i.muestra}</span></span>
+        <span className="widget-auto ejemplo">{ICONO_FUENTE[fuente]()}<span className="widget-sub">{i.muestra}</span></span>
       </div>
       <p className="suave chico">{t('Lo trae solo, sin que anotes nada:')}</p>
       <ul className="trae-lista">

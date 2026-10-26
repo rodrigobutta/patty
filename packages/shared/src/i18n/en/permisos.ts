@@ -388,4 +388,12 @@ export const PERMISOS: Record<string, string> = {
   'Mientras junto días para encontrar patrones, esto es lo que ya veo en lo que me contás.': 'While I gather days to find patterns, this is what I already see in what you tell me.',
   'Lo que le fue comentando': 'What Patty has been saying',
   'visto': 'seen',
+  '{n} mm de lluvia': '{n} mm of rain',
+  'Sin viajes': 'No trips',
+  '1 viaje': '1 trip',
+  '{n} viajes': '{n} trips',
+  '1 llamada': '1 call',
+  'Arriba {hora}': 'Up at {hora}',
+  '{n} lpm en reposo': '{n} bpm resting',
+  'Sueño y salud': 'Sleep and health',
 };

@@ -10,7 +10,6 @@ import { COMO_ME_SENTI, COMO_ME_SIENTO, VIAJE_PESADO, ESTACIONES, estadoDe, esta
 import { api } from '../api';
 import { idioma, locale, t } from '../lib/idioma';
 import { useEstado } from '../estado';
-import { agruparAutomaticos, resumenDelGrupo } from '../lib/automatico';
 import { hoyEn, horaEn, nombreDia, sumarDias } from '../lib/fechas';
 import { avisarAnotado } from '../mascota/cara';
 import type { Cara } from '../mascota/dibujo';
@@ -21,7 +20,8 @@ import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
 import { GloboDelBuho } from './GloboDelBuho';
 import { ComentarioDelDia } from './ComentariosDePatty';
-import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, WidgetApagado, type Fuente } from './FuenteApagada';
+import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
+import { WidgetsDelDia } from './WidgetsDelDia';
 import { esNativa } from '../lib/nativo';
 import { hayDatosDelTelefono } from '../lib/telefono';
 import { CicloDelDia } from './CicloDelDia';
@@ -40,8 +40,6 @@ import { Sentir } from './Sentir';
 const HORAS_SIN_PREGUNTAR = 3;
 /** Desde esta hora, si no se anotó nada a mano, el Día propone contar el día entero. */
 const HORA_CONTAR_DIA = 18;
-
-const ICONOS_FUENTE: Record<string, string> = { telefono: '📱', ubicacion: '📍', clima: '🌤️', reloj: '⌚' };
 
 const PEDIDOS: Record<Cara, string> = {
   feliz: '',
@@ -110,7 +108,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const [registros, setRegistros] = useState<Registro[] | null>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.registros ?? null);
   const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.automaticos ?? []);
   /** La fuente de datos automáticos que está abierta (se ve todo lo que llegó de ella). */
-  const [abierto, setAbierto] = useState<string | null>(null);
   // En la app del teléfono, en el día propio: las fuentes cuyo permiso falta van como widgets grises para activarlas.
   const conPermisos = esNativa() && Boolean(persona.propia);
   const [estadoPermisos, mirarPermisos] = useEstadoPermisos(conPermisos);
@@ -454,35 +451,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           })}
         </ul>
       )}
-      {/* Lo que llegó solo (teléfono, ubicación, clima, reloj) va en widgets de a dos o tres por fila, distintos de lo
-          anotado; tocando uno se ve el detalle a lo ancho. */}
-      {automaticos.length || apagadas.length ? (
-        <div className="widgets-auto">
-          {agruparAutomaticos(automaticos).map((g) => (
-            <Fragment key={g.fuente}>
-              <button className={`widget-auto${abierto === g.fuente ? ' abierto' : ''}`} onClick={() => setAbierto(abierto === g.fuente ? null : g.fuente)} aria-expanded={abierto === g.fuente}>
-                <span className="widget-cabeza">
-                  <span className="icono">{ICONOS_FUENTE[g.tipo] ?? '📊'}</span>
-                  <span className="suave chico">{t(g.fuente)}</span>
-                </span>
-                <span className="widget-resumen">{resumenDelGrupo(g)}</span>
-              </button>
-              {abierto === g.fuente ? (
-                <ul className="detalle-auto widget-detalle">
-                  {g.lineas.map((l) => (
-                    <li key={l.concepto}>
-                      <span className="icono">{categorias.find((c) => c.id === l.categoria_id)?.icono}</span>
-                      <span className="que">{t(l.concepto)}</span>
-                      <span className="valor-chip">{l.valor}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </Fragment>
-          ))}
-          {apagadas.map((f) => <WidgetApagado key={f} fuente={f} alTocar={() => setActivando(f)} />)}
-        </div>
-      ) : null}
+      {/* Lo que llegó solo (clima, ubicación, teléfono, sueño y salud): widgets chicos, distintos de lo anotado. */}
+      <WidgetsDelDia automaticos={automaticos} registros={registros ?? []} categorias={categorias} apagadas={apagadas} alActivar={setActivando} />
       </div>
       {/* Las hojas van fuera del contenido animado: si no, quedan atrás de la lista mientras se anima. */}
       {activando ? (

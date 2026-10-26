@@ -1026,3 +1026,12 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 @keyframes entra-comentario { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
 .voy-notando li { padding: 6px 0; }
 @media (prefers-reduced-motion: reduce) { .comentario-patty { animation: none; } }
+
+/* Widgets con ícono dibujado centrado y un resumen cortito (sin títulos). */
+.widgets-auto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 560px) { .widgets-auto { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.widget-auto { align-items: center; justify-content: center; text-align: center; gap: 2px; min-height: 104px; padding: 12px 8px; }
+.widget-auto svg { display: block; margin-bottom: 4px; }
+.widget-linea { font-size: 17px; font-weight: 800; line-height: 1.2; }
+.widget-sub { font-size: 13px; color: var(--suave); line-height: 1.25; }
+.widget-auto.apagado .widget-linea { font-size: 14px; font-weight: 600; color: var(--suave); }
