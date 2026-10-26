@@ -928,3 +928,5 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .sugerencia-compania p { margin: 0 0 8px; }
 .sugerencia-compania + .sugerencia-compania { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borde); }
 .compania-sugerida .botones-como { grid-template-columns: repeat(2, 1fr); }
+.frase { display: block; }
+.frase::first-letter { text-transform: uppercase; }

@@ -20,13 +20,41 @@ function enFrase(nombre: string): string {
 const cuantoDe = (i: number) => CUANTO.reduce((a, b) => (Math.abs(b.intensidad - i) < Math.abs(a.intensidad - i) ? b : a)).nombre;
 const fuerza = (i: number) => (i <= 3 ? t('leve') : i <= 6 ? t('medio') : t('fuerte'));
 
-export function Frase({ r, tipo, categoria }: { r: Registro; tipo?: string; categoria?: string }): ReactNode {
+/** "mucho cansancio", "bastante dolor de cabeza", "un poco de náuseas": cuánto de cada cosa que le pasaba. */
+function conCuanto(nombre: string, intensidad: number | null): string {
+  const n = enFrase(nombre);
+  if (intensidad === null) return n;
+  const c = cuantoDe(intensidad);
+  if (idioma() === 'en') return `${c === 'Poco' ? 'a little' : c === 'Bastante' ? 'quite a lot of' : 'a lot of'} ${n}`;
+  const femenino = /(a|ión|dad|tud|ez)$/.test(n.split(' ')[0]) || n.startsWith('náusea');
+  return `${c === 'Poco' ? 'un poco de' : c === 'Bastante' ? 'bastante' : femenino ? 'mucha' : 'mucho'} ${n}`;
+}
+
+/** Una comida o bebida con su cantidad: "2 porciones de pizza", "tuco". */
+function unaComida(o: Registro): ReactNode {
+  const n = enFrase(t(o.concepto));
+  if (o.valor === null) return <C>{n}</C>;
+  return <><C>{conUnidad(o.valor, o.unidad, 2, idioma())}</C> {idioma() === 'en' ? 'of' : 'de'} <C>{n}</C></>;
+}
+
+export function Frase({ r, tipo, categoria, juntos = [], sintomas = [] }: {
+  r: Registro;
+  tipo?: string;
+  categoria?: string;
+  /** Otras comidas de la misma hora: "ñoquis con tuco". */
+  juntos?: Registro[];
+  /** Lo que le pasaba al decir cómo se sentía: "Me siento mal, con mucho cansancio". */
+  sintomas?: Registro[];
+}): ReactNode {
   const nombre = t(r.concepto);
   const en = idioma() === 'en';
   // Cómo me siento: "Me siento bien" / "Me sentí mal en el día".
   if (r.intensidad !== null && (r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI)) {
     const e = t(estadoDe(r.intensidad).nombre).toLowerCase();
-    return r.concepto === COMO_ME_SENTI ? <>{t('Me sentí')} <C>{e}</C> {t('en el día')}</> : <>{t('Me siento')} <C>{e}</C></>;
+    const y = idioma() === 'en' ? ' and ' : ' y ';
+    const lista = sintomas.map((o) => conCuanto(t(o.concepto), o.intensidad));
+    const con = lista.length ? <>, {idioma() === 'en' ? 'with' : 'con'} <C>{lista.length > 1 ? `${lista.slice(0, -1).join(', ')}${y}${lista.at(-1)}` : lista[0]}</C></> : null;
+    return r.concepto === COMO_ME_SENTI ? <>{t('Me sentí')} <C>{e}</C> {t('en el día')}{con}</> : <>{t('Me siento')} <C>{e}</C>{con}</>;
   }
   // "Con sueño" y compañía, con poco, bastante o mucho: "Con un poco de sueño", "Con mucha hambre".
   if (r.intensidad !== null && ESTADOS_PUNTUALES.some((x) => x.nombre === r.concepto)) {
@@ -37,6 +65,22 @@ export function Frase({ r, tipo, categoria }: { r: Registro; tipo?: string; cate
     const que = m[1];
     const cuanto = c === 'Poco' ? 'un poco de' : c === 'Bastante' ? 'bastante' : FEMENINOS.has(que) ? 'mucha' : 'mucho';
     return <>Con <C>{cuanto}</C> <Q>{que}</Q></>;
+  }
+  // Comidas de la misma hora juntas: "ñoquis con tuco", "2 porciones de pizza con coca y ensalada".
+  if (juntos.length) {
+    const todas = [r, ...juntos];
+    const y = en ? ' and ' : ' y ';
+    return (
+      <>
+        {unaComida(todas[0])} {en ? 'with' : 'con'}{' '}
+        {todas.slice(1).map((o, k) => (
+          <span key={o.id}>
+            {k > 0 ? (k === todas.length - 2 ? y : ', ') : null}
+            {unaComida(o)}
+          </span>
+        ))}
+      </>
+    );
   }
   // Viajes: "45 min de viaje en auto (pesado)".
   if (categoria === 'viaje') {
