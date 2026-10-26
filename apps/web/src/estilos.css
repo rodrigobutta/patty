@@ -478,7 +478,14 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 /* ---------- Íconos de abajo y rueda de progreso ---------- */
 .pestanas button svg { display: block; transition: transform 0.2s ease; }
 .pestanas button.activa svg { transform: translateY(-1px) scale(1.06); }
-.icono-rueda .rueda-arco { transition: stroke-dashoffset 0.8s cubic-bezier(.2, .8, .3, 1); }
+.icono-rueda .rueda-arco { transition: stroke-dashoffset 0.8s cubic-bezier(.2, .8, .3, 1); animation: rueda-vuelta 1.8s cubic-bezier(.45, 0, .25, 1) 0.4s both; }
+/* De vacía a llena y de vuelta a lo que lleva: así se entiende que es un progreso. */
+@keyframes rueda-vuelta {
+  0% { stroke-dashoffset: calc(var(--largo) * 1px); }
+  50% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: calc(var(--hasta) * 1px); }
+}
+@media (prefers-reduced-motion: reduce) { .icono-rueda .rueda-arco { animation: none; } }
 
 .rueda-progreso { text-align: center; }
 .rueda-progreso h3 { margin: 6px 0 4px; }

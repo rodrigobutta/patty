@@ -1,6 +1,8 @@
 // Los íconos de la barra de abajo, dibujados para Patty (trazo redondeado, como el búho). El de Patrones es una rueda
 // que se va llenando hasta que hay datos suficientes para buscar patrones (y después, hasta el próximo nivel).
 
+import { useEffect, useState } from 'react';
+
 const base = { width: 26, height: 26, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 export function IconoDia({ activo }: { activo: boolean }) {
@@ -24,22 +26,42 @@ export function IconoMas({ activo }: { activo: boolean }) {
   );
 }
 
-/** La rueda: `avance` de 0 a 1 hacia el próximo nivel; `nivel` > 0 cuando ya se pueden buscar patrones. */
+/**
+ * La rueda: `avance` de 0 a 1 hacia el próximo nivel; `nivel` > 0 cuando ya se pueden buscar patrones. Al abrir la app
+ * (y al volver a ella) da una vuelta: se llena entera y vuelve a lo que lleva, para que se note que es un progreso.
+ */
 export function IconoPatrones({ activo, avance, nivel }: { activo: boolean; avance: number; nivel: number }) {
   const r = 9;
   const largo = 2 * Math.PI * r;
   const lleno = nivel > 0 && avance >= 1 ? 1 : avance;
+  const offset = largo * (1 - Math.max(0.04, lleno));
+  const [vuelta, setVuelta] = useState(0);
+  useEffect(() => {
+    const volver = () => document.visibilityState === 'visible' && setVuelta((v) => v + 1);
+    document.addEventListener('visibilitychange', volver);
+    return () => document.removeEventListener('visibilitychange', volver);
+  }, []);
   return (
     <svg {...base} aria-hidden className="icono-rueda">
+      <defs>
+        <linearGradient id="icono-rueda-color" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="var(--acento)" />
+          <stop offset="1" stopColor="#e58bb4" />
+        </linearGradient>
+      </defs>
       <circle cx="12" cy="12" r={r} strokeOpacity={0.22} />
       <circle
+        key={vuelta}
         cx="12"
         cy="12"
         r={r}
+        stroke="url(#icono-rueda-color)"
+        strokeWidth={2.4}
         strokeDasharray={largo}
-        strokeDashoffset={largo * (1 - Math.max(0.04, lleno))}
+        strokeDashoffset={offset}
         transform="rotate(-90 12 12)"
         className="rueda-arco"
+        style={{ ['--largo' as string]: largo, ['--hasta' as string]: offset }}
       />
       {/* adentro: dos cosas que se relacionan */}
       <circle cx="9.3" cy="13.6" r="1.6" fill={activo || nivel > 0 ? 'currentColor' : 'none'} strokeWidth={1.6} />
