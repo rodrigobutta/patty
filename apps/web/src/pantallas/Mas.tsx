@@ -35,6 +35,14 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const [permisos, setPermisos] = useState(false);
   /** La sub-pantalla abierta (null: el menú). */
   const [seccion, setSeccion] = useState<Seccion | null>(null);
+  // Tocar «Más» abajo estando en una sección vuelve al menú.
+  useEffect(() => {
+    const f = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === 'mas') setSeccion(null);
+    };
+    window.addEventListener('patty-pestana-inicio', f);
+    return () => window.removeEventListener('patty-pestana-inicio', f);
+  }, []);
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [seccion]);

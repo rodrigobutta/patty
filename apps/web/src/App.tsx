@@ -167,7 +167,11 @@ export function App() {
       </main>
       <nav className="pestanas">
         {PESTANAS.map((p) => (
-          <button key={p.id} className={pestana === p.id ? 'activa' : ''} onClick={() => setPestana(p.id)}>
+          <button key={p.id} className={pestana === p.id ? 'activa' : ''} onClick={() => {
+            // Tocar la pestaña en la que ya se está vuelve a su pantalla inicial (Más, desde una de sus secciones).
+            if (pestana === p.id) window.dispatchEvent(new CustomEvent('patty-pestana-inicio', { detail: p.id }));
+            setPestana(p.id);
+          }}>
             {p.id === 'hoy' ? (
               <IconoDia activo={pestana === p.id} />
             ) : p.id === 'patrones' ? (
