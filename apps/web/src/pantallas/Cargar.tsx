@@ -393,11 +393,10 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       },
       (err) => {
         escucha.current = null;
-        // Pasó a escribir mientras hablaba: lo dicho queda en el cuadro para seguir escribiendo.
+        // Pasó a escribir mientras hablaba: se descarta lo que se estaba escuchando y el cuadro arranca vacío.
         if (aEscribir.current) {
           aEscribir.current = false;
           setEstado('quieto');
-          if (dicho.trim()) setTexto(dicho.trim());
           return;
         }
         if (err) {
@@ -478,7 +477,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     quieto: propuesta ? t('Tocá y contestale') : t('Tocá y contale'),
     escuchando: t('Te escucho… tocá para terminar'),
     transcribiendo: t('Pasando a texto…'),
-    ordenando: t('Ordenando…'),
+    ordenando: t('Procesando…'),
     guardando: t('Guardando…'),
   }[estado];
 
@@ -502,16 +501,16 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     ) : paraResponder ? (
       <div className="responder">
         <input value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder={t('Ej: dos porciones, era de mi primo')} onKeyDown={(e) => e.key === 'Enter' && contar(respuesta)} />
-        <button className="btn primario" disabled={ocupado || !respuesta.trim()} onClick={() => contar(respuesta)}>{estado === 'ordenando' ? t('Ordenando…') : t('Responder')}</button>
+        <button className="btn primario" disabled={ocupado || !respuesta.trim()} onClick={() => contar(respuesta)}>{estado === 'ordenando' ? t('Procesando…') : t('Responder')}</button>
         {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>{t('🎙️ Prefiero hablar')}</button> : null}
       </div>
     ) : (
       <>
         <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
           placeholder={t('Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»')} />
-        <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? t('Ordenando…') : t('Ordenarlo')}</button>
+        <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? t('Procesando…') : t('Aceptar')}</button>
         {sinFoto ? null : (
-          <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? t('Ordenarlo con una foto') : t('Mandale una foto')}</button>
+          <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? t('Aceptar con una foto') : t('Mandale una foto')}</button>
         )}
         {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>{t('🎙️ Prefiero hablar')}</button> : null}
       </>
@@ -579,7 +578,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
             ))}
             {Object.keys(elegidas).length ? (
               <button className="btn primario ancho" disabled={ocupado} onClick={() => contarElegidas(elegidas)}>
-                {estado === 'ordenando' ? t('Ordenando…') : t('Contestar')}
+                {estado === 'ordenando' ? t('Procesando…') : t('Contestar')}
               </button>
             ) : null}
             <p className="suave chico">{dudas.some((d) => d.opciones.length) ? t('Tocá una respuesta, o contestale con tus palabras. Si no, anotá así.') : t('Si querés, contestale y lo suma a lo anterior; si no, anotá así.')}</p>

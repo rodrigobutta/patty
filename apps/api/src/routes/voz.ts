@@ -56,5 +56,9 @@ export const rutasVoz = new Hono<Env>().post('/', async (c) => {
     throw new ErrorApi('No se pudo pasar el audio a texto ({estado}).', 502, { estado: r.status });
   }
   const { text } = (await r.json()) as { text?: string };
-  return c.json({ texto: (text ?? '').trim() });
+  // Con un audio en silencio, el modelo a veces "transcribe" la ayuda que se le pasó: eso no lo dijo nadie.
+  const texto = (text ?? '').trim();
+  const sinSignos = (x: string) => x.toLowerCase().replace(/[^a-záéíóúñü ]/g, '').trim();
+  const ayuda = ['Someone describes their day', 'Alguien cuenta su día'].map(sinSignos);
+  return c.json({ texto: ayuda.some((a) => sinSignos(texto).startsWith(a)) ? '' : texto });
 });
