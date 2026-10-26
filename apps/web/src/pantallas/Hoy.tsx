@@ -39,7 +39,19 @@ const PEDIDOS: Record<Cara, string> = {
 
 /** «Tele: Noticias» y «Tele en TN» van con su «Tele»: en el Día se ve uno solo (y se borran juntos). */
 const esParteDeTele = (r: Registro) => r.concepto.startsWith(teleDeTipo('')) || r.concepto.startsWith(teleEnCanal(''));
-const partesDe = (r: Registro, todos: Registro[]) => (r.concepto === TELE ? todos.filter((o) => esParteDeTele(o) && o.inicio === r.inicio) : []);
+const esSentir = (r: Registro) => r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI;
+/**
+ * Lo que va junto con otro registro y se muestra (y se borra) con él: los canales y tipos de la tele, y lo que se contó
+ * al decir cómo se sentía ("Mal" y después "cansancio, dolor de cabeza", a la misma hora) — se guardan aparte para los
+ * patrones, pero es una sola cosa.
+ */
+const partesDe = (r: Registro, todos: Registro[], sintomaId?: number) =>
+  r.concepto === TELE
+    ? todos.filter((o) => esParteDeTele(o) && o.inicio === r.inicio)
+    : esSentir(r) && sintomaId !== undefined
+      ? todos.filter((o) => o.categoria_id === sintomaId && o.inicio === r.inicio)
+      : [];
+const cuantoDe = (intensidad: number) => CUANTO.reduce((a, b) => (Math.abs(b.intensidad - intensidad) < Math.abs(a.intensidad - intensidad) ? b : a)).nombre;
 
 /** En qué parte del día pasó algo (el día de Patty empieza a las 5). */
 const FRANJAS = [
@@ -76,6 +88,7 @@ function detalle(r: Registro, tipo: string | undefined): string {
 
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
   const { categorias, avisar, festejar, sesion } = useEstado();
+  const sintomaId = categorias.find((c) => c.clave === 'sintoma')?.id;
   // En el día propio, Patty le habla por su apodo.
   const apodo = persona.propia ? sesion?.usuario?.apodo ?? '' : '';
   const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
@@ -162,7 +175,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   /** Borra (y sus partes, si es la tele). Devuelve false si al final no se quiso borrar. */
   const borrar = async (r: Registro): Promise<boolean> => {
     if (!confirm(t('¿Borrar «{que}» de las {hora}?', { que: t(r.concepto), hora: horaEn(r.inicio, persona.zona_horaria) }))) return false;
-    for (const x of [r, ...partesDe(r, registros ?? [])]) await api('DELETE', `/api/registros/${x.id}`);
+    for (const x of [r, ...partesDe(r, registros ?? [], sintomaId)]) await api('DELETE', `/api/registros/${x.id}`);
     avisar(t('Borrado'));
     avisarAnotado();
     void traer();
@@ -175,7 +188,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
    */
   const [deshacer, setDeshacer] = useState<{ ids: number[]; texto: string } | null>(null);
   const quitar = async (r: Registro) => {
-    const todos = [r, ...partesDe(r, registros ?? [])];
+    const todos = [r, ...partesDe(r, registros ?? [], sintomaId)];
     setRegistros((l) => l?.filter((x) => !todos.some((o) => o.id === x.id)) ?? null);
     try {
       for (const x of todos) await api('DELETE', `/api/registros/${x.id}`);
@@ -310,6 +323,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         <ul className="lista linea">
           {registros
             .filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio))
+            .filter((r) => r.categoria_id !== sintomaId || !registros.some((o) => esSentir(o) && o.inicio === r.inicio))
             // Lo más reciente arriba: lo que se acaba de anotar se ve primero.
             .slice()
             .reverse()
@@ -331,6 +345,13 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                 <span className="que">
                   {t(r.concepto)}
                   {detalle(r, cat?.tipo_valor) ? <span className="valor-chip">{detalle(r, cat?.tipo_valor)}</span> : null}
+                  {esSentir(r) && partesDe(r, registros, sintomaId).length ? (
+                    <span className="partes-sentir">
+                      {partesDe(r, registros, sintomaId)
+                        .map((o) => (o.intensidad !== null ? `${t(o.concepto)} (${t(cuantoDe(o.intensidad)).toLowerCase()})` : t(o.concepto)))
+                        .join(', ')}
+                    </span>
+                  ) : null}
                   {etiquetaDonde(r.donde, r.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(r.donde, r.lugar)}</span> : null}
                   {r.nota ? <span className="suave chico"> — {r.nota}</span> : null}
                 </span>
@@ -379,7 +400,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           <Editar
             persona={persona}
             registro={editando}
-            partes={partesDe(editando, registros ?? [])}
+            partes={partesDe(editando, registros ?? [], sintomaId)}
             alCerrar={() => setEditando(null)}
             alGuardar={() => { setEditando(null); void traer(); }}
             alBorrar={async () => {
