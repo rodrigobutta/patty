@@ -41,6 +41,10 @@ export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso, sesion, avisar, recargar } = useEstado();
   // patty.today/#admin abre la administración directo (para mirarla en la compu).
   const [pestana, setPestana] = useState<Pestana>(() => (location.hash === '#admin' ? 'admin' : 'hoy'));
+  // Cada pestaña arranca arriba de todo (si no, queda el scroll de la anterior).
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [pestana]);
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
   /** El paso opcional de datos de la persona (una vez, después de la bienvenida). */
   const [perfilListo, setPerfilListo] = useState(false);

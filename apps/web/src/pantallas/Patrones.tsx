@@ -21,6 +21,9 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const [error, setError] = useState('');
   /** La sub-vista: los patrones, los números, o el buscador (con lo que se eligió desde los números). */
   const [vista, setVista] = useState<'patrones' | 'numeros' | 'calendario' | 'buscar'>('patrones');
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [vista]);
   const [buscado, setBuscado] = useState<number | null>(null);
 
   const traer = useCallback(async () => {
