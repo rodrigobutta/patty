@@ -1,15 +1,14 @@
-// Con "¿cómo te sentís?" plegado, el búho de arriba lo pide con un globito que le sale de la cara. La primera vez del
+// Si falta contar cómo se siente, el búho de arriba lo pregunta con un globito que le sale de la cara. La primera vez del
 // día aparece a los 2 segundos, desplegándose desde el búho; después, enseguida. A los 8 segundos (o al bajar en la
-// pantalla) vuelve al búho, para no tapar nada: el búho se sigue pudiendo tocar. Al tocarlo se abre el bloque entero.
+// pantalla) vuelve al búho, para no tapar nada: el búho se sigue pudiendo tocar. Al tocarlo se abre la hoja de "¿cómo te sentís?".
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { t } from '../lib/idioma';
 
 const CLAVE = 'patty-globo-sentir';
 const ESPERA_PRIMERA = 2000;
 const SE_VE = 8000;
 
-export function GloboDelBuho({ visible, alTocar }: { visible: boolean; alTocar(): void }) {
+export function GloboDelBuho({ visible, texto, alTocar }: { visible: boolean; texto: string; alTocar(): void }) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [mostrar, setMostrar] = useState(false);
   const [abajo, setAbajo] = useState(false);
@@ -62,7 +61,7 @@ export function GloboDelBuho({ visible, alTocar }: { visible: boolean; alTocar()
       tabIndex={mostrar && !abajo ? 0 : -1}
       aria-hidden={!(mostrar && !abajo)}
     >
-      {t('Contame cómo te sentís')}
+      {texto}
     </button>,
     document.body,
   );

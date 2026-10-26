@@ -5,7 +5,7 @@ import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
 import { alTocarAvisoPush } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
-import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
+import { useAlPedirSentir, type Momento } from '../lib/sentir';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, VIAJE_PESADO, ESTACIONES, estadoDe, estacionDe, TELE, teleDeTipo, teleEnCanal, type DatoAutomatico, type EstadoAnimo, type ItemPuntos, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { idioma, locale, t } from '../lib/idioma';
@@ -19,8 +19,6 @@ import { IconoCamara, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { Cargar, ElegirFoto } from './Cargar';
 import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
-import { Puntuales } from './Puntuales';
-import { Plegable } from '../ui/Plegable';
 import { GloboDelBuho } from './GloboDelBuho';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
@@ -32,7 +30,7 @@ import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
 import { etiquetaDonde } from '../ui/DondeComida';
 import { Frase } from '../ui/Frase';
-import { Caritas, esMalo, Sentir } from './Sentir';
+import { Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
 const HORAS_SIN_PREGUNTAR = 3;
@@ -91,12 +89,10 @@ const fechaLarga = (fecha: string) =>
 
 
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
-  const { categorias, avisar, festejar, sesion } = useEstado();
+  const { categorias, avisar, sesion } = useEstado();
   const sintomaId = categorias.find((c) => c.clave === 'sintoma')?.id;
   const genteId = categorias.find((c) => c.clave === 'gente')?.id;
   const comidaIds = categorias.filter((c) => c.clave === 'comida' || c.clave === 'bebida').map((c) => c.id);
-  // En el día propio, Patty le habla por su apodo.
-  const apodo = persona.propia ? sesion?.usuario?.apodo ?? '' : '';
   const [fecha, setFecha] = useState(() => fechaPedidaParaVer() ?? hoyEn(persona.zona_horaria));
   // Un día pedido desde otra pantalla ("el martes 14", en una respuesta de Patty), también con el Día ya abierto.
   useEffect(() => {
@@ -311,22 +307,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     }
     setSintiendo({ momento: 'dia', estado: null });
   });
-  const sentir = async (e: EstadoAnimo) => {
-    if (esMalo(e)) return setSintiendo({ momento, estado: e });
-    try {
-      await guardarSentir({ persona, categorias, momento, estado: e, fecha });
-      setSentirAbierto(false);
-      festejar(t('¡Qué bueno! Anotado: {que}', { que: t(e.nombre).toLowerCase() }));
-      void traer();
-      avisarAnotado();
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  };
 
   // Tocar la mascota de arriba abre "¿Cómo te sentís?" cuando sea.
-  /** El bloque de "cómo te sentís" abierto a mano (tocando el botón chico) aunque ya se haya contestado hace poco. */
-  const [sentirAbierto, setSentirAbierto] = useState(false);
   useAlPedirSentir(
     useCallback(() => {
       setFecha(hoyEn(persona.zona_horaria));
@@ -365,26 +347,13 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       ) : null}
       {/* "¿Cómo te sentís?" lo contesta cada uno: no se muestra en el día de alguien que se supervisa. */}
       {/* Hasta saber si ya contestó hace poco no se muestra nada: si no, las caritas aparecen y se van. */}
-      {fecha === hoy && !persona.supervisada && registros !== null ? (
-        <Plegable
-          plegado={contestadoHacePoco && !sentirAbierto}
-          boton={null}
-          alto={0}
-        >
-          <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
-            <h3>{apodo ? (momento === 'dia' ? t('{apodo}, ¿cómo te sentiste hoy?', { apodo }) : t('{apodo}, ¿cómo te sentís ahora?', { apodo })) : momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís ahora?')}</h3>
-            <Caritas elegir={(e) => void sentir(e)} />
-            {momento === 'ahora' ? <Puntuales persona={persona} alGuardar={() => { setSentirAbierto(false); void traer(); avisarAnotado(); }} /> : null}
-          </div>
-        </Plegable>
-      ) : null}
+      {/* "¿Cómo te sentís?" ya no ocupa lugar en el Día: si falta contarlo, el búho de arriba lo pregunta con un globito,
+          y tocándolo (o tocando el búho) se abre la hoja para contestar. */}
       {fecha === hoy && !persona.supervisada && registros !== null ? (
         <GloboDelBuho
-          visible={contestadoHacePoco && !sentirAbierto}
-          alTocar={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setSentirAbierto(true);
-          }}
+          visible={!contestadoHacePoco && !sintiendo}
+          texto={momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís?')}
+          alTocar={() => setSintiendo({ momento, estado: null })}
         />
       ) : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
@@ -524,7 +493,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             estado={sintiendo.estado}
             fecha={fecha}
             alCerrar={() => setSintiendo(null)}
-            alGuardar={() => { setSintiendo(null); setSentirAbierto(false); void traer(); avisarAnotado(); }}
+            alGuardar={() => { setSintiendo(null); void traer(); avisarAnotado(); }}
           />
         </>
       ) : null}
