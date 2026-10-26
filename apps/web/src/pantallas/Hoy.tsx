@@ -330,7 +330,9 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     momento === 'ahora'
       ? registros?.filter((r) => r.origen === 'manual' && clavesSentir.has(categorias.find((c) => c.id === r.categoria_id)?.clave ?? '')).at(-1)
       : undefined;
-  const contestadoHacePoco = Boolean(ultimoSentir && Date.now() - new Date(ultimoSentir.inicio).getTime() < HORAS_SIN_PREGUNTAR * 3600000);
+  // Lo recién contestado cuenta ya, sin esperar a que vuelva la lista del servidor (si no, el globito volvía un rato).
+  const [sentidoRecien, setSentidoRecien] = useState(0);
+  const contestadoHacePoco = Date.now() - sentidoRecien < HORAS_SIN_PREGUNTAR * 3600000 || Boolean(ultimoSentir && Date.now() - new Date(ultimoSentir.inicio).getTime() < HORAS_SIN_PREGUNTAR * 3600000);
 
   const tiposConDatos = new Set(automaticos.map((a) => a.tipo_fuente));
   // Con permiso de salud y sin nada del reloj hoy: se le pide a Health Connect / Salud al abrir el Día (si pasaron 5
@@ -523,7 +525,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             estado={sintiendo.estado}
             fecha={fecha}
             alCerrar={() => setSintiendo(null)}
-            alGuardar={() => { setSintiendo(null); void traer(); avisarAnotado(); }}
+            alGuardar={() => { setSintiendo(null); setSentidoRecien(Date.now()); void traer(); avisarAnotado(); }}
           />
         </>
       ) : null}

@@ -11,6 +11,7 @@ import { esNativa, plataforma } from '../lib/nativo';
 import { t } from '../lib/idioma';
 import { mandarPunto, ponerLugares, ponerSeguimiento, seguimientoActivado, seguirNativo } from '../lib/ubicacion';
 import { Mapa } from '../ui/Mapa';
+import { IconoLugar } from '../ui/IconosWidget';
 
 export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEscribir: boolean }) {
   const { avisar } = useEstado();
@@ -174,10 +175,13 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
           ))
         : null}
       <ul className="lista">
-        {lugares.map((l) => (
-          <li key={l.id} className={`fila-lugar${viendo === l.id ? ' con-mapa' : ''}`}>
+        {/* Donde está ahora va primero y más grande. */}
+        {[...lugares].sort((a, b) => Number(b.id === aca?.id) - Number(a.id === aca?.id)).map((l) => (
+          <li key={l.id} className={`fila-lugar${viendo === l.id ? ' con-mapa' : ''}${l.id === aca?.id ? ' aca' : ''}`}>
+            <span className="marcador-lugar" aria-hidden="true"><IconoLugar /></span>
             <button className="que boton-lugar" onClick={() => setViendo(viendo === l.id ? null : l.id)} aria-expanded={viendo === l.id}>
-              <span className="nombre-lugar">📍 {l.nombre}</span>
+              {l.id === aca?.id ? <span className="etiqueta-aca">{t('Estás acá')}</span> : null}
+              <span className="nombre-lugar">{l.nombre}</span>
               <span className="suave chico">{t('radio {n} m', { n: l.radio_m })} · {viendo === l.id ? t('ocultar mapa') : t('🗺️ ver mapa')}</span>
             </button>
             {puedeEscribir ? (
@@ -189,11 +193,7 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
       </ul>
       {puedeEscribir ? (
         <div className="columna">
-          {aca ? (
-            <p className="suave chico centro">{t('📍 Estás en {lugar}', { lugar: aca.nombre })}</p>
-          ) : (
-            <button className="btn" onClick={() => void guardarAca()}>{t('📍 Guardar dónde estoy')}</button>
-          )}
+          {aca ? null : <button className="btn" onClick={() => void guardarAca()}>{t('📍 Guardar dónde estoy')}</button>}
           <button className="btn suave-btn" onClick={borrarHistorial}>{t('Borrar historial de ubicación')}</button>
         </div>
       ) : null}

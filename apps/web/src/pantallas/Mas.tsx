@@ -14,6 +14,7 @@ import { perfilTexto } from 'shared';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { idioma, idiomaElegido, locale, ponerIdioma, t } from '../lib/idioma';
 import { Cuenta } from './Cuenta';
+import { IconoAvanzado, IconoAvisos, IconoCuenta, IconoDatos, IconoFamilia, IconoGente, IconoLugares, IconoRemedios, IconoSalud } from '../ui/IconosMas';
 import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
@@ -316,16 +317,16 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       ) : null}
   </>);
 
-  const opciones: Array<{ clave: Seccion; icono: string; titulo: string; sub: string; ver?: boolean }> = [
-    { clave: 'salud', icono: '🩺', titulo: t('Tus datos de salud'), sub: t('Edad, peso, altura y condiciones'), ver: Boolean(persona) },
-    { clave: 'datos', icono: '📡', titulo: t('Lo que Patty junta sola'), sub: t('Permisos, clima, ubicación, teléfono y salud') },
-    { clave: 'lugares', icono: '📍', titulo: t('Lugares'), sub: t('Casa, trabajo y los lugares a los que vas'), ver: Boolean(persona) },
-    { clave: 'remedios', icono: '💊', titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
-    { clave: 'avisos', icono: '🔔', titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
-    { clave: 'supervision', icono: '👨‍👩‍👧', titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
-    { clave: 'personas', icono: '👥', titulo: t('Tu gente y personas'), sub: t('Con quién estás y de quién se anota') },
-    { clave: 'cuenta', icono: '👤', titulo: t('Tu cuenta'), sub: t('Foto, apodo, tema, idioma') },
-    { clave: 'avanzado', icono: '⚙️', titulo: t('Otros dispositivos'), sub: t('Relojes y atajos con token'), ver: usuario?.rol !== 'lector' },
+  const opciones: Array<{ clave: Seccion; icono: ReactNode; titulo: string; sub: string; ver?: boolean }> = [
+    { clave: 'salud', icono: <IconoSalud />, titulo: t('Tus datos de salud'), sub: t('Edad, peso, altura y condiciones'), ver: Boolean(persona) },
+    { clave: 'datos', icono: <IconoDatos />, titulo: t('Lo que Patty junta sola'), sub: t('Permisos, clima, ubicación, teléfono y salud') },
+    { clave: 'lugares', icono: <IconoLugares />, titulo: t('Lugares'), sub: t('Casa, trabajo y los lugares a los que vas'), ver: Boolean(persona) },
+    { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
+    { clave: 'avisos', icono: <IconoAvisos />, titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
+    { clave: 'supervision', icono: <IconoFamilia />, titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
+    { clave: 'personas', icono: <IconoGente />, titulo: t('Tu gente y personas'), sub: t('Con quién estás y de quién se anota') },
+    { clave: 'cuenta', icono: <IconoCuenta />, titulo: t('Tu cuenta'), sub: t('Foto, apodo, tema, idioma') },
+    { clave: 'avanzado', icono: <IconoAvanzado />, titulo: t('Otros dispositivos'), sub: t('Relojes y atajos con token'), ver: usuario?.rol !== 'lector' },
   ];
 
   return (

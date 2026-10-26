@@ -972,16 +972,27 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 
 /* El globito que le sale al búho de arriba: "Contame cómo te sentís" (ver GloboDelBuho.tsx). */
 .globo-buho {
-  position: fixed; z-index: 40; max-width: calc(100vw - 32px); padding: 10px 16px; border: 0; border-radius: 18px;
-  background: var(--acento); color: var(--sobre-acento); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
-  border-top-left-radius: 6px; box-shadow: 0 8px 22px rgb(0 0 0 / 0.22); transform-origin: 6px -8px; transform: scale(0.15); opacity: 0; pointer-events: none;
-  transition: transform 0.5s cubic-bezier(.2, 1.35, .4, 1), opacity 0.2s ease;
+  position: fixed; z-index: 40; max-width: calc(100vw - 32px); padding: 10px 16px; border: 0; border-radius: 18px; border-top-left-radius: 6px;
+  background: var(--acento); color: var(--sobre-acento); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.22); transform-origin: 6px -8px;
+  /* Al irse: se encoge rápido de vuelta hacia la cara del búho. */
+  transform: translate(-8px, -10px) scale(0.1); opacity: 0; pointer-events: none;
+  transition: transform 0.28s cubic-bezier(.5, 0, .75, 0), opacity 0.2s ease 0.08s;
 }
 .globo-buho::before { content: ''; position: absolute; left: 6px; top: -5px; width: 14px; height: 14px; background: inherit; border-radius: 3px; transform: rotate(45deg); }
-.globo-buho.visible { transform: none; opacity: 1; pointer-events: auto; animation: flota-globo 3.2s ease-in-out 0.6s infinite; }
-.globo-buho:active { transform: scale(0.96); }
+/* Al aparecer: sale de la cara con un rebote, y el texto entra un instante después. */
+.globo-buho.visible { transform: none; opacity: 1; pointer-events: auto; transition: none; animation: sale-globo 0.55s cubic-bezier(.2, 1.4, .4, 1) both, flota-globo 3.2s ease-in-out 0.8s infinite; }
+@keyframes sale-globo {
+  0% { transform: translate(-8px, -10px) scale(0.1); opacity: 0; }
+  40% { opacity: 1; }
+  70% { transform: translate(0, 2px) scale(1.06); }
+  100% { transform: none; opacity: 1; }
+}
 @keyframes flota-globo { 0%, 100% { translate: 0 0; } 50% { translate: 0 -3px; } }
-@media (prefers-reduced-motion: reduce) { .globo-buho { transition: none; } .globo-buho.visible { animation: none; } }
+.globo-buho:active { scale: 0.96; }
+.buho-puntos.habla { animation: habla-buho 0.7s ease-in-out !important; }
+@keyframes habla-buho { 0%, 100% { transform: none; } 25% { transform: translateY(-4px) rotate(-6deg); } 55% { transform: translateY(0) rotate(4deg); } 80% { transform: rotate(-2deg); } }
+@media (prefers-reduced-motion: reduce) { .globo-buho { transition: none; } .globo-buho.visible { animation: none; } .buho-puntos.habla { animation: none !important; } }
 
 /* Lo que llegó solo: widgets chicos (dos por fila; tres en pantallas anchas), distintos de los renglones anotados. */
 .widgets-auto { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0 12px; }
@@ -1064,3 +1075,20 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .opciones-unir li { padding: 0; }
 .opcion-unir { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 14px 12px; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
 .opcion-unir:active { background: var(--acento-suave); }
+
+/* Lugares: el marcador dibujado, y el lugar donde estás primero y más grande. */
+.fila-lugar .marcador-lugar { flex: none; line-height: 0; }
+.fila-lugar .marcador-lugar svg { width: 30px; height: 30px; }
+.fila-lugar.aca { padding: 16px 14px; border: 2px solid var(--acento); background: color-mix(in srgb, var(--acento) 10%, var(--panel)); }
+.fila-lugar.aca .marcador-lugar svg { width: 44px; height: 44px; animation: late-marcador 2s ease-in-out infinite; transform-origin: 50% 90%; }
+.fila-lugar.aca .nombre-lugar { font-size: 20px; font-weight: 800; }
+.etiqueta-aca { font-size: 12px; font-weight: 700; color: var(--acento); text-transform: uppercase; letter-spacing: 0.04em; }
+@keyframes late-marcador { 0%, 100% { transform: none; } 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .fila-lugar.aca .marcador-lugar svg { animation: none; } }
+
+/* Los íconos propios de dos colores (menú de Más). */
+:root { --icono-1: #c9bcf2; --icono-2: #ffd166; }
+@media (prefers-color-scheme: dark) { :root:not([data-tema="claro"]) { --icono-1: #6b55b8; --icono-2: #e3b341; } }
+:root[data-tema="oscuro"] { --icono-1: #6b55b8; --icono-2: #e3b341; }
+.menu-mas .icono-menu { display: flex; align-items: center; justify-content: center; color: var(--texto); }
+.menu-mas .icono-menu .icono-propio { width: 30px; height: 30px; }

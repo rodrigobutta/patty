@@ -35,6 +35,10 @@ export function GloboDelBuho({ visible, texto, alTocar }: { visible: boolean; te
     const tm = window.setTimeout(() => {
       ubicar();
       setMostrar(true);
+      // El búho "habla": un saltito mientras le sale el globito.
+      const b = document.querySelector('.boton-buho .buho-puntos');
+      b?.classList.add('habla');
+      window.setTimeout(() => b?.classList.remove('habla'), 800);
       guardar = window.setTimeout(() => setMostrar(false), SE_VE);
     }, primera ? ESPERA_PRIMERA : 250);
     window.addEventListener('resize', ubicar);
