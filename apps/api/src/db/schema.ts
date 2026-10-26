@@ -410,7 +410,7 @@ export const instalaciones = pgTable(
  * La vista `accesos` (migración 0006) junta esto con `persona_usuarios`: es lo que se usa para saber quién ve a quién.
  */
 export const supervisiones = pgTable(
-  'vínculos de familia',
+  'supervisiones',
   {
     id: id(),
     supervisor_id: integer('supervisor_id')
@@ -509,3 +509,24 @@ export const ajustes = pgTable('ajustes', {
   /** Cuándo se cambió por última vez. */
   creado: creado(),
 });
+
+/**
+ * La gente de cada persona (familia, amigos, compañeros): con quién estuvo se anota con estos nombres, que son conceptos
+ * de la categoría "Con gente" (así entran en los patrones: "cuando estás con Juan, te sentís mejor"). La lista es de
+ * cada persona: los nombres de una no se le sugieren a otra.
+ */
+export const gente = pgTable(
+  'gente',
+  {
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    concepto_id: integer('concepto_id')
+      .notNull()
+      .references(() => conceptos.id, { onDelete: 'cascade' }),
+    /** Sacado de la lista (lo anotado con esa persona queda, pero ya no se ofrece). */
+    oculta: boolean('oculta').notNull().default(false),
+    creado: creado(),
+  },
+  (t) => [primaryKey({ columns: [t.persona_id, t.concepto_id] })],
+);

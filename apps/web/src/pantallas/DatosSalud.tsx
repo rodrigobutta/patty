@@ -59,6 +59,7 @@ export function DatosSalud({ persona }: { persona: Persona }) {
   return (
     <div className="tarjeta">
       <h3>{t('⌚ Reloj y salud')}</h3>
+      <p className="chico ejemplo-permiso">{t('💡 Sin anotar nada, cómo dormiste y cuánto te moviste se cruzan con tu ánimo, tus dolores y lo que comiste.')}</p>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => void prender(e.target.checked)} />
         <span>{t('Traer de {almacen} el sueño, los pasos, el pulso y más (un resumen por día).', { almacen })}</span>

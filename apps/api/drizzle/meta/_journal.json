@@ -127,6 +127,20 @@
       "when": 1792981441995,
       "tag": "0017_ajustes",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792981989764,
+      "tag": "0018_gente",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792982079505,
+      "tag": "0019_gente_oculta",
+      "breakpoints": true
     }
   ]
 }

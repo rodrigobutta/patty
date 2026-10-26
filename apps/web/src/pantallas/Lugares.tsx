@@ -99,6 +99,7 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
   return (
     <div className="tarjeta">
       <h3>{t('📍 Ubicación y lugares')}</h3>
+      <p className="chico ejemplo-permiso">{t('💡 Patty puede descubrir cosas como «los días que vas a la oficina dormís peor», y cruzar el calor, la humedad o la presión con tus dolores.')}</p>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => void prender(e.target.checked)} />
         <span>{t('Contar viajes y lugares con la ubicación de este teléfono.')}</span>

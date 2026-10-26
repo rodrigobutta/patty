@@ -9,6 +9,7 @@ import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
+import { genteGuardada, traerGente, type Alguien } from '../lib/gente';
 
 export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(): void }) {
   const { categorias, festejar } = useEstado();
@@ -21,8 +22,31 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
   // Al abrir "Con dolor", que se vea qué elegir (queda abajo de todos los chips).
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (elegido === 'dolor') panel.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (elegido === 'dolor' || elegido === 'gente') panel.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [elegido]);
+  // "Con gente": a quiénes eligió (de su gente, o nombres nuevos que se dan de alta al anotar).
+  const [gente, setGente] = useState<Alguien[]>(genteGuardada(persona.id));
+  const [conQuien, setConQuien] = useState<string[]>([]);
+  const [nuevaGente, setNuevaGente] = useState('');
+  const anotarGente = async () => {
+    const cat = categorias.find((c) => c.clave === 'gente');
+    if (!cat || !conQuien.length) return;
+    setError('');
+    const inicio = new Date().toISOString();
+    try {
+      for (const n of conQuien) {
+        if (!gente.some((a) => a.nombre === n)) await api('POST', '/api/gente', { persona_id: persona.id, nombre: n });
+        await api('POST', '/api/registros', { persona_id: persona.id, concepto_nombre: n, categoria_id: cat.id, inicio });
+      }
+      festejar(t('Anotado: con {lista} 👥', { lista: conQuien.join(idioma() === 'en' ? ' and ' : ' y ') }));
+      setConQuien([]);
+      setElegido(null);
+      void traerGente(persona.id).then(setGente).catch(() => {});
+      alGuardar();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
   /** Lo que se está por anotar: mientras tanto, la ventanita de "¿cuánto?". */
   const [preguntando, setPreguntando] = useState<string | null>(null);
   const sintoma = categorias.find((c) => c.clave === 'sintoma');
@@ -52,7 +76,8 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
     setDolor(null);
     setOtro('');
     // Un estado puntual ya está elegido: se pregunta cuánto.
-    if (e !== 'dolor' && e !== 'otro' && elegido !== e) setPreguntando(e);
+    if (e !== 'dolor' && e !== 'otro' && e !== 'gente' && elegido !== e) setPreguntando(e);
+    if (e === 'gente' && elegido !== 'gente') void traerGente(persona.id).then(setGente).catch(() => {});
   };
   const elegirDolor = (d: string) => {
     setDolor(dolor === d ? null : d);
@@ -78,6 +103,9 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
         <button className={`chip${elegido === 'dolor' ? ' activa' : ''}`} onClick={() => elegir('dolor')}>
           <span aria-hidden>🤕</span> {t('Con dolor o malestar')}
         </button>
+        <button className={`chip${elegido === 'gente' ? ' activa' : ''}`} onClick={() => elegir('gente')}>
+          <span aria-hidden>👥</span> {t('Con gente')}
+        </button>
         {ESTADOS_PUNTUALES.map((e) => (
           <button key={e.nombre} className={`chip${elegido === e.nombre ? ' activa' : ''}`} onClick={() => elegir(e.nombre)}>
             <span aria-hidden>{e.emoji}</span> {t(e.nombre)}
@@ -94,6 +122,26 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
             {MALESTARES.map(chipDolor)}
             <button className={`chip${dolor === 'otro' ? ' activa' : ''}`} onClick={() => elegirDolor('otro')}>{t('✏️ Otro')}</button>
           </div>
+        </div>
+      ) : null}
+      {elegido === 'gente' ? (
+        <div className="que-duele" ref={panel}>
+          <p className="rotulo suave chico">{t('¿Con quién estás?')}</p>
+          <div className="chips envolver">
+            {gente.map((a) => (
+              <button key={a.id} className={`chip${conQuien.includes(a.nombre) ? ' activa' : ''}`} onClick={() => setConQuien((l) => (l.includes(a.nombre) ? l.filter((x) => x !== a.nombre) : [...l, a.nombre]))}>
+                {conQuien.includes(a.nombre) ? '✓ ' : ''}{a.nombre}
+              </button>
+            ))}
+          </div>
+          <form className="otro-puntual" onSubmit={(e) => { e.preventDefault(); const n = nuevaGente.trim(); if (n && !conQuien.includes(n)) setConQuien([...conQuien, n]); setNuevaGente(''); }}>
+            <input value={nuevaGente} onChange={(e) => setNuevaGente(e.target.value)} placeholder={gente.length ? t('¿Alguien más?') : t('ej: Mamá, Juan, amigos')} />
+            <button className="btn" disabled={!nuevaGente.trim()}>{t('Sumar')}</button>
+          </form>
+          {conQuien.filter((n) => !gente.some((a) => a.nombre === n)).length ? (
+            <p className="suave chico">{t('Nuevos: {lista}', { lista: conQuien.filter((n) => !gente.some((a) => a.nombre === n)).join(', ') })}</p>
+          ) : null}
+          <button className="btn primario ancho" disabled={!conQuien.length} onClick={() => void anotarGente()}>{t('Anotar')}</button>
         </div>
       ) : null}
       {elegido === 'otro' || dolor === 'otro' ? (

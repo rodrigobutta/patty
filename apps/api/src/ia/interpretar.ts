@@ -8,6 +8,7 @@ import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, fechaLocal, localAInstante, minutosDelDia } from '../lib/fechas.js';
 import { pedirJson } from './cliente.js';
 import { lineaDelDia } from '../ubicacion/linea.js';
+import { nombresDeGente } from '../routes/gente.js';
 
 const nulo = (tipo: 'string' | 'number' | 'integer', descripcion: string) => ({ anyOf: [{ type: tipo }, { type: 'null' }], description: descripcion });
 
@@ -134,6 +135,7 @@ export async function interpretarTexto(
   const diaHoy = diaDePatty(new Date(), p.zona_horaria);
   const diaVisto = referencia ?? diaHoy;
   const donde = await lineaDelDia(tx, p, diaVisto, diaHoy, idioma).catch(() => []);
+  const gente = await nombresDeGente(tx, p.id);
   // Los lugares donde ya comió, para preguntar "¿de dónde?" con opciones conocidas.
   const lugaresComida = (
     await filas<{ lugar: string; donde: string }>(
@@ -175,6 +177,9 @@ export async function interpretarTexto(
     'Si una comida no es casera (afuera o delivery) y no se dijo de dónde, preguntá en dudas de dónde era, con los ' +
     'lugares donde ya comió como opciones (los más probables para esa comida y ese momento) y alguno nuevo típico si ' +
     'cuadra; así se van guardando los lugares, que pueden explicar cosas. Una sola pregunta por todas esas comidas. ' +
+    'Si cuenta que estuvo con alguien ("comí con mi hermana", "vino Juan", "salí con amigos"), un registro en la ' +
+    'categoría gente por cada persona, con su nombre corto (si ya está en "Su gente", exactamente ese nombre); para un ' +
+    'grupo sin nombres, "Amigos", "Familia", "Compañeros de trabajo". ' +
     'Si se sabe dónde estuvo a la hora de esa comida (ver "Dónde estuvo"), y no fue delivery, proponé ese lugar como ' +
     'primera opción: con su nombre si lo tiene, o la calle si es un lugar sin nombre (para el delivery no sirve). ' +
     'Si cuenta que le vino o que está menstruando ("me vino", "estoy indispuesta", "me bajó"), va en la categoría ciclo, ' +
@@ -204,6 +209,7 @@ export async function interpretarTexto(
     'Conceptos que ya existen (categoría: nombre):',
     ...conocidos.map((c) => `- ${porCat.get(c.categoria_id)}: ${c.nombre}`),
     ...(donde.length ? [`Dónde estuvo el ${diaVisto} (según la ubicación del teléfono):`, ...donde.map((x) => `- ${x}`)] : []),
+    ...(gente.length ? [`Su gente: ${gente.join(', ')}`] : []),
     ...(lugaresComida.length ? ['Lugares donde ya comió (los más frecuentes primero):', ...lugaresComida.map((l) => `- ${l}`)] : []),
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     '',

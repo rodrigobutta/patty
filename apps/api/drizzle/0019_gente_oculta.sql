@@ -1,0 +1,1 @@
+ALTER TABLE "gente" ADD COLUMN "oculta" boolean DEFAULT false NOT NULL;

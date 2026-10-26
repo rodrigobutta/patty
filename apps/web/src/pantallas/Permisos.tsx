@@ -139,9 +139,10 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
   };
 
   const p = estado?.permisos;
-  const filas: Array<{ paso: Paso; icono: string; titulo: string; para: string; listo: boolean; parcial?: boolean; accion(): void; mostrar: boolean }> = [
+  const filas: Array<{ paso: Paso; icono: string; titulo: string; para: string; ejemplo: string; listo: boolean; parcial?: boolean; accion(): void; mostrar: boolean }> = [
     {
       paso: 'avisos',
+      ejemplo: t('💡 Así no se te pasa ningún remedio, y contestás cómo te sentís desde el mismo aviso.'),
       icono: '🔔',
       titulo: t('Avisos'),
       para: t('Para recordarte cada toma de un remedio y preguntarte a la noche cómo te fue.'),
@@ -151,6 +152,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
     },
     {
       paso: 'ubicacion',
+      ejemplo: t('💡 Patty puede descubrir cosas como «los días que vas a la oficina dormís peor», y cruzar el calor, la humedad o la presión con tus dolores.'),
       icono: '📍',
       titulo: t('Ubicación'),
       para: t('Para anotar el clima de cada momento y contar tus viajes y lugares, sola.'),
@@ -161,6 +163,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
     },
     {
       paso: 'telefono',
+      ejemplo: t('💡 Por ejemplo: «los días con más de 4 h de pantalla te cuesta dormir» o «cuando hablás más con gente, te sentís mejor».'),
       icono: '📱',
       titulo: t('Uso del teléfono y llamadas'),
       para: t('Cuánto usás cada app y cuántas llamadas hacés (nunca números ni nombres).'),
@@ -171,6 +174,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
     },
     {
       paso: 'salud',
+      ejemplo: t('💡 Sin anotar nada, cómo dormiste y cuánto te moviste se cruzan con tu ánimo, tus dolores y lo que comiste.'),
       icono: '⌚',
       titulo: plataforma() === 'ios' ? t('Salud') : t('Reloj y salud'),
       para: t('Tu sueño, pasos y pulso, desde el reloj o el teléfono.'),
@@ -198,6 +202,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
             <span className="que">
               <strong>{f.titulo}</strong>
               <span className="suave chico renglon-sub">{f.para}</span>
+              <span className="chico renglon-sub ejemplo-permiso">{f.ejemplo}</span>
               {nota[f.paso] ? <span className="chico renglon-sub nota-permiso">{nota[f.paso]}</span> : null}
               {pasosPara(f.paso, marca).length ? (
                 <button className="enlace chico como-activar" onClick={() => setAbierta(abierta === f.paso ? null : f.paso)} aria-expanded={abierta === f.paso}>

@@ -46,6 +46,7 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
   return (
     <div className="tarjeta">
       <h3>{t('📱 Uso del teléfono y llamadas')}</h3>
+      <p className="chico ejemplo-permiso">{t('💡 Por ejemplo: «los días con más de 4 h de pantalla te cuesta dormir» o «cuando hablás más con gente, te sentís mejor».')}</p>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => prender(e.target.checked)} />
         <span>{t('Anotar cada día el tiempo de pantalla, el uso de cada app y las llamadas.')}</span>

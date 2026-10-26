@@ -820,3 +820,4 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
   border-color: color-mix(in srgb, var(--acento) 22%, var(--borde));
 }
 .dia .tarjeta.automatico .renglon-auto, .dia .tarjeta.automatico .grupo-auto { background: transparent; }
+.ejemplo-permiso { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ambar) 14%, transparent); line-height: 1.45; }

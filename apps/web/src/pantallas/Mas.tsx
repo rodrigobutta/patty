@@ -18,6 +18,7 @@ import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
 import { Perfil } from './Perfil';
 import { alPedirGuia, Permisos, tomarGuia, type Paso } from './Permisos';
+import { Gente } from './Gente';
 import { Remedios } from './Remedios';
 import { Supervision } from './Supervision';
 import { NuevaPersona } from './NuevaPersona';
@@ -133,6 +134,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           }} />
           <span>{t('Anotar el clima de cada hora donde estás (temperatura, lluvia, viento, sol, presión, aire).')}</span>
         </label>
+        <p className="chico ejemplo-permiso">{t('💡 Por ejemplo: «con presión baja te duele más la cabeza» o «los días de lluvia tenés menos energía».')}</p>
       </div>
       {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
       {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
@@ -198,6 +200,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       <Supervision />
   </>, true);
   if (seccion === 'personas') return pantalla(t('🧍 Personas y datos'), <>
+      {persona ? <Gente persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
       <div className="tarjeta">
         <p className="suave chico">{t('De quién se anota el día. Tocá una para cambiar.')}</p>
         <ul className="lista">
@@ -282,7 +285,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'remedios', icono: '💊', titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
     { clave: 'avisos', icono: '🔔', titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
     { clave: 'supervision', icono: '👨‍👩‍👧', titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
-    { clave: 'personas', icono: '🧍', titulo: t('Personas y datos'), sub: t('De quién se anota y su perfil') },
+    { clave: 'personas', icono: '🧍', titulo: t('Personas y datos'), sub: t('Tu gente, de quién se anota y su perfil') },
     { clave: 'cuenta', icono: '👤', titulo: t('Tu cuenta'), sub: t('Foto, apodo, tema, idioma') },
     { clave: 'avanzado', icono: '⚙️', titulo: t('Otros dispositivos'), sub: t('Relojes y atajos con token'), ver: usuario?.rol !== 'lector' },
   ];
