@@ -4,7 +4,7 @@
 import { registerPlugin } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { useEffect } from 'react';
-import { api } from '../api';
+import { api, API_BASE } from '../api';
 import { crearCanales, irAlDia, permisoAvisos } from './avisos';
 import { esNativa, plataforma } from './nativo';
 
@@ -14,6 +14,7 @@ const CLAVE_HASTA = 'avisos-hasta';
 const Mascota = registerPlugin<{
   hayFirebase(): Promise<{ si: boolean }>;
   sacarAvisos(o: { prefijo: string }): Promise<void>;
+  guardarSesion(o: { api: string | null; token: string | null }): Promise<void>;
   addListener(evento: 'avisoTocado', f: (datos: Record<string, string>) => void): Promise<{ remove(): Promise<void> }>;
 }>('Mascota');
 
@@ -46,6 +47,16 @@ export async function mandarDispositivo(): Promise<void> {
   const token = leer(CLAVE_TOKEN);
   if (!token) return;
   await api('POST', '/api/dispositivos', { token, plataforma: plataforma(), avisos_hasta: leer(CLAVE_HASTA) }).catch(() => {});
+}
+
+/**
+ * Le pasa a la parte nativa dónde está la API (y el token, si la app usa token), para que los botones de los avisos
+ * ("Bien", "La tomé") anoten sin abrir la app. `null` al salir de la cuenta.
+ */
+export function guardarSesionNativa(activa: boolean): void {
+  if (plataforma() !== 'android') return;
+  const api = activa ? API_BASE || location.origin : null;
+  void Mascota.guardarSesion({ api, token: activa ? leer('token') : null }).catch(() => {});
 }
 
 /** Si este teléfono recibe avisos push (ya se registró y le pasó su token al servidor). */

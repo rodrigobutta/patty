@@ -55,9 +55,19 @@ export const rutasDispositivos = new Hono<Env>()
     const cuerpoAviso = traducir(esIdioma(guardado) ? guardado : c.var.idioma, '¡Hola! Así te van a llegar los avisos 🦉');
     let ok = 0;
     for (const d of lista) {
-      const r = await enviarAviso(d.token, { titulo: 'Patty', cuerpo: cuerpoAviso, datos: { tipo: 'prueba' } });
+      const i = esIdioma(guardado) ? guardado : c.var.idioma;
+      // Con un botón para probar que se puede contestar desde el aviso sin abrir la app.
+      const r = await enviarAviso(d.token, {
+        titulo: 'Patty',
+        cuerpo: cuerpoAviso,
+        datos: { tipo: 'prueba', cara: 'feliz' },
+        etiqueta: 'prueba',
+        acciones: [{ titulo: traducir(i, '👍 Probar el botón'), pedidos: [{ ruta: '/api/dispositivos/eco', cuerpo: {} }], listo: traducir(i, '✓ ¡Los botones de los avisos funcionan!') }],
+      });
       if (r === 'ok') ok++;
       if (r === 'invalido') await c.var.db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
     }
     return c.json({ enviados: ok, dispositivos: lista.length });
-  });
+  })
+  // Lo que pide el botón del aviso de prueba: solo confirma que la sesión del teléfono llega bien.
+  .post('/eco', (c) => c.json({ ok: true, usuario: c.var.usuario.usuario }));

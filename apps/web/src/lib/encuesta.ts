@@ -5,7 +5,9 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { useEffect } from 'react';
 import { avisoExacto, permisoAvisos } from './avisos';
 import { t } from './idioma';
-import { esNativa } from './nativo';
+import { esNativa, plataforma } from './nativo';
+import { api } from '../api';
+import { recibePush } from './push';
 import { apodoGuardado } from './apodo';
 
 const CLAVE = 'encuesta';
@@ -31,7 +33,13 @@ export async function ponerEncuesta(c: Config): Promise<boolean> {
   } catch {
     /* sin almacenamiento */
   }
+  contarleAlServidor(c);
   return programarAviso(c);
+}
+
+/** El servidor manda la encuesta a los Android (con botones para contestar sin abrir la app): necesita saber la hora. */
+function contarleAlServidor(c: Config): void {
+  void api('PUT', '/api/usuarios/yo/preferencias', { encuesta_hora: c.activa ? c.hora : null }).catch(() => {});
 }
 
 /** Programa (o saca) el aviso diario del teléfono. Devuelve false si no hay permiso para avisar. */
@@ -40,6 +48,11 @@ export async function programarAviso(c: Config = configEncuesta()): Promise<bool
   try {
     await LocalNotifications.cancel({ notifications: [{ id: ID_AVISO }] });
     if (!c.activa) return true;
+    // En Android con push la manda el servidor, con los botones para contestar desde el aviso.
+    if (plataforma() === 'android' && recibePush()) {
+      contarleAlServidor(c);
+      return permisoAvisos();
+    }
     if (!(await permisoAvisos())) return false;
     const [hour, minute] = c.hora.split(':').map(Number);
     const exacta = await avisoExacto();

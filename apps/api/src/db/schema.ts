@@ -47,6 +47,8 @@ export const usuarios = pgTable(
     apodo: text('apodo'),
     /** Si aparece en el tablero general de puntos (con su apodo y su foto). */
     ranking: boolean('ranking').notNull().default(true),
+    /** A qué hora le llega la encuesta de la noche (HH:MM); null si la apagó. La manda el servidor a Android. */
+    encuesta_hora: text('encuesta_hora'),
     clave: text('clave').notNull(),
     rol: text('rol', { enum: ['admin', 'editor', 'lector'] }).notNull().default('editor'),
     activo: boolean('activo').notNull().default(true),

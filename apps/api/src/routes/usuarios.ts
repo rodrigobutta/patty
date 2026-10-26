@@ -72,7 +72,7 @@ export const rutasUsuarios = new Hono<Env>()
     return c.json({ ok: true });
   })
   .get('/yo/preferencias', async (c) => {
-    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar, apodo, ranking FROM usuarios WHERE id = ${c.var.usuario.id}`));
+    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar, apodo, ranking, encuesta_hora FROM usuarios WHERE id = ${c.var.usuario.id}`));
   })
   .put('/yo/preferencias', async (c) => {
     // {avisar_sin_anotar, apodo}: lo que cada uno elige de los avisos que manda el servidor y cómo quiere que le digan.
@@ -80,13 +80,16 @@ export const rutasUsuarios = new Hono<Env>()
     if (typeof d.avisar_sin_anotar === 'boolean') {
       await c.var.db.execute(sql`UPDATE usuarios SET avisar_sin_anotar = ${d.avisar_sin_anotar} WHERE id = ${c.var.usuario.id}`);
     }
+    if (d.encuesta_hora === null || (typeof d.encuesta_hora === 'string' && /^\d{2}:\d{2}$/.test(d.encuesta_hora))) {
+      await c.var.db.execute(sql`UPDATE usuarios SET encuesta_hora = ${d.encuesta_hora} WHERE id = ${c.var.usuario.id}`);
+    }
     if (typeof d.ranking === 'boolean') await c.var.db.execute(sql`UPDATE usuarios SET ranking = ${d.ranking} WHERE id = ${c.var.usuario.id}`);
     if (d.apodo !== undefined) {
       const apodo = texto(d.apodo) || null;
       if (apodo && apodo.length > 30) throw new ErrorApi('El apodo es muy largo (máximo 30 letras).');
       await c.var.db.execute(sql`UPDATE usuarios SET apodo = ${apodo} WHERE id = ${c.var.usuario.id}`);
     }
-    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar, apodo, ranking FROM usuarios WHERE id = ${c.var.usuario.id}`));
+    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar, apodo, ranking, encuesta_hora FROM usuarios WHERE id = ${c.var.usuario.id}`));
   })
   .post('/yo/clave', async (c) => {
     const d = await cuerpo(c);

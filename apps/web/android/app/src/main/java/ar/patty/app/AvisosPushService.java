@@ -80,8 +80,26 @@ public class AvisosPushService extends FirebaseMessagingService {
             b.addAction(0, "Aceptar", conAccion(datos, "aceptar", id, id + 1));
             b.addAction(0, "No", conAccion(datos, "rechazar", id, id + 2));
         }
+        // Botones que se contestan sin abrir la app (la encuesta de la noche, las tomas): los hace RespuestaReceiver.
+        String acciones = datos.get("acciones");
+        if (acciones != null) {
+            try {
+                org.json.JSONArray l = new org.json.JSONArray(acciones);
+                for (int i = 0; i < l.length() && i < 3; i++) {
+                    org.json.JSONObject a = l.getJSONObject(i);
+                    Intent r = new Intent(this, RespuestaReceiver.class);
+                    for (Map.Entry<String, String> e : datos.entrySet()) if (!"acciones".equals(e.getKey())) r.putExtra(e.getKey(), e.getValue());
+                    r.putExtra("accion", a.toString());
+                    r.putExtra("aviso_id", id);
+                    r.putExtra("canal", canal);
+                    b.addAction(0, a.getString("titulo"), PendingIntent.getBroadcast(this, id + 10 + i, r, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+                }
+            } catch (org.json.JSONException e) {
+                // sin botones
+            }
+        }
         // Las tomas de remedios se contestan desde el aviso: una sola ("La tomé" / "No la tomo") o todas juntas.
-        if ("toma".equals(datos.get("tipo")) && datos.get("tomas") != null && !"si".equals(datos.get("supervision"))) {
+        else if ("toma".equals(datos.get("tipo")) && datos.get("tomas") != null && !"si".equals(datos.get("supervision"))) {
             boolean una = datos.get("tratamiento_id") != null;
             String si = datos.get("boton_tomada") != null ? datos.get("boton_tomada") : (una ? "La tomé" : "Las tomé todas");
             b.addAction(0, si, conAccion(datos, "tomada", id, id + 1));

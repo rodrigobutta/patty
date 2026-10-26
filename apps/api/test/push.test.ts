@@ -87,7 +87,7 @@ describe('aviso de "te extraño"', () => {
     await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Agua', categoria_id: categorias.bebida, inicio: '2026-10-23T15:00:00.000Z' });
     expect(await revisarTeExtrano(db, new Date('2026-10-23T22:01:00.000Z'))).toBe(0);
     // apagado: nada
-    expect((await ana.put('/api/usuarios/yo/preferencias', { avisar_sin_anotar: false })).body).toEqual({ avisar_sin_anotar: false, apodo: null, ranking: true });
+    expect((await ana.put('/api/usuarios/yo/preferencias', { avisar_sin_anotar: false })).body).toEqual({ avisar_sin_anotar: false, apodo: null, ranking: true, encuesta_hora: null });
     expect(await revisarTeExtrano(db, new Date('2026-10-25T22:01:00.000Z'))).toBe(0);
     expect(avisoTeExtrano('Rodrigo Butta', 1).titulo).toBe('😢 Hoy no me contaste nada');
     expect(avisoTeExtrano('Rodrigo', 9).titulo).toBe('😢 Te extraño');
@@ -119,5 +119,30 @@ describe('avisos de permisos que faltan', () => {
     // Al otro día, el siguiente (la ubicación espera 3 días)
     expect(await revisarPermisos(db, new Date('2026-10-27T15:01:00.000Z'))).toBe(1);
     expect(enviados[1].datos?.permiso).toBe('telefono');
+  });
+});
+
+describe('encuesta de la noche por push', () => {
+  it('a la hora elegida, a los Android, con botones que anotan cómo se sintió sin abrir la app', async () => {
+    const { ana, personaId } = await conAdmin();
+    const enviados: Aviso[] = [];
+    usarEnvioPrueba(async (_t, a) => {
+      enviados.push(a);
+      return 'ok';
+    });
+    await ana.post('/api/dispositivos', { token: 'tel', plataforma: 'android' });
+    await ana.put('/api/usuarios/yo/preferencias', { encuesta_hora: '22:00' });
+    const { revisarEncuesta } = await import('../src/push/recordatorios.js');
+    const db = obtenerDb();
+    // 22:01 en Buenos Aires = 01:01 UTC del día siguiente
+    expect(await revisarEncuesta(db, new Date('2026-10-27T01:01:00.000Z'))).toBe(1);
+    expect(await revisarEncuesta(db, new Date('2026-10-27T01:02:00.000Z'))).toBe(0);
+    const a = enviados[0];
+    expect(a.acciones!.map((x) => x.titulo)).toEqual(['😄 Muy bien', '🙂 Bien', '😕 Mal']);
+    // Lo que haría el teléfono al tocar "Bien": el pedido anota cómo se sintió.
+    const pedido = a.acciones![1].pedidos[0];
+    const r = await ana.post(pedido.ruta, { ...pedido.cuerpo, inicio: '2026-10-27T01:02:00.000Z' });
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ persona_id: personaId, concepto: 'Cómo me sentí en el día', intensidad: 7 });
   });
 });

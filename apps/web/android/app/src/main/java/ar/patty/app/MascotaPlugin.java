@@ -95,6 +95,20 @@ public class MascotaPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * La sesión de la app (la dirección de la API y el token), para que los botones de los avisos puedan anotar sin
+     * abrir la app (RespuestaReceiver). Sin api, se borra (al salir de la cuenta).
+     */
+    @PluginMethod
+    public void guardarSesion(PluginCall call) {
+        SharedPreferences.Editor e = getContext().getSharedPreferences(RespuestaReceiver.PREFS, Context.MODE_PRIVATE).edit();
+        String api = call.getString("api");
+        if (api == null) e.clear();
+        else e.putString("api", api).putString("token", call.getString("token"));
+        e.apply();
+        call.resolve();
+    }
+
     /** La marca y el modelo del teléfono (para explicar los ajustes con los menús de esa marca). */
     @PluginMethod
     public void telefono(PluginCall call) {

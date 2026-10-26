@@ -4,7 +4,7 @@
 // si no se marcó, a la media hora. En Android con push, el teléfono no programa nada y los manda todos el servidor, que
 // sabe qué se marcó: así junta en un solo aviso las tomas olvidadas. Corre cada minuto.
 import { sql } from 'drizzle-orm';
-import { apodoDe, dosisTexto, esIdioma, ITEMS_PUNTOS, traducir, type Idioma, type Toma } from 'shared';
+import { apodoDe, COMO_ME_SENTI, dosisTexto, ESTADOS, esIdioma, ITEMS_PUNTOS, traducir, type Idioma, type Toma } from 'shared';
 import { puntosDe } from '../routes/puntos.js';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, fechaLocal, localAInstante } from '../lib/fechas.js';
@@ -64,6 +64,9 @@ const PENDIENTES_HORAS = 12;
 
 type Momento = 'hora' | 'insistir' | 'supervisor';
 
+/** El pedido a la API que marca una toma (lo hace el teléfono al tocar el botón del aviso). */
+const pedidoToma = (t: Toma, estado: 'tomada' | 'salteada') => ({ ruta: `/api/tratamientos/${t.tratamiento_id}/tomas`, cuerpo: { programada: t.programada, estado } });
+
 /** "Paracetamol 500 mg de las 06:03 y 12:03; Ibuprofeno de las 08:00" (por remedio, en orden). */
 function listaDeTomas(tomas: Toma[], zona: string, i: Idioma): string {
   const porRemedio = new Map<string, string[]>();
@@ -110,7 +113,14 @@ export function avisoDeTomas(
         : momento === 'insistir'
           ? { titulo: v.apodo ? traducir(i, '{apodo}, ¿tomaste {remedio}?', x) : traducir(i, '¿Tomaste {remedio}?', x), cuerpo: traducir(i, 'La de las {hora} todavía no está marcada.', x) }
           : { titulo: traducir(i, '💊 {nombre} no marcó {remedio}', x), cuerpo: traducir(i, 'La toma de las {hora} sigue sin marcar. Podés mandarle un aviso desde Patty.', x) };
-    return { ...textos, datos, canal: 'remedios', etiqueta };
+    const acciones: Aviso['acciones'] =
+      momento === 'supervisor'
+        ? undefined
+        : [
+            { titulo: traducir(i, 'La tomé'), pedidos: [pedidoToma(t, 'tomada')], listo: traducir(i, '✓ Anotado: {remedio} tomado 💊', x) },
+            { titulo: traducir(i, 'No la tomo'), pedidos: [pedidoToma(t, 'salteada')], listo: traducir(i, 'Anotado que no tomaste {remedio} 😤', x) },
+          ];
+    return { ...textos, datos, canal: 'remedios', etiqueta, acciones };
   }
   const x = { n: pendientes.length, apodo: v.apodo, nombre: v.nombre, lista: listaDeTomas(pendientes, v.zona, i) };
   if (momento === 'supervisor') {
@@ -122,6 +132,7 @@ export function avisoDeTomas(
     datos,
     canal: 'remedios',
     etiqueta,
+    acciones: [{ titulo: traducir(i, 'Las tomé todas'), pedidos: pendientes.map((t) => pedidoToma(t, 'tomada')), listo: traducir(i, '✓ Anotadas {n} tomas 💊', x) }],
   };
 }
 
@@ -259,6 +270,53 @@ export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<numb
   return enviados;
 }
 
+/**
+ * La encuesta de la noche ("¿cómo te sentiste hoy?") para los Android con push, a la hora que eligió cada uno y si no la
+ * contestó todavía: con botones para contestar desde el aviso sin abrir la app. En iPhone la programa el teléfono.
+ */
+export async function revisarEncuesta(db: Db, ahora = new Date()): Promise<number> {
+  const animo = await una<{ id: number }>(db, sql`SELECT id FROM categorias WHERE clave = 'animo'`);
+  if (!animo) return 0;
+  const personas = await filas<{ id: number; zona: string; usuario_id: number; idioma: string; nombre: string; apodo: string | null; hora: string }>(
+    db,
+    sql`SELECT p.id, p.zona_horaria AS zona, pu.usuario_id, u.idioma, u.nombre, u.apodo, u.encuesta_hora AS hora
+        FROM personas p JOIN persona_usuarios pu ON pu.persona_id = p.id AND pu.rol = 'dueno'
+        JOIN usuarios u ON u.id = pu.usuario_id AND u.activo AND u.encuesta_hora IS NOT NULL
+        WHERE EXISTS (SELECT 1 FROM dispositivos d WHERE d.usuario_id = pu.usuario_id AND d.plataforma = 'android')`,
+  );
+  let enviados = 0;
+  for (const p of personas) {
+    const desde = localAInstante(fechaLocal(ahora, p.zona), p.hora, p.zona).getTime();
+    if (ahora.getTime() < desde || ahora.getTime() > desde + TOLERANCIA_MIN * 60000) continue;
+    const dia = diaDePatty(ahora, p.zona);
+    const ya = await una(
+      db,
+      sql`SELECT 1 AS x FROM registros r JOIN conceptos c ON c.id = r.concepto_id
+          WHERE r.persona_id = ${p.id} AND r.fecha = ${dia} AND r.borrado IS NULL AND c.nombre = ${COMO_ME_SENTI} LIMIT 1`,
+    );
+    if (ya) continue;
+    const i = idiomaDe(p);
+    const apodo = apodoDe(p.nombre, p.apodo);
+    const boton = (e: (typeof ESTADOS)[number], luego?: string) => ({
+      titulo: `${e.emoji} ${traducir(i, e.nombre)}`,
+      pedidos: [{ ruta: '/api/registros', cuerpo: { persona_id: p.id, concepto_nombre: COMO_ME_SENTI, categoria_id: animo.id, intensidad: e.intensidad } }],
+      listo: traducir(i, '✓ Anotado: {estado}. ¡Gracias!', { estado: traducir(i, e.nombre).toLowerCase() }),
+      ...(luego ? { luego } : {}),
+    });
+    const [muyBien, bien, mal] = ESTADOS;
+    const aviso: Aviso = {
+      titulo: 'Patty',
+      cuerpo: traducir(i, '{apodo}, ¿cómo te sentiste hoy?', { apodo }),
+      datos: { tipo: 'encuesta', persona_id: String(p.id), cara: 'espera' },
+      etiqueta: `encuesta|${p.id}`,
+      acciones: [boton(muyBien), boton(bien), boton(mal, traducir(i, 'Anotado: mal 😕 ¿Qué te pasó? Tocá para contarme.'))],
+    };
+    const lista = await filas<Dispositivo>(db, sql`SELECT id, token, avisos_hasta FROM dispositivos WHERE usuario_id = ${p.usuario_id} AND plataforma = 'android'`);
+    for (const d of lista) if (await avisarUnaVez(db, d, `encuesta|${p.id}|${dia}`, aviso)) enviados++;
+  }
+  return enviados;
+}
+
 /** A esta hora, si anotó algo pero le faltan puntos para la meta del día, un empujón con lo que falta. */
 const HORA_PUNTOS = '21:00';
 const META_PUNTOS = 60;
@@ -386,6 +444,7 @@ export function arrancarRecordatorios(db: Db): void {
       await revisarTeExtrano(db);
       await revisarPermisos(db);
       await revisarPuntos(db);
+      await revisarEncuesta(db);
       // Una vez por día, lo viejo se borra.
       if (vueltas++ % 1440 === 0) await db.execute(sql`DELETE FROM avisos_enviados WHERE creado < now() - interval '30 days'`);
     } catch (e) {

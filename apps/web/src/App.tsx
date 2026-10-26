@@ -3,7 +3,7 @@ import { api } from './api';
 import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
 import { alPedirIrAlDia } from './lib/avisos';
-import { useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
+import { abrirEncuesta, useEncuesta, useIrAlDiaConElAviso } from './lib/encuesta';
 import { alTocarAvisoPush, usePush } from './lib/push';
 import { marcarToma, useRecordatorios } from './lib/remedios';
 import { pedirSentir } from './lib/sentir';
@@ -84,6 +84,8 @@ export function App() {
               .catch((e: Error) => avisar(e.message));
           }
         }
+        // La encuesta de la noche tocada (o "Mal" contestado desde el aviso, para contar qué pasó): el Día la abre.
+        if (d.tipo === 'encuesta') abrirEncuesta();
         // Un permiso que falta: Más, con los pasos para darlo en este teléfono.
         if (d.tipo === 'permiso' && ['avisos', 'ubicacion', 'telefono', 'salud'].includes(d.permiso)) {
           setPestana('mas');

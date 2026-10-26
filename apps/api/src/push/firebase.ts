@@ -64,6 +64,11 @@ export interface Aviso {
   canal?: string;
   /** Avisos con la misma etiqueta se reemplazan en el teléfono en vez de apilarse (los de remedios de una persona). */
   etiqueta?: string;
+  /**
+   * Botones que se contestan sin abrir la app (Android, máximo 3): el teléfono hace los pedidos a la API con su sesión
+   * y cambia el aviso por `listo`. Si con eso quiere seguir (contar qué pasó), `luego` es el aviso que queda.
+   */
+  acciones?: Array<{ titulo: string; pedidos: Array<{ ruta: string; cuerpo: Record<string, unknown> }>; listo: string; luego?: string }>;
 }
 
 /** Para las pruebas: reemplaza el envío real. */
@@ -89,7 +94,7 @@ export async function enviarAviso(token: string, a: Aviso): Promise<'ok' | 'inva
         message: {
           token,
           notification: { title: a.titulo, body: a.cuerpo },
-          data: { ...(a.datos ?? {}), ...(a.etiqueta ? { etiqueta: a.etiqueta } : {}) },
+          data: { ...(a.datos ?? {}), ...(a.etiqueta ? { etiqueta: a.etiqueta } : {}), ...(a.acciones?.length ? { acciones: JSON.stringify(a.acciones) } : {}) },
           android: { priority: 'high', notification: { channel_id: a.canal ?? 'avisos', visibility: 'PRIVATE', ...(a.etiqueta ? { tag: a.etiqueta } : {}) } },
         },
       }),

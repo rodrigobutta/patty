@@ -157,4 +157,11 @@ export const PERMISOS: Record<string, string> = {
   'Foto, apodo, tema, idioma': 'Photo, nickname, theme, language',
   'Otros dispositivos': 'Other devices',
   'Relojes y atajos con token': 'Watches and shortcuts with a token',
+  '✓ Anotado: {remedio} tomado 💊': '✓ Logged: took {remedio} 💊',
+  'Anotado que no tomaste {remedio} 😤': 'Logged that you skipped {remedio} 😤',
+  '✓ Anotadas {n} tomas 💊': '✓ Logged {n} doses 💊',
+  '✓ Anotado: {estado}. ¡Gracias!': '✓ Logged: {estado}. Thanks!',
+  'Anotado: mal 😕 ¿Qué te pasó? Tocá para contarme.': 'Logged: bad 😕 What happened? Tap to tell me.',
+  '👍 Probar el botón': '👍 Try the button',
+  '✓ ¡Los botones de los avisos funcionan!': '✓ Notification buttons work!',
 };
