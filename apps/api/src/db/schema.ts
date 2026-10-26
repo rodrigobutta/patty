@@ -382,6 +382,26 @@ export const avisosEnviados = pgTable('avisos_enviados', {
   enviado: creado(),
 });
 
+/** Lo que se le mandó por push a cada usuario (para que la administración vea qué le dice Patty a cada uno). */
+export const avisosHistorial = pgTable(
+  'avisos_historial',
+  {
+    id: id(),
+    usuario_id: integer('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    persona_id: integer('persona_id'),
+    /** El `tipo` de los datos del aviso (toma, encuesta, hallazgo, admin…). */
+    tipo: text('tipo'),
+    titulo: text('titulo').notNull(),
+    cuerpo: text('cuerpo').notNull(),
+    /** ok, invalido (el teléfono ya no está) o error. */
+    resultado: text('resultado').notNull(),
+    creado: creado(),
+  },
+  (t) => [index('avisos_historial_usuario_idx').on(t.usuario_id, t.creado)],
+);
+
 /**
  * Cómo está cada instalación de la app (teléfono o navegador): qué permisos dio y qué tiene prendido. La manda la app
  * al abrirse; la mira la administración para saber si cada uno pudo configurar todo.
@@ -454,6 +474,10 @@ export const analisis = pgTable(
     pares_evaluados: integer('pares_evaluados').notNull(),
     resumen: text('resumen'),
     sugerencias: jsonb('sugerencias').$type<string[]>(),
+    /** manual = la persona tocó "Buscar patrones"; noche = lo corrió solo el servidor de madrugada. */
+    origen: text('origen', { enum: ['manual', 'noche'] }).notNull().default('manual'),
+    /** Los hallazgos que aparecieron por primera vez en este análisis (los que se avisan a la mañana). */
+    nuevos: jsonb('nuevos').$type<number[]>().notNull().default([]),
     creado: creado(),
   },
   (t) => [index('analisis_persona_idx').on(t.persona_id, t.creado)],

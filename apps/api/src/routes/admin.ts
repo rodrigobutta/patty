@@ -7,7 +7,8 @@ import { filas, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 import { compararVersiones, type VersionApp } from 'shared';
-import { enviarAviso, type Aviso } from '../push/firebase.js';
+import type { Aviso } from '../push/firebase.js';
+import { mandarAviso } from '../push/mandar.js';
 import { hayEnvio } from '../push/firebase.js';
 
 /** Los registros de los últimos 14 días, por día, para la rayita de actividad. */
@@ -23,9 +24,7 @@ async function avisarA(db: Env['Variables']['db'], usuarios: number[] | null, av
   );
   let enviados = 0;
   for (const d of lista) {
-    const r = await enviarAviso(d.token, aviso);
-    if (r === 'ok') enviados++;
-    if (r === 'invalido') await db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
+    if ((await mandarAviso(db, d, aviso)) === 'ok') enviados++;
   }
   return { enviados, telefonos: lista.length };
 }
@@ -129,7 +128,30 @@ export const rutasAdmin = new Hono<Env>()
           FROM supervisiones s JOIN usuarios o ON o.id = CASE WHEN s.supervisor_id = ${id} THEN s.supervisado_id ELSE s.supervisor_id END
           WHERE s.supervisor_id = ${id} OR s.supervisado_id = ${id}`,
     );
-    return c.json({ usuario: u, personas, ultimos, telefonos, instalaciones, tratamientos, supervisiones });
+    // Lo que Patty le dice: los análisis de patrones de sus personas (con resumen y sugerencias), lo que encontró y los
+    // avisos que le llegaron.
+    const ids = personas.map((p) => (p as { id: number }).id);
+    const analisisDe = ids.length
+      ? await filas(
+          db,
+          sql`SELECT a.id, a.persona_id, a.origen, a.creado, a.desde, a.hasta, a.dias, a.resumen, a.sugerencias, jsonb_array_length(a.nuevos)::int AS nuevos,
+                     (SELECT count(*) FROM hallazgos h WHERE h.analisis_id = a.id)::int AS hallazgos
+              FROM analisis a WHERE a.persona_id IN ${ids} ORDER BY a.creado DESC LIMIT 15`,
+        )
+      : [];
+    const hallazgosDe = ids.length
+      ? await filas(
+          db,
+          sql`SELECT h.id, h.persona_id, h.explicacion, h.estado, h.puntaje, h.detectado, ca.nombre AS causa, ef.nombre AS efecto
+              FROM hallazgos h JOIN conceptos ca ON ca.id = h.causa_id JOIN conceptos ef ON ef.id = h.efecto_id
+              WHERE h.persona_id IN ${ids} ORDER BY (h.estado = 'descartado'), h.puntaje DESC LIMIT 20`,
+        )
+      : [];
+    const avisos = await filas(
+      db,
+      sql`SELECT id, persona_id, tipo, titulo, cuerpo, resultado, creado FROM avisos_historial WHERE usuario_id = ${id} ORDER BY creado DESC LIMIT 60`,
+    );
+    return c.json({ usuario: u, personas, ultimos, telefonos, instalaciones, tratamientos, supervisiones, analisis: analisisDe, hallazgos: hallazgosDe, avisos });
   })
   .get('/actividad', async (c) => {
     // Lo último que se anotó en toda la app (de todos), para ver en vivo cómo se usa.

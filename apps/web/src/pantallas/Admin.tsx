@@ -127,6 +127,9 @@ interface Detalle {
   instalaciones: Instalacion[];
   tratamientos: Array<{ id: number; remedio: string; dosis: number | null; unidad: string | null; cada_horas: number | null; horarios: string[]; fin: string | null; terminado: string | null; persona: string }>;
   supervisiones: Array<{ estado: string; relacion: string; otro: string }>;
+  analisis: Array<{ id: number; persona_id: number; origen: 'manual' | 'noche'; creado: string; dias: number; resumen: string | null; sugerencias: string[] | null; nuevos: number; hallazgos: number }>;
+  hallazgos: Array<{ id: number; persona_id: number; explicacion: string | null; estado: string; causa: string; efecto: string }>;
+  avisos: Array<{ id: number; tipo: string | null; titulo: string; cuerpo: string; resultado: string; creado: string }>;
 }
 
 /** "hace 5 min", "hace 3 h", "ayer", "hace 4 días" */
@@ -445,6 +448,8 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
         </div>
       ))}
 
+      <LoQuePattyLeDice d={d} />
+
       {d.instalaciones.length ? (
         <div className="tarjeta">
           <h3>{t('Cómo tiene configurada la app')}</h3>
@@ -503,6 +508,73 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
         <h3>{t('Lo último que anotó')}</h3>
         {d.ultimos.length ? <ListaRegistros lista={d.ultimos} /> : <p className="suave">{t('Nada todavía.')}</p>}
       </div>
+    </div>
+  );
+}
+
+/** Los análisis de patrones de sus personas (resumen y sugerencias), lo que encontró y los avisos que le llegaron. */
+function LoQuePattyLeDice({ d }: { d: Detalle }) {
+  const nombre = new Map(d.personas.map((p) => [p.id, p.nombre]));
+  const varias = d.personas.length > 1;
+  const ultimo = d.analisis[0];
+  return (
+    <div className="tarjeta">
+      <h3>🦉 {t('Lo que Patty le dice')}</h3>
+      {ultimo ? (
+        <>
+          {ultimo.resumen ? <p>{ultimo.resumen}</p> : null}
+          {ultimo.sugerencias?.length ? (
+            <>
+              <p className="suave chico">{t('Sugerencias')}</p>
+              <ul className="lista-simple">{ultimo.sugerencias.map((x, i) => <li key={i}>💡 {x}</li>)}</ul>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <p className="suave">{t('Todavía no se buscaron patrones.')}</p>
+      )}
+      {d.hallazgos.length ? (
+        <details>
+          <summary>{t('Lo que encontró')} ({d.hallazgos.length})</summary>
+          <ul className="lista-simple">
+            {d.hallazgos.map((h) => (
+              <li key={h.id}>
+                {h.estado === 'confirmado' ? '✅' : h.estado === 'descartado' ? '🚫' : '🔎'} {h.explicacion ?? `${t(h.causa)} → ${t(h.efecto)}`}
+                {varias ? <span className="suave chico"> · {nombre.get(h.persona_id)}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      {d.analisis.length ? (
+        <details>
+          <summary>{t('Análisis de patrones')} ({d.analisis.length})</summary>
+          <ul className="lista-simple">
+            {d.analisis.map((a) => (
+              <li key={a.id}>
+                {a.origen === 'noche' ? '🌙' : '👆'} {fechaHora(a.creado)} · {a.origen === 'noche' ? t('de noche') : t('a mano')} · {cuantos(a.dias, 'día', 'días')} ·{' '}
+                {cuantos(a.hallazgos, 'hallazgo', 'hallazgos')}{a.nuevos ? ` · ${t('{n} nuevos', { n: a.nuevos })}` : ''}
+                {varias ? <span className="suave chico"> · {nombre.get(a.persona_id)}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      <details>
+        <summary>{t('Avisos que le llegaron')} ({d.avisos.length})</summary>
+        {d.avisos.length ? (
+          <ul className="lista-simple">
+            {d.avisos.map((a) => (
+              <li key={a.id}>
+                <strong>{a.titulo}</strong> {a.cuerpo}
+                <span className="suave chico"> · {hace(a.creado)}{a.resultado !== 'ok' ? ` · ${t('no llegó')}` : ''}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="suave">{t('Nada todavía.')}</p>
+        )}
+      </details>
     </div>
   );
 }

@@ -141,6 +141,13 @@
       "when": 1792982079505,
       "tag": "0019_gente_oculta",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792986028484,
+      "tag": "0020_patrones_de_noche",
+      "breakpoints": true
     }
   ]
 }

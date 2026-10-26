@@ -9,7 +9,8 @@ import { puntosDe } from '../routes/puntos.js';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, fechaLocal, localAInstante } from '../lib/fechas.js';
 import { COLUMNAS, DESDE, tomasDe, type Fila } from '../routes/tratamientos.js';
-import { enviarAviso, pushDisponible, type Aviso } from './firebase.js';
+import { pushDisponible, type Aviso } from './firebase.js';
+import { mandarAviso } from './mandar.js';
 
 const INSISTIR_MIN = 30;
 /** A la hora sin marcar, se les avisa a quienes supervisan. */
@@ -33,7 +34,7 @@ const idiomaDe = (d: { idioma?: string | null }): Idioma => (esIdioma(d.idioma) 
  * Los teléfonos de quienes anotan a la persona (los recordatorios) o de quienes la supervisan (los avisos de que algo
  * se olvidó). Los administradores ven todo, pero solo reciben avisos de las personas que son suyas.
  */
-function dispositivosDe(db: Db, personaId: number, supervisores: boolean) {
+export function dispositivosDe(db: Db, personaId: number, supervisores: boolean) {
   return filas<Dispositivo>(
     db,
     sql`SELECT d.id, d.token, d.avisos_hasta, u.idioma FROM dispositivos d JOIN usuarios u ON u.id = d.usuario_id
@@ -52,9 +53,7 @@ export async function avisarUnaVez(db: Db, d: Dispositivo, clave: string, a: Avi
     if (await una(db, sql`INSERT INTO avisos_enviados (clave) VALUES (${`${k}|${d.id}`}) ON CONFLICT DO NOTHING RETURNING clave`)) nueva = true;
   }
   if (!nueva) return false;
-  const r = await enviarAviso(d.token, a);
-  if (r === 'invalido') await db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
-  return r === 'ok';
+  return (await mandarAviso(db, d, a)) === 'ok';
 }
 
 const hhmm = (iso: string, zona: string) => new Intl.DateTimeFormat('es-AR', { timeZone: zona, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
@@ -446,7 +445,10 @@ export function arrancarRecordatorios(db: Db): void {
       await revisarPuntos(db);
       await revisarEncuesta(db);
       // Una vez por día, lo viejo se borra.
-      if (vueltas++ % 1440 === 0) await db.execute(sql`DELETE FROM avisos_enviados WHERE creado < now() - interval '30 days'`);
+      if (vueltas++ % 1440 === 0) {
+        await db.execute(sql`DELETE FROM avisos_enviados WHERE creado < now() - interval '30 days'`);
+        await db.execute(sql`DELETE FROM avisos_historial WHERE creado < now() - interval '90 days'`);
+      }
     } catch (e) {
       console.error('Error revisando recordatorios:', e);
     }

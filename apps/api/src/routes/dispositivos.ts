@@ -6,7 +6,8 @@ import { esIdioma, traducir } from 'shared';
 import { filas, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, texto, type Env } from '../lib/http.js';
-import { enviarAviso, pushDisponible } from '../push/firebase.js';
+import { pushDisponible } from '../push/firebase.js';
+import { mandarAviso } from '../push/mandar.js';
 
 export const rutasDispositivos = new Hono<Env>()
   .post('/', async (c) => {
@@ -57,7 +58,7 @@ export const rutasDispositivos = new Hono<Env>()
     for (const d of lista) {
       const i = esIdioma(guardado) ? guardado : c.var.idioma;
       // Con un botón para probar que se puede contestar desde el aviso sin abrir la app.
-      const r = await enviarAviso(d.token, {
+      const r = await mandarAviso(c.var.db, d, {
         titulo: 'Patty',
         cuerpo: cuerpoAviso,
         datos: { tipo: 'prueba', cara: 'feliz' },
@@ -65,7 +66,6 @@ export const rutasDispositivos = new Hono<Env>()
         acciones: [{ titulo: traducir(i, '👍 Probar el botón'), pedidos: [{ ruta: '/api/dispositivos/eco', cuerpo: {} }], listo: traducir(i, '✓ ¡Los botones de los avisos funcionan!') }],
       });
       if (r === 'ok') ok++;
-      if (r === 'invalido') await c.var.db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
     }
     return c.json({ enviados: ok, dispositivos: lista.length });
   })

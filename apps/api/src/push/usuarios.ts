@@ -2,7 +2,8 @@
 import { sql } from 'drizzle-orm';
 import { esIdioma, type Idioma } from 'shared';
 import { filas, una, type Db, type Tx } from '../db/client.js';
-import { enviarAviso, type Aviso } from './firebase.js';
+import type { Aviso } from './firebase.js';
+import { mandarAviso } from './mandar.js';
 
 /**
  * Devuelve a cuántos teléfonos llegó. Sin Firebase o sin teléfonos, 0 (no es un error). Si el aviso es una función,
@@ -18,9 +19,7 @@ export async function avisarAUsuario(db: Db | Tx, usuarioId: number, a: Aviso | 
   } else aviso = a;
   let ok = 0;
   for (const d of lista) {
-    const r = await enviarAviso(d.token, aviso);
-    if (r === 'ok') ok++;
-    if (r === 'invalido') await db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
+    if ((await mandarAviso(db, d, aviso)) === 'ok') ok++;
   }
   return ok;
 }
