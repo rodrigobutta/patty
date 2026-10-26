@@ -21,6 +21,7 @@ import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
+import { CompaniaSugerida } from './CompaniaSugerida';
 import { ViajesDelDia } from './ViajesDelDia';
 import { EVENTO_CONTAR, PISTAS } from './PuntosDelDia';
 import { RemediosDelDia } from './RemediosDelDia';
@@ -414,6 +415,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           })}
         </ul>
       )}
+      {registros && sesion?.usuario?.rol !== 'lector' ? <CompaniaSugerida persona={persona} fecha={fecha} registros={registros} categorias={categorias} alCambiar={() => void traer()} /> : null}
       <ParadasDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       <ViajesDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       {automaticos.length ? (

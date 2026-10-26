@@ -293,4 +293,7 @@ export const PERMISOS: Record<string, string> = {
   '¿Cómo fue?': 'How was it?',
   'Anotado: viaje pesado 😩 ¡Ya pasó!': 'Logged: rough trip 😩 It’s over!',
   'Anotado: viaje {modo} 👍': 'Logged: trip by {modo} 👍',
+  '👥 ¿También estuviste con {lista} en «{que}» ({hora})?': '👥 Were you also with {lista} for “{que}” ({hora})?',
+  'en {lugar}': 'at {lugar}',
+  'cerca de esa hora': 'around that time',
 };
