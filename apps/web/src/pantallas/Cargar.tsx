@@ -502,7 +502,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       <div className="responder">
         <input value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder={t('Ej: dos porciones, era de mi primo')} onKeyDown={(e) => e.key === 'Enter' && contar(respuesta)} />
         <button className="btn primario" disabled={ocupado || !respuesta.trim()} onClick={() => contar(respuesta)}>{estado === 'ordenando' ? t('Procesando…') : t('Responder')}</button>
-        {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>{t('🎙️ Prefiero hablar')}</button> : null}
+        {conVoz ? <button className="btn ancho prefiero-escribir" onClick={() => setModo('voz')} disabled={ocupado}>{t('🎙️ Prefiero hablar')}</button> : null}
       </div>
     ) : (
       <>
@@ -512,7 +512,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
         {sinFoto ? null : (
           <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? t('Aceptar con una foto') : t('Mandale una foto')}</button>
         )}
-        {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>{t('🎙️ Prefiero hablar')}</button> : null}
+        {conVoz ? <button className="btn ancho prefiero-escribir" onClick={() => setModo('voz')} disabled={ocupado}>{t('🎙️ Prefiero hablar')}</button> : null}
       </>
     );
 
