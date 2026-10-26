@@ -898,3 +898,13 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 @keyframes respirar { 0%, 100% { scale: 1 1; } 50% { scale: 1.03 0.97; } }
 @keyframes mirar { 0%, 70%, 100% { rotate: 0deg; } 75% { rotate: -8deg; } 82% { rotate: 6deg; } 88% { rotate: 0deg; } }
 @media (prefers-reduced-motion: reduce) { .buho-puntos.vivo { animation: none; } }
+/* Lo anotado como frase: la cantidad en un color, lo que fue en otro; el detalle (dónde, nota, con quién) abajo, suave. */
+.frase { font-size: 16px; }
+.frase-cant { color: var(--acento); font-weight: 700; }
+.frase-que { font-weight: 600; }
+.frase-extra { display: block; margin-top: 2px; font-size: 0.86em; color: var(--suave); }
+/* Lo anotado como frase: la cantidad en un color, lo que fue en otro; el detalle (dónde, nota, con quién) abajo, suave. */
+.frase { font-size: 16px; }
+.frase-cant { color: var(--acento); font-weight: 700; }
+.frase-que { font-weight: 600; }
+.frase-extra { display: block; margin-top: 2px; font-size: 0.86em; color: var(--suave); }

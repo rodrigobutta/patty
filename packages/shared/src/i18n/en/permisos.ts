@@ -261,4 +261,10 @@ export const PERMISOS: Record<string, string> = {
   'Lo que más suma:': 'What adds the most:',
   'Cada cosa de más que anotes suma +2.': 'Each extra thing you log adds +2.',
   'Con sueño': 'Sleepy',
+  'Me siento': 'I feel',
+  'Me sentí': 'I felt',
+  'en el día': 'during the day',
+  'leve': 'mild',
+  'medio': 'moderate',
+  'fuerte': 'strong',
 };

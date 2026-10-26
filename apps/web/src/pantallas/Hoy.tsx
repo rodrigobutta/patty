@@ -5,11 +5,11 @@ import { alTocarAvisoPush } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, estacionDe, conUnidad, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type ItemPuntos, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, estacionDe, CUANTO, TELE, teleDeTipo, teleEnCanal, type DatoAutomatico, type EstadoAnimo, type ItemPuntos, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { idioma, locale, t } from '../lib/idioma';
 import { useEstado } from '../estado';
-import { agruparAutomaticos, duracion, resumenDelGrupo } from '../lib/automatico';
+import { agruparAutomaticos, resumenDelGrupo } from '../lib/automatico';
 import { hoyEn, horaEn, nombreDia, sumarDias } from '../lib/fechas';
 import { avisarAnotado } from '../mascota/cara';
 import type { Cara } from '../mascota/dibujo';
@@ -26,6 +26,7 @@ import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
 import { etiquetaDonde } from '../ui/DondeComida';
+import { Frase } from '../ui/Frase';
 import { Caritas, esMalo, Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
@@ -78,20 +79,6 @@ const YA_TRAIDO = new Map<string, { registros: Registro[]; automaticos: DatoAuto
 const fechaLarga = (fecha: string) =>
   new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(fecha + 'T12:00:00Z'));
 
-function detalle(r: Registro, tipo: string | undefined): string {
-  if (r.intensidad !== null && (r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI)) {
-    const e = estadoDe(r.intensidad);
-    return `${e.emoji} ${t(e.nombre)}`;
-  }
-  // "Con sueño" y compañía se anotan como poco, bastante o mucho: se muestran igual.
-  if (r.intensidad !== null && ESTADOS_PUNTUALES.some((e) => e.nombre === r.concepto)) {
-    return t(CUANTO.reduce((a, b) => (Math.abs(b.intensidad - r.intensidad!) < Math.abs(a.intensidad - r.intensidad!) ? b : a)).nombre).toLowerCase();
-  }
-  if (r.intensidad !== null) return `${r.intensidad}/10`;
-  if (r.valor === null || tipo === 'hora') return '';
-  if (tipo === 'duracion' || r.unidad === 'min') return duracion(r.valor);
-  return conUnidad(r.valor, r.unidad, 2, idioma());
-}
 
 export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) {
   const { categorias, avisar, festejar, sesion } = useEstado();
@@ -402,22 +389,21 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
                 <span className="icono">{cat?.icono}</span>
                 <span className="que">
-                  {t(r.concepto)}
-                  {detalle(r, cat?.tipo_valor) ? <span className="valor-chip">{detalle(r, cat?.tipo_valor)}</span> : null}
-                  {esSentir(r) && partesDe(r, registros, sintomaId).length ? (
-                    <span className="partes-sentir">
-                      {partesDe(r, registros, sintomaId)
-                        .map((o) => (o.intensidad !== null ? `${t(o.concepto)} (${t(cuantoDe(o.intensidad)).toLowerCase()})` : t(o.concepto)))
-                        .join(', ')}
-                    </span>
-                  ) : null}
-                  {etiquetaDonde(r.donde, r.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(r.donde, r.lugar)}</span> : null}
-                  {r.nota ? <span className="suave chico"> — {r.nota}</span> : null}
-                  {genteId !== undefined && r.categoria_id !== genteId && registros.some((o) => o.categoria_id === genteId && o.inicio === r.inicio) ? (
-                    <span className="partes-sentir">
-                      👥 {t('con {lista}', { lista: registros.filter((o) => o.categoria_id === genteId && o.inicio === r.inicio).map((o) => o.concepto).join(idioma() === 'en' ? ', ' : ', ') })}
-                    </span>
-                  ) : null}
+                  <span className="frase"><Frase r={r} tipo={cat?.tipo_valor} categoria={cat?.clave} /></span>
+                  {(() => {
+                    // Lo demás en una sola línea suave: qué le pasaba, dónde, con quién y la nota.
+                    const y = idioma() === 'en' ? ' and ' : ' y ';
+                    const unir = (l: string[]) => (l.length > 1 ? `${l.slice(0, -1).join(', ')}${y}${l.at(-1)}` : l[0]);
+                    const sintomas = esSentir(r) ? partesDe(r, registros, sintomaId).map((o) => (o.intensidad !== null ? `${t(o.concepto).toLowerCase()} (${t(cuantoDe(o.intensidad)).toLowerCase()})` : t(o.concepto).toLowerCase())) : [];
+                    const gente = genteId !== undefined && r.categoria_id !== genteId ? registros.filter((o) => o.categoria_id === genteId && o.inicio === r.inicio).map((o) => o.concepto) : [];
+                    const extra = [
+                      sintomas.length ? unir(sintomas) : '',
+                      etiquetaDonde(r.donde, r.lugar) ?? '',
+                      gente.length ? t('con {lista}', { lista: unir(gente) }) : '',
+                      r.nota ?? '',
+                    ].filter(Boolean);
+                    return extra.length ? <span className="frase-extra">{extra.join(' · ')}</span> : null;
+                  })()}
                 </span>
               </FilaDeslizable>
               </Fragment>
