@@ -598,3 +598,25 @@ export const usoDiario = pgTable(
   },
   (t) => [primaryKey({ columns: [t.usuario_id, t.fecha] })],
 );
+
+/**
+ * Lo que Patty le comenta a la persona sobre lo que va anotando ("¡qué bien que comas huevo seguido!"), para que vea
+ * desde el primer día que tiene en cuenta lo que cuenta, mucho antes de que haya patrones. Unos pocos por día.
+ */
+export const comentarios = pgTable(
+  'comentarios',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    /** El día de Patty en que se le muestra. */
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    emoji: text('emoji').notNull().default('🦉'),
+    texto: text('texto').notNull(),
+    /** nuevo, visto (lo cerró), gusta (le gustó). */
+    estado: text('estado', { enum: ['nuevo', 'visto', 'gusta'] }).notNull().default('nuevo'),
+    creado: creado(),
+  },
+  (t) => [index('comentarios_persona_idx').on(t.persona_id, t.fecha)],
+);

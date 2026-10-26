@@ -20,6 +20,7 @@ import { Cargar, ElegirFoto } from './Cargar';
 import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
 import { GloboDelBuho } from './GloboDelBuho';
+import { ComentarioDelDia } from './ComentariosDePatty';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, WidgetApagado, type Fuente } from './FuenteApagada';
 import { esNativa } from '../lib/nativo';
 import { hayDatosDelTelefono } from '../lib/telefono';
@@ -371,6 +372,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           alTocar={() => setSintiendo({ momento, estado: null })}
         />
       ) : null}
+      {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
       {/* A la noche, si todavía no se anotó nada a mano: contar el día entero de una vez (Patty lo desglosa por horas). */}
       {fecha === hoy && sesion?.ia && registros && sesion.usuario?.rol !== 'lector' && new Date().getHours() >= HORA_CONTAR_DIA &&

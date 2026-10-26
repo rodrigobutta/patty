@@ -381,4 +381,11 @@ export const PERMISOS: Record<string, string> = {
   'Lo trae solo, sin que anotes nada:': 'It comes in by itself, without logging anything:',
   '¡Listo! Desde ahora llega solo.': 'Done! From now on it comes in by itself.',
   '¿Cómo lo activo en tu {marca}?': 'How do I turn it on on your {marca}?',
+  'Patty': 'Patty',
+  '{n} más': '{n} more',
+  'Me gusta': 'I like it',
+  '🦉 Lo que voy notando': '🦉 What I\'m noticing',
+  'Mientras junto días para encontrar patrones, esto es lo que ya veo en lo que me contás.': 'While I gather days to find patterns, this is what I already see in what you tell me.',
+  'Lo que le fue comentando': 'What Patty has been saying',
+  'visto': 'seen',
 };

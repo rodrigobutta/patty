@@ -161,7 +161,14 @@ export const rutasAdmin = new Hono<Env>()
       db,
       sql`SELECT id, pregunta, respuesta, creado FROM preguntas WHERE usuario_id = ${id} ORDER BY creado DESC LIMIT 30`,
     );
-    return c.json({ usuario: u, personas, ultimos, telefonos, instalaciones, tratamientos, supervisiones, analisis: analisisDe, hallazgos: hallazgosDe, avisos, uso, preguntas: preguntasDe });
+    const comentariosDe = ids.length
+      ? await filas(
+          db,
+          sql`SELECT id, persona_id, to_char(fecha, 'YYYY-MM-DD') AS fecha, emoji, texto, estado FROM comentarios
+              WHERE persona_id IN ${ids} ORDER BY fecha DESC, id LIMIT 40`,
+        )
+      : [];
+    return c.json({ usuario: u, personas, ultimos, telefonos, instalaciones, tratamientos, supervisiones, analisis: analisisDe, hallazgos: hallazgosDe, avisos, uso, preguntas: preguntasDe, comentarios: comentariosDe });
   })
   .get('/uso', async (c) => {
     // La actividad general de los últimos `dias` días: cuánto se usa la app, cuánto se anota y qué hace Patty.

@@ -12,6 +12,8 @@ let clientePrueba: Anthropic | null = null;
 export const usarClientePrueba = (c: Anthropic | null) => {
   clientePrueba = c;
 };
+/** Si se le puede pedir algo a la IA (la de verdad o la de las pruebas). */
+export const hayIa = (): boolean => iaDisponible() || clientePrueba !== null;
 
 function cliente(): Anthropic {
   if (clientePrueba) return clientePrueba;

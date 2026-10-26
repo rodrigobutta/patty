@@ -132,6 +132,7 @@ interface Detalle {
   avisos: Array<{ id: number; tipo: string | null; titulo: string; cuerpo: string; resultado: string; creado: string }>;
   uso: Array<{ fecha: string; segundos: number; aperturas: number }>;
   preguntas: Array<{ id: number; pregunta: string; respuesta: string; creado: string }>;
+  comentarios: Array<{ id: number; persona_id: number; fecha: string; emoji: string; texto: string; estado: 'nuevo' | 'visto' | 'gusta' }>;
 }
 
 interface Uso {
@@ -706,6 +707,19 @@ function LoQuePattyLeDice({ d }: { d: Detalle }) {
                 {a.origen === 'noche' ? '🌙' : '👆'} {fechaHora(a.creado)} · {a.origen === 'noche' ? t('de noche') : t('a mano')} · {cuantos(a.dias, 'día', 'días')} ·{' '}
                 {cuantos(a.hallazgos, 'hallazgo', 'hallazgos')}{a.nuevos ? ` · ${t('{n} nuevos', { n: a.nuevos })}` : ''}
                 {varias ? <span className="suave chico"> · {nombre.get(a.persona_id)}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      {d.comentarios.length ? (
+        <details>
+          <summary>{t('Lo que le fue comentando')} ({d.comentarios.length})</summary>
+          <ul className="lista-simple">
+            {d.comentarios.map((x) => (
+              <li key={x.id}>
+                {x.emoji} {x.texto}
+                <span className="suave chico"> · {x.fecha}{x.estado === 'gusta' ? ' · 👍' : x.estado === 'visto' ? ` · ${t('visto')}` : ''}{varias ? ` · ${nombre.get(x.persona_id)}` : ''}</span>
               </li>
             ))}
           </ul>

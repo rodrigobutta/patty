@@ -7,11 +7,14 @@ import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, minutosDelDia, sumarDias } from '../lib/fechas.js';
 import { hayEnvio, type Aviso } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
+import { comentarDia } from '../ia/comentar.js';
 import { analizarPersona } from './analizar.js';
 import { DIAS_MINIMOS } from './motor.js';
 
 const HORA_ANALISIS = 4;
 const HORA_AVISO = 9;
+/** Los comentarios del día (ia/comentar.ts) se arman temprano, ya con el día nuevo empezado. */
+const HORA_COMENTARIOS = 6;
 /** Solo se analiza a quien anotó algo en estos últimos días (si no, no cambió nada desde la última vez). */
 const DIAS_ACTIVO = 3;
 
@@ -63,6 +66,29 @@ export async function analizarDeNoche(db: Db, ahora = new Date()): Promise<numbe
   return n;
 }
 
+/** A las 6, los comentarios del día de quienes anotaron algo en la semana (los que aún no los tienen). */
+export async function comentarDeManana(db: Db, ahora = new Date()): Promise<number> {
+  const lista = await filas<PersonaNoche>(
+    db,
+    sql`SELECT p.id, p.nombre, p.zona_horaria,
+               (SELECT u.idioma FROM persona_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id
+                WHERE pu.persona_id = p.id ORDER BY (pu.rol = 'dueno') DESC, u.id LIMIT 1) AS idioma
+        FROM personas p
+        WHERE EXISTS (SELECT 1 FROM registros r WHERE r.persona_id = p.id AND r.borrado IS NULL AND r.origen IN ('manual', 'ia')
+                      AND r.creado > ${ahora.toISOString()}::timestamptz - interval '7 days')`,
+  );
+  let n = 0;
+  for (const p of lista) {
+    if (!enHora(ahora, p.zona_horaria, HORA_COMENTARIOS)) continue;
+    try {
+      if (await comentarDia(db, p, esIdioma(p.idioma) ? p.idioma : 'es', ahora)) n++;
+    } catch (e) {
+      console.error(`Comentarios de la mañana: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+    }
+  }
+  return n;
+}
+
 /** El aviso del búho con lo mejor que apareció ("Encontré algo: …"). */
 export function avisoDeHallazgo(personaId: number, explicacion: string, otros: number, i: Idioma): Aviso {
   const corto = explicacion.length > 160 ? `${explicacion.slice(0, 157).trimEnd()}…` : explicacion;
@@ -109,6 +135,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
     try {
       await analizarDeNoche(db);
       await avisarHallazgosNuevos(db);
+      await comentarDeManana(db);
     } catch (e) {
       console.error('Error con los patrones de noche:', e);
     } finally {
