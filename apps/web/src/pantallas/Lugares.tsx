@@ -1,7 +1,7 @@
 // Ubicación y lugares (en Más): prender el seguimiento en este teléfono, ver los viajes y lugares de hoy, y nombrar
 // lugares (Casa, lo de mamá, Supermercado) para que entren en los patrones.
 import { useCallback, useEffect, useState } from 'react';
-import type { DiaUbicacion, Lugar, Persona } from 'shared';
+import { lugarDe, type DiaUbicacion, type Lugar, type Persona } from 'shared';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
 import { horaEn } from '../lib/fechas';
@@ -16,6 +16,8 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
   const [lugares, setLugares] = useState<Lugar[]>([]);
   const [dia, setDia] = useState<DiaUbicacion | null>(null);
   const [error, setError] = useState('');
+  /** El lugar con nombre donde está ahora (si está en uno): ahí no tiene sentido ofrecer "Guardar dónde estoy". */
+  const [aca, setAca] = useState<Lugar | null>(null);
 
   const traer = useCallback(async () => {
     try {
@@ -31,6 +33,16 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
     }
   }, [persona.id]);
   useEffect(() => void traer(), [traer]);
+  useEffect(() => {
+    if (!activo || !lugares.length) return setAca(null);
+    let vivo = true;
+    void ubicacion().then((u) => {
+      if (vivo) setAca(u ? (lugarDe({ lat: u.latitude, lon: u.longitude }, lugares) as Lugar | null) ?? null : null);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [activo, lugares]);
 
   const hacer = async (f: () => Promise<unknown>, aviso: string) => {
     setError('');
@@ -133,7 +145,11 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
       </ul>
       {puedeEscribir ? (
         <div className="columna">
-          <button className="btn" onClick={() => void guardarAca()}>{t('📍 Guardar dónde estoy')}</button>
+          {aca ? (
+            <p className="suave chico centro">{t('📍 Estás en {lugar}', { lugar: aca.nombre })}</p>
+          ) : (
+            <button className="btn" onClick={() => void guardarAca()}>{t('📍 Guardar dónde estoy')}</button>
+          )}
           <button className="btn suave-btn" onClick={borrarHistorial}>{t('Borrar historial de ubicación')}</button>
         </div>
       ) : null}

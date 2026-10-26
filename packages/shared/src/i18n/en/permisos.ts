@@ -66,4 +66,5 @@ export const PERMISOS: Record<string, string> = {
   Supermercado: 'Supermarket',
   'Guardar lugar': 'Save place',
   '¡Listo! Ahora sé cuándo estás en {lugar} 📍': 'Done! Now I know when you’re at {lugar} 📍',
+  '📍 Estás en {lugar}': '📍 You’re at {lugar}',
 };
