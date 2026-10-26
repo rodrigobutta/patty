@@ -129,6 +129,15 @@ export async function interpretarTexto(
     tx,
     sql`SELECT id, categoria_id, nombre, nombre_norm FROM conceptos WHERE unido_a IS NULL ORDER BY usos DESC, id LIMIT 300`,
   );
+  // Los lugares donde ya comió, para preguntar "¿de dónde?" con opciones conocidas.
+  const lugaresComida = (
+    await filas<{ lugar: string; donde: string }>(
+      tx,
+      sql`SELECT datos->>'lugar' AS lugar, max(datos->>'donde') AS donde FROM registros
+          WHERE persona_id = ${p.id} AND borrado IS NULL AND datos->>'lugar' IS NOT NULL
+          GROUP BY datos->>'lugar' ORDER BY count(*) DESC, max(inicio) DESC LIMIT 15`,
+    )
+  ).map((x) => `${x.lugar} (${x.donde === 'delivery' ? 'delivery' : 'afuera'})`);
   const activos = await filas<{ remedio: string; cada_horas: number | null; horarios: string[] }>(
     tx,
     sql`SELECT c.nombre AS remedio, t.cada_horas, t.horarios FROM tratamientos t JOIN conceptos c ON c.id = t.concepto_id
@@ -158,6 +167,9 @@ export async function interpretarTexto(
     'En comidas y bebidas, si se sabe dónde fue: donde = casa si fue casera o en casa; afuera si fue en un ' +
     'restaurante, bar, la oficina o la casa de otra persona; delivery si se pidió. En lugar, el nombre si se dijo ' +
     '("Mostaza", "lo de mi vieja", "Sushi Club", "PedidosYa"), no en la nota. Si no se dice nada, null en los dos. ' +
+    'Si una comida no es casera (afuera o delivery) y no se dijo de dónde, preguntá en dudas de dónde era, con los ' +
+    'lugares donde ya comió como opciones (los más probables para esa comida y ese momento) y alguno nuevo típico si ' +
+    'cuadra; así se van guardando los lugares, que pueden explicar cosas. Una sola pregunta por todas esas comidas. ' +
     'Si cuenta que le vino o que está menstruando ("me vino", "estoy indispuesta", "me bajó"), va en la categoría ciclo, ' +
     'concepto "Menstruación", con intensidad según el flujo (manchado 2, poco 4, normal 6, mucho 9; si no dice, 6). Los ' +
     'cólicos y otras molestias del ciclo van como sintoma. ' +
@@ -184,6 +196,7 @@ export async function interpretarTexto(
     ...cats.map((c) => `- ${c.clave}: ${c.nombre}, ${c.tipo_valor}`),
     'Conceptos que ya existen (categoría: nombre):',
     ...conocidos.map((c) => `- ${porCat.get(c.categoria_id)}: ${c.nombre}`),
+    ...(lugaresComida.length ? ['Lugares donde ya comió (los más frecuentes primero):', ...lugaresComida.map((l) => `- ${l}`)] : []),
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     '',
     ...(imagen ? ['La persona mandó una foto (arriba) para anotar.'] : []),
