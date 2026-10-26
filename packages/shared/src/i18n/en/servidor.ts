@@ -124,20 +124,12 @@ export const SERVIDOR: Record<string, string> = {
   // Supervisión
   '¿A quién? Escribí su usuario o su mail.': 'Who? Enter their username or email.',
   'No encontré a nadie con ese usuario o mail en Patty.': "I couldn't find anyone with that username or email in Patty.",
-  'No podés supervisarte a vos mismo.': "You can't supervise yourself.",
-  'Ya supervisás a {nombre}.': 'You already supervise {nombre}.',
   'No pude generar el código, probá de nuevo.': "I couldn't generate the code, try again.",
-  'Ese código es tuyo: lo tiene que escribir quien te va a supervisar.': 'That code is yours: the person who will supervise you has to enter it.',
   'Ese código no existe o ya venció. Pedile que genere uno nuevo.': "That code doesn't exist or has expired. Ask them to generate a new one.",
   'Solo la persona invitada puede contestar.': 'Only the invited person can answer.',
   'Esa invitación ya se contestó.': 'That invitation has already been answered.',
-  'No supervisás a esa persona.': "You don't supervise that person.",
-  'Solo quien supervisa puede mandar avisos.': 'Only the supervisor can send notifications.',
   'Escribí qué le querés decir.': 'Write what you want to tell them.',
   'Es muy largo (máximo 300 letras).': "It's too long (300 characters max).",
-  '{nombre} quiere supervisarte: ver tu día y avisarte si te olvidás algo. ¿Aceptás?': '{nombre} wants to supervise you: see your day and remind you if you forget something. Do you accept?',
-  '{nombre} ya te supervisa. Lo podés quitar cuando quieras desde Más.': '{nombre} now supervises you. You can remove them anytime from More.',
-  '{nombre} aceptó tu supervisión. Ya podés ver su día en Patty.': '{nombre} accepted your supervision. You can now see their day in Patty.',
 
   // Avisos de remedios y de días sin anotar
   'Es la hora de la toma de las {hora}.': "It's time for your {hora} dose.",

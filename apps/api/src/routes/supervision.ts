@@ -51,15 +51,15 @@ export const rutasSupervision = new Hono<Env>()
       sql`SELECT id, nombre FROM usuarios WHERE activo AND (usuario = ${quien} OR lower(email) = ${quien})`,
     );
     if (!otro) throw new ErrorApi('No encontré a nadie con ese usuario o mail en Patty.');
-    if (otro.id === u.id) throw new ErrorApi('No podés supervisarte a vos mismo.');
+    if (otro.id === u.id) throw new ErrorApi('No podés sumarte a vos mismo.');
     const ya = await una<Fila>(c.var.db, sql`SELECT id, estado FROM supervisiones WHERE supervisor_id = ${u.id} AND supervisado_id = ${otro.id}`);
-    if (ya?.estado === 'aceptada') throw new ErrorApi('Ya supervisás a {nombre}.', 400, { nombre: otro.nombre });
+    if (ya?.estado === 'aceptada') throw new ErrorApi('{nombre} ya está en tu familia.', 400, { nombre: otro.nombre });
     const nueva = await una<{ id: number }>(c.var.db, sql`INSERT INTO supervisiones (supervisor_id, supervisado_id) VALUES (${u.id}, ${otro.id})
       ON CONFLICT (supervisor_id, supervisado_id) DO UPDATE SET estado = 'pendiente', creado = now(), respondido = NULL
       RETURNING id`);
     await avisarAUsuario(c.var.db, otro.id, (i) => ({
       titulo: 'Patty',
-      cuerpo: traducir(i, '{nombre} quiere supervisarte: ver tu día y avisarte si te olvidás algo. ¿Aceptás?', { nombre: u.nombre }),
+      cuerpo: traducir(i, '{nombre} te quiere sumar a su familia en Patty: ver tu día y avisarte si te olvidás algo. ¿Aceptás?', { nombre: u.nombre }),
       // Con el id, el aviso trae los botones Aceptar y No (AvisosPushService).
       datos: { tipo: 'supervision', supervision_id: String(nueva!.id), cara: 'feliz' },
     }));
@@ -92,7 +92,7 @@ export const rutasSupervision = new Hono<Env>()
     );
     if (!r) {
       if (await una(c.var.db, sql`SELECT 1 AS x FROM codigos_supervision WHERE codigo = ${codigo} AND usuario_id = ${u.id}`)) {
-        throw new ErrorApi('Ese código es tuyo: lo tiene que escribir quien te va a supervisar.');
+        throw new ErrorApi('Ese código es tuyo: lo tiene que escribir tu familiar.');
       }
       throw new ErrorApi('Ese código no existe o ya venció. Pedile que genere uno nuevo.');
     }
@@ -100,7 +100,7 @@ export const rutasSupervision = new Hono<Env>()
       ON CONFLICT (supervisor_id, supervisado_id) DO UPDATE SET estado = 'aceptada', respondido = now()`);
     await avisarAUsuario(c.var.db, r.usuario_id, (i) => ({
       titulo: 'Patty',
-      cuerpo: traducir(i, '{nombre} ya te supervisa. Lo podés quitar cuando quieras desde Más.', { nombre: u.nombre }),
+      cuerpo: traducir(i, '{nombre} ya es parte de tu familia en Patty. Lo podés quitar cuando quieras desde Más.', { nombre: u.nombre }),
       datos: { tipo: 'supervision', cara: 'feliz' },
     }));
     return c.json({ ok: true, nombre: r.nombre }, 201);
@@ -116,7 +116,7 @@ export const rutasSupervision = new Hono<Env>()
     if (aceptar) {
       await avisarAUsuario(c.var.db, s.supervisor_id, (i) => ({
         titulo: 'Patty',
-        cuerpo: traducir(i, '{nombre} aceptó tu supervisión. Ya podés ver su día en Patty.', { nombre: u.nombre }),
+        cuerpo: traducir(i, '{nombre} aceptó: ya es parte de tu familia en Patty y podés ver su día.', { nombre: u.nombre }),
         datos: { tipo: 'supervision', cara: 'feliz' },
       }));
     }
@@ -137,7 +137,7 @@ export const rutasSupervision = new Hono<Env>()
       sql`SELECT s.id FROM supervisiones s JOIN persona_usuarios pu ON pu.usuario_id = s.supervisado_id AND pu.rol = 'dueno'
           WHERE s.supervisor_id = ${u.id} AND s.estado = 'aceptada' AND pu.persona_id = ${Number(d.persona_id) || 0} LIMIT 1`,
     );
-    if (!s) throw new ErrorApi('No supervisás a esa persona.', 403);
+    if (!s) throw new ErrorApi('Esa persona no está en tu familia.', 403);
     return avisar(c, s.id, d.texto);
   })
   .post('/:id/avisar', async (c) => avisar(c, idParam(c), (await cuerpo(c)).texto));
@@ -146,7 +146,7 @@ export const rutasSupervision = new Hono<Env>()
 async function avisar(c: C, id: number, crudo: unknown) {
   const u = c.var.usuario;
   const s = await propia(c.var.db, id, u.id);
-  if (s.supervisor_id !== u.id || s.estado !== 'aceptada') throw new ErrorApi('Solo quien supervisa puede mandar avisos.', 403);
+  if (s.supervisor_id !== u.id || s.estado !== 'aceptada') throw new ErrorApi('Solo quien acompaña puede mandar avisos.', 403);
   const t = texto(crudo);
   if (!t) throw new ErrorApi('Escribí qué le querés decir.');
   if (t.length > 300) throw new ErrorApi('Es muy largo (máximo 300 letras).');

@@ -278,7 +278,7 @@ function VistaResumen() {
     ['🤖', r.telefonos_android, t('teléfonos Android')],
     ['🍎', r.telefonos_ios, 'iPhone'],
     ['💊', r.tratamientos_activos, t('remedios activos')],
-    ['👀', r.supervisiones, t('supervisiones')],
+    ['👀', r.supervisiones, t('vínculos de familia')],
     ['🧍', r.personas, t('personas')],
     ['✨', r.analisis_semana, t('búsquedas de patrones (7 días)')],
   ];
@@ -362,9 +362,9 @@ function VistaUsuarios({ alElegir }: { alElegir(id: number): void }) {
                 <strong>{u.nombre}</strong> <span className="suave chico">{u.usuario}{u.email ? ` · ${u.email}` : ''}</span>
                 <span className="suave chico renglon-sub">
                   {t(u.registros_semana === 1 ? 'entró {cuando} · {n} anotación en 7 días ({total} en total)' : 'entró {cuando} · {n} anotaciones en 7 días ({total} en total)', { cuando: hace(u.ultimo_acceso), n: u.registros_semana, total: u.registros })}
-                  {u.supervisa ? ` · ${t('supervisa a {n}', { n: u.supervisa })}` : ''}
+                  {u.supervisa ? ` · ${t('acompaña a {n}', { n: u.supervisa })}` : ''}
                   {u.instalacion?.estado.version?.web ? <> · <VersionDe v={u.instalacion.estado.version} /></> : null}
-                  {u.supervisado ? ` · ${t('supervisado')}` : ''}
+                  {u.supervisado ? ` · ${t('acompañado')}` : ''}
                 </span>
                 {u.instalacion ? <ChipsPermisos i={u.instalacion} /> : <span className="suave chico renglon-sub">{t('todavía no abrió la app con esta versión')}</span>}
               </span>
@@ -490,7 +490,7 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
           ) : null}
           {d.supervisiones.length ? (
             <>
-              <h3>{t('Supervisión')}</h3>
+              <h3>{t('Familia')}</h3>
               <ul className="lista-simple">
                 {d.supervisiones.map((s, i) => <li key={i}>👀 {s.relacion} {s.otro} ({s.estado})</li>)}
               </ul>

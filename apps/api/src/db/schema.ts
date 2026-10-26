@@ -410,7 +410,7 @@ export const instalaciones = pgTable(
  * La vista `accesos` (migración 0006) junta esto con `persona_usuarios`: es lo que se usa para saber quién ve a quién.
  */
 export const supervisiones = pgTable(
-  'supervisiones',
+  'vínculos de familia',
   {
     id: id(),
     supervisor_id: integer('supervisor_id')

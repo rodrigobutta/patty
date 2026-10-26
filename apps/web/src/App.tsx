@@ -78,7 +78,7 @@ export function App() {
           if (d.supervision_id && (d.accion === 'aceptar' || d.accion === 'rechazar')) {
             void api('POST', `/api/supervision/${d.supervision_id}/responder`, { aceptar: d.accion === 'aceptar' })
               .then(() => {
-                avisar(d.accion === 'aceptar' ? t('Listo, aceptaste la supervisión') : t('Listo, no aceptaste'));
+                avisar(d.accion === 'aceptar' ? t('Listo, ya son familia en Patty') : t('Listo, no aceptaste'));
                 window.dispatchEvent(new Event('patty-supervision'));
                 return recargar();
               })

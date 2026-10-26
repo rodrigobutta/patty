@@ -194,7 +194,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       </div>
 
   </>);
-  if (seccion === 'supervision') return pantalla(t('👀 Supervisión'), <>
+  if (seccion === 'supervision') return pantalla(t('👨‍👩‍👧 Familia'), <>
       <Supervision />
   </>, true);
   if (seccion === 'personas') return pantalla(t('🧍 Personas y datos'), <>
@@ -204,7 +204,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           {personas.map((p) => (
             <li key={p.id} onClick={() => elegirPersona(p.id)} className={p.id === persona?.id ? 'marcada' : ''}>
               <span className="que">{p.nombre}</span>
-              <span className="suave chico">{p.id === persona?.id ? t('✓ elegida') : p.supervisada ? t('supervisás') : ''}</span>
+              <span className="suave chico">{p.id === persona?.id ? t('✓ elegida') : p.supervisada ? t('tu familia') : ''}</span>
             </li>
           ))}
         </ul>
@@ -281,7 +281,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'datos', icono: '📡', titulo: t('Lo que Patty junta sola'), sub: t('Permisos, clima, ubicación, teléfono y salud') },
     { clave: 'remedios', icono: '💊', titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
     { clave: 'avisos', icono: '🔔', titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
-    { clave: 'supervision', icono: '👀', titulo: t('Supervisión'), sub: t('Acompañar a alguien o que te acompañen') },
+    { clave: 'supervision', icono: '👨‍👩‍👧', titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
     { clave: 'personas', icono: '🧍', titulo: t('Personas y datos'), sub: t('De quién se anota y su perfil') },
     { clave: 'cuenta', icono: '👤', titulo: t('Tu cuenta'), sub: t('Foto, apodo, tema, idioma') },
     { clave: 'avanzado', icono: '⚙️', titulo: t('Otros dispositivos'), sub: t('Relojes y atajos con token'), ver: usuario?.rol !== 'lector' },

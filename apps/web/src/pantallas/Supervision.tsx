@@ -88,7 +88,7 @@ export function Supervision() {
   useEffect(() => {
     if (miCodigo && cuantosMeSupervisan > antes.current) {
       setMiCodigo(null);
-      avisar(t('¡Listo! Ya te supervisa'));
+      avisar(t('¡Listo! Ya son familia en Patty'));
     }
     antes.current = cuantosMeSupervisan;
   }, [cuantosMeSupervisan, miCodigo, avisar]);
@@ -96,7 +96,7 @@ export function Supervision() {
   const terminar = (s: Sup, supervisor: boolean) => {
     const pregunta = s.estado === 'pendiente'
       ? supervisor ? t('¿Cancelar la invitación a {nombre}?', { nombre: s.otro.nombre }) : t('¿Rechazar a {nombre}?', { nombre: s.otro.nombre })
-      : supervisor ? t('¿Dejar de supervisar a {nombre}?', { nombre: s.otro.nombre }) : t('¿Que {nombre} deje de supervisarte?', { nombre: s.otro.nombre });
+      : supervisor ? t('¿Sacar a {nombre} de tu familia?', { nombre: s.otro.nombre }) : t('¿Que {nombre} deje de acompañarte?', { nombre: s.otro.nombre });
     if (!confirm(pregunta)) return;
     void hacer(() => api('DELETE', `/api/supervision/${s.id}`), t('Listo'), true);
   };
@@ -106,10 +106,10 @@ export function Supervision() {
 
   return (
     <div className="tarjeta supervision">
-      <h3>{t('👀 Supervisión')}</h3>
+      <h3>{t('👨‍👩‍👧 Familia')}</h3>
       {invitaciones.map((s) => (
         <div key={s.id} className="nota-ia invitacion">
-          <p><strong>{s.otro.nombre}</strong> {t('quiere supervisarte: ver tu día, tus remedios y avisarte si te olvidás algo.')}</p>
+          <p><strong>{s.otro.nombre}</strong> {t('te quiere sumar a su familia en Patty: ver tu día, tus remedios y avisarte si te olvidás algo.')}</p>
           <div className="fila">
             <button className="btn" onClick={() => void hacer(() => api('POST', `/api/supervision/${s.id}/responder`, { aceptar: false }), t('Rechazada'))}>{t('No')}</button>
             <button className="btn primario" onClick={() => void hacer(() => api('POST', `/api/supervision/${s.id}/responder`, { aceptar: true }), t('{nombre} ya te puede acompañar', { nombre: s.otro.nombre }))}>{t('Aceptar')}</button>
@@ -125,7 +125,7 @@ export function Supervision() {
             <li key={s.id} className="tratamiento">
               <span className="que">
                 <strong>{s.otro.nombre}</strong>
-                <span className="suave chico renglon-sub">{s.estado === 'pendiente' ? t('esperando que acepte') : t('en supervisión')}</span>
+                <span className="suave chico renglon-sub">{s.estado === 'pendiente' ? t('esperando que acepte') : t('en tu familia')}</span>
               </span>
               <span className="columna-chica">
                 {s.estado === 'aceptada' ? <button className="btn chico" onClick={() => setAvisando(s)}>{t('📣 Avisarle')}</button> : null}
@@ -137,7 +137,7 @@ export function Supervision() {
       ) : null}
       {meSupervisan.length ? (
         <>
-          <p className="suave chico">{meSupervisan.length > 1 ? t('Te supervisan:') : t('Te supervisa:')}</p>
+          <p className="suave chico">{meSupervisan.length > 1 ? t('Te acompañan:') : t('Te acompaña:')}</p>
           <ul className="lista">
             {meSupervisan.map((s) => (
               <li key={s.id} className="tratamiento">
@@ -149,7 +149,7 @@ export function Supervision() {
         </>
       ) : null}
       <label>
-        {t('Supervisar a alguien')}
+        {t('Sumar a alguien de tu familia')}
         <span className="fila">
           <input value={quien} onChange={(e) => setQuien(e.target.value)} placeholder={t('su código, usuario o mail')} autoCapitalize="none" onKeyDown={(e) => e.key === 'Enter' && quien.trim() && void invitar()} />
           <button className="btn" disabled={!quien.trim()} onClick={() => void invitar()}>{esCodigo(quien.trim()) ? t('Usar código') : t('Invitar')}</button>
@@ -158,12 +158,12 @@ export function Supervision() {
       <div className="que-me-supervisen">
         {miCodigo ? (
           <div className="nota-ia codigo-supervision">
-            <p className="suave chico">{t('Mostrale este código a quien te va a supervisar. Lo escribe en su Patty y listo:')}</p>
+            <p className="suave chico">{t('Mostrale este código a tu familiar. Lo escribe en su Patty y listo:')}</p>
             <p className="codigo" aria-label={miCodigo.codigo.split('').join(' ')}>{miCodigo.codigo.slice(0, 3)} {miCodigo.codigo.slice(3)}</p>
             <p className="suave chico">{t('Sirve una vez, por 15 minutos.')}</p>
           </div>
         ) : (
-          <button className="btn ancho" onClick={() => void pedirCodigo()}>{t('🔢 Que me supervise alguien: mostrar un código')}</button>
+          <button className="btn ancho" onClick={() => void pedirCodigo()}>{t('🔢 Sumarme a la familia de alguien: mostrar un código')}</button>
         )}
       </div>
       {error ? <p className="neg">{error}</p> : null}

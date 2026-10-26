@@ -812,3 +812,11 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .cartel-version a { flex: 1; color: inherit; font-weight: 700; text-decoration: none; }
 .cartel-version .btn-icono { color: inherit; }
 @media (max-width: 672px) { .cartel-version { margin: 10px 16px 0; } }
+
+/* Día: las tarjetas que muestran cosas tuyas (remedios, ciclo, lo que llegó solo, lugares) con un fondo teñido,
+   para separarlas de las que invitan a anotar. */
+.dia .tarjeta.remedios-dia, .dia .tarjeta.automatico, .dia .tarjeta.paradas {
+  background: color-mix(in srgb, var(--acento) 8%, var(--panel));
+  border-color: color-mix(in srgb, var(--acento) 22%, var(--borde));
+}
+.dia .tarjeta.automatico .renglon-auto, .dia .tarjeta.automatico .grupo-auto { background: transparent; }

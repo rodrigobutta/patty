@@ -2,7 +2,6 @@
 // datos de la persona, los permisos, la mascota y la barra de arriba.
 export const DIA: Record<string, string> = {
   // Barra y arranque
-  'Listo, aceptaste la supervisión': 'Done, you accepted the supervision',
   'Listo, no aceptaste': "Done, you didn't accept",
   'Abriendo Patty…': 'Opening Patty…',
   Reintentar: 'Try again',
