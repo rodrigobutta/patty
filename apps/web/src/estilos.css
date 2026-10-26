@@ -979,3 +979,8 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .contar-dia { background: linear-gradient(135deg, color-mix(in srgb, var(--acento) 16%, var(--panel)), var(--panel)); }
 .contar-dia .btn { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .contar-dia .btn svg { width: 20px; height: 20px; }
+
+/* Afinar lo que Patty entendió ("era con azúcar"), abajo de la propuesta. */
+.afinar { display: flex; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.afinar input { flex: 1; min-width: 0; margin: 0; font-size: 14px; padding: 9px 12px; }
+.afinar .btn { flex: none; padding: 9px 14px; font-size: 14px; }

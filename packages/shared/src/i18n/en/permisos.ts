@@ -360,4 +360,6 @@ export const PERMISOS: Record<string, string> = {
   'Contenta': 'Happy',
   'Recién levantada': 'Just woke up',
   '{apodo}, ¿me contás tu día? Desde que te levantaste: qué comiste, qué hiciste y cómo te sentiste.': '{apodo}, tell me about your day? From when you got up: what you ate, what you did and how you felt.',
+  '¿Algo más? Ej: con azúcar, era una porción chica': 'Anything else? E.g. with sugar, it was a small portion',
+  '¿Algo para sumar o corregir?': 'Anything to add or fix?',
 };

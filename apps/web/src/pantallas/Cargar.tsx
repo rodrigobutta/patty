@@ -373,6 +373,18 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     } else void interpretar(n);
   };
 
+  /**
+   * Afinar lo que Patty entendió sin que haya preguntado nada ("era con azúcar", "fueron dos"): se vuelve a ordenar con
+   * eso sumado (y la foto, si hay), y se muestra de nuevo para revisar.
+   */
+  const [afinado, setAfinado] = useState('');
+  const afinar = () => {
+    const n = afinado.trim();
+    if (!n || !propuesta) return;
+    setAfinado('');
+    void interpretar(`${texto}\n\nDetalle o corrección que agrega la persona sobre lo anterior: ${n}`);
+  };
+
   /** "Prefiero escribir" también mientras escucha: deja de escuchar sin ordenar nada y pasa al cuadro de texto. */
   const aEscribir = useRef(false);
   const pasarAEscribir = () => {
@@ -586,6 +598,14 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
             ) : null}
             <p className="suave chico">{dudas.some((d) => d.opciones.length) ? t('Tocá una respuesta, o contestale con tus palabras. Si no, anotá así.') : t('Si querés, contestale y lo suma a lo anterior; si no, anotá así.')}</p>
             {entrada(true)}
+          </div>
+        ) : null}
+        {!dudas.length ? (
+          <div className="afinar">
+            <input value={afinado} onChange={(e) => setAfinado(e.target.value)} disabled={ocupado} enterKeyHint="send"
+              placeholder={foto ? t('¿Algo más? Ej: con azúcar, era una porción chica') : t('¿Algo para sumar o corregir?')}
+              onKeyDown={(e) => e.key === 'Enter' && afinar()} />
+            <button className="btn" disabled={ocupado || !afinado.trim()} onClick={afinar}>{estado === 'ordenando' ? '…' : t('Sumar')}</button>
           </div>
         ) : null}
         {error ? <p className="neg">{error}</p> : null}
