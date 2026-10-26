@@ -128,11 +128,24 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   };
 
   /** Una sub-pantalla con su título y la flecha para volver al menú. */
+  // El título de cada sección lleva el mismo ícono dibujado que en el menú (sin el emoji del texto).
+  const ICONO_SECCION: Record<Seccion, () => ReactNode> = {
+    salud: () => <IconoSalud />,
+    datos: () => <IconoDatos />,
+    lugares: () => <IconoLugares />,
+    remedios: () => <IconoRemedios />,
+    avisos: () => <IconoAvisos />,
+    supervision: () => <IconoFamilia />,
+    personas: () => <IconoGente />,
+    cuenta: () => <IconoCuenta />,
+    avanzado: () => <IconoAvanzado />,
+  };
   const pantalla = (titulo: string, contenido: ReactNode, sinTituloRepetido = false) => (
     <section className={`mas sub-mas${sinTituloRepetido ? ' sin-titulo-repetido' : ''}`}>
       <div className="cabeza-sub">
         <button className="btn-icono" onClick={() => setSeccion(null)} aria-label={t('Volver')}>‹</button>
-        <h2>{titulo}</h2>
+        {seccion ? <span className="icono-titulo" aria-hidden>{ICONO_SECCION[seccion]()}</span> : null}
+        <h2>{titulo.replace(/^[^\p{L}¿]+/u, '')}</h2>
       </div>
       {contenido}
     </section>

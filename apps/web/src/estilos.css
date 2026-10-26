@@ -1092,3 +1092,5 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 :root[data-tema="oscuro"] { --icono-1: #6b55b8; --icono-2: #e3b341; }
 .menu-mas .icono-menu { display: flex; align-items: center; justify-content: center; color: var(--texto); }
 .menu-mas .icono-menu .icono-propio { width: 30px; height: 30px; }
+.cabeza-sub .icono-titulo { display: flex; align-items: center; color: var(--texto); flex: none; }
+.cabeza-sub .icono-titulo .icono-propio { width: 32px; height: 32px; }
