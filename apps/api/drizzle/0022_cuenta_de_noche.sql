@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "cuenta_de_noche" boolean;

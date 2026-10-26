@@ -1,15 +1,15 @@
 // La mascota de Patty, dibujada en SVG (300 x 300): el mismo dibujo se usa adentro de la app y para generar los
 // íconos del teléfono (movil/iconos.ts). Tiene tres caras según cómo viene la persona con lo que anota, y una cuarta,
 // enojada, para retar un poco (no se tomó un remedio, se olvidó varias tomas): esa no es ícono de la app, solo de avisos.
-// Y con sueño, de noche (después de la hora en que la persona se suele dormir).
+// Y con sueño, de noche (después de la hora en que la persona se suele dormir), y recién levantado a la mañana.
 // Para cambiar de animal alcanza con cambiar ANIMAL (y volver a generar los íconos).
 
-export type Cara = 'feliz' | 'espera' | 'triste' | 'enojada' | 'dormida';
+export type Cara = 'feliz' | 'espera' | 'triste' | 'enojada' | 'dormida' | 'manana';
 export type Animal = 'buho' | 'carpincho' | 'zorro';
 
 export const ANIMAL: Animal = 'buho';
 /** Las caras que puede tener el ícono de la app (la enojada no). */
-export const CARAS: Cara[] = ['feliz', 'espera', 'triste', 'dormida'];
+export const CARAS: Cara[] = ['feliz', 'espera', 'triste', 'dormida', 'manana'];
 
 const TINTA = '#2a2440';
 
@@ -17,6 +17,11 @@ function ojos(cara: Cara, x1: number, x2: number, y: number, r: number): string 
   return [x1, x2]
     .map((x) => {
       if (cara === 'feliz') return `<path d="M${x - r} ${y + 2} Q${x} ${y - r - 4} ${x + r} ${y + 2}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+      // Recién levantado: ojos abiertos a medias (el párpado de arriba todavía pesado) y tranquilo.
+      if (cara === 'manana') {
+        const R = r * 2.35;
+        return `<circle cx="${x}" cy="${y + 6}" r="${r * 0.7}" fill="${TINTA}"/><circle cx="${x + r * 0.3}" cy="${y + 2}" r="${r * 0.22}" fill="#fff"/><path d="M${x - R} ${y - 1} A${R} ${R} 0 0 1 ${x + R} ${y - 1} Z" fill="#8f78d6"/><path d="M${x - R + 4} ${y - 1} L${x + R - 4} ${y - 1}" stroke="${TINTA}" stroke-width="6" stroke-linecap="round"/>`;
+      }
       if (cara === 'espera') return `<circle cx="${x}" cy="${y}" r="${r * 0.75}" fill="${TINTA}"/><circle cx="${x + r * 0.3}" cy="${y - r * 0.3}" r="${r * 0.25}" fill="#fff"/>`;
       // Con sueño: ojos cerrados (una curva hacia abajo) y párpados pesados.
       if (cara === 'dormida') return `<path d="M${x - r} ${y - 1} Q${x} ${y + r * 0.8} ${x + r} ${y - 1}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
@@ -34,7 +39,9 @@ function ojos(cara: Cara, x1: number, x2: number, y: number, r: number): string 
 
 function boca(cara: Cara, x: number, y: number, w: number): string {
   if (cara === 'feliz') return `<path d="M${x - w} ${y} Q${x} ${y + w * 1.1} ${x + w} ${y}" stroke="${TINTA}" stroke-width="7" fill="#e85d75" stroke-linejoin="round"/>`;
-  if (cara === 'espera') return `<path d="M${x - w * 0.5} ${y + 6} L${x + w * 0.5} ${y + 2}" stroke="${TINTA}" stroke-width="7" stroke-linecap="round"/>`;
+  // Esperando: una boquita chica y curiosa (no recta, que parecía enojo).
+  if (cara === 'espera') return `<ellipse cx="${x}" cy="${y + 6}" rx="${w * 0.22}" ry="${w * 0.2}" fill="none" stroke="${TINTA}" stroke-width="6"/>`;
+  if (cara === 'manana') return `<path d="M${x - w * 0.45} ${y + 4} Q${x} ${y + w * 0.6} ${x + w * 0.45} ${y + 4}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   if (cara === 'enojada') return `<path d="M${x - w * 0.55} ${y + 10} Q${x} ${y} ${x + w * 0.55} ${y + 10}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   // Bostezando: una boquita redonda.
   if (cara === 'dormida') return `<ellipse cx="${x}" cy="${y + 8}" rx="${w * 0.28}" ry="${w * 0.36}" fill="${TINTA}"/>`;
@@ -45,6 +52,9 @@ function boca(cara: Cara, x: number, y: number, w: number): string {
 function extra(cara: Cara, x: number, y: number): string {
   if (cara === 'feliz') return `<circle cx="${x - 62}" cy="${y}" r="13" fill="#ff8fa3" opacity=".55"/><circle cx="${x + 62}" cy="${y}" r="13" fill="#ff8fa3" opacity=".55"/>`;
   if (cara === 'triste') return `<path d="M${x + 48} ${y - 8} q8 14 0 22 q-8 -8 0 -22z" fill="#6fb7ff"/>`;
+  // Un solcito arriba a la derecha y los cachetes apenas rosados.
+  if (cara === 'manana')
+    return `<g transform="translate(${x + 80} ${y - 135})"><circle r="14" fill="#ffd166"/><g stroke="#ffd166" stroke-width="5" stroke-linecap="round">${[0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<path d="M0 -21 V-28" transform="rotate(${a})"/>`).join('')}</g></g><circle cx="${x - 62}" cy="${y}" r="12" fill="#ff8fa3" opacity=".35"/><circle cx="${x + 62}" cy="${y}" r="12" fill="#ff8fa3" opacity=".35"/>`;
   // Las zetas de sueño, arriba a la derecha.
   if (cara === 'dormida')
     return `<g fill="none" stroke="#9fd3ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M${x + 52} ${y - 128} h16 l-16 18 h16"/><path d="M${x + 76} ${y - 152} h11 l-11 12 h11"/></g>`;

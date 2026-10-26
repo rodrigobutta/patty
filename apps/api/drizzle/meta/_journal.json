@@ -155,6 +155,13 @@
       "when": 1792986846568,
       "tag": "0021_preguntas_y_uso",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793016064839,
+      "tag": "0022_cuenta_de_noche",
+      "breakpoints": true
     }
   ]
 }

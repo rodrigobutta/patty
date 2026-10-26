@@ -85,10 +85,13 @@ export function esHoraDeEncuesta(ahora = new Date(), c: Config = configEncuesta(
 
 // Si el aviso se toca con la app cerrada, llega antes de que esté el Día: queda pendiente hasta que lo esté.
 let pendiente = false;
+/** "dia": en vez de "¿cómo te sentiste?", contar el día entero (a quien cuenta todo a la noche). */
+let modo: 'sentir' | 'dia' = 'sentir';
 
 /** Pedir que se abra la encuesta (al tocar el aviso). */
-export function abrirEncuesta(): void {
+export function abrirEncuesta(como: 'sentir' | 'dia' = 'sentir'): void {
   pendiente = true;
+  modo = como;
   window.dispatchEvent(new Event(EVENTO));
 }
 
@@ -102,12 +105,13 @@ export function useIrAlDiaConElAviso(ir: () => void): void {
 }
 
 /** Llama a `abrir` cuando se tocó el aviso (también si se tocó antes de que esto existiera). */
-export function useAlTocarAviso(abrir: () => void): void {
+export function useAlTocarAviso(abrir: (como: 'sentir' | 'dia') => void): void {
   useEffect(() => {
     const f = () => {
       if (!pendiente) return;
       pendiente = false;
-      abrir();
+      abrir(modo);
+      modo = 'sentir';
     };
     f();
     window.addEventListener(EVENTO, f);

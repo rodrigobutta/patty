@@ -948,3 +948,14 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .tabla-uso th { text-align: left; font-weight: 600; color: var(--suave); padding: 4px 6px; }
 .tabla-uso td { padding: 8px 6px; border-top: 1px solid var(--borde); }
 .tabla-uso tbody tr { cursor: pointer; }
+
+/* Detrás de "Contale a Patty", la cámara y el +: un degradado con un poco de desenfoque que se desvanece hacia arriba. */
+.velo-botones {
+  position: fixed; left: 0; right: 0; bottom: calc(64px + env(safe-area-inset-bottom)); height: 130px; z-index: 6; pointer-events: none;
+  background: linear-gradient(to top, color-mix(in srgb, var(--fondo) 85%, transparent) 0%, color-mix(in srgb, var(--fondo) 45%, transparent) 55%, transparent 100%);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to top, #000 45%, transparent); mask-image: linear-gradient(to top, #000 45%, transparent);
+}
+.contar-dia { background: linear-gradient(135deg, color-mix(in srgb, var(--acento) 16%, var(--panel)), var(--panel)); }
+.contar-dia .btn { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.contar-dia .btn svg { width: 20px; height: 20px; }

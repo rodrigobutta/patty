@@ -167,6 +167,11 @@ export async function interpretarTexto(
     'a la mañana 9:00, al mediodía 13:00, a la tarde 17:00, a la noche 21:00. Lo de la madrugada ("anoche a las 2") va con ' +
     'la fecha del calendario en que pasó (la del día siguiente). Si algo duró ("estuvimos 3 horas"), poné duracion_min en ' +
     'el registro de esa actividad o evento. ' +
+    'Muchas veces cuentan el día entero de una vez, a la noche ("me levanté a las 7, desayuné café con tostadas, fui a ' +
+    'trabajar, almorcé una milanesa, a la tarde me dolió la cabeza…"): desglosalo en un registro por cada cosa, en orden, ' +
+    'cada una con su hora aproximada según lo que cuenta y el orden del relato (levantarse 7:00, desayuno 8:00, media ' +
+    'mañana 11:00, almuerzo 13:00, merienda 17:00, cena 21:00; "después" es un rato después de lo anterior). Si dice ' +
+    'cuándo se acostó o se levantó, eso también va. No preguntes la hora de cada cosa: alcanza con una aproximada. ' +
     'Si la persona cuenta una indicación de un remedio para adelante ("el médico me dijo paracetamol 1 g cada 8 horas por ' +
     '5 días", "tomo vitamina D todos los días a las 9", "ibuprofeno si me duele"), va en tratamientos (así Patty le ' +
     'recuerda cada toma). Si además dice que ya tomó una, también va como registro de medicación a esa hora, y la ' +

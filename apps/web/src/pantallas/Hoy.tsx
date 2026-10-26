@@ -34,6 +34,8 @@ import { Caritas, esMalo, Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
 const HORAS_SIN_PREGUNTAR = 3;
+/** Desde esta hora, si no se anotó nada a mano, el Día propone contar el día entero. */
+const HORA_CONTAR_DIA = 18;
 
 const ICONOS_FUENTE: Record<string, string> = { telefono: '📱', ubicacion: '📍', clima: '🌤️', reloj: '⌚' };
 
@@ -43,6 +45,7 @@ const PEDIDOS: Record<Cara, string> = {
   triste: t('Hace días que no me contás nada… Anotá algo, aunque sea a qué hora te levantaste.'),
   enojada: '',
   dormida: '',
+  manana: t('¡Buen día! ¿Qué desayunaste?'),
 };
 
 /** «Tele: Noticias» y «Tele en TN» van con su «Tele»: en el Día se ve uno solo (y se borran juntos). */
@@ -275,9 +278,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
 
   // Tocar el aviso de la noche abre la encuesta del día de hoy.
   useAlTocarAviso(
-    useCallback(() => {
+    useCallback((como: 'sentir' | 'dia') => {
       setFecha(hoyEn(persona.zona_horaria));
-      setSintiendo({ momento: 'dia', estado: null });
+      if (como === 'dia') {
+        setPista(PISTAS.dia);
+        setCargando('contar');
+      } else setSintiendo({ momento: 'dia', estado: null });
     }, [persona.zona_horaria]),
   );
 
@@ -363,6 +369,17 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         )
       ) : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
+      {/* A la noche, si todavía no se anotó nada a mano: contar el día entero de una vez (Patty lo desglosa por horas). */}
+      {fecha === hoy && sesion?.ia && registros && sesion.usuario?.rol !== 'lector' && new Date().getHours() >= HORA_CONTAR_DIA &&
+      !registros.some((r) => r.origen === 'manual' || r.origen === 'ia') ? (
+        <div className="tarjeta contar-dia">
+          <h3>{t('🌙 ¿Me contás tu día?')}</h3>
+          <p className="suave">{t('Todo junto, como te salga: yo lo ordeno y le pongo una hora aproximada a cada cosa.')}</p>
+          <button className="btn primario ancho" onClick={() => { setPista(PISTAS.dia); setCargando('contar'); }}>
+            {hayVoz(sesion.voz) ? <IconoMicrofono /> : <IconoLapiz />} {t('Contar mi día')}
+          </button>
+        </div>
+      ) : null}
       {registros && sesion?.usuario?.rol !== 'lector' ? <CompaniaSugerida persona={persona} fecha={fecha} registros={registros} categorias={categorias} alCambiar={() => void traer()} /> : null}
       <ParadasDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       <ViajesDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
@@ -508,6 +525,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           {eligiendoFoto ? <ElegirFoto alElegir={(o) => void fotoDe(o)} alCancelar={() => setEligiendoFoto(false)} /> : null}
         </>
       ) : null}
+      {/* Un velo suave detrás de los botones de abajo, para que se lean sobre cualquier cosa. */}
+      <div className="velo-botones" aria-hidden="true" />
       <button className="fab" onClick={() => setCargando('normal')} aria-label={t('Anotar')}>＋</button>
       {deshacer ? (
         <div className="barra-deshacer" role="status">

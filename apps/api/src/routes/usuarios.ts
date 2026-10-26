@@ -7,6 +7,7 @@ import { verificarGoogle } from '../auth/google.js';
 import { exigirRol } from '../auth/sesion.js';
 import { filas, una, type Tx } from '../db/client.js';
 import { usuarios } from '../db/schema.js';
+import { cuentaDeNocheSegunUso } from '../lib/deNoche.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 
@@ -30,6 +31,15 @@ export async function crearUsuario(tx: Tx, d: Record<string, unknown>, rol: unkn
     .values({ usuario, nombre, email, clave: await hashClave(clave), rol: rol as RolUsuario })
     .returning({ id: usuarios.id });
   return f;
+}
+
+/** Lo que elige cada uno. `de_noche`: si cuenta todo a la noche (lo que eligió, o lo que Patty ve en cómo anota). */
+async function preferencias(db: Tx, usuarioId: number) {
+  const p = await una<{ cuenta_de_noche: boolean | null }>(
+    db,
+    sql`SELECT avisar_sin_anotar, apodo, ranking, encuesta_hora, cuenta_de_noche FROM usuarios WHERE id = ${usuarioId}`,
+  );
+  return { ...p, de_noche: p?.cuenta_de_noche ?? (await cuentaDeNocheSegunUso(db, usuarioId)) };
 }
 
 export const rutasUsuarios = new Hono<Env>()
@@ -72,7 +82,7 @@ export const rutasUsuarios = new Hono<Env>()
     return c.json({ ok: true });
   })
   .get('/yo/preferencias', async (c) => {
-    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar, apodo, ranking, encuesta_hora FROM usuarios WHERE id = ${c.var.usuario.id}`));
+    return c.json(await preferencias(c.var.db, c.var.usuario.id));
   })
   .put('/yo/preferencias', async (c) => {
     // {avisar_sin_anotar, apodo}: lo que cada uno elige de los avisos que manda el servidor y cómo quiere que le digan.
@@ -83,13 +93,16 @@ export const rutasUsuarios = new Hono<Env>()
     if (d.encuesta_hora === null || (typeof d.encuesta_hora === 'string' && /^\d{2}:\d{2}$/.test(d.encuesta_hora))) {
       await c.var.db.execute(sql`UPDATE usuarios SET encuesta_hora = ${d.encuesta_hora} WHERE id = ${c.var.usuario.id}`);
     }
+    if (d.cuenta_de_noche === null || typeof d.cuenta_de_noche === 'boolean') {
+      await c.var.db.execute(sql`UPDATE usuarios SET cuenta_de_noche = ${d.cuenta_de_noche} WHERE id = ${c.var.usuario.id}`);
+    }
     if (typeof d.ranking === 'boolean') await c.var.db.execute(sql`UPDATE usuarios SET ranking = ${d.ranking} WHERE id = ${c.var.usuario.id}`);
     if (d.apodo !== undefined) {
       const apodo = texto(d.apodo) || null;
       if (apodo && apodo.length > 30) throw new ErrorApi('El apodo es muy largo (máximo 30 letras).');
       await c.var.db.execute(sql`UPDATE usuarios SET apodo = ${apodo} WHERE id = ${c.var.usuario.id}`);
     }
-    return c.json(await una(c.var.db, sql`SELECT avisar_sin_anotar, apodo, ranking, encuesta_hora FROM usuarios WHERE id = ${c.var.usuario.id}`));
+    return c.json(await preferencias(c.var.db, c.var.usuario.id));
   })
   .post('/yo/clave', async (c) => {
     const d = await cuerpo(c);

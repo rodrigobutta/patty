@@ -49,6 +49,11 @@ export const usuarios = pgTable(
     ranking: boolean('ranking').notNull().default(true),
     /** A qué hora le llega la encuesta de la noche (HH:MM); null si la apagó. La manda el servidor a Android. */
     encuesta_hora: text('encuesta_hora'),
+    /**
+     * Si cuenta todo su día a la noche (no anota durante el día): el búho no la espera ni le reclama de tarde, y a la
+     * noche le propone contar el día entero. null = lo decide Patty mirando a qué hora suele anotar.
+     */
+    cuenta_de_noche: boolean('cuenta_de_noche'),
     clave: text('clave').notNull(),
     rol: text('rol', { enum: ['admin', 'editor', 'lector'] }).notNull().default('editor'),
     activo: boolean('activo').notNull().default(true),

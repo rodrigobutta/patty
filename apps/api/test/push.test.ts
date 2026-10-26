@@ -87,10 +87,22 @@ describe('aviso de "te extraño"', () => {
     await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Agua', categoria_id: categorias.bebida, inicio: '2026-10-23T15:00:00.000Z' });
     expect(await revisarTeExtrano(db, new Date('2026-10-23T22:01:00.000Z'))).toBe(0);
     // apagado: nada
-    expect((await ana.put('/api/usuarios/yo/preferencias', { avisar_sin_anotar: false })).body).toEqual({ avisar_sin_anotar: false, apodo: null, ranking: true, encuesta_hora: null });
+    expect((await ana.put('/api/usuarios/yo/preferencias', { avisar_sin_anotar: false })).body).toEqual({ avisar_sin_anotar: false, apodo: null, ranking: true, encuesta_hora: null, cuenta_de_noche: null, de_noche: false });
     expect(await revisarTeExtrano(db, new Date('2026-10-25T22:01:00.000Z'))).toBe(0);
     expect(avisoTeExtrano('Rodrigo Butta', 1).titulo).toBe('😢 Hoy no me contaste nada');
     expect(avisoTeExtrano('Rodrigo', 9).titulo).toBe('😢 Te extraño');
+  });
+
+  it('a quien cuenta todo a la noche no le reclama a la tarde si ayer contó', async () => {
+    const { revisarTeExtrano } = await import('../src/push/recordatorios.js');
+    const { ana, personaId, categorias } = await conAdmin();
+    usarEnvioPrueba(async () => 'ok');
+    await ana.post('/api/dispositivos', { token: 'tel-ana', plataforma: 'android' });
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Agua', categoria_id: categorias.bebida, inicio: '2026-10-22T15:00:00.000Z' });
+    expect((await ana.put('/api/usuarios/yo/preferencias', { cuenta_de_noche: true })).body).toMatchObject({ cuenta_de_noche: true, de_noche: true });
+    const db = obtenerDb();
+    expect(await revisarTeExtrano(db, new Date('2026-10-23T22:01:00.000Z'))).toBe(0); // ayer contó: nada
+    expect(await revisarTeExtrano(db, new Date('2026-10-24T22:01:00.000Z'))).toBe(1); // dos días: sí
   });
 });
 

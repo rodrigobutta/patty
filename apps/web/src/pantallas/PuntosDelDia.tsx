@@ -33,7 +33,11 @@ const ESTADOS_PUNTOS: Record<EstadoPuntos, { emoji: string; titulo: string; fras
 };
 
 /** Lo que se le dice a la IA y lo que se muestra arriba al anotar cada cosa que suma (para no preguntar qué es). */
-export const PISTAS: Partial<Record<ItemPuntos, { texto: string; titulo: string }>> = {
+export const PISTAS: Partial<Record<ItemPuntos | 'dia', { texto: string; titulo: string }>> = {
+  dia: {
+    texto: 'todo el día de hoy, desde que se levantó: desglosar cada cosa con su hora aproximada',
+    titulo: '🌙 Contame tu día: desde que te levantaste, qué comiste, qué hiciste y cómo te sentiste',
+  },
   desayuno: { texto: 'el desayuno de hoy (a la mañana)', titulo: '☕ Contame qué desayunaste' },
   almuerzo: { texto: 'el almuerzo de hoy (al mediodía)', titulo: '🍝 Contame qué almorzaste' },
   merienda: { texto: 'la merienda de hoy (a la tarde, tipo 17 h)', titulo: '🧉 Contame qué merendaste' },
@@ -150,7 +154,7 @@ export function PuntosDelDia({ persona, cara, alTocarBuho }: { persona: Persona;
       <div className="cabeza-juego">
         <button className="btn-icono cerrar-juego" onClick={() => setAbierta(false)} aria-label={t('Cerrar')}>✕</button>
         {estado === 'completo' ? <span className="confeti" aria-hidden>{['🎉', '⭐', '✨', '🏆', '🎊', '⭐', '✨'].map((c, k) => <i key={k} style={{ ['--k' as string]: k }}>{c}</i>)}</span> : null}
-        <Mascota cara={estado === 'completo' || estado === 'casi' ? 'feliz' : cara === 'dormida' ? 'dormida' : 'espera'} tamano={78} className="emoji-estado" />
+        <Mascota cara={estado === 'completo' || estado === 'casi' ? 'feliz' : cara === 'dormida' || cara === 'manana' ? cara : 'espera'} tamano={78} className="emoji-estado" />
         <strong className="titulo-estado">{t(ESTADOS_PUNTOS[estado].titulo)}</strong>
         <span className="frase-estado">
           {estado === 'completo'

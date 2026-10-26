@@ -1,5 +1,6 @@
 // La cara de la mascota según cómo viene la persona: contenta si anotó algo hoy, esperando si no anota desde ayer o
-// anteayer, triste si pasaron más días. Solo cuenta lo anotado a mano (lo automático llega solo).
+// anteayer, triste si pasaron más días. A la mañana (hasta las 10), si anotó hace poco, recién levantada: todavía no
+// hay nada que esperar. Y a quien cuenta todo a la noche no lo espera durante el día. Solo cuenta lo anotado a mano.
 // En la app de Android, además, el ícono del teléfono cambia a la misma cara (ver movil/ y MascotaPlugin.java).
 import { registerPlugin } from '@capacitor/core';
 import { useCallback, useEffect, useState } from 'react';
@@ -15,6 +16,8 @@ const DIAS_ESPERANDO = 2;
 
 /** A qué hora se suele acostar si no hay datos (minutos desde las 0). */
 const DORMIR_POR_DEFECTO = 23 * 60;
+/** Hasta esta hora es "recién levantado" (se supone que para las 10 ya se desayunó). */
+const HASTA_MANANA = 10 * 60;
 
 /** De noche (desde la hora en que se suele dormir hasta las 6): el búho tiene sueño. */
 export function esDeNoche(dormir: number | null, ahora = new Date()): boolean {
@@ -24,20 +27,29 @@ export function esDeNoche(dormir: number | null, ahora = new Date()): boolean {
   return desde >= 6 * 60 ? m >= desde || m < 6 * 60 : m >= desde && m < 6 * 60;
 }
 
-export function caraSegun(ultimaFecha: string | null, hoy: string, dormir: number | null = null, ahora = new Date()): Cara {
+export function caraSegun(ultimaFecha: string | null, hoy: string, dormir: number | null = null, ahora = new Date(), deNoche = false): Cara {
   if (esDeNoche(dormir, ahora)) return 'dormida';
   if (ultimaFecha === hoy) return 'feliz';
-  if (ultimaFecha && ultimaFecha >= sumarDias(hoy, -DIAS_ESPERANDO)) return 'espera';
-  return 'triste';
+  const reciente = Boolean(ultimaFecha && ultimaFecha >= sumarDias(hoy, -DIAS_ESPERANDO));
+  if (reciente && ahora.getHours() * 60 + ahora.getMinutes() < HASTA_MANANA) return 'manana';
+  // Cuenta todo a la noche y ayer contó: está todo bien, todavía no es su hora.
+  if (deNoche && ultimaFecha && ultimaFecha >= sumarDias(hoy, -1)) return 'feliz';
+  return reciente ? 'espera' : 'triste';
 }
 
 interface PluginMascota {
   /** Le dice al teléfono cuándo fue lo último anotado (AAAA-MM-DD), para que el ícono cambie de cara solo. */
-  anotado(o: { ultima: string | null; dormir?: number }): Promise<void>;
+  anotado(o: { ultima: string | null; dormir?: number; deNoche?: boolean }): Promise<void>;
 }
 const MascotaNativa = registerPlugin<PluginMascota>('Mascota');
 /** La hora en que se suele acostar (null: todavía no se sabe o no hay datos). */
 let dormir: number | null | undefined;
+/** Si cuenta todo a la noche (lo que eligió o lo que se ve en cómo anota); se mira una vez por apertura. */
+let deNoche: boolean | undefined;
+/** Para cuando se cambia en Más. */
+export const olvidarDeNoche = () => {
+  deNoche = undefined;
+};
 
 /** Avisar que se anotó o borró algo, para que la mascota se actualice. */
 export const avisarAnotado = () => window.dispatchEvent(new Event(EVENTO_ANOTADO));
@@ -54,8 +66,9 @@ export function useCara(persona: Persona | null | undefined): Cara | null {
       if (dormir === undefined) dormir = await api<{ sueno: { acoste: number | null } }>('GET', `/api/estadisticas?persona=${persona.id}&dias=30`)
         .then((e) => e.sueno.acoste)
         .catch(() => null);
-      setCara(caraSegun(ultima, hoy, dormir));
-      if (plataforma() === 'android') void MascotaNativa.anotado({ ultima, ...(dormir !== null ? { dormir: Math.round(dormir) } : {}) }).catch(() => {});
+      if (deNoche === undefined) deNoche = await api<{ de_noche: boolean }>('GET', '/api/usuarios/yo/preferencias').then((p) => p.de_noche).catch(() => false);
+      setCara(caraSegun(ultima, hoy, dormir, new Date(), deNoche));
+      if (plataforma() === 'android') void MascotaNativa.anotado({ ultima, deNoche, ...(dormir !== null ? { dormir: Math.round(dormir) } : {}) }).catch(() => {});
     } catch {
       /* sin conexión: queda la cara que estaba */
     }

@@ -31,7 +31,11 @@ public class MascotaPlugin extends Plugin {
 
     private static final String PREFS = "mascota";
     private static final String ULTIMA = "ultima";
-    private static final String[] CARAS = { "feliz", "espera", "triste", "dormida" };
+    private static final String[] CARAS = { "feliz", "espera", "triste", "dormida", "manana" };
+    /** Si la persona cuenta todo a la noche: durante el día no la espera (ver cara.ts). */
+    private static final String DE_NOCHE = "de_noche";
+    /** Hasta esta hora es "recién levantado": si anotó ayer, el búho tiene cara de mañana y no de esperar. */
+    private static final int HASTA_MANANA = 10 * 60;
     /** A qué hora se suele dormir (minutos desde las 0); de esa hora a las 6, el búho tiene sueño. */
     private static final String DORMIR = "dormir";
     private static final int DORMIR_POR_DEFECTO = 23 * 60;
@@ -135,6 +139,8 @@ public class MascotaPlugin extends Plugin {
         else e.putString(ULTIMA, ultima);
         Integer dormir = call.getInt("dormir");
         if (dormir != null) e.putInt(DORMIR, dormir);
+        Boolean deNoche = call.getBoolean("deNoche");
+        if (deNoche != null) e.putBoolean(DE_NOCHE, deNoche);
         e.apply();
         call.resolve();
     }
@@ -162,7 +168,10 @@ public class MascotaPlugin extends Plugin {
             ult.setTime(d);
             long dias = diaNumero(hoy) - diaNumero(ult);
             if (dias <= 0) return "feliz";
-            return dias <= DIAS_ESPERANDO ? "espera" : "triste";
+            boolean reciente = dias <= DIAS_ESPERANDO;
+            if (reciente && minutos < HASTA_MANANA) return "manana";
+            if (dias <= 1 && ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(DE_NOCHE, false)) return "feliz";
+            return reciente ? "espera" : "triste";
         } catch (ParseException e) {
             return "espera";
         }

@@ -7,6 +7,7 @@ import { sql } from 'drizzle-orm';
 import { apodoDe, COMO_ME_SENTI, dosisTexto, ESTADOS, esIdioma, ITEMS_PUNTOS, traducir, type Idioma, type Toma } from 'shared';
 import { puntosDe } from '../routes/puntos.js';
 import { filas, una, type Db } from '../db/client.js';
+import { cuentaDeNoche } from '../lib/deNoche.js';
 import { diaDePatty, fechaLocal, localAInstante } from '../lib/fechas.js';
 import { COLUMNAS, DESDE, tomasDe, type Fila } from '../routes/tratamientos.js';
 import { pushDisponible, type Aviso } from './firebase.js';
@@ -260,6 +261,8 @@ export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<numb
     // Recién creada (hoy) y sin nada: todavía no molestamos.
     if (diasSin === null && Date.now() - Date.parse(p.creado) < 12 * 3600000) continue;
     if (diasSin !== null && diasSin > 7 && diasSin % 7 !== 0) continue;
+    // Quien cuenta todo a la noche y ayer contó: todavía no hay nada que extrañar (lo invita la encuesta de la noche).
+    if (diasSin === 1 && (await cuentaDeNoche(db, p.usuario_id))) continue;
     const { titulo, cuerpo } = avisoTeExtrano(apodoDe(p.u_nombre, p.apodo), diasSin, idiomaDe(p));
     const lista = await filas<Dispositivo>(db, sql`SELECT id, token, avisos_hasta FROM dispositivos WHERE usuario_id = ${p.usuario_id}`);
     for (const d of lista) {
@@ -303,10 +306,16 @@ export async function revisarEncuesta(db: Db, ahora = new Date()): Promise<numbe
       ...(luego ? { luego } : {}),
     });
     const [muyBien, bien, mal] = ESTADOS;
+    // A quien cuenta todo a la noche, si todavía no anotó nada hoy, se lo invita a contar el día entero.
+    const contarDia =
+      (await cuentaDeNoche(db, p.usuario_id)) &&
+      !(await una(db, sql`SELECT 1 AS x FROM registros WHERE persona_id = ${p.id} AND fecha = ${dia} AND borrado IS NULL AND origen IN ('manual', 'ia') LIMIT 1`));
     const aviso: Aviso = {
       titulo: 'Patty',
-      cuerpo: traducir(i, '{apodo}, ¿cómo te sentiste hoy?', { apodo }),
-      datos: { tipo: 'encuesta', persona_id: String(p.id), cara: 'espera' },
+      cuerpo: contarDia
+        ? traducir(i, '{apodo}, ¿me contás tu día? Desde que te levantaste: qué comiste, qué hiciste y cómo te sentiste.', { apodo })
+        : traducir(i, '{apodo}, ¿cómo te sentiste hoy?', { apodo }),
+      datos: { tipo: 'encuesta', persona_id: String(p.id), cara: 'espera', ...(contarDia ? { contar: 'dia' } : {}) },
       etiqueta: `encuesta|${p.id}`,
       acciones: [boton(muyBien), boton(bien), boton(mal, traducir(i, 'Anotado: mal 😕 ¿Qué te pasó? Tocá para contarme.'))],
     };

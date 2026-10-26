@@ -14,6 +14,20 @@ describe('la cara de la mascota', () => {
     expect(caraSegun(null, '2026-10-24', null, mediodia)).toBe('triste');
   });
 
+  it('a la mañana (hasta las 10), si anotó hace poco, recién levantada en vez de esperando', () => {
+    expect(caraSegun('2026-10-25', '2026-10-26', null, a(8, 0))).toBe('manana');
+    expect(caraSegun('2026-10-25', '2026-10-26', null, a(9, 59))).toBe('manana');
+    expect(caraSegun('2026-10-25', '2026-10-26', null, a(10, 0))).toBe('espera');
+    expect(caraSegun('2026-10-26', '2026-10-26', null, a(8, 0))).toBe('feliz');
+    expect(caraSegun('2026-10-20', '2026-10-26', null, a(8, 0))).toBe('triste'); // hace días: triste igual
+  });
+
+  it('a quien cuenta todo a la noche no lo espera durante el día si ayer contó', () => {
+    expect(caraSegun('2026-10-25', '2026-10-26', null, a(16, 0), true)).toBe('feliz');
+    expect(caraSegun('2026-10-24', '2026-10-26', null, a(16, 0), true)).toBe('espera');
+    expect(caraSegun('2026-10-25', '2026-10-26', null, a(16, 0), false)).toBe('espera');
+  });
+
   it('tiene sueño desde la hora de dormir hasta las 6', () => {
     expect(esDeNoche(null, a(23, 30))).toBe(true);
     expect(esDeNoche(null, a(22, 0))).toBe(false);
@@ -25,8 +39,8 @@ describe('la cara de la mascota', () => {
   });
 
   it('dibuja un SVG distinto para cada cara', () => {
-    const caras = new Set((['feliz', 'espera', 'triste', 'enojada', 'dormida'] as const).map((c) => svgMascota(c)));
-    expect(caras.size).toBe(5);
+    const caras = new Set((['feliz', 'espera', 'triste', 'enojada', 'dormida', 'manana'] as const).map((c) => svgMascota(c)));
+    expect(caras.size).toBe(6);
     expect(svgMascota('feliz', { lado: 48 })).toMatch(/^<svg [^>]*width="48"/);
   });
 });

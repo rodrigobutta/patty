@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
+import { avisarAnotado, olvidarDeNoche } from '../mascota/cara';
 import { climaActivado, ponerClima, ubicacion } from '../lib/clima';
 import { esIOS, instalada, instalarApp } from '../lib/instalar';
 import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
@@ -62,9 +63,26 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const [recordatorios, setRecordatorios] = useState(recordatoriosActivos());
   // Se guarda en la cuenta (lo manda el servidor), no en el teléfono.
   const [sinAnotar, setSinAnotar] = useState<boolean | null>(null);
+  // Si cuenta todo a la noche: null = que Patty se dé cuenta sola (`deNocheVisto` es lo que ve en cómo anota).
+  const [deNoche, setDeNoche] = useState<{ elegido: boolean | null; visto: boolean } | null>(null);
   useEffect(() => {
-    api<{ avisar_sin_anotar: boolean }>('GET', '/api/usuarios/yo/preferencias').then((r) => setSinAnotar(r.avisar_sin_anotar)).catch(() => setSinAnotar(true));
+    api<{ avisar_sin_anotar: boolean; cuenta_de_noche: boolean | null; de_noche: boolean }>('GET', '/api/usuarios/yo/preferencias')
+      .then((r) => {
+        setSinAnotar(r.avisar_sin_anotar);
+        setDeNoche({ elegido: r.cuenta_de_noche, visto: r.de_noche });
+      })
+      .catch(() => setSinAnotar(true));
   }, []);
+  const cambiarDeNoche = async (elegido: boolean | null) => {
+    try {
+      const r = await api<{ cuenta_de_noche: boolean | null; de_noche: boolean }>('PUT', '/api/usuarios/yo/preferencias', { cuenta_de_noche: elegido });
+      setDeNoche({ elegido: r.cuenta_de_noche, visto: r.de_noche });
+      olvidarDeNoche();
+      avisarAnotado();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
   const cambiarSinAnotar = async (si: boolean) => {
     setSinAnotar(si);
     try {
@@ -158,6 +176,17 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         </label>
         <p className="suave chico">{t('Si pasa más de una semana sin anotar, el aviso llega una vez por semana.')}</p>
       </div>
+      {deNoche ? (
+        <div className="tarjeta">
+          <h3>{t('🌙 Cuento todo a la noche')}</h3>
+          <p className="suave chico">{t('Si preferís no anotar nada durante el día y contarle todo junto a Patty a la noche: el búho no te espera durante el día y a la noche te invita a contar tu día.')}</p>
+          <select value={deNoche.elegido === null ? 'auto' : deNoche.elegido ? 'si' : 'no'} onChange={(e) => void cambiarDeNoche(e.target.value === 'auto' ? null : e.target.value === 'si')}>
+            <option value="auto">{deNoche.elegido === null && deNoche.visto ? t('Que Patty se dé cuenta (ahora: sí)') : t('Que Patty se dé cuenta')}</option>
+            <option value="si">{t('Sí, cuento todo a la noche')}</option>
+            <option value="no">{t('No, voy anotando durante el día')}</option>
+          </select>
+        </div>
+      ) : null}
       <div className="tarjeta">
         <h3>{t('💊 Recordatorios de remedios')}</h3>
         <label className="opcion">
