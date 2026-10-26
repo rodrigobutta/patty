@@ -922,3 +922,6 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .pista-pesada { color: var(--ambar); font-weight: 600; }
 .botones-como { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .dia .tarjeta.viajes { background: color-mix(in srgb, var(--acento) 8%, var(--panel)); border-color: color-mix(in srgb, var(--acento) 22%, var(--borde)); }
+/* En las pantallas de Más, el título con la flecha para volver queda fijo arriba al hacer scroll. */
+.cabeza-sub { position: sticky; top: var(--alto-barra, 56px); z-index: 4; margin: -12px -16px 16px; padding: 10px 16px;
+  background: color-mix(in srgb, var(--fondo) 90%, transparent); backdrop-filter: blur(10px); }

@@ -134,8 +134,9 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
               </button>
             ))}
           </div>
-          <form className="otro-puntual" onSubmit={(e) => { e.preventDefault(); const n = nuevaGente.trim(); if (n && !conQuien.includes(n)) setConQuien([...conQuien, n]); setNuevaGente(''); }}>
-            <input value={nuevaGente} onChange={(e) => setNuevaGente(e.target.value)} placeholder={gente.length ? t('¿Alguien más?') : t('ej: Mamá, Juan, amigos')} />
+          <form className="otro-puntual" onSubmit={(e) => { e.preventDefault(); const escrito = nuevaGente.trim(); const n = gente.find((x) => x.nombre.toLowerCase() === escrito.toLowerCase())?.nombre ?? escrito; if (n && !conQuien.includes(n)) setConQuien([...conQuien, n]); setNuevaGente(''); }}>
+            <input value={nuevaGente} onChange={(e) => setNuevaGente(e.target.value)} placeholder={gente.length ? t('¿Alguien más?') : t('ej: Mamá, Juan, amigos')} list="gente-sugerida" />
+            <datalist id="gente-sugerida">{gente.map((x) => <option key={x.id} value={x.nombre} />)}</datalist>
             <button className="btn" disabled={!nuevaGente.trim()}>{t('Sumar')}</button>
           </form>
           {conQuien.filter((n) => !gente.some((a) => a.nombre === n)).length ? (
