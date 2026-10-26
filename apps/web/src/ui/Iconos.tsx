@@ -149,3 +149,14 @@ export function IconoBuscar({ tamano = 18 }: { tamano?: number }) {
     </svg>
   );
 }
+
+/** La galería (elegir una foto que ya está en el teléfono). */
+export function IconoGaleria({ tamano = 24 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="3.5" />
+      <circle cx="9" cy="9.5" r="1.6" />
+      <path d="M4 17l4.5-4.5 3.5 3.5 2.5-2.5 5.5 5" />
+    </svg>
+  );
+}

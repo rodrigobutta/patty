@@ -33,20 +33,17 @@ function achicar(url: string): Promise<Foto> {
   });
 }
 
-/** Devuelve la foto, o null si se canceló. */
-export async function sacarFoto(): Promise<Foto | null> {
+/** Saca una foto con la cámara o elige una de la galería. Devuelve la foto, o null si se canceló. */
+export async function sacarFoto(origen: 'camara' | 'galeria'): Promise<Foto | null> {
   if (esNativa()) {
     try {
       const f = await Camera.getPhoto({
         resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt,
+        // La elección entre cámara y galería la hace Patty con sus botones (ver Cargar): la del sistema es chiquita.
+        source: origen === 'camara' ? CameraSource.Camera : CameraSource.Photos,
         quality: 75,
         width: LADO,
         correctOrientation: true,
-        promptLabelHeader: t('Foto para Patty'),
-        promptLabelPicture: t('Sacar una foto'),
-        promptLabelPhoto: t('Elegir de la galería'),
-        promptLabelCancel: t('Cancelar'),
       });
       return f.dataUrl ? achicar(f.dataUrl) : null;
     } catch (e) {
@@ -57,7 +54,7 @@ export async function sacarFoto(): Promise<Foto | null> {
   }
   return new Promise((ok, mal) => {
     const input = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*' });
-    input.setAttribute('capture', 'environment');
+    if (origen === 'camara') input.setAttribute('capture', 'environment');
     input.onchange = () => {
       const archivo = input.files?.[0];
       if (!archivo) return ok(null);

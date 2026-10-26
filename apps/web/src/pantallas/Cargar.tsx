@@ -1,5 +1,6 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
@@ -13,7 +14,7 @@ import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
 import { DondeComida, etiquetaDonde } from '../ui/DondeComida';
-import { IconoCamara, IconoMicrofono } from '../ui/Iconos';
+import { IconoCamara, IconoGaleria, IconoMicrofono } from '../ui/Iconos';
 import { OndaVoz } from '../ui/OndaVoz';
 
 interface Elegido {
@@ -280,10 +281,17 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
   /** La foto que se mandó (se manda de nuevo con cada aclaración). */
   const [foto, setFoto] = useState<Foto | null>(null);
   const fotoRef = useRef<Foto | null>(null);
-  const tomarFoto = async () => {
+  /** Primero se elige de dónde (cámara o galería), con botones grandes; después se saca o se elige. */
+  const [eligiendoFoto, setEligiendoFoto] = useState(false);
+  const tomarFoto = () => {
+    setError('');
+    setEligiendoFoto(true);
+  };
+  const fotoDe = async (origen: 'camara' | 'galeria') => {
+    setEligiendoFoto(false);
     setError('');
     try {
-      const f = await sacarFoto();
+      const f = await sacarFoto(origen);
       if (!f) return;
       fotoRef.current = f;
       setFoto(f);
@@ -514,6 +522,24 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
       ) : null}
       {entrada(false)}
       {error ? <p className="neg">{error}</p> : null}
+      {eligiendoFoto
+        ? createPortal(
+            <>
+              <div className="velo" onClick={() => setEligiendoFoto(false)} />
+              <div className="hoja modal-cuanto elegir-foto" role="dialog" aria-label={t('Foto para Patty')}>
+                <p className="pregunta-cuanto">{t('Foto para Patty')}</p>
+                <button className="btn primario grande-foto" onClick={() => void fotoDe('camara')}>
+                  <IconoCamara tamano={28} /> {t('Sacar una foto')}
+                </button>
+                <button className="btn grande-foto" onClick={() => void fotoDe('galeria')}>
+                  <IconoGaleria tamano={28} /> {t('Elegir de la galería')}
+                </button>
+                <button className="enlace chico cancelar-cuanto" onClick={() => setEligiendoFoto(false)}>{t('Cancelar')}</button>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
