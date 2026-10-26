@@ -20,6 +20,9 @@ import { Cargar, ElegirFoto } from './Cargar';
 import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
 import { GloboDelBuho } from './GloboDelBuho';
+import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, WidgetApagado, type Fuente } from './FuenteApagada';
+import { esNativa } from '../lib/nativo';
+import { hayDatosDelTelefono } from '../lib/telefono';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
 import { CompaniaSugerida } from './CompaniaSugerida';
@@ -107,6 +110,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.automaticos ?? []);
   /** La fuente de datos automáticos que está abierta (se ve todo lo que llegó de ella). */
   const [abierto, setAbierto] = useState<string | null>(null);
+  // En la app del teléfono, en el día propio: las fuentes cuyo permiso falta van como widgets grises para activarlas.
+  const conPermisos = esNativa() && Boolean(persona.propia);
+  const [estadoPermisos, mirarPermisos] = useEstadoPermisos(conPermisos);
+  const [activando, setActivando] = useState<Fuente | null>(null);
   /** La hoja de anotar abierta: normal, o directo en "Contarlo" (el botón grande de hablarle). */
   const [cargando, setCargando] = useState<false | 'normal' | 'contar' | 'foto'>(false);
   // La cámara del Día: primero cámara o galería; con la foto ya sacada se abre la carga (si se cancela, nada).
@@ -325,6 +332,14 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       : undefined;
   const contestadoHacePoco = Boolean(ultimoSentir && Date.now() - new Date(ultimoSentir.inicio).getTime() < HORAS_SIN_PREGUNTAR * 3600000);
 
+  const tiposConDatos = new Set(automaticos.map((a) => a.tipo_fuente));
+  const apagadas: Fuente[] =
+    conPermisos && fecha === hoy
+      ? (['ubicacion', 'telefono', 'salud'] as const).filter(
+          (f) => fuenteApagada(f, estadoPermisos) && (f !== 'telefono' || hayDatosDelTelefono()) && !TIPOS_DE[f].some((x) => tiposConDatos.has(x)),
+        )
+      : [];
+
   const tipoDe = (r: Registro) => categorias.find((c) => c.id === r.categoria_id);
 
   return (
@@ -439,7 +454,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       )}
       {/* Lo que llegó solo (teléfono, ubicación, clima, reloj) va en widgets de a dos o tres por fila, distintos de lo
           anotado; tocando uno se ve el detalle a lo ancho. */}
-      {automaticos.length ? (
+      {automaticos.length || apagadas.length ? (
         <div className="widgets-auto">
           {agruparAutomaticos(automaticos).map((g) => (
             <Fragment key={g.fuente}>
@@ -463,10 +478,17 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
               ) : null}
             </Fragment>
           ))}
+          {apagadas.map((f) => <WidgetApagado key={f} fuente={f} alTocar={() => setActivando(f)} />)}
         </div>
       ) : null}
       </div>
       {/* Las hojas van fuera del contenido animado: si no, quedan atrás de la lista mientras se anima. */}
+      {activando ? (
+        <>
+          <div className="velo" onClick={() => setActivando(null)} />
+          <HojaActivar fuente={activando} persona={persona} alCerrar={() => setActivando(null)} alActivar={mirarPermisos} />
+        </>
+      ) : null}
       {editando ? (
         <>
           <div className="velo" onClick={() => setEditando(null)} />

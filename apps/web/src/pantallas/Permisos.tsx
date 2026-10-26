@@ -57,6 +57,61 @@ export function alPedirGuia(f: () => void): () => void {
   return () => window.removeEventListener(EVENTO_GUIA, f);
 }
 
+/**
+ * Pide un permiso y prende lo que va con él. Devuelve una nota si falta algo (un paso en los ajustes del teléfono) o
+ * si no se pudo. Lo usan esta pantalla y los widgets grises del Día.
+ */
+export async function activarPermiso(paso: Paso, persona: Persona): Promise<string | void> {
+  if (paso === 'avisos') {
+    if (!(await permisoAvisos())) return t('El teléfono no lo dejó: activalo en Ajustes → Notificaciones → Patty.');
+    await programarRecordatorios();
+    return;
+  }
+  if (paso === 'ubicacion') {
+    const p = await BackgroundGeolocation.requestPermissions().catch(() => null);
+    ponerClima(true);
+    ponerSeguimiento(true);
+    const fondo = p?.backgroundLocation === 'granted' || (p?.backgroundLocation as string) === 'always';
+    if (!fondo) {
+      return plataforma() === 'ios'
+        ? t('Para contar viajes con la app cerrada, en Ajustes → Patty → Ubicación elegí «Siempre».')
+        : t('Para contar viajes con la app cerrada, en los ajustes elegí «Permitir todo el tiempo».');
+    }
+    return;
+  }
+  if (paso === 'telefono') {
+    ponerDatos(true);
+    const p = await Telefono.pedirPermisoLlamadas().catch(() => null);
+    if (p?.uso !== 'granted') {
+      // El acceso al uso de apps se da en una pantalla de Ajustes: se abre y al volver se mira de nuevo.
+      await Telefono.pedirPermisoUso();
+      return t('En la lista que se abre, buscá Patty y activá «Permitir acceso al uso». Después volvé acá.');
+    }
+    void sincronizar(persona.id).catch(() => {});
+    return;
+  }
+  ponerSalud(true);
+  const r = await pedirPermisoSalud();
+  if (!r.disponible) {
+    return plataforma() === 'android'
+      ? t('Este teléfono no tiene Health Connect. Se instala desde Play Store (es de Google) y después volvés acá.')
+      : t('Este teléfono no tiene Salud disponible.');
+  }
+  if (!r.permitidos.length) return t('No se dio permiso a ningún dato. Podés volver a intentarlo cuando quieras.');
+  void sincronizarSalud(persona.id).catch(() => {});
+  return plataforma() === 'android' ? t('Listo. Si usás un reloj, revisá que su app comparta los datos con Health Connect.') : undefined;
+}
+
+/** Si el permiso ya está dado del todo (la ubicación, "siempre"; el teléfono, uso y llamadas). */
+export function permisoListo(paso: Paso, e: EstadoTelefono | null): boolean {
+  const p = e?.permisos;
+  if (!p) return false;
+  if (paso === 'avisos') return p.avisos === 'si';
+  if (paso === 'ubicacion') return p.ubicacion === 'siempre';
+  if (paso === 'telefono') return p.uso_apps === 'si' && p.llamadas === 'si';
+  return typeof p.salud === 'number' && p.salud > 0;
+}
+
 export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { persona: Persona; bienvenida?: boolean; guia?: Paso; alTerminar(): void }) {
   const [abierta, setAbierta] = useState<Paso | null>(guia ?? null);
   const [marca, setMarca] = useState(marcaDelTelefono());
@@ -87,50 +142,10 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
     }
   };
 
-  const avisos = () =>
-    hacer('avisos', async () => {
-      if (!(await permisoAvisos())) return t('El teléfono no lo dejó: activalo en Ajustes → Notificaciones → Patty.');
-      await programarRecordatorios();
-    });
-
-  const ubicacion = () =>
-    hacer('ubicacion', async () => {
-      const p = await BackgroundGeolocation.requestPermissions().catch(() => null);
-      ponerClima(true);
-      ponerSeguimiento(true);
-      const fondo = p?.backgroundLocation === 'granted' || (p?.backgroundLocation as string) === 'always';
-      if (!fondo) {
-        return plataforma() === 'ios'
-          ? t('Para contar viajes con la app cerrada, en Ajustes → Patty → Ubicación elegí «Siempre».')
-          : t('Para contar viajes con la app cerrada, en los ajustes elegí «Permitir todo el tiempo».');
-      }
-    });
-
-  const telefono = () =>
-    hacer('telefono', async () => {
-      ponerDatos(true);
-      const p = await Telefono.pedirPermisoLlamadas().catch(() => null);
-      if (p?.uso !== 'granted') {
-        // El acceso al uso de apps se da en una pantalla de Ajustes: se abre y al volver se mira de nuevo.
-        await Telefono.pedirPermisoUso();
-        return t('En la lista que se abre, buscá Patty y activá «Permitir acceso al uso». Después volvé acá.');
-      }
-      void sincronizar(persona.id).catch(() => {});
-    });
-
-  const salud = () =>
-    hacer('salud', async () => {
-      ponerSalud(true);
-      const r = await pedirPermisoSalud();
-      if (!r.disponible) {
-        return plataforma() === 'android'
-          ? t('Este teléfono no tiene Health Connect. Se instala desde Play Store (es de Google) y después volvés acá.')
-          : t('Este teléfono no tiene Salud disponible.');
-      }
-      if (!r.permitidos.length) return t('No se dio permiso a ningún dato. Podés volver a intentarlo cuando quieras.');
-      void sincronizarSalud(persona.id).catch(() => {});
-      return plataforma() === 'android' ? t('Listo. Si usás un reloj, revisá que su app comparta los datos con Health Connect.') : undefined;
-    });
+  const avisos = () => hacer('avisos', () => activarPermiso('avisos', persona));
+  const ubicacion = () => hacer('ubicacion', () => activarPermiso('ubicacion', persona));
+  const telefono = () => hacer('telefono', () => activarPermiso('telefono', persona));
+  const salud = () => hacer('salud', () => activarPermiso('salud', persona));
 
   const terminar = () => {
     yaOfrecido();
