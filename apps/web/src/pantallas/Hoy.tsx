@@ -437,34 +437,32 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           })}
         </ul>
       )}
+      {/* Lo que llegó solo (teléfono, ubicación, clima, reloj) va en widgets de a dos o tres por fila, distintos de lo
+          anotado; tocando uno se ve el detalle a lo ancho. */}
       {automaticos.length ? (
-        <div className="tarjeta automatico">
-          <h3 className="chico suave">{t('Llegó solo')}</h3>
-          <ul className="lista">
-            {agruparAutomaticos(automaticos).map((g) => (
-              <li key={g.fuente} className="grupo-auto">
-                <button className="renglon-auto" onClick={() => setAbierto(abierto === g.fuente ? null : g.fuente)} aria-expanded={abierto === g.fuente}>
+        <div className="widgets-auto">
+          {agruparAutomaticos(automaticos).map((g) => (
+            <Fragment key={g.fuente}>
+              <button className={`widget-auto${abierto === g.fuente ? ' abierto' : ''}`} onClick={() => setAbierto(abierto === g.fuente ? null : g.fuente)} aria-expanded={abierto === g.fuente}>
+                <span className="widget-cabeza">
                   <span className="icono">{ICONOS_FUENTE[g.tipo] ?? '📊'}</span>
-                  <span className="que">
-                    {t(g.fuente)}
-                    <span className="suave chico resumen-auto">{resumenDelGrupo(g)}</span>
-                  </span>
-                  <span className="suave" aria-hidden>{abierto === g.fuente ? '▴' : '▾'}</span>
-                </button>
-                {abierto === g.fuente ? (
-                  <ul className="detalle-auto">
-                    {g.lineas.map((l) => (
-                      <li key={l.concepto}>
-                        <span className="icono">{categorias.find((c) => c.id === l.categoria_id)?.icono}</span>
-                        <span className="que">{t(l.concepto)}</span>
-                        <span className="valor-chip">{l.valor}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+                  <span className="suave chico">{t(g.fuente)}</span>
+                </span>
+                <span className="widget-resumen">{resumenDelGrupo(g)}</span>
+              </button>
+              {abierto === g.fuente ? (
+                <ul className="detalle-auto widget-detalle">
+                  {g.lineas.map((l) => (
+                    <li key={l.concepto}>
+                      <span className="icono">{categorias.find((c) => c.id === l.categoria_id)?.icono}</span>
+                      <span className="que">{t(l.concepto)}</span>
+                      <span className="valor-chip">{l.valor}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </Fragment>
+          ))}
         </div>
       ) : null}
       </div>
