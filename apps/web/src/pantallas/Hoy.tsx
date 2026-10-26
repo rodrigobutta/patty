@@ -20,6 +20,7 @@ import { Cargar, ElegirFoto } from './Cargar';
 import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
+import { Plegable } from '../ui/Plegable';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
 import { CompaniaSugerida } from './CompaniaSugerida';
@@ -313,6 +314,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     if (esMalo(e)) return setSintiendo({ momento, estado: e });
     try {
       await guardarSentir({ persona, categorias, momento, estado: e, fecha });
+      setSentirAbierto(false);
       festejar(t('¡Qué bueno! Anotado: {que}', { que: t(e.nombre).toLowerCase() }));
       void traer();
       avisarAnotado();
@@ -322,6 +324,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   };
 
   // Tocar la mascota de arriba abre "¿Cómo te sentís?" cuando sea.
+  /** El bloque de "cómo te sentís" abierto a mano (tocando el botón chico) aunque ya se haya contestado hace poco. */
+  const [sentirAbierto, setSentirAbierto] = useState(false);
   useAlPedirSentir(
     useCallback(() => {
       setFecha(hoyEn(persona.zona_horaria));
@@ -329,9 +333,14 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     }, [persona.zona_horaria]),
   );
 
-  // Si contestó "cómo me siento" hace menos de 3 horas, la pregunta no aparece (vuelve cada tanto, o tocando la mascota).
-  const ultimoSentir = momento === 'ahora' ? registros?.filter((r) => r.concepto === COMO_ME_SIENTO).at(-1) : undefined;
-  const contestadoHacePoco = ultimoSentir && Date.now() - new Date(ultimoSentir.inicio).getTime() < HORAS_SIN_PREGUNTAR * 3600000;
+  // Si contó cómo se siente hace menos de 3 horas (con las caritas o con algo de la lista: sueño, frío, con gente…), el
+  // bloque se pliega en un botón chico (vuelve cada tanto, tocando el botón o la mascota).
+  const clavesSentir = new Set(['animo', 'sintoma', 'gente']);
+  const ultimoSentir =
+    momento === 'ahora'
+      ? registros?.filter((r) => r.origen === 'manual' && clavesSentir.has(categorias.find((c) => c.id === r.categoria_id)?.clave ?? '')).at(-1)
+      : undefined;
+  const contestadoHacePoco = Boolean(ultimoSentir && Date.now() - new Date(ultimoSentir.inicio).getTime() < HORAS_SIN_PREGUNTAR * 3600000);
 
   const tipoDe = (r: Registro) => categorias.find((c) => c.id === r.categoria_id);
 
@@ -356,17 +365,21 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {/* "¿Cómo te sentís?" lo contesta cada uno: no se muestra en el día de alguien que se supervisa. */}
       {/* Hasta saber si ya contestó hace poco no se muestra nada: si no, las caritas aparecen y se van. */}
       {fecha === hoy && !persona.supervisada && registros !== null ? (
-        contestadoHacePoco ? (
-          <button className="algo-puntual" onClick={() => setSintiendo({ momento: 'ahora', estado: null })}>
-            {t('😴 ¿Algo puntual? Con sueño, con hambre, con energía…')}
-          </button>
-        ) : (
+        <Plegable
+          plegado={contestadoHacePoco && !sentirAbierto}
+          boton={
+            <button className="algo-puntual" onClick={() => setSentirAbierto(true)}>
+              <span>{t('😴 ¿Algo puntual? Con sueño, con hambre, con energía…')}</span>
+              <span className="flechita" aria-hidden="true">▾</span>
+            </button>
+          }
+        >
           <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
             <h3>{apodo ? (momento === 'dia' ? t('{apodo}, ¿cómo te sentiste hoy?', { apodo }) : t('{apodo}, ¿cómo te sentís ahora?', { apodo })) : momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís ahora?')}</h3>
             <Caritas elegir={(e) => void sentir(e)} />
-            {momento === 'ahora' ? <Puntuales persona={persona} alGuardar={() => { void traer(); avisarAnotado(); }} /> : null}
+            {momento === 'ahora' ? <Puntuales persona={persona} alGuardar={() => { setSentirAbierto(false); void traer(); avisarAnotado(); }} /> : null}
           </div>
-        )
+        </Plegable>
       ) : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
       {/* A la noche, si todavía no se anotó nada a mano: contar el día entero de una vez (Patty lo desglosa por horas). */}
@@ -505,7 +518,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             estado={sintiendo.estado}
             fecha={fecha}
             alCerrar={() => setSintiendo(null)}
-            alGuardar={() => { setSintiendo(null); void traer(); avisarAnotado(); }}
+            alGuardar={() => { setSintiendo(null); setSentirAbierto(false); void traer(); avisarAnotado(); }}
           />
         </>
       ) : null}

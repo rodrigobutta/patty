@@ -260,8 +260,28 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .cuanto-puntual > .suave { margin: 8px 0 0; text-align: center; }
 @keyframes aparece-cuanto { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
 .cuanto-puntual .btn { flex: 1; min-width: 0; padding-left: 8px; padding-right: 8px; min-height: 48px; font-size: 16px; }
-.algo-puntual { display: block; width: 100%; margin: 0 0 12px; padding: 10px 14px; text-align: left; border-radius: 14px;
+.algo-puntual { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; margin: 0 0 12px; padding: 10px 14px; text-align: left; border-radius: 14px;
   border: 1px dashed var(--borde); background: none; color: var(--suave); font: inherit; font-size: 14px; cursor: pointer; }
+.algo-puntual span:first-child { flex: 1; }
+.algo-puntual .flechita { color: var(--acento); font-size: 13px; }
+
+/* El bloque de "¿cómo te sentís?" se pliega en el botón chico (y vuelve): ver ui/Plegable.tsx. */
+.plegable { transition: height 0.45s cubic-bezier(.4, 0, .2, 1); }
+.plegable.plegando, .plegable.desplegando { overflow: hidden; }
+.plegable.plegando .plegable-bloque { animation: se-pliega 0.45s cubic-bezier(.4, 0, .2, 1) forwards; transform-origin: top center; }
+.plegable.desplegando .plegable-bloque { animation: se-pliega 0.45s cubic-bezier(.4, 0, .2, 1) reverse; transform-origin: top center; }
+@keyframes se-pliega {
+  0% { opacity: 1; transform: none; filter: none; }
+  60% { opacity: 0.25; }
+  100% { opacity: 0; transform: scale(0.94) translateY(-6px); filter: blur(2px); }
+}
+.plegable.recien .algo-puntual { animation: aparece-boton 0.9s cubic-bezier(.2, 1.3, .4, 1); border-style: solid; border-color: var(--acento); }
+@keyframes aparece-boton {
+  0% { opacity: 0; transform: scale(0.92); box-shadow: 0 0 0 0 color-mix(in srgb, var(--acento) 45%, transparent); }
+  35% { opacity: 1; transform: scale(1.02); }
+  100% { transform: none; box-shadow: 0 0 0 10px transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .plegable, .plegable * { animation: none !important; transition: none !important; } }
 .dia-propuesta { display: block; font-size: 11px; font-weight: 700; color: var(--acento); }
 
 /* ---------- Día: más cuidado ---------- */
