@@ -171,6 +171,29 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     [persona.zona_horaria],
   );
   const [vuelta, setVuelta] = useState(0);
+  // El encabezado del día queda fijo arriba y se achica con el scroll, de a poco (como los títulos grandes del
+  // iPhone): `--k` va de 0 (arriba de todo) a 1 (después de 70 px de scroll).
+  const navdia = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let cuadro = 0;
+    const medir = () => {
+      cuadro = 0;
+      const barra = document.querySelector<HTMLElement>('.barra');
+      if (barra) document.documentElement.style.setProperty('--alto-barra', `${barra.offsetHeight}px`);
+      navdia.current?.style.setProperty('--k', String(Math.min(1, Math.max(0, window.scrollY / 70))));
+    };
+    const alMover = () => {
+      if (!cuadro) cuadro = requestAnimationFrame(medir);
+    };
+    medir();
+    window.addEventListener('scroll', alMover, { passive: true });
+    window.addEventListener('resize', alMover);
+    return () => {
+      cancelAnimationFrame(cuadro);
+      window.removeEventListener('scroll', alMover);
+      window.removeEventListener('resize', alMover);
+    };
+  }, []);
 
   /** Borra (y sus partes, si es la tele). Devuelve false si al final no se quiso borrar. */
   const borrar = async (r: Registro): Promise<boolean> => {
@@ -271,7 +294,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
 
   return (
     <section className="dia" onTouchStart={empezarToque} onTouchEnd={terminarToque}>
-      <div className="navdia">
+      <div className="navdia" ref={navdia}>
         <button className="btn-icono" onClick={() => irA(-1)} aria-label={t('Día anterior')}>‹</button>
         <div className="titulo-dia" key={fecha}>
           <h2>{nombreDia(fecha, persona.zona_horaria)}</h2>
