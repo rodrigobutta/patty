@@ -21,6 +21,7 @@ import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { Plegable } from '../ui/Plegable';
+import { GloboDelBuho } from './GloboDelBuho';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
 import { CompaniaSugerida } from './CompaniaSugerida';
@@ -367,13 +368,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {fecha === hoy && !persona.supervisada && registros !== null ? (
         <Plegable
           plegado={contestadoHacePoco && !sentirAbierto}
-          boton={
-            // Plegado: el búho "dice" en un globito que le cuentes cómo te sentís; tocándolo vuelve el bloque entero.
-            <button className="globo-sentir" onClick={() => setSentirAbierto(true)}>
-              <Mascota cara={cara === 'dormida' || !cara ? 'feliz' : cara} tamano={44} />
-              <span className="globo">{t('Contame cómo te sentís')}</span>
-            </button>
-          }
+          boton={null}
+          alto={0}
         >
           <div className={`tarjeta como-te-sentis${momento === 'dia' ? ' encuesta' : ''}`}>
             <h3>{apodo ? (momento === 'dia' ? t('{apodo}, ¿cómo te sentiste hoy?', { apodo }) : t('{apodo}, ¿cómo te sentís ahora?', { apodo })) : momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís ahora?')}</h3>
@@ -381,6 +377,15 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             {momento === 'ahora' ? <Puntuales persona={persona} alGuardar={() => { setSentirAbierto(false); void traer(); avisarAnotado(); }} /> : null}
           </div>
         </Plegable>
+      ) : null}
+      {fecha === hoy && !persona.supervisada && registros !== null ? (
+        <GloboDelBuho
+          visible={contestadoHacePoco && !sentirAbierto}
+          alTocar={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setSentirAbierto(true);
+          }}
+        />
       ) : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
       {/* A la noche, si todavía no se anotó nada a mano: contar el día entero de una vez (Patty lo desglosa por horas). */}

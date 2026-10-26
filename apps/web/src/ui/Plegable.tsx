@@ -5,7 +5,8 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 const DURACION = 450;
 
-export function Plegable({ plegado, boton, children, className }: { plegado: boolean; boton: ReactNode; children: ReactNode; className?: string }) {
+/** `alto`: el del botón en que se pliega (0: desaparece, cuando lo que lo reemplaza está en otro lado). */
+export function Plegable({ plegado, boton, children, className, alto = 48 }: { plegado: boolean; boton: ReactNode; children: ReactNode; className?: string; alto?: number }) {
   const caja = useRef<HTMLDivElement>(null);
   /** Lo que se muestra: el bloque, o el botón; durante la animación, el que se va. */
   const [muestra, setMuestra] = useState<'bloque' | 'boton'>(plegado ? 'boton' : 'bloque');
@@ -27,7 +28,7 @@ export function Plegable({ plegado, boton, children, className }: { plegado: boo
       el.style.height = `${el.scrollHeight}px`;
       void el.offsetHeight;
       setFase('plegando');
-      el.style.height = '48px';
+      el.style.height = `${alto}px`;
       fin = window.setTimeout(() => {
         setMuestra('boton');
         setFase('recien');
@@ -48,7 +49,7 @@ export function Plegable({ plegado, boton, children, className }: { plegado: boo
       }, DURACION);
     }
     return () => window.clearTimeout(fin);
-  }, [plegado]);
+  }, [plegado, alto]);
 
   return (
     <div ref={caja} className={`plegable ${fase} ${className ?? ''}`}>
