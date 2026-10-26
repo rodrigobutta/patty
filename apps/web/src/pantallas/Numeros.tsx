@@ -6,6 +6,7 @@ import { api } from '../api';
 import { useEstado } from '../estado';
 import { duracion } from '../lib/automatico';
 import { sumarDias } from '../lib/fechas';
+import { MapaLugares } from './MapaLugares';
 import { idioma, locale, t } from '../lib/idioma';
 
 const hora = (m: number | null) => (m === null ? '—' : `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m % 60)).padStart(2, '0')}`);
@@ -51,6 +52,8 @@ export function Numeros({ persona, alElegir }: { persona: Persona; alElegir(conc
         </div>
         <p className="suave chico eje"><span>{t('hace {n} días', { n: e.dias })}</span><span>{t('hoy')}</span></p>
       </div>
+
+      <MapaLugares persona={persona} dias={dias} />
 
       {top.length ? (
         <div className="tarjeta">

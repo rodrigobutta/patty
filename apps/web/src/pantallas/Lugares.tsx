@@ -9,6 +9,7 @@ import { ubicacion } from '../lib/clima';
 import { esNativa, plataforma } from '../lib/nativo';
 import { t } from '../lib/idioma';
 import { mandarPunto, ponerLugares, ponerSeguimiento, seguimientoActivado, seguirNativo } from '../lib/ubicacion';
+import { Mapa } from '../ui/Mapa';
 
 export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEscribir: boolean }) {
   const { avisar } = useEstado();
@@ -18,6 +19,8 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
   const [error, setError] = useState('');
   /** El lugar con nombre donde está ahora (si está en uno): ahí no tiene sentido ofrecer "Guardar dónde estoy". */
   const [aca, setAca] = useState<Lugar | null>(null);
+  /** El lugar cuyo mapita está abierto (tocando el nombre). */
+  const [viendo, setViendo] = useState<number | null>(null);
 
   const traer = useCallback(async () => {
     try {
@@ -127,12 +130,12 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
 
       <ul className="lista">
         {lugares.map((l) => (
-          <li key={l.id}>
+          <li key={l.id} className={viendo === l.id ? 'con-mapa' : ''}>
             <span className="icono">📍</span>
-            <span className="que">
+            <button className="que boton-lugar" onClick={() => setViendo(viendo === l.id ? null : l.id)} aria-expanded={viendo === l.id}>
               {l.nombre}
-              <span className="suave chico"> · {l.radio_m} m</span>
-            </span>
+              <span className="suave chico"> · {l.radio_m} m · {viendo === l.id ? t('ocultar') : t('🗺️ ver')}</span>
+            </button>
             {puedeEscribir ? (
               <>
                 <button className="btn-icono chico" onClick={() => renombrar(l)} aria-label={t('Renombrar {nombre}', { nombre: l.nombre })}>✏️</button>
@@ -140,6 +143,7 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
                 <button className="btn-icono chico" onClick={() => borrar(l)} aria-label={t('Borrar {nombre}', { nombre: l.nombre })}>🗑</button>
               </>
             ) : null}
+            {viendo === l.id ? <Mapa puntos={[{ lat: l.lat, lon: l.lon, radio: l.radio_m, etiqueta: l.nombre }]} alto={170} className="mapa-lugar" /> : null}
           </li>
         ))}
       </ul>

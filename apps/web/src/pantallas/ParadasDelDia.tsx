@@ -10,6 +10,7 @@ import { duracion } from '../lib/automatico';
 import { horaEn } from '../lib/fechas';
 import { t } from '../lib/idioma';
 import { ponerLugares } from '../lib/ubicacion';
+import { Mapa } from '../ui/Mapa';
 
 const CLAVE_DESCARTADAS = 'paradas-descartadas';
 const SUGERENCIAS = ['Casa de mis viejos', 'Trabajo', 'Casa de amigos', 'Gimnasio', 'Facultad', 'Club', 'Médico', 'Supermercado'];
@@ -29,6 +30,8 @@ export function ParadasDelDia({ persona, fecha, vuelta, alCambiar }: { persona: 
   const [nombre, setNombre] = useState('');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+  /** La parada cuyo mapita está abierto (se toca la dirección). */
+  const [viendo, setViendo] = useState<string | null>(null);
 
   const traer = useCallback(() => {
     api<ParadaSinNombre[]>('GET', `/api/ubicacion/paradas?persona=${persona.id}&fecha=${fecha}`)
@@ -77,17 +80,19 @@ export function ParadasDelDia({ persona, fecha, vuelta, alCambiar }: { persona: 
       <ul className="lista">
         {paradas.map((p) => (
           <li key={p.llegada} className="parada">
-            <span className="que">
+            <button className="que boton-parada" onClick={() => setViendo(viendo === p.llegada ? null : p.llegada)} aria-expanded={viendo === p.llegada}>
               <strong>{p.direccion ? t('Cerca de {dir}', { dir: p.direccion }) : t('En un lugar sin nombre')}</strong>
               <span className="suave chico renglon-sub">
                 {t('{desde} a {hasta} · {tiempo}', { desde: horaEn(p.llegada, persona.zona_horaria), hasta: horaEn(p.salida, persona.zona_horaria), tiempo: duracion(p.minutos) })}
                 {p.otros_dias ? ` · ${p.otros_dias === 1 ? t('y 1 día más este mes') : t('y {n} días más este mes', { n: p.otros_dias })}` : ''}
               </span>
-            </span>
+              <span className="chico ver-mapa">{viendo === p.llegada ? t('Ocultar el mapa') : t('🗺️ Ver en el mapa')}</span>
+            </button>
             <span className="botones-parada">
               <button className="btn chico primario" onClick={() => { setNombrando(p); setNombre(''); setError(''); }}>{t('¿Qué es?')}</button>
               <button className="enlace chico" onClick={() => descartar(p)}>{t('No importa')}</button>
             </span>
+            {viendo === p.llegada ? <Mapa puntos={[{ lat: p.lat, lon: p.lon, radio: 150 }]} alto={170} className="mapa-parada" /> : null}
           </li>
         ))}
       </ul>
@@ -101,7 +106,8 @@ export function ParadasDelDia({ persona, fecha, vuelta, alCambiar }: { persona: 
                   {nombrando.direccion ? `${nombrando.direccion} · ` : ''}
                   {t('estuviste {tiempo}', { tiempo: duracion(nombrando.minutos) })}
                 </p>
-                <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder={t('ej: casa de mi papá, la oficina')} maxLength={80} autoFocus />
+                <Mapa puntos={[{ lat: nombrando.lat, lon: nombrando.lon, radio: 150 }]} alto={150} />
+                <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder={t('ej: casa de mi papá, la oficina')} maxLength={80} />
                 <div className="chips envolver">
                   {SUGERENCIAS.map((s) => (
                     <button type="button" key={s} className={`chip${nombre === t(s) ? ' activa' : ''}`} onClick={() => setNombre(t(s))}>{t(s)}</button>

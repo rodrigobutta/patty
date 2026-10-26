@@ -197,6 +197,45 @@ export const rutasUbicacion = new Hono<Env>()
     };
     return c.json(res);
   })
+  .get('/frecuentes', async (c) => {
+    // ?persona=1&dias=90: para el mapa de Patrones. Los lugares con nombre con cuánto tiempo y cuántos días se estuvo
+    // ahí, y los lugares sin nombre donde se quedó un buen rato más de un día (juntando los que están cerca).
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const dias = Math.min(365, Math.max(7, Number(c.req.query('dias')) || 90));
+    const hoy = diaDePatty(new Date(), p.zona_horaria);
+    const conNombre = await filas<{ id: number; nombre: string; lat: number; lon: number; radio_m: number; minutos: number; dias: number }>(
+      c.var.db,
+      sql`SELECT l.id, c.nombre, l.lat, l.lon, l.radio_m, coalesce(sum(m.valor), 0)::float AS minutos, count(DISTINCT m.fecha)::int AS dias
+          FROM lugares l JOIN conceptos c ON c.id = l.concepto_id
+          LEFT JOIN mediciones m ON m.concepto_id = l.concepto_id AND m.persona_id = l.persona_id AND m.fecha > ${hoy}::date - ${dias}::int
+          WHERE l.persona_id = ${p.id} GROUP BY l.id, c.nombre ORDER BY 6 DESC`,
+    );
+    const ps = await filas<{ instante: string; lat: number; lon: number; fecha: string }>(
+      c.var.db,
+      sql`SELECT instante, lat, lon, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${p.id} AND fecha > ${hoy}::date - ${dias}::int`,
+    );
+    const ls = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
+    const grupos: Array<{ lat: number; lon: number; minutos: number; dias: Set<string> }> = [];
+    for (const f of [...new Set(ps.map((x) => x.fecha))]) {
+      const fin = f === hoy ? Date.now() : localAInstante(f, '23:59', p.zona_horaria).getTime();
+      const delDia = ps.filter((x) => x.fecha === f).map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon }));
+      for (const x of paradasSinNombre(delDia, ls, fin)) {
+        const g = grupos.find((y) => distanciaMetros(y, x) < RADIO_LUGAR_M * 2);
+        if (g) {
+          g.minutos += (x.salida - x.llegada) / 60000;
+          g.dias.add(f);
+        } else grupos.push({ lat: x.lat, lon: x.lon, minutos: (x.salida - x.llegada) / 60000, dias: new Set([f]) });
+      }
+    }
+    return c.json({
+      lugares: conNombre.map((l) => ({ ...l, minutos: Math.round(l.minutos) })),
+      sin_nombre: grupos
+        .filter((g) => g.dias.size > 1)
+        .sort((a, b) => b.minutos - a.minutos)
+        .slice(0, 15)
+        .map((g) => ({ lat: g.lat, lon: g.lon, minutos: Math.round(g.minutos), dias: g.dias.size })),
+    });
+  })
   .get('/paradas', async (c) => {
     // ?persona=1&fecha=AAAA-MM-DD: dónde se quedó un buen rato ese día sin que sea un lugar con nombre (para preguntarle
     // qué lugar es), con la dirección aproximada y cuántos otros días estuvo ahí en el último mes.

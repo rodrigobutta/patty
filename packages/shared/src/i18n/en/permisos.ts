@@ -75,4 +75,12 @@ export const PERMISOS: Record<string, string> = {
   'Procesando…': 'Working on it…',
   '¡Ey! Anotado que no la tomaste… La próxima no te la saltees 😤': 'Hey! Logged that you skipped it… Don’t skip the next one 😤',
   Enojada: 'Annoyed',
+  'Ocultar el mapa': 'Hide the map',
+  '🗺️ Ver en el mapa': '🗺️ See on the map',
+  ocultar: 'hide',
+  '🗺️ ver': '🗺️ map',
+  '📍 Tus lugares': '📍 Your places',
+  'Sin nombre · {n} días': 'No name · {n} days',
+  'Un lugar sin nombre': 'An unnamed place',
+  'Los rosas son lugares donde estuviste varios días y todavía no tienen nombre: ponéselo desde «¿Dónde estuviste?» en el Día.': 'The pink ones are places you’ve been on several days that don’t have a name yet: name them from “Where were you?” on the Day screen.',
 };
