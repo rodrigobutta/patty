@@ -1,6 +1,6 @@
 import { puntoNuevo } from 'shared';
 import { describe, expect, it } from 'vitest';
-import { resumirDia } from '../src/ubicacion/resumen.js';
+import { paradasSinNombre, resumirDia } from '../src/ubicacion/resumen.js';
 
 // Puntos de Buenos Aires: 0,01° de latitud son ~1,1 km.
 const CASA = { id: 1, lat: -34.6, lon: -58.4, radio_m: 150 };
@@ -100,5 +100,21 @@ describe('resumen del clima de un día', () => {
       'Cambio de presión': -6,
     });
     expect(r['Humedad media']).toBeUndefined(); // sin datos, no se inventa
+  });
+});
+
+describe('paradas en lugares sin nombre', () => {
+  it('encuentra dónde se quedó un buen rato fuera de los lugares con nombre', () => {
+    const PAPA = { lat: -34.65, lon: -58.4 }; // ~5,5 km de casa, sin nombre
+    const KIOSCO = { lat: -34.67, lon: -58.4 };
+    const puntos = [
+      { ...CASA, instante: h(8) },
+      { ...PAPA, instante: h(12) }, // llega 12:00
+      { ...KIOSCO, instante: h(15.5) }, // se fue de lo de papá: 3 h 30 min ahí
+      { ...CASA, instante: h(15.8) }, // en el kiosco, 18 min: no cuenta
+      { lat: -34.7, lon: -58.4, instante: h(22) }, // último del día, hasta las 23
+    ];
+    const r = paradasSinNombre(puntos, [CASA], h(23));
+    expect(r.map((x) => [x.lat, (x.salida - x.llegada) / 60000])).toEqual([[-34.65, 210], [-34.7, 60]]);
   });
 });

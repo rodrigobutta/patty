@@ -701,3 +701,9 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .modal-cuanto .cancelar-cuanto { display: block; margin: 14px auto 0; }
 .otro-puntual { display: flex; gap: 8px; margin-top: 10px; }
 .otro-puntual input { flex: 1; min-width: 0; }
+.paradas h3 { margin: 0 0 6px; }
+.parada { display: flex; align-items: center; gap: 10px; }
+.parada .que { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.botones-parada { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.modal-lugar { text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.modal-lugar .pregunta-cuanto, .modal-lugar > .suave { margin: 0; text-align: center; }

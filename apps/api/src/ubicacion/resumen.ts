@@ -60,3 +60,32 @@ export function resumirDia(puntosDia: Punto[], lugares: LugarZona[]): ResumenDia
   }
   return { viajes, km: Math.round(metros / 100) / 10, estadias };
 }
+
+export interface Parada extends Coordenadas {
+  /** ms en que llegó (el punto guardado ahí) y en que se fue (el siguiente punto, ya lejos, o `fin`) */
+  llegada: number;
+  salida: number;
+}
+
+/** Desde cuánto tiempo en un mismo lugar sin nombre se pregunta qué lugar es. */
+export const PARADA_MIN = 45;
+
+/**
+ * Dónde se quedó un buen rato sin que sea un lugar con nombre: un punto guardado (el teléfono manda uno cada vez que
+ * se mueve más de 1 km) y el siguiente bastante después. Es aproximado: entre uno y otro también está el viaje.
+ * `fin` es hasta cuándo cuenta el último punto del día (ahora, si es hoy).
+ */
+export function paradasSinNombre(puntosDia: Punto[], lugares: LugarZona[], fin: number): Parada[] {
+  const orden = [...puntosDia].sort((a, b) => a.instante - b.instante);
+  const r: Parada[] = [];
+  orden.forEach((p, i) => {
+    if (lugarDe(p, lugares)) return;
+    const salida = orden[i + 1]?.instante ?? fin;
+    if (salida - p.instante < PARADA_MIN * 60000) return;
+    // Dos puntos seguidos cerca (por ejemplo, el primero del día) son la misma parada.
+    const anterior = r.at(-1);
+    if (anterior && anterior.salida === p.instante && distanciaMetros(anterior, p) < 300) anterior.salida = salida;
+    else r.push({ lat: p.lat, lon: p.lon, llegada: p.instante, salida });
+  });
+  return r;
+}

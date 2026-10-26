@@ -19,6 +19,7 @@ import { Cargar } from './Cargar';
 import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { CicloDelDia } from './CicloDelDia';
+import { ParadasDelDia } from './ParadasDelDia';
 import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
@@ -339,6 +340,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           })}
         </ul>
       )}
+      <ParadasDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       {automaticos.length ? (
         <div className="tarjeta automatico">
           <h3 className="chico suave">{t('Llegó solo')}</h3>

@@ -10,14 +10,15 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { lugarDe, nombreLindo, normalizar, puntoNuevo, RADIO_LUGAR_M, type DiaUbicacion, type Lugar } from 'shared';
+import { distanciaMetros, lugarDe, nombreLindo, normalizar, puntoNuevo, RADIO_LUGAR_M, type DiaUbicacion, type Lugar, type ParadaSinNombre } from 'shared';
+import { direccionDe } from '../ubicacion/direccion.js';
 import { filas, una, type Tx } from '../db/client.js';
 import { fuentes, lugares, mediciones, puntos } from '../db/schema.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
-import { resumirDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
+import { paradasSinNombre, resumirDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
 import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
 import { conceptoMedido } from './ingesta.js';
 
@@ -195,6 +196,39 @@ export const rutasUbicacion = new Hono<Env>()
       })),
     };
     return c.json(res);
+  })
+  .get('/paradas', async (c) => {
+    // ?persona=1&fecha=AAAA-MM-DD: dónde se quedó un buen rato ese día sin que sea un lugar con nombre (para preguntarle
+    // qué lugar es), con la dirección aproximada y cuántos otros días estuvo ahí en el último mes.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const fecha = c.req.query('fecha');
+    const hoy = diaDePatty(new Date(), p.zona_horaria);
+    const dia = esFecha(fecha) ? fecha : hoy;
+    const ps = await filas<{ instante: string; lat: number; lon: number; fecha: string }>(
+      c.var.db,
+      sql`SELECT instante, lat, lon, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${p.id} AND fecha > ${dia}::date - 30 AND fecha <= ${dia}`,
+    );
+    const ls = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
+    const aPunto = (x: { instante: string; lat: number; lon: number }) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon });
+    // El último punto del día cuenta hasta ahora (si es hoy) o hasta el fin del día.
+    const finDe = (f: string) => (f === hoy ? Date.now() : localAInstante(f, '23:59', p.zona_horaria).getTime());
+    const paradas = paradasSinNombre(ps.filter((x) => x.fecha === dia).map(aPunto), ls, finDe(dia));
+    // Los otros días del mes con una parada cerca de cada una (para decir "estuviste acá 4 días").
+    const otrosDias = [...new Set(ps.map((x) => x.fecha))].filter((f) => f !== dia);
+    const paradasOtros = otrosDias.map((f) => ({ f, l: paradasSinNombre(ps.filter((x) => x.fecha === f).map(aPunto), ls, finDe(f)) }));
+    const r: ParadaSinNombre[] = [];
+    for (const x of paradas.slice(0, 5)) {
+      r.push({
+        lat: x.lat,
+        lon: x.lon,
+        llegada: new Date(x.llegada).toISOString(),
+        salida: new Date(x.salida).toISOString(),
+        minutos: Math.round((x.salida - x.llegada) / 60000),
+        direccion: await direccionDe(x.lat, x.lon, c.var.idioma),
+        otros_dias: paradasOtros.filter((o) => o.l.some((y) => distanciaMetros(x, y) < RADIO_LUGAR_M * 2)).length,
+      });
+    }
+    return c.json(r);
   })
   .delete('/', async (c) => {
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), true);

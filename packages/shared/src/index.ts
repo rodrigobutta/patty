@@ -416,6 +416,19 @@ export interface DiaUbicacion {
   estadias: Array<{ lugar_id: number; lugar: string; llegada: string; salida: string; minutos: number }>;
 }
 
+/** Un lugar sin nombre donde la persona se quedó un buen rato (para preguntarle qué es). */
+export interface ParadaSinNombre {
+  lat: number;
+  lon: number;
+  llegada: string;
+  salida: string;
+  minutos: number;
+  /** "Av. Cabildo 2100, Belgrano" (aproximada), si se pudo averiguar. */
+  direccion: string | null;
+  /** En cuántos otros días del último mes también se quedó ahí. */
+  otros_dias: number;
+}
+
 export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'descartado';
 /** presente = ese día hubo; alto / bajo = ese día el valor estuvo por encima / debajo de lo habitual de la persona */
 export type Modo = 'presente' | 'alto' | 'bajo';
