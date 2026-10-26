@@ -352,6 +352,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           </div>
         )
       ) : null}
+      {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
+      {registros && sesion?.usuario?.rol !== 'lector' ? <CompaniaSugerida persona={persona} fecha={fecha} registros={registros} categorias={categorias} alCambiar={() => void traer()} /> : null}
+      <ParadasDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
+      <ViajesDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
       {fecha === hoy ? <CicloDelDia persona={persona} registros={registros ?? []} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} /> : null}
       {registros === null ? (
@@ -418,9 +422,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           })}
         </ul>
       )}
-      {registros && sesion?.usuario?.rol !== 'lector' ? <CompaniaSugerida persona={persona} fecha={fecha} registros={registros} categorias={categorias} alCambiar={() => void traer()} /> : null}
-      <ParadasDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
-      <ViajesDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       {automaticos.length ? (
         <div className="tarjeta automatico">
           <h3 className="chico suave">{t('Llegó solo')}</h3>
