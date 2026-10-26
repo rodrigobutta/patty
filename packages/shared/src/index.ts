@@ -1059,3 +1059,67 @@ export function apodoDe(nombre: string, elegido?: string | null): string {
   const apodo = APODOS[norm(primero)];
   return apodo ?? primero.charAt(0).toUpperCase() + primero.slice(1);
 }
+
+// ---------- Puntos del día ----------
+
+/** Lo que suma puntos en un día: lo esencial (comidas, cómo te sentís, sueño) vale más. Máximo 100. */
+export type ItemPuntos = 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'animo' | 'sueno' | 'remedios' | 'movimiento' | 'bebida' | 'extras';
+
+export const ITEMS_PUNTOS: Record<ItemPuntos, { nombre: string; icono: string; puntos: number }> = {
+  desayuno: { nombre: 'Desayuno', icono: '☕', puntos: 10 },
+  almuerzo: { nombre: 'Almuerzo', icono: '🍝', puntos: 10 },
+  merienda: { nombre: 'Merienda', icono: '🧉', puntos: 10 },
+  cena: { nombre: 'Cena', icono: '🍽️', puntos: 10 },
+  animo: { nombre: 'Cómo te sentís', icono: '🙂', puntos: 15 },
+  sueno: { nombre: 'Cómo dormiste', icono: '😴', puntos: 15 },
+  remedios: { nombre: 'Remedios al día', icono: '💊', puntos: 10 },
+  movimiento: { nombre: 'Movimiento', icono: '🏃', puntos: 5 },
+  bebida: { nombre: 'Qué tomaste', icono: '🥤', puntos: 5 },
+  extras: { nombre: 'Algo más', icono: '✨', puntos: 10 },
+};
+
+export interface PuntosDia {
+  fecha: string;
+  puntos: number;
+  /** Cada cosa que suma, con cuánto sumó y cuánto puede sumar (para mostrar lo que falta). */
+  items: Array<{ clave: ItemPuntos; puntos: number; maximo: number }>;
+}
+
+/** En qué comida cae una hora (minutos desde las 0, hora local): desayuno 5–11, almuerzo 11–16, merienda 16–19:30. */
+export function comidaDeLaHora(minutos: number): 'desayuno' | 'almuerzo' | 'merienda' | 'cena' {
+  if (minutos >= 300 && minutos < 660) return 'desayuno';
+  if (minutos >= 660 && minutos < 960) return 'almuerzo';
+  if (minutos >= 960 && minutos < 1170) return 'merienda';
+  return 'cena';
+}
+
+/**
+ * Los puntos de un día con lo anotado (categoría y hora local de cada registro), las categorías que llegaron solas
+ * (sueño o pasos del reloj) y las tomas de remedios del día. Sin remedios, sus 10 puntos van a "algo más".
+ */
+export function calcularPuntos(o: {
+  fecha: string;
+  registros: Array<{ categoria: string; minutos: number }>;
+  medidas: string[];
+  tomas: { total: number; marcadas: number };
+}): PuntosDia {
+  const cats = new Set(o.registros.map((r) => r.categoria));
+  const comidas = new Set(o.registros.filter((r) => r.categoria === 'comida').map((r) => comidaDeLaHora(r.minutos)));
+  const conRemedios = o.tomas.total > 0;
+  const otras = o.registros.filter((r) => !['comida', 'animo', 'sueno', 'medicacion', 'actividad', 'bebida'].includes(r.categoria)).length;
+  const maxExtras = ITEMS_PUNTOS.extras.puntos + (conRemedios ? 0 : ITEMS_PUNTOS.remedios.puntos);
+  const items: PuntosDia['items'] = [];
+  const poner = (clave: ItemPuntos, si: boolean | number, maximo = ITEMS_PUNTOS[clave].puntos) =>
+    items.push({ clave, maximo, puntos: typeof si === 'number' ? Math.min(maximo, Math.round(si)) : si ? maximo : 0 });
+  for (const c of ['desayuno', 'almuerzo', 'merienda', 'cena'] as const) poner(c, comidas.has(c));
+  poner('animo', cats.has('animo'));
+  poner('sueno', cats.has('sueno') || o.medidas.includes('sueno'));
+  if (conRemedios) poner('remedios', (o.tomas.marcadas / o.tomas.total) * ITEMS_PUNTOS.remedios.puntos);
+  poner('movimiento', cats.has('actividad') || o.medidas.includes('actividad'));
+  poner('bebida', cats.has('bebida'));
+  poner('extras', otras * 2, maxExtras);
+  return { fecha: o.fecha, puntos: items.reduce((a, b) => a + b.puntos, 0), items };
+}
+
+/** Desde cuántos puntos un día cuenta para la racha. */
+export const PUNTOS_RACHA = 50;

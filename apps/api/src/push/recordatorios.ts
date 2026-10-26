@@ -4,7 +4,8 @@
 // si no se marcó, a la media hora. En Android con push, el teléfono no programa nada y los manda todos el servidor, que
 // sabe qué se marcó: así junta en un solo aviso las tomas olvidadas. Corre cada minuto.
 import { sql } from 'drizzle-orm';
-import { apodoDe, dosisTexto, esIdioma, traducir, type Idioma, type Toma } from 'shared';
+import { apodoDe, dosisTexto, esIdioma, ITEMS_PUNTOS, traducir, type Idioma, type Toma } from 'shared';
+import { puntosDe } from '../routes/puntos.js';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, fechaLocal, localAInstante } from '../lib/fechas.js';
 import { COLUMNAS, DESDE, tomasDe, type Fila } from '../routes/tratamientos.js';
@@ -258,6 +259,50 @@ export async function revisarTeExtrano(db: Db, ahora = new Date()): Promise<numb
   return enviados;
 }
 
+/** A esta hora, si anotó algo pero le faltan puntos para la meta del día, un empujón con lo que falta. */
+const HORA_PUNTOS = '21:00';
+const META_PUNTOS = 60;
+
+/**
+ * A las 21 de cada uno: si ya anotó algo en el día pero no llega a la meta, un aviso con lo que más suma y falta
+ * ("Te faltan 25 puntos: la cena y cómo te sentís"). Con el mismo permiso que el de "te extraño".
+ */
+export async function revisarPuntos(db: Db, ahora = new Date()): Promise<number> {
+  const personas = await filas<{ id: number; zona: string; usuario_id: number; idioma: string; nombre: string; apodo: string | null }>(
+    db,
+    sql`SELECT p.id, p.zona_horaria AS zona, pu.usuario_id, u.idioma, u.nombre, u.apodo
+        FROM personas p JOIN persona_usuarios pu ON pu.persona_id = p.id AND pu.rol = 'dueno'
+        JOIN usuarios u ON u.id = pu.usuario_id AND u.activo AND u.avisar_sin_anotar
+        WHERE EXISTS (SELECT 1 FROM dispositivos d WHERE d.usuario_id = pu.usuario_id)`,
+  );
+  let enviados = 0;
+  for (const p of personas) {
+    const desde = localAInstante(fechaLocal(ahora, p.zona), HORA_PUNTOS, p.zona).getTime();
+    if (ahora.getTime() < desde || ahora.getTime() > desde + TOLERANCIA_MIN * 60000) continue;
+    const dia = diaDePatty(ahora, p.zona);
+    const [hoy] = await puntosDe(db, { id: p.id, zona_horaria: p.zona }, dia, dia);
+    // Sin nada anotado se encarga "te extraño"; con la meta cumplida, nada.
+    if (!hoy.items.some((i) => i.puntos > 0 && i.clave !== 'sueno' && i.clave !== 'movimiento') || hoy.puntos >= META_PUNTOS) continue;
+    const i = idiomaDe(p);
+    const faltan = hoy.items
+      .filter((x) => x.puntos < x.maximo && x.clave !== 'extras')
+      .sort((a, b) => b.maximo - b.puntos - (a.maximo - a.puntos))
+      .slice(0, 3)
+      .map((x) => traducir(i, ITEMS_PUNTOS[x.clave].nombre).toLowerCase());
+    const y = i === 'en' ? ' and ' : ' y ';
+    const lista = faltan.length > 1 ? `${faltan.slice(0, -1).join(', ')}${y}${faltan.at(-1)}` : faltan[0] ?? '';
+    const v = { apodo: apodoDe(p.nombre, p.apodo), n: META_PUNTOS - hoy.puntos, puntos: hoy.puntos, lista };
+    const aviso = {
+      titulo: traducir(i, '⭐ {apodo}, vas {puntos} puntos hoy', v),
+      cuerpo: traducir(i, 'Te faltan {n} para la meta del día. Lo que más suma: {lista}.', v),
+      datos: { tipo: 'puntos', persona_id: String(p.id), cara: 'espera' },
+    };
+    const lista2 = await filas<Dispositivo>(db, sql`SELECT id, token, avisos_hasta FROM dispositivos WHERE usuario_id = ${p.usuario_id}`);
+    for (const d of lista2) if (await avisarUnaVez(db, d, `puntos|${p.id}|${dia}`, aviso)) enviados++;
+  }
+  return enviados;
+}
+
 /** A esta hora (de la persona) se avisa, como mucho uno por día, de un permiso que falta. */
 const HORA_PERMISOS = '12:00';
 /** Cada permiso se recuerda como mucho estas veces (en 30 días) y con estos días entre uno y otro. */
@@ -340,6 +385,7 @@ export function arrancarRecordatorios(db: Db): void {
       await revisarDiasSinAnotar(db);
       await revisarTeExtrano(db);
       await revisarPermisos(db);
+      await revisarPuntos(db);
       // Una vez por día, lo viejo se borra.
       if (vueltas++ % 1440 === 0) await db.execute(sql`DELETE FROM avisos_enviados WHERE creado < now() - interval '30 days'`);
     } catch (e) {

@@ -45,6 +45,8 @@ export const usuarios = pgTable(
     foto: text('foto'),
     /** Cómo quiere que le diga Patty (si no, el diminutivo de su nombre). */
     apodo: text('apodo'),
+    /** Si aparece en el tablero general de puntos (con su apodo y su foto). */
+    ranking: boolean('ranking').notNull().default(true),
     clave: text('clave').notNull(),
     rol: text('rol', { enum: ['admin', 'editor', 'lector'] }).notNull().default('editor'),
     activo: boolean('activo').notNull().default(true),

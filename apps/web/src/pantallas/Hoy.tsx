@@ -21,6 +21,7 @@ import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
+import { PuntosDelDia } from './PuntosDelDia';
 import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
@@ -341,6 +342,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           </div>
         )
       ) : null}
+      {fecha === hoy && persona.propia ? <PuntosDelDia persona={persona} vuelta={vuelta} alAnotar={() => setCargando('contar')} /> : null}
       <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
       {fecha === hoy ? <CicloDelDia persona={persona} registros={registros ?? []} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} /> : null}
       {registros === null ? (

@@ -768,3 +768,28 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .mapa .mapa-oscuro { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6); }
 .version-app { margin: 28px 0 8px; text-align: center; font-size: 11px; color: var(--suave); opacity: 0.8; }
 .version-vieja { color: var(--ambar); font-weight: 700; }
+
+/* ---------- Puntos y tablero ---------- */
+.puntos-cabeza { display: flex; align-items: center; gap: 16px; }
+.puntos-cabeza .que { flex: 1; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.rueda-puntos { width: 84px; height: 84px; flex: none; }
+.rueda-puntos .fondo-rueda { fill: none; stroke: var(--acento-suave); stroke-width: 9; }
+.rueda-puntos .arco-puntos { fill: none; stroke: url(#puntos-color); stroke-width: 9; stroke-linecap: round;
+  transition: stroke-dashoffset 1s cubic-bezier(.2, .8, .3, 1); animation: llenar-puntos 1.4s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes llenar-puntos { from { stroke-dashoffset: calc(var(--largo) * 1px); } }
+.rueda-puntos .numero-puntos { font: 800 22px/1 inherit; fill: var(--texto, currentColor); }
+.rueda-puntos .de-puntos { font: 600 10px/1 inherit; fill: var(--suave); }
+.boton-tablero { margin-top: 4px; }
+.faltan-puntos { margin-top: 12px; }
+.faltan-puntos .chip strong { color: var(--acento); margin-left: 2px; }
+.tablero-lista li { display: flex; align-items: center; gap: 10px; }
+.tablero-lista li.yo { background: var(--acento-suave); border-radius: 12px; }
+.tablero-lista .puesto { width: 28px; text-align: center; font-weight: 800; }
+.tablero-lista .que { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tablero .segmentos { margin: 8px 0 14px; }
+.meta-familia { padding: 12px 14px; border-radius: 14px; background: var(--acento-suave); margin-bottom: 12px; }
+.meta-familia p { margin: 0 0 6px; }
+.barra-ranking.grande { height: 10px; }
+.posicion-general { font-size: 18px; font-weight: 800; text-align: center; margin: 4px 0 12px; }
+@media (prefers-reduced-motion: reduce) { .rueda-puntos .arco-puntos { animation: none; } }
+.tablero-lista .cifra { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }

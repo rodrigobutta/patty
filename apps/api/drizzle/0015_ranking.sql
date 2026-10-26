@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "ranking" boolean DEFAULT true NOT NULL;
