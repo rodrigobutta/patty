@@ -2,6 +2,19 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+/** La versión de la app (package.json de la web) y el commit, para mostrarla en Más y contársela al servidor. */
+const VERSION = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version;
+const commit = () => {
+  if (process.env.RAILWAY_GIT_COMMIT_SHA) return process.env.RAILWAY_GIT_COMMIT_SHA.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return '';
+  }
+};
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -9,6 +22,7 @@ export default defineConfig(({ mode }) => {
   return {
     // Rutas relativas: el mismo build sirve desde el servidor o empaquetado con Capacitor.
     base: './',
+    define: { __VERSION__: JSON.stringify(VERSION), __COMMIT__: JSON.stringify(commit()) },
     // "shared" se usa desde el código fuente (sin compilarlo antes).
     resolve: { conditions: ['source'] },
     server: {

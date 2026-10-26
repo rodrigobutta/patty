@@ -57,3 +57,8 @@ Ver "Pendiente / ideas" en docs/DISENO.md. Lo más pedido por Rodrigo: que la ap
   al arrancar la API).
 - Antes de dar algo por terminado: `pnpm typecheck` y `pnpm test`.
 - Modelo de IA por defecto: el más nuevo de Claude (hoy `claude-opus-5-5`), con salida estructurada en JSON.
+- **Versión**: la de la app es la de `apps/web/package.json` (la misma en el `package.json` de la raíz y de la API).
+  En cada cambio que se sube, subir el último número (1.1.0 → 1.1.1); un cambio grande o que pide reinstalar la app,
+  el del medio (1.1.x → 1.2.0). Se ve abajo de todo en Más y en la administración, y la app de Android toma su
+  `versionName` de ahí al compilar.
+- El web typecheck de verdad es `npx tsc --noEmit -p tsconfig.app.json` (el `tsconfig.json` de la web no tiene archivos).

@@ -83,4 +83,6 @@ export const PERMISOS: Record<string, string> = {
   'Sin nombre · {n} días': 'No name · {n} days',
   'Un lugar sin nombre': 'An unnamed place',
   'Los rosas son lugares donde estuviste varios días y todavía no tienen nombre: ponéselo desde «¿Dónde estuviste?» en el Día.': 'The pink ones are places you’ve been on several days that don’t have a name yet: name them from “Where were you?” on the Day screen.',
+  'app instalada {v}': 'installed app {v}',
+  'app {v}': 'app {v}',
 };

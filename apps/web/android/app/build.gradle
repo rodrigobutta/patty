@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 
+// La versión sale del package.json de la web (la misma que se ve en Más): 1.4.2 → versionCode 10402.
+def versionApp = new groovy.json.JsonSlurper().parse(file('../../package.json')).version
+def partes = versionApp.tokenize('.').collect { it as int }
+
 android {
     namespace = "ar.patty.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +11,8 @@ android {
         applicationId "ar.patty.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode partes[0] * 10000 + partes[1] * 100 + partes[2]
+        versionName versionApp
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

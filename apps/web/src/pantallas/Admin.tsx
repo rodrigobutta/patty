@@ -7,6 +7,7 @@ import { api } from '../api';
 import { useEstado } from '../estado';
 import { idioma, locale, t } from '../lib/idioma';
 import { Avatar } from '../ui/Avatar';
+import { VERSION } from '../lib/version';
 
 interface Resumen {
   usuarios: number;
@@ -51,9 +52,20 @@ interface Instalacion {
     permisos: { avisos?: string; ubicacion?: string; uso_apps?: string; llamadas?: string; salud?: number | string };
     activos: Record<string, boolean>;
     ultimos: { telefono?: string | null; salud?: string | null };
+    version?: { web?: string | null; commit?: string | null; app?: string | null };
   };
   creado?: string;
   actualizado: string;
+}
+
+/** La versión de la web (y de la app instalada, si es la nativa); en ámbar si es más vieja que la de ahora. */
+function VersionDe({ v }: { v: NonNullable<Instalacion['estado']['version']> }) {
+  const vieja = (x?: string | null) => Boolean(x) && x !== VERSION && x!.localeCompare(VERSION, undefined, { numeric: true }) < 0;
+  return (
+    <span className={vieja(v.web) || vieja(v.app) ? 'version-vieja' : ''}>
+      v{v.web}{v.app && v.app !== v.web ? ` (${t('app {v}', { v: v.app })})` : ''}
+    </span>
+  );
 }
 
 /** Los permisos de un dispositivo en chips: verde lo dado, ámbar a medias, gris lo que falta. */
@@ -260,6 +272,7 @@ function VistaUsuarios({ alElegir }: { alElegir(id: number): void }) {
                 <span className="suave chico renglon-sub">
                   {t(u.registros_semana === 1 ? 'entró {cuando} · {n} anotación en 7 días ({total} en total)' : 'entró {cuando} · {n} anotaciones en 7 días ({total} en total)', { cuando: hace(u.ultimo_acceso), n: u.registros_semana, total: u.registros })}
                   {u.supervisa ? ` · ${t('supervisa a {n}', { n: u.supervisa })}` : ''}
+                  {u.instalacion?.estado.version?.web ? <> · <VersionDe v={u.instalacion.estado.version} /></> : null}
                   {u.supervisado ? ` · ${t('supervisado')}` : ''}
                 </span>
                 {u.instalacion ? <ChipsPermisos i={u.instalacion} /> : <span className="suave chico renglon-sub">{t('todavía no abrió la app con esta versión')}</span>}
@@ -349,6 +362,7 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
               <p className="chico">
                 <strong>{i.plataforma === 'ios' ? '🍎 iPhone' : i.plataforma === 'android' ? '🤖 Android' : t('🌐 Navegador')}</strong>
                 <span className="suave"> · {t('visto {cuando}', { cuando: hace(i.actualizado) })}</span>
+                {i.estado.version?.web ? <span className="suave"> · <VersionDe v={i.estado.version} /></span> : null}
                 {i.estado.ultimos?.telefono ? <span className="suave"> · {t('mandó uso del teléfono {cuando}', { cuando: hace(i.estado.ultimos.telefono) })}</span> : null}
                 {i.estado.ultimos?.salud ? <span className="suave"> · {t('mandó salud {cuando}', { cuando: hace(i.estado.ultimos.salud) })}</span> : null}
               </p>

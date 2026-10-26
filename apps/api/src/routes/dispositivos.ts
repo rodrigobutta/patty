@@ -31,7 +31,10 @@ export const rutasDispositivos = new Hono<Env>()
     const plataforma = ['android', 'ios', 'web'].includes(texto(d.plataforma)) ? texto(d.plataforma) : 'web';
     // Con el token de push, el servidor sabe a qué teléfono avisarle si le falta un permiso.
     const token = texto(d.push_token).slice(0, 400) || null;
-    const estado = { permisos: d.permisos ?? {}, activos: d.activos ?? {}, ultimos: d.ultimos ?? {}, token };
+    // La versión de la web y de la app instalada (para ver en la administración quién está desactualizado).
+    const v = (d.version ?? {}) as Record<string, unknown>;
+    const version = { web: texto(v.web).slice(0, 20) || null, commit: texto(v.commit).slice(0, 12) || null, app: texto(v.app).slice(0, 20) || null };
+    const estado = { permisos: d.permisos ?? {}, activos: d.activos ?? {}, ultimos: d.ultimos ?? {}, token, version };
     if (JSON.stringify(estado).length > 4000) throw new ErrorApi('Estado demasiado grande.');
     await c.var.db.execute(sql`INSERT INTO instalaciones (id, usuario_id, plataforma, estado) VALUES (${id}, ${c.var.usuario.id}, ${plataforma}, ${JSON.stringify(estado)}::jsonb)
       ON CONFLICT (id) DO UPDATE SET usuario_id = EXCLUDED.usuario_id, plataforma = EXCLUDED.plataforma, estado = EXCLUDED.estado, actualizado = now()`);

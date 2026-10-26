@@ -21,6 +21,7 @@ import { alPedirGuia, Permisos, tomarGuia, type Paso } from './Permisos';
 import { Remedios } from './Remedios';
 import { Supervision } from './Supervision';
 import { NuevaPersona } from './NuevaPersona';
+import { COMMIT, VERSION, versionNativa } from '../lib/version';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
@@ -29,6 +30,8 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const [nueva, setNueva] = useState(false);
   const [perfil, setPerfil] = useState(false);
   const [permisos, setPermisos] = useState(false);
+  const [nativa, setNativa] = useState<string | null>(null);
+  useEffect(() => void versionNativa().then(setNativa), []);
   const [guia, setGuia] = useState<Paso | undefined>(undefined);
   // Tocar el aviso de un permiso que falta abre los permisos con sus pasos.
   useEffect(() => {
@@ -256,6 +259,9 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           </div>
         </details>
       ) : null}
+      <p className="version-app">
+        Patty {VERSION}{COMMIT ? ` · ${COMMIT}` : ''}{nativa && nativa !== VERSION ? ` · ${t('app instalada {v}', { v: nativa })}` : ''}
+      </p>
     </section>
   );
 }

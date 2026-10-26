@@ -12,6 +12,7 @@ import { recordatoriosActivos } from './remedios';
 import { permisosSalud, saludActivada } from './salud';
 import { datosActivados, hayDatosDelTelefono, Telefono } from './telefono';
 import { seguimientoActivado } from './ubicacion';
+import { COMMIT, VERSION, versionNativa } from './version';
 
 export type SiNo = 'si' | 'no' | 'no_aplica';
 export type PermisoUbicacion = 'siempre' | 'en_uso' | 'no';
@@ -117,7 +118,12 @@ export async function reportarEstado(ya = false): Promise<void> {
   if (!ya && Date.now() - ultimoEnvio < 10 * 60000) return;
   ultimoEnvio = Date.now();
   try {
-    await api('POST', '/api/dispositivos/estado', { instalacion: instalacion(), push_token: leer('push-token'), ...(await leerEstado()) });
+    await api('POST', '/api/dispositivos/estado', {
+      instalacion: instalacion(),
+      push_token: leer('push-token'),
+      version: { web: VERSION, commit: COMMIT, app: await versionNativa() },
+      ...(await leerEstado()),
+    });
   } catch {
     /* no importa: se manda la próxima vez */
   }

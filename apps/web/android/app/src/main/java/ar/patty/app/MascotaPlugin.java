@@ -102,6 +102,11 @@ public class MascotaPlugin extends Plugin {
         r.put("marca", android.os.Build.MANUFACTURER);
         r.put("modelo", android.os.Build.MODEL);
         r.put("android", android.os.Build.VERSION.SDK_INT);
+        try {
+            r.put("app", getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0).versionName);
+        } catch (Exception e) {
+            // sin versión: no importa
+        }
         call.resolve(r);
     }
 
