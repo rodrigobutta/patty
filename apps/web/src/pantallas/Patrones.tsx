@@ -10,7 +10,8 @@ import { Numeros } from './Numeros';
 import { Preguntar } from './Preguntar';
 import { LoQueVoyNotando } from './ComentariosDePatty';
 import { RuedaProgreso } from './RuedaProgreso';
-import { IconoBuscar, IconoCalendario, IconoNumeros, IconoRelacion } from '../ui/Iconos';
+import { IconoBuscar, IconoCalendario, IconoMapa, IconoNumeros, IconoRelacion } from '../ui/Iconos';
+import { MapaDescubrir } from './MapaDescubrir';
 
 const Q_FIRME = 0.1;
 const cuando = (d: number) => (d === 0 ? t('el mismo día') : d === 1 ? t('al día siguiente') : t('{n} días después', { n: d }));
@@ -22,7 +23,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const [analizando, setAnalizando] = useState(false);
   const [error, setError] = useState('');
   /** La sub-vista: los patrones, los números, o el buscador (con lo que se eligió desde los números). */
-  const [vista, setVista] = useState<'patrones' | 'numeros' | 'calendario' | 'buscar'>('patrones');
+  const [vista, setVista] = useState<'patrones' | 'numeros' | 'calendario' | 'mapa' | 'buscar'>('patrones');
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [vista]);
@@ -88,6 +89,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
       <button className={vista === 'patrones' ? 'activa' : ''} onClick={() => setVista('patrones')}><IconoRelacion /> {t('Patrones')}</button>
       <button className={vista === 'numeros' ? 'activa' : ''} onClick={() => setVista('numeros')}><IconoNumeros /> {t('Números')}</button>
       <button className={vista === 'calendario' ? 'activa' : ''} onClick={() => setVista('calendario')}><IconoCalendario /> {t('Calendario')}</button>
+      <button className={vista === 'mapa' ? 'activa' : ''} onClick={() => setVista('mapa')}><IconoMapa /> {t('Mapa')}</button>
       <button className={vista === 'buscar' ? 'activa' : ''} onClick={() => setVista('buscar')}><IconoBuscar /> {t('Buscar')}</button>
     </div>
   );
@@ -97,6 +99,15 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
         {caja}
         {pestanas}
         <Numeros persona={persona} alElegir={(id) => { setBuscado(id); setVista('buscar'); }} />
+      </section>
+    );
+  }
+  if (vista === 'mapa') {
+    return (
+      <section className="patrones">
+        {caja}
+        {pestanas}
+        <MapaDescubrir persona={persona} />
       </section>
     );
   }

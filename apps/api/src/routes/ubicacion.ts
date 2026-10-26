@@ -309,6 +309,21 @@ export const rutasUbicacion = new Hono<Env>()
         .map((g) => ({ lat: g.lat, lon: g.lon, minutos: Math.round(g.minutos), dias: g.dias.size })),
     });
   })
+  .get('/calor', async (c) => {
+    // ?persona=1&dias=30: el mapa de calor de Descubrir. Los puntos guardados, juntados en cuadraditos de ~150 m, con
+    // cuántos hay en cada uno (más puntos: más tiempo o más idas y vueltas por ahí).
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const dias = Math.min(365, Math.max(1, Number(c.req.query('dias')) || 30));
+    const hoy = diaDePatty(new Date(), p.zona_horaria);
+    const PASO = 0.0015;
+    const celdas = await filas<{ lat: number; lon: number; n: number }>(
+      c.var.db,
+      sql`SELECT (floor(lat / ${PASO}) + 0.5) * ${PASO} AS lat, (floor(lon / ${PASO}) + 0.5) * ${PASO} AS lon, count(*)::int AS n
+          FROM puntos WHERE persona_id = ${p.id} AND fecha > ${hoy}::date - ${dias}::int
+          GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 2000`,
+    );
+    return c.json(celdas.map((x) => ({ lat: Number(x.lat), lon: Number(x.lon), n: x.n })));
+  })
   .get('/paradas', async (c) => {
     // ?persona=1&fecha=AAAA-MM-DD: dónde se quedó un buen rato ese día sin que sea un lugar con nombre (para preguntarle
     // qué lugar es), con la dirección aproximada y cuántos otros días estuvo ahí en el último mes.

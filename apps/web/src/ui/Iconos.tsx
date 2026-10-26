@@ -150,6 +150,16 @@ export function IconoBuscar({ tamano = 18 }: { tamano?: number }) {
   );
 }
 
+/** Mapa: un plano doblado con un punto. */
+export function IconoMapa({ tamano = 18 }: { tamano?: number }) {
+  return (
+    <svg {...base} width={tamano} height={tamano} aria-hidden>
+      <path d="M3.5 6.5l5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z" />
+      <path d="M9 4v13.5M15 6.5V20" />
+    </svg>
+  );
+}
+
 /** La galería (elegir una foto que ya está en el teléfono). */
 export function IconoGaleria({ tamano = 24 }: { tamano?: number }) {
   return (

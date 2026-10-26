@@ -426,4 +426,9 @@ export const PERMISOS: Record<string, string> = {
   'a {n} m': "{n} m away",
   'a {n} km': "{n} km away",
   '¿Cómo fueron tus viajes?': 'How were your trips?',
+  '🔥 Calor': "🔥 Heat",
+  'Todavía no hay ubicaciones guardadas. Activá la ubicación en Más → Lugares y en unos días vas a ver acá por dónde anduviste.': "No locations saved yet. Turn on location in More → Places and in a few days you'll see here where you've been.",
+  'Más fuerte: donde más estuviste o más pasaste': "Stronger: where you spent more time or passed by more",
+  'Dónde pasaste más tiempo': "Where you spent the most time",
+  'Mapa': "Map",
 };

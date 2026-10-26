@@ -160,3 +160,21 @@ describe('unir lugares', () => {
     expect((await ana.post(`/api/ubicacion/lugares/${casa.id}/unir`, { en: casa.id })).status).toBe(400);
   });
 });
+
+describe('mapa de calor', () => {
+  afterAll(() => cerrarDb());
+  it('junta los puntos en cuadraditos con cuántos hay en cada uno', async () => {
+    const { ana, personaId } = await conAdmin();
+    const ahora = Date.now();
+    const puntos = [
+      { lat: -34.6001, lon: -58.4001, instante: new Date(ahora - 3 * 3600000).toISOString() },
+      { lat: -34.6002, lon: -58.4002, instante: new Date(ahora - 2 * 3600000).toISOString() },
+      { lat: -34.62, lon: -58.4, instante: new Date(ahora - 3600000).toISOString() },
+    ];
+    expect((await ana.post('/api/ubicacion', { persona_id: personaId, puntos })).status).toBeLessThan(300);
+    const r = (await ana.get(`/api/ubicacion/calor?persona=${personaId}&dias=7`)).body;
+    // El punto a pocos metros del anterior no se guarda (no se movió): quedan dos cuadraditos, uno por zona.
+    expect(r).toHaveLength(2);
+    expect(r.every((x: any) => x.n >= 1 && typeof x.lat === 'number')).toBe(true);
+  });
+});
