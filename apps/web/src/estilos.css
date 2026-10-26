@@ -1052,3 +1052,15 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .lugares-parecidos .fila { flex-wrap: wrap; gap: 6px; }
 .unir-lugar { flex-basis: 100%; gap: 8px; align-items: center; margin-top: 6px; }
 .unir-lugar select { flex: 1; margin: 0; }
+
+/* Lugares: el nombre a lo ancho y un solo botón de opciones; unir se elige en una hoja. */
+.fila-lugar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fila-lugar .boton-lugar { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.fila-lugar .nombre-lugar { font-weight: 600; font-size: 16px; }
+.fila-lugar .btn-icono { font-size: 22px; flex: none; }
+.fila-lugar .mapa-lugar { flex-basis: 100%; }
+.hoja-acciones .btn { margin-top: 8px; text-align: left; }
+.hoja-acciones .btn.peligro { color: var(--rojo); }
+.opciones-unir li { padding: 0; }
+.opcion-unir { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 14px 12px; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.opcion-unir:active { background: var(--acento-suave); }

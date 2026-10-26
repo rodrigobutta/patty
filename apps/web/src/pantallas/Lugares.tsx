@@ -1,6 +1,7 @@
 // Ubicación y lugares (en Más): prender el seguimiento en este teléfono, ver los viajes y lugares de hoy, y nombrar
 // lugares (Casa, lo de mamá, Supermercado) para que entren en los patrones.
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { distanciaMetros, lugarDe, type DiaUbicacion, type Lugar, type Persona } from 'shared';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
@@ -74,8 +75,9 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
   /** Une `a` en `b`: lo de `a` pasa a `b` y `a` se borra. */
   const unir = (a: Lugar, b: Lugar) =>
     void hacer(() => api('POST', `/api/ubicacion/lugares/${a.id}/unir`, { en: b.id }), t('Listo: «{a}» ahora es parte de «{b}»', { a: a.nombre, b: b.nombre }));
-  /** El lugar con el selector de "Unir con…" abierto. */
-  const [uniendo, setUniendo] = useState<number | null>(null);
+  /** Las hojas: las opciones de un lugar, y elegir con cuál unirlo. */
+  const [acciones, setAcciones] = useState<Lugar | null>(null);
+  const [uniendo, setUniendo] = useState<Lugar | null>(null);
 
   const hacer = async (f: () => Promise<unknown>, aviso: string) => {
     setError('');
@@ -173,30 +175,13 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
         : null}
       <ul className="lista">
         {lugares.map((l) => (
-          <li key={l.id} className={viendo === l.id ? 'con-mapa' : ''}>
-            <span className="icono">📍</span>
+          <li key={l.id} className={`fila-lugar${viendo === l.id ? ' con-mapa' : ''}`}>
             <button className="que boton-lugar" onClick={() => setViendo(viendo === l.id ? null : l.id)} aria-expanded={viendo === l.id}>
-              {l.nombre}
-              <span className="suave chico"> · {l.radio_m} m · {viendo === l.id ? t('ocultar') : t('🗺️ ver')}</span>
+              <span className="nombre-lugar">📍 {l.nombre}</span>
+              <span className="suave chico">{t('radio {n} m', { n: l.radio_m })} · {viendo === l.id ? t('ocultar mapa') : t('🗺️ ver mapa')}</span>
             </button>
             {puedeEscribir ? (
-              <>
-                <button className="btn-icono chico" onClick={() => renombrar(l)} aria-label={t('Renombrar {nombre}', { nombre: l.nombre })}>✏️</button>
-                <button className="btn-icono chico" onClick={() => void moverAca(l)} aria-label={t('Mover {nombre} a donde estoy', { nombre: l.nombre })}>🎯</button>
-                {lugares.length > 1 ? (
-                  <button className="btn-icono chico" onClick={() => setUniendo(uniendo === l.id ? null : l.id)} aria-label={t('Unir {nombre} con otro lugar', { nombre: l.nombre })}>🔗</button>
-                ) : null}
-                <button className="btn-icono chico" onClick={() => borrar(l)} aria-label={t('Borrar {nombre}', { nombre: l.nombre })}>🗑</button>
-              </>
-            ) : null}
-            {uniendo === l.id ? (
-              <span className="fila unir-lugar">
-                <span className="suave chico">{t('Es el mismo lugar que:')}</span>
-                <select defaultValue="" onChange={(e) => { const b = lugares.find((x) => x.id === Number(e.target.value)); setUniendo(null); if (b) unir(l, b); }}>
-                  <option value="" disabled>{t('Elegí…')}</option>
-                  {lugares.filter((x) => x.id !== l.id).map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
-                </select>
-              </span>
+              <button className="btn-icono" onClick={() => setAcciones(l)} aria-label={t('Opciones de {nombre}', { nombre: l.nombre })}>⋯</button>
             ) : null}
             {viendo === l.id ? <Mapa puntos={[{ lat: l.lat, lon: l.lon, radio: l.radio_m, etiqueta: l.nombre }]} alto={170} className="mapa-lugar" /> : null}
           </li>
@@ -218,6 +203,55 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
         JSON <code>{'{"lat": …, "lon": …}'}</code> {t('y un token de «Avanzado», abajo de todo en Más.')}
       </p></details>}
       {error ? <p className="neg">{error}</p> : null}
+      {acciones
+        ? createPortal(
+            <>
+              <div className="velo" onClick={() => setAcciones(null)} />
+              <div className="hoja hoja-acciones" role="dialog" aria-label={acciones.nombre}>
+                <div className="hoja-cabeza">
+                  <h3>📍 {acciones.nombre}</h3>
+                  <button className="btn-icono" onClick={() => setAcciones(null)} aria-label={t('Cerrar')}>✕</button>
+                </div>
+                <button className="btn ancho" onClick={() => { const l = acciones; setAcciones(null); renombrar(l); }}>✏️ {t('Cambiar el nombre')}</button>
+                <button className="btn ancho" onClick={() => { const l = acciones; setAcciones(null); void moverAca(l); }}>🎯 {t('Es donde estoy ahora')}</button>
+                {lugares.length > 1 ? (
+                  <button className="btn ancho" onClick={() => { setUniendo(acciones); setAcciones(null); }}>🔗 {t('Es el mismo que otro lugar')}</button>
+                ) : null}
+                <button className="btn ancho peligro" onClick={() => { const l = acciones; setAcciones(null); borrar(l); }}>🗑 {t('Borrar')}</button>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
+      {uniendo
+        ? createPortal(
+            <>
+              <div className="velo" onClick={() => setUniendo(null)} />
+              <div className="hoja hoja-unir" role="dialog" aria-label={t('Unir {nombre}', { nombre: uniendo.nombre })}>
+                <div className="hoja-cabeza">
+                  <h3>🔗 {t('¿Con cuál es el mismo lugar?')}</h3>
+                  <button className="btn-icono" onClick={() => setUniendo(null)} aria-label={t('Cerrar')}>✕</button>
+                </div>
+                <p className="suave chico">{t('Todo lo de «{nombre}» (estadías y lo anotado ahí) pasa al que elijas, y «{nombre}» se borra.', { nombre: uniendo.nombre })}</p>
+                <ul className="lista opciones-unir">
+                  {lugares
+                    .filter((x) => x.id !== uniendo.id)
+                    .map((x) => ({ x, d: distanciaMetros(uniendo, x) }))
+                    .sort((a, b) => a.d - b.d)
+                    .map(({ x, d }) => (
+                      <li key={x.id}>
+                        <button className="opcion-unir" onClick={() => { const a = uniendo; setUniendo(null); unir(a, x); }}>
+                          <span>📍 <strong>{x.nombre}</strong></span>
+                          <span className="suave chico">{d < 1000 ? t('a {n} m', { n: Math.round(d) }) : t('a {n} km', { n: (d / 1000).toFixed(1) })}</span>
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
