@@ -130,6 +130,26 @@ interface Detalle {
   analisis: Array<{ id: number; persona_id: number; origen: 'manual' | 'noche'; creado: string; dias: number; resumen: string | null; sugerencias: string[] | null; nuevos: number; hallazgos: number }>;
   hallazgos: Array<{ id: number; persona_id: number; explicacion: string | null; estado: string; causa: string; efecto: string }>;
   avisos: Array<{ id: number; tipo: string | null; titulo: string; cuerpo: string; resultado: string; creado: string }>;
+  uso: Array<{ fecha: string; segundos: number; aperturas: number }>;
+  preguntas: Array<{ id: number; pregunta: string; respuesta: string; creado: string }>;
+}
+
+interface Uso {
+  dias: number;
+  por_dia: Array<{ fecha: string; usuarios: number; segundos: number; aperturas: number; registros: number; anotaron: number; avisos: number; preguntas: number; analisis: number }>;
+  pantallas: Array<{ pantalla: string; segundos: number }>;
+  origenes: Array<{ origen: string; n: number }>;
+  categorias: Array<{ icono: string; nombre: string; n: number }>;
+  avisos: Array<{ tipo: string; n: number; fallidos: number }>;
+  usuarios: Array<{ id: number; nombre: string; segundos: number; dias: number; registros: number; preguntas: number }>;
+  preguntas: Array<{ id: number; pregunta: string; respuesta: string; creado: string; usuario: string }>;
+}
+
+/** "1 h 20 min", "12 min", "40 s" */
+function duracion(segundos: number): string {
+  if (segundos < 60) return `${segundos} s`;
+  const min = Math.round(segundos / 60);
+  return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60 ? `${min % 60} min` : ''}`.trim();
 }
 
 /** "hace 5 min", "hace 3 h", "ayer", "hace 4 días" */
@@ -159,7 +179,7 @@ function Barritas({ datos, alto = 60 }: { datos: number[]; alto?: number }) {
 }
 
 export function Admin({ alVolver }: { alVolver(): void }) {
-  const [vista, setVista] = useState<'resumen' | 'usuarios' | 'actividad' | 'avisos'>('resumen');
+  const [vista, setVista] = useState<'resumen' | 'uso' | 'usuarios' | 'actividad' | 'avisos'>('resumen');
   const [elegido, setElegido] = useState<number | null>(null);
   return (
     <section className="admin">
@@ -169,11 +189,12 @@ export function Admin({ alVolver }: { alVolver(): void }) {
       </div>
       <div className="segmentos ancho subvistas">
         <button className={vista === 'resumen' ? 'activa' : ''} onClick={() => { setVista('resumen'); setElegido(null); }}>{t('Resumen')}</button>
+        <button className={vista === 'uso' ? 'activa' : ''} onClick={() => { setVista('uso'); setElegido(null); }}>{t('Uso')}</button>
         <button className={vista === 'usuarios' ? 'activa' : ''} onClick={() => setVista('usuarios')}>{t('Usuarios')}</button>
         <button className={vista === 'actividad' ? 'activa' : ''} onClick={() => { setVista('actividad'); setElegido(null); }}>{t('Actividad')}</button>
         <button className={vista === 'avisos' ? 'activa' : ''} onClick={() => { setVista('avisos'); setElegido(null); }}>{t('📣 Avisos')}</button>
       </div>
-      {vista === 'avisos' ? <VistaAvisos /> : vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
+      {vista === 'avisos' ? <VistaAvisos /> : vista === 'uso' ? <VistaUso alElegir={(id) => { setElegido(id); setVista('usuarios'); }} /> : vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
     </section>
   );
 }
@@ -263,6 +284,131 @@ function VistaAvisos() {
         <p className="suave chico">{t('Quien tenga una más vieja ve además un cartel en la app para bajarla.')}</p>
       </div>
       {error ? <p className="neg">{error}</p> : null}
+    </>
+  );
+}
+
+const NOMBRE_PANTALLA: Record<string, string> = { hoy: t('Día'), patrones: t('Descubrir'), mas: t('Más'), admin: t('Administración'), otra: t('Otra') };
+
+/** La actividad general: cuánto se usa la app, qué se anota, qué pregunta la gente y qué le manda Patty. */
+function VistaUso({ alElegir }: { alElegir(id: number): void }) {
+  const [dias, setDias] = useState(30);
+  const [u, setU] = useState<Uso | null>(null);
+  useEffect(() => {
+    setU(null);
+    api<Uso>('GET', `/api/admin/uso?dias=${dias}`).then(setU).catch(() => {});
+  }, [dias]);
+  const periodo = (
+    <div className="segmentos">
+      {[7, 30, 90].map((n) => (
+        <button key={n} className={dias === n ? 'activa' : ''} onClick={() => setDias(n)}>{t('{n} días', { n })}</button>
+      ))}
+    </div>
+  );
+  if (!u) return <>{periodo}<p className="suave centro">{t('Cargando…')}</p></>;
+  const suma = (k: keyof Uso['por_dia'][number]) => u.por_dia.reduce((a, x) => a + Number(x[k]), 0);
+  const conUso = u.por_dia.filter((x) => x.usuarios > 0);
+  const usuarioDias = suma('usuarios');
+  const totalPantallas = u.pantallas.reduce((a, x) => a + x.segundos, 0) || 1;
+  const totalOrigenes = u.origenes.reduce((a, x) => a + x.n, 0) || 1;
+  const tiles: Array<[string, string | number, string]> = [
+    ['⏱️', duracion(Math.round(suma('segundos') / Math.max(1, usuarioDias))), t('por usuario, en un día que la usa')],
+    ['🟢', conUso.length ? (usuarioDias / conUso.length).toFixed(1) : 0, t('usuarios por día (promedio)')],
+    ['📲', suma('aperturas'), t('aperturas de la app')],
+    ['📝', suma('registros'), t('anotaciones')],
+    ['💬', suma('preguntas'), t('preguntas a Patty')],
+    ['🔔', suma('avisos'), t('avisos mandados')],
+    ['✨', suma('analisis'), t('búsquedas de patrones')],
+    ['⏳', duracion(suma('segundos')), t('tiempo total en la app')],
+  ];
+  const eje = <p className="suave chico eje"><span>{t('hace {n} días', { n: u.dias })}</span><span>{t('hoy')}</span></p>;
+  return (
+    <>
+      {periodo}
+      <div className="mosaico admin-tiles">
+        {tiles.map(([i, n, etiqueta]) => (
+          <div key={etiqueta} className="tarjeta dato">
+            <span className="icono-dato">{i}</span>
+            <strong>{n}</strong>
+            <span className="suave chico">{etiqueta}</span>
+          </div>
+        ))}
+      </div>
+      <div className="tarjeta">
+        <h3>{t('Minutos de uso por día (todos)')}</h3>
+        <Barritas datos={u.por_dia.map((x) => Math.round(x.segundos / 60))} alto={80} />
+        {eje}
+        <h3>{t('Usuarios que la abrieron, por día')}</h3>
+        <Barritas datos={u.por_dia.map((x) => x.usuarios)} />
+        <h3>{t('Anotaciones por día')}</h3>
+        <Barritas datos={u.por_dia.map((x) => x.registros)} />
+        <h3>{t('Preguntas a Patty por día')}</h3>
+        <Barritas datos={u.por_dia.map((x) => x.preguntas)} alto={40} />
+        <p className="suave chico">{t('El tiempo de uso se empezó a medir con la versión 1.9.')}</p>
+      </div>
+      <div className="tarjeta">
+        <h3>{t('Dónde pasan el tiempo')}</h3>
+        <ul className="lista-simple barras-lista">
+          {u.pantallas.map((x) => (
+            <li key={x.pantalla}>
+              <span>{NOMBRE_PANTALLA[x.pantalla] ?? x.pantalla}</span>
+              <span className="barra-lista"><span style={{ width: `${(x.segundos / totalPantallas) * 100}%` }} /></span>
+              <span className="suave chico">{duracion(x.segundos)}</span>
+            </li>
+          ))}
+        </ul>
+        <h3>{t('Cómo anotan')}</h3>
+        <ul className="lista-simple barras-lista">
+          {u.origenes.map((x) => (
+            <li key={x.origen}>
+              <span>{x.origen === 'manual' ? t('A mano') : x.origen === 'ia' ? t('Contándole a Patty') : x.origen}</span>
+              <span className="barra-lista"><span style={{ width: `${(x.n / totalOrigenes) * 100}%` }} /></span>
+              <span className="suave chico">{x.n}</span>
+            </li>
+          ))}
+        </ul>
+        <h3>{t('Qué anotan')}</h3>
+        <div className="chips envolver">
+          {u.categorias.map((x) => <span key={x.nombre} className="chip">{x.icono} {t(x.nombre)} · {x.n}</span>)}
+        </div>
+        {u.avisos.length ? (
+          <>
+            <h3>{t('Avisos que mandó Patty')}</h3>
+            <div className="chips envolver">
+              {u.avisos.map((x) => <span key={x.tipo} className="chip">{x.tipo} · {x.n}{x.fallidos ? ` (${t('{n} no llegaron', { n: x.fallidos })})` : ''}</span>)}
+            </div>
+          </>
+        ) : null}
+      </div>
+      <div className="tarjeta">
+        <h3>{t('Por usuario')}</h3>
+        <table className="tabla-uso">
+          <thead>
+            <tr><th>{t('Usuario')}</th><th>{t('Tiempo')}</th><th>{t('Días')}</th><th>📝</th><th>💬</th></tr>
+          </thead>
+          <tbody>
+            {u.usuarios.map((x) => (
+              <tr key={x.id} onClick={() => alElegir(x.id)}>
+                <td>{x.nombre}</td><td>{duracion(x.segundos)}</td><td>{x.dias}</td><td>{x.registros}</td><td>{x.preguntas}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {u.preguntas.length ? (
+        <div className="tarjeta">
+          <h3>{t('Lo último que le preguntaron a Patty')}</h3>
+          <ul className="lista-simple">
+            {u.preguntas.map((q) => (
+              <li key={q.id}>
+                <strong>{q.pregunta}</strong> <span className="suave chico">· {q.usuario} · {hace(q.creado)}</span>
+                <br />
+                <span className="suave">🦉 {q.respuesta}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -434,6 +580,11 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
           }}>{t('Cambiar clave')}</button>
         </div>
         {error ? <p className="neg">{error}</p> : null}
+        <p className="suave chico">
+          {t('Uso de la app en 14 días: {tiempo} en {dias}', { tiempo: duracion(d.uso.reduce((a, x) => a + x.segundos, 0)), dias: cuantos(d.uso.filter((x) => x.segundos > 0).length, 'día', 'días') })}
+          {' · '}{cuantos(d.uso.reduce((a, x) => a + x.aperturas, 0), 'apertura', 'aperturas')}
+        </p>
+        <Barritas datos={d.uso.map((x) => Math.round(x.segundos / 60))} alto={36} />
       </div>
 
       {d.personas.map((p) => (
@@ -555,6 +706,20 @@ function LoQuePattyLeDice({ d }: { d: Detalle }) {
                 {a.origen === 'noche' ? '🌙' : '👆'} {fechaHora(a.creado)} · {a.origen === 'noche' ? t('de noche') : t('a mano')} · {cuantos(a.dias, 'día', 'días')} ·{' '}
                 {cuantos(a.hallazgos, 'hallazgo', 'hallazgos')}{a.nuevos ? ` · ${t('{n} nuevos', { n: a.nuevos })}` : ''}
                 {varias ? <span className="suave chico"> · {nombre.get(a.persona_id)}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      {d.preguntas.length ? (
+        <details>
+          <summary>{t('Lo que le preguntó')} ({d.preguntas.length})</summary>
+          <ul className="lista-simple">
+            {d.preguntas.map((q) => (
+              <li key={q.id}>
+                <strong>{q.pregunta}</strong> <span className="suave chico">· {hace(q.creado)}</span>
+                <br />
+                <span className="suave">🦉 {q.respuesta}</span>
               </li>
             ))}
           </ul>

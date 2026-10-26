@@ -1,5 +1,6 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { alPedirIrAlDia, fechaPedidaParaVer, olvidarFechaPedida } from '../lib/avisos';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
 import { alTocarAvisoPush } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
@@ -91,7 +92,16 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const comidaIds = categorias.filter((c) => c.clave === 'comida' || c.clave === 'bebida').map((c) => c.id);
   // En el día propio, Patty le habla por su apodo.
   const apodo = persona.propia ? sesion?.usuario?.apodo ?? '' : '';
-  const [fecha, setFecha] = useState(() => hoyEn(persona.zona_horaria));
+  const [fecha, setFecha] = useState(() => fechaPedidaParaVer() ?? hoyEn(persona.zona_horaria));
+  // Un día pedido desde otra pantalla ("el martes 14", en una respuesta de Patty), también con el Día ya abierto.
+  useEffect(() => {
+    olvidarFechaPedida();
+    return alPedirIrAlDia(() => {
+      const f = fechaPedidaParaVer();
+      olvidarFechaPedida();
+      if (f) setFecha(f);
+    });
+  }, []);
   const [registros, setRegistros] = useState<Registro[] | null>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.registros ?? null);
   const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.automaticos ?? []);
   /** La fuente de datos automáticos que está abierta (se ve todo lo que llegó de ella). */

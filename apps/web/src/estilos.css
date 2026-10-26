@@ -930,3 +930,21 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .compania-sugerida .botones-como { grid-template-columns: repeat(2, 1fr); }
 .frase { display: block; }
 .frase::first-letter { text-transform: uppercase; }
+
+/* Preguntale a Patty (arriba de Descubrir) */
+.preguntar { display: flex; flex-direction: column; gap: 8px; }
+.preguntar-fila { display: flex; gap: 8px; align-items: center; }
+.preguntar-fila input { flex: 1; min-width: 0; margin: 0; }
+.preguntar-fila .btn { flex: none; width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 18px; }
+.respuesta-patty { display: flex; flex-direction: column; gap: 6px; animation: aparecer-respuesta 0.25s ease; }
+.respuesta-patty .chips { padding: 2px 0; }
+.respuesta-patty .chip { font-size: 13px; padding: 6px 10px; }
+.respuesta-patty .enlace { padding: 2px; align-self: flex-start; }
+@keyframes aparecer-respuesta { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.barras-lista li { display: grid; grid-template-columns: 9em 1fr auto; gap: 8px; align-items: center; }
+.barra-lista { height: 8px; border-radius: 4px; background: var(--borde); overflow: hidden; }
+.barra-lista span { display: block; height: 100%; background: var(--acento); border-radius: 4px; }
+.tabla-uso { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tabla-uso th { text-align: left; font-weight: 600; color: var(--suave); padding: 4px 6px; }
+.tabla-uso td { padding: 8px 6px; border-top: 1px solid var(--borde); }
+.tabla-uso tbody tr { cursor: pointer; }

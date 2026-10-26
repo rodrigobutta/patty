@@ -7,6 +7,7 @@ import { useEstado } from '../estado';
 import { Buscar } from './Buscar';
 import { Calendario } from './Calendario';
 import { Numeros } from './Numeros';
+import { Preguntar } from './Preguntar';
 import { RuedaProgreso } from './RuedaProgreso';
 import { IconoBuscar, IconoCalendario, IconoNumeros, IconoRelacion } from '../ui/Iconos';
 
@@ -79,6 +80,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
     </article>
   );
 
+  const caja = sesion?.ia ? <Preguntar persona={persona} alBuscar={(id) => { setBuscado(id); setVista('buscar'); }} /> : null;
   const listo = progreso ? avanceProgreso(progreso).nivel > 0 : true;
   const pestanas = (
     <div className="segmentos ancho subvistas">
@@ -91,6 +93,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   if (vista === 'numeros') {
     return (
       <section className="patrones">
+        {caja}
         {pestanas}
         <Numeros persona={persona} alElegir={(id) => { setBuscado(id); setVista('buscar'); }} />
       </section>
@@ -99,6 +102,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   if (vista === 'calendario') {
     return (
       <section className="patrones">
+        {caja}
         {pestanas}
         <Calendario persona={persona} />
       </section>
@@ -107,13 +111,15 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   if (vista === 'buscar') {
     return (
       <section className="patrones">
+        {caja}
         {pestanas}
-        <Buscar persona={persona} conceptoInicial={buscado} />
+        <Buscar key={buscado ?? 0} persona={persona} conceptoInicial={buscado} />
       </section>
     );
   }
   return (
     <section className="patrones">
+      {caja}
       {pestanas}
       {progreso ? <div className="tarjeta">{<RuedaProgreso progreso={progreso} />}</div> : null}
       <div className="tarjeta">

@@ -56,8 +56,17 @@ export function idDeAviso(texto: string): number {
 }
 
 const EVENTO_DIA = 'patty-ir-al-dia';
-/** Pedir que se muestre el Día (al tocar un aviso). */
-export const irAlDia = () => window.dispatchEvent(new Event(EVENTO_DIA));
+let fechaPedida: string | null = null;
+/** Pedir que se muestre el Día (al tocar un aviso), o un día en particular (AAAA-MM-DD, desde una respuesta de Patty). */
+export const irAlDia = (fecha?: string) => {
+  fechaPedida = fecha ?? null;
+  window.dispatchEvent(new Event(EVENTO_DIA));
+};
+/** El día que se pidió ver (queda hasta `olvidarFechaPedida`, así sobrevive a que React arme el Día dos veces). */
+export const fechaPedidaParaVer = (): string | null => fechaPedida;
+export const olvidarFechaPedida = () => {
+  fechaPedida = null;
+};
 export function alPedirIrAlDia(f: () => void): () => void {
   window.addEventListener(EVENTO_DIA, f);
   return () => window.removeEventListener(EVENTO_DIA, f);

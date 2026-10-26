@@ -151,7 +151,72 @@ export const rutasAdmin = new Hono<Env>()
       db,
       sql`SELECT id, persona_id, tipo, titulo, cuerpo, resultado, creado FROM avisos_historial WHERE usuario_id = ${id} ORDER BY creado DESC LIMIT 60`,
     );
-    return c.json({ usuario: u, personas, ultimos, telefonos, instalaciones, tratamientos, supervisiones, analisis: analisisDe, hallazgos: hallazgosDe, avisos });
+    const uso = await filas(
+      db,
+      sql`SELECT to_char(d, 'YYYY-MM-DD') AS fecha, coalesce(x.segundos, 0)::int AS segundos, coalesce(x.aperturas, 0)::int AS aperturas
+          FROM generate_series(current_date - ${ULTIMOS_DIAS - 1}::int, current_date, interval '1 day') d
+          LEFT JOIN uso_diario x ON x.usuario_id = ${id} AND x.fecha = d::date ORDER BY d`,
+    );
+    const preguntasDe = await filas(
+      db,
+      sql`SELECT id, pregunta, respuesta, creado FROM preguntas WHERE usuario_id = ${id} ORDER BY creado DESC LIMIT 30`,
+    );
+    return c.json({ usuario: u, personas, ultimos, telefonos, instalaciones, tratamientos, supervisiones, analisis: analisisDe, hallazgos: hallazgosDe, avisos, uso, preguntas: preguntasDe });
+  })
+  .get('/uso', async (c) => {
+    // La actividad general de los últimos `dias` días: cuánto se usa la app, cuánto se anota y qué hace Patty.
+    const db = c.var.db;
+    const dias = Math.min(90, Math.max(7, Number(c.req.query('dias')) || 30));
+    const zona = 'America/Argentina/Buenos_Aires';
+    const por_dia = await filas(
+      db,
+      sql`WITH d AS (SELECT (current_date - g)::date AS fecha FROM generate_series(0, ${dias - 1}::int) g)
+          SELECT to_char(d.fecha, 'YYYY-MM-DD') AS fecha,
+                 (SELECT count(*) FROM uso_diario u WHERE u.fecha = d.fecha AND u.segundos > 0)::int AS usuarios,
+                 (SELECT coalesce(sum(u.segundos), 0) FROM uso_diario u WHERE u.fecha = d.fecha)::int AS segundos,
+                 (SELECT coalesce(sum(u.aperturas), 0) FROM uso_diario u WHERE u.fecha = d.fecha)::int AS aperturas,
+                 (SELECT count(*) FROM registros r WHERE r.borrado IS NULL AND (r.creado AT TIME ZONE ${zona})::date = d.fecha)::int AS registros,
+                 (SELECT count(DISTINCT r.creado_por) FROM registros r WHERE r.borrado IS NULL AND (r.creado AT TIME ZONE ${zona})::date = d.fecha)::int AS anotaron,
+                 (SELECT count(*) FROM avisos_historial h WHERE (h.creado AT TIME ZONE ${zona})::date = d.fecha)::int AS avisos,
+                 (SELECT count(*) FROM preguntas q WHERE (q.creado AT TIME ZONE ${zona})::date = d.fecha)::int AS preguntas,
+                 (SELECT count(*) FROM analisis a WHERE (a.creado AT TIME ZONE ${zona})::date = d.fecha)::int AS analisis
+          FROM d ORDER BY d.fecha`,
+    );
+    const desde = sql`current_date - ${dias - 1}::int`;
+    const pantallas = await filas(
+      db,
+      sql`SELECT k AS pantalla, sum(v::int)::int AS segundos FROM uso_diario, jsonb_each_text(pantallas) AS x(k, v)
+          WHERE fecha >= ${desde} GROUP BY k ORDER BY segundos DESC`,
+    );
+    const origenes = await filas(
+      db,
+      sql`SELECT r.origen, count(*)::int AS n FROM registros r WHERE r.borrado IS NULL AND r.creado >= ${desde} GROUP BY r.origen ORDER BY n DESC`,
+    );
+    const categorias = await filas(
+      db,
+      sql`SELECT k.icono, k.nombre, count(*)::int AS n FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
+          WHERE r.borrado IS NULL AND r.creado >= ${desde} GROUP BY k.icono, k.nombre ORDER BY n DESC`,
+    );
+    const avisos = await filas(
+      db,
+      sql`SELECT coalesce(tipo, 'otro') AS tipo, count(*)::int AS n, count(*) FILTER (WHERE resultado <> 'ok')::int AS fallidos
+          FROM avisos_historial WHERE creado >= ${desde} GROUP BY 1 ORDER BY n DESC`,
+    );
+    const usuarios = await filas(
+      db,
+      sql`SELECT u.id, u.nombre,
+                 coalesce((SELECT sum(x.segundos) FROM uso_diario x WHERE x.usuario_id = u.id AND x.fecha >= ${desde}), 0)::int AS segundos,
+                 (SELECT count(*) FROM uso_diario x WHERE x.usuario_id = u.id AND x.fecha >= ${desde} AND x.segundos > 0)::int AS dias,
+                 (SELECT count(*) FROM registros r WHERE r.creado_por = u.id AND r.borrado IS NULL AND r.creado >= ${desde})::int AS registros,
+                 (SELECT count(*) FROM preguntas q WHERE q.usuario_id = u.id AND q.creado >= ${desde})::int AS preguntas
+          FROM usuarios u WHERE u.activo ORDER BY segundos DESC, registros DESC`,
+    );
+    const ultimasPreguntas = await filas(
+      db,
+      sql`SELECT q.id, q.pregunta, q.respuesta, q.creado, u.nombre AS usuario FROM preguntas q JOIN usuarios u ON u.id = q.usuario_id
+          ORDER BY q.creado DESC LIMIT 20`,
+    );
+    return c.json({ dias, por_dia, pantallas, origenes, categorias, avisos, usuarios, preguntas: ultimasPreguntas });
   })
   .get('/actividad', async (c) => {
     // Lo último que se anotó en toda la app (de todos), para ver en vivo cómo se usa.

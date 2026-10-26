@@ -30,12 +30,13 @@ import { ofrecerPerfil, Perfil } from './pantallas/Perfil';
 import { ofrecerPermisos, pedirGuia, Permisos, type Paso } from './pantallas/Permisos';
 import { useReportarEstado } from './lib/estadoTelefono';
 import { t } from './lib/idioma';
+import { useMedirUso } from './lib/uso';
 
 type Pestana = 'hoy' | 'patrones' | 'mas' | 'admin';
 
 const PESTANAS: Array<{ id: Pestana; nombre: string }> = [
   { id: 'hoy', nombre: t('Día') },
-  { id: 'patrones', nombre: t('Patrones') },
+  { id: 'patrones', nombre: t('Descubrir') },
   { id: 'mas', nombre: t('Más') },
 ];
 
@@ -68,6 +69,7 @@ export function App() {
   const progreso = useProgreso(fase === 'listo' ? persona?.id : undefined);
   const avance = progreso ? avanceProgreso(progreso) : { avance: 0, nivel: 0 };
   usePush(fase === 'listo', Boolean(sesion?.push));
+  useMedirUso(fase === 'listo', pestana);
   useEffect(() => alPedirIrAlDia(() => setPestana('hoy')), []);
   // Un aviso push de otra persona (una que se supervisa) la elige; uno de supervisión lleva a Más.
   useEffect(

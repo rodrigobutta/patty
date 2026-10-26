@@ -554,3 +554,42 @@ export const gente = pgTable(
   },
   (t) => [primaryKey({ columns: [t.persona_id, t.concepto_id] })],
 );
+
+/** Lo que cada usuario le preguntó a Patty sobre sus datos y lo que le contestó (la administración lo puede ver). */
+export const preguntas = pgTable(
+  'preguntas',
+  {
+    id: id(),
+    usuario_id: integer('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    pregunta: text('pregunta').notNull(),
+    respuesta: text('respuesta').notNull(),
+    fechas: jsonb('fechas').$type<string[]>().notNull().default([]),
+    creado: creado(),
+  },
+  (t) => [index('preguntas_usuario_idx').on(t.usuario_id, t.creado)],
+);
+
+/**
+ * Cuánto se usó la app cada día (en el día del teléfono): la app suma el tiempo que está a la vista y lo manda cada
+ * minuto. `pantallas`: segundos por pestaña (hoy, patrones, mas, admin).
+ */
+export const usoDiario = pgTable(
+  'uso_diario',
+  {
+    usuario_id: integer('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    segundos: integer('segundos').notNull().default(0),
+    aperturas: integer('aperturas').notNull().default(0),
+    pantallas: jsonb('pantallas').$type<Record<string, number>>().notNull().default({}),
+    plataforma: text('plataforma'),
+    actualizado: instante('actualizado').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.usuario_id, t.fecha] })],
+);
