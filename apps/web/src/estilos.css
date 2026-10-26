@@ -755,7 +755,7 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .mapa { width: 100%; border-radius: 14px; overflow: hidden; background: var(--acento-suave); isolation: isolate; }
 .mapa .leaflet-control-attribution { font-size: 9px; background: color-mix(in srgb, var(--panel) 80%, transparent); color: var(--suave); }
 .mapa .leaflet-control-attribution a { color: var(--suave); }
-.etiqueta-mapa { font: 600 12px/1.2 inherit; border-radius: 8px; padding: 3px 7px; }
+.etiqueta-mapa { font-weight: 600; font-size: 12px; line-height: 1.2; border-radius: 8px; padding: 3px 7px; }
 .boton-parada, .boton-lugar { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .boton-parada { display: flex; flex-direction: column; }
 .ver-mapa { color: var(--acento); font-weight: 600; margin-top: 2px; }
@@ -777,8 +777,8 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .rueda-puntos .arco-puntos { fill: none; stroke: url(#puntos-color); stroke-width: 9; stroke-linecap: round;
   transition: stroke-dashoffset 1s cubic-bezier(.2, .8, .3, 1); animation: llenar-puntos 1.4s cubic-bezier(.2, .8, .3, 1) both; }
 @keyframes llenar-puntos { from { stroke-dashoffset: calc(var(--largo) * 1px); } }
-.rueda-puntos .numero-puntos { font: 800 22px/1 inherit; fill: var(--texto, currentColor); }
-.rueda-puntos .de-puntos { font: 600 10px/1 inherit; fill: var(--suave); }
+.rueda-puntos .numero-puntos { font-weight: 800; font-size: 22px; line-height: 1; fill: var(--texto, currentColor); }
+.rueda-puntos .de-puntos { font-weight: 600; font-size: 10px; line-height: 1; fill: var(--suave); }
 .boton-tablero { margin-top: 4px; }
 .faltan-puntos { margin-top: 12px; }
 .faltan-puntos .chip strong { color: var(--acento); margin-left: 2px; }
@@ -829,9 +829,9 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
   box-shadow: 0 2px 0 #3f2a80, 0 4px 12px rgb(107 79 187 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.35); }
 .mini-puntos:active { transform: translateY(1px); box-shadow: 0 1px 0 #3f2a80, 0 2px 6px rgb(107 79 187 / 0.4), inset 0 1px 0 rgb(255 255 255 / 0.35); }
 .mini-puntos .estrella { position: relative; font-size: 16px; filter: drop-shadow(0 1px 0 rgb(0 0 0 / 0.15)); }
-.mini-puntos .numero { position: relative; font: 900 16px/1 inherit; color: #fff; min-width: 18px; text-align: right; text-shadow: 0 1px 1px rgb(0 0 0 / 0.25); }
+.mini-puntos .numero { position: relative; font-weight: 900; font-size: 16px; line-height: 1; color: #fff; min-width: 18px; text-align: right; text-shadow: 0 1px 1px rgb(0 0 0 / 0.25); }
 .mini-puntos.gana { animation: rebote-puntos 0.7s cubic-bezier(.2, 1.6, .4, 1); }
-.mas-puntos { position: absolute; right: 2px; top: -4px; font: 900 15px/1 inherit; color: #ffc21a; text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+.mas-puntos { position: absolute; right: 2px; top: -4px; font-weight: 900; font-size: 15px; line-height: 1; color: #ffc21a; text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
   animation: sube-puntos 2.4s ease-out forwards; pointer-events: none; }
 .chispas-puntos i { position: absolute; left: 50%; top: 50%; font-style: normal; font-size: 12px; pointer-events: none;
   animation: chispa-puntos 1s ease-out forwards; animation-delay: calc(var(--k) * 60ms); }
@@ -847,3 +847,41 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .pista-carga { margin: 0 0 8px; text-align: center; font-size: 18px; font-weight: 800; color: var(--acento); }
 .con-quien { margin: 6px 0 4px; }
 .rotulo-campo { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+
+/* ---------- Hoja de puntos, como pantalla de juego ---------- */
+.hoja.puntos-dia { padding: 0 0 calc(18px + env(safe-area-inset-bottom)); overflow-x: hidden; }
+.hoja.puntos-dia > :not(.cabeza-juego) { margin-left: 16px; margin-right: 16px; }
+.cabeza-juego { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 20px 20px; margin-bottom: 14px;
+  border-radius: 20px 20px 0 0; color: #fff; text-align: center; overflow: hidden;
+  background: linear-gradient(160deg, #8f6fe8, #5a3fa6); }
+.estado-arranca .cabeza-juego { background: linear-gradient(160deg, #5aa9e6, #3d6fd1); }
+.estado-bien .cabeza-juego { background: linear-gradient(160deg, #8f6fe8, #5a3fa6); }
+.estado-casi .cabeza-juego { background: linear-gradient(160deg, #ffb347, #f0702b); }
+.estado-completo .cabeza-juego { background: linear-gradient(160deg, #3ddc84, #17a35a); }
+.cerrar-juego { position: absolute; top: 8px; right: 8px; color: #fff; }
+.emoji-estado { font-size: 46px; line-height: 1; animation: saltito 0.7s ease-in-out 0.2s 2; }
+.titulo-estado { font-size: 24px; font-weight: 900; letter-spacing: -0.01em; }
+.frase-estado { font-size: 14px; opacity: 0.92; max-width: 300px; }
+.puntaje-grande { display: inline-flex; align-items: baseline; gap: 6px; margin-top: 6px; font-weight: 900; font-size: 40px; line-height: 1; text-shadow: 0 2px 0 rgb(0 0 0 / 0.15); }
+.puntaje-grande small { font-size: 16px; font-weight: 700; opacity: 0.8; }
+.barra-juego { position: relative; width: 100%; max-width: 320px; height: 14px; margin-top: 10px; border-radius: 999px; background: rgb(255 255 255 / 0.25); }
+.barra-juego > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fff6c2, #ffd23f);
+  box-shadow: 0 0 10px rgb(255 210 63 / 0.6); animation: crecer-x 1.1s cubic-bezier(.2, .8, .3, 1) backwards; transform-origin: left; }
+.barra-juego > i { position: absolute; top: -18px; transform: translateX(-50%); font-style: normal; font-size: 14px; }
+.confeti i { position: absolute; top: -20px; font-style: normal; font-size: 18px; animation: caer-confeti 2.6s ease-in infinite; animation-delay: calc(var(--k) * 0.35s); }
+.confeti i:nth-child(1) { left: 8%; } .confeti i:nth-child(2) { left: 22%; } .confeti i:nth-child(3) { left: 38%; } .confeti i:nth-child(4) { left: 55%; }
+.confeti i:nth-child(5) { left: 70%; } .confeti i:nth-child(6) { left: 84%; } .confeti i:nth-child(7) { left: 94%; }
+@keyframes caer-confeti { 0% { transform: translateY(0) rotate(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateY(240px) rotate(260deg); opacity: 0; } }
+.fichas-juego { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.ficha { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border-radius: 14px; background: var(--acento-suave); border: 0; font: inherit; color: inherit; }
+.ficha strong { font-size: 18px; font-weight: 900; }
+.ficha-boton { cursor: pointer; }
+.semana-juego { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 70px; margin-bottom: 14px; align-items: end; }
+.semana-juego span { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.semana-juego i { display: block; width: 100%; border-radius: 6px 6px 3px 3px; background: var(--borde); animation: crecer-y 0.8s ease backwards; transform-origin: bottom; }
+.semana-juego .bien i { background: var(--acento); }
+.semana-juego .lleno i { background: linear-gradient(180deg, #3ddc84, #17a35a); }
+.semana-juego .hoy small { color: var(--acento); font-weight: 800; }
+.semana-juego small { font-size: 11px; color: var(--suave); }
+@keyframes crecer-y { from { transform: scaleY(0); } }
+@media (prefers-reduced-motion: reduce) { .confeti, .emoji-estado { animation: none; } .confeti i { display: none; } }

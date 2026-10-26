@@ -7,7 +7,7 @@ import { api } from '../api';
 import { useEstado } from '../estado';
 import { EVENTO_ANOTADO } from '../mascota/cara';
 import { irAlDia } from '../lib/avisos';
-import { t } from '../lib/idioma';
+import { locale, t } from '../lib/idioma';
 import { Tablero } from './Tablero';
 
 interface Respuesta {
@@ -20,6 +20,15 @@ const CLAVE_FESTEJADO = 'puntos-festejados';
 
 /** Pedirle al Día que abra "Contale a Patty" con lo que se eligió sumar (desde la hoja de puntos, en la barra). */
 export const EVENTO_CONTAR = 'patty-contar';
+
+type EstadoPuntos = 'arranca' | 'bien' | 'casi' | 'completo';
+/** Cómo viene el día: cambia el color, el emoji y la frase de la hoja de puntos. */
+const ESTADOS_PUNTOS: Record<EstadoPuntos, { emoji: string; titulo: string; frase: string }> = {
+  arranca: { emoji: '🌱', titulo: '¡Arrancá el día!', frase: 'Cada cosa que anotás suma. Te faltan {n} para la meta.' },
+  bien: { emoji: '💪', titulo: '¡Vas bien!', frase: 'Ya sumás para la racha. Te faltan {n} para completar el día.' },
+  casi: { emoji: '🔥', titulo: '¡Casi!', frase: 'Te faltan {n} puntos para completar el día.' },
+  completo: { emoji: '🏆', titulo: '¡Día completo!', frase: '' },
+};
 
 /** Lo que se le dice a la IA y lo que se muestra arriba al anotar cada cosa que suma (para no preguntar qué es). */
 export const PISTAS: Partial<Record<ItemPuntos, { texto: string; titulo: string }>> = {
@@ -110,7 +119,7 @@ export function PuntosDelDia({ persona }: { persona: Persona }) {
 
   if (!r) return null;
   const { hoy } = r;
-  const largo = 2 * Math.PI * 34;
+  const estado: EstadoPuntos = hoy.puntos >= 100 ? 'completo' : hoy.puntos >= 70 ? 'casi' : hoy.puntos >= 35 ? 'bien' : 'arranca';
   const faltan = hoy.items.filter((i) => i.puntos < i.maximo).sort((a, b) => b.maximo - b.puntos - (a.maximo - a.puntos));
 
   return (
@@ -129,56 +138,63 @@ export function PuntosDelDia({ persona }: { persona: Persona }) {
         ? createPortal(
             <>
               <div className="velo" onClick={() => setAbierta(false)} />
-    <div className="hoja puntos-dia" role="dialog" aria-label={t('Puntos de hoy')}>
-      <div className="hoja-cabeza">
-        <span />
-        <button className="btn-icono" onClick={() => setAbierta(false)} aria-label={t('Cerrar')}>✕</button>
-      </div>
-      <div className="puntos-cabeza">
-        <svg viewBox="0 0 80 80" className="rueda-puntos" aria-label={t('{n} puntos de 100', { n: hoy.puntos })}>
-          <defs>
-            <linearGradient id="puntos-color" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="var(--acento)" />
-              <stop offset="1" stopColor="#e58bb4" />
-            </linearGradient>
-          </defs>
-          <circle cx="40" cy="40" r="34" className="fondo-rueda" />
-          <circle
-            cx="40"
-            cy="40"
-            r="34"
-            className="arco-puntos"
-            strokeDasharray={largo}
-            strokeDashoffset={largo * (1 - Math.min(1, hoy.puntos / 100))}
-            style={{ ['--largo' as string]: largo }}
-            transform="rotate(-90 40 40)"
-          />
-          <text x="40" y="44" textAnchor="middle" className="numero-puntos">{hoy.puntos}</text>
-          <text x="40" y="58" textAnchor="middle" className="de-puntos">/100</text>
-        </svg>
-        <div className="que">
-          <strong>{t('Puntos de hoy')}</strong>
-          <span className="suave chico">
-            {r.racha
-              ? r.racha === 1
-                ? t('🔥 1 día de racha')
-                : t('🔥 {n} días de racha', { n: r.racha })
-              : t('Llegá a {n} puntos para empezar una racha', { n: PUNTOS_RACHA })}
+    <div className={`hoja puntos-dia estado-${estado}`} role="dialog" aria-label={t('Puntos de hoy')}>
+      <div className="cabeza-juego">
+        <button className="btn-icono cerrar-juego" onClick={() => setAbierta(false)} aria-label={t('Cerrar')}>✕</button>
+        {estado === 'completo' ? <span className="confeti" aria-hidden>{['🎉', '⭐', '✨', '🏆', '🎊', '⭐', '✨'].map((c, k) => <i key={k} style={{ ['--k' as string]: k }}>{c}</i>)}</span> : null}
+        <span className="emoji-estado" aria-hidden>{ESTADOS_PUNTOS[estado].emoji}</span>
+        <strong className="titulo-estado">{t(ESTADOS_PUNTOS[estado].titulo)}</strong>
+        <span className="frase-estado">
+          {estado === 'completo'
+            ? t('Anotaste todo lo importante. ¡Así Patty te conoce cada vez mejor!')
+            : t(ESTADOS_PUNTOS[estado].frase, { n: Math.max(0, 100 - hoy.puntos) })}
+        </span>
+        <span className="puntaje-grande">
+          <span aria-hidden>⭐</span> {hoy.puntos}
+          {estado !== 'completo' ? <small>/100</small> : null}
+        </span>
+        {estado !== 'completo' ? (
+          <span className="barra-juego" aria-hidden>
+            <span style={{ width: `${Math.min(100, hoy.puntos)}%` }} />
+            <i style={{ left: `${PUNTOS_RACHA}%` }} title={t('Racha')}>🔥</i>
           </span>
-          <button className="btn chico boton-tablero" onClick={() => setTablero(true)}>{t('🏆 Tablero')}</button>
+        ) : null}
+      </div>
+      <div className="fichas-juego">
+        <div className="ficha">
+          <strong>🔥 {r.racha}</strong>
+          <span className="suave chico">{r.racha === 1 ? t('día de racha') : t('días de racha')}</span>
         </div>
+        <div className="ficha">
+          <strong>⭐ {r.semana.reduce((a, b) => a + b.puntos, 0)}</strong>
+          <span className="suave chico">{t('en la semana')}</span>
+        </div>
+        <button className="ficha ficha-boton" onClick={() => setTablero(true)}>
+          <strong>🏆</strong>
+          <span className="suave chico">{t('Tablero')}</span>
+        </button>
+      </div>
+      <div className="semana-juego" aria-label={t('Los últimos 7 días')}>
+        {r.semana.map((d, k) => (
+          <span key={d.fecha} className={`${d.puntos >= 100 ? 'lleno' : d.puntos >= PUNTOS_RACHA ? 'bien' : ''}${k === r.semana.length - 1 ? ' hoy' : ''}`}>
+            <i style={{ height: `${Math.min(100, Math.max(6, d.puntos))}%` }} />
+            <small>{new Intl.DateTimeFormat(locale(), { weekday: 'narrow', timeZone: 'UTC' }).format(new Date(d.fecha + 'T12:00:00Z'))}</small>
+          </span>
+        ))}
       </div>
       {faltan.length ? (
-        <div className="chips envolver faltan-puntos">
-          {faltan.slice(0, 6).map((i) => (
-            <button key={i.clave} className="chip" onClick={() => alAnotar(i.clave)}>
-              <span aria-hidden>{ITEMS_PUNTOS[i.clave].icono}</span> {t(ITEMS_PUNTOS[i.clave].nombre)} <strong>+{i.maximo - i.puntos}</strong>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="suave chico">{t('¡Día completo! Anotaste todo lo importante.')}</p>
-      )}
+        <>
+          <p className="rotulo-campo">{estado === 'completo' ? t('Para sumar más:') : t('Lo que más suma:')}</p>
+          <div className="chips envolver faltan-puntos">
+            {faltan.slice(0, 6).map((i) => (
+              <button key={i.clave} className="chip" onClick={() => alAnotar(i.clave)}>
+                <span aria-hidden>{ITEMS_PUNTOS[i.clave].icono}</span> {t(ITEMS_PUNTOS[i.clave].nombre)} <strong>+{i.maximo - i.puntos}</strong>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+      <p className="suave chico centro">{t('Cada cosa de más que anotes suma +2.')}</p>
       {tablero
         ? createPortal(
             <>
