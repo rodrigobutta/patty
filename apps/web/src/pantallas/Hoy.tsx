@@ -5,7 +5,7 @@ import { alTocarAvisoPush } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, estacionDe, conUnidad, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, estacionDe, conUnidad, CUANTO, ESTADOS_PUNTUALES, TELE, teleDeTipo, teleEnCanal, estadoDe, type DatoAutomatico, type EstadoAnimo, type ItemPuntos, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { idioma, locale, t } from '../lib/idioma';
 import { useEstado } from '../estado';
@@ -21,7 +21,7 @@ import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
-import { EVENTO_CONTAR } from './PuntosDelDia';
+import { EVENTO_CONTAR, PISTAS } from './PuntosDelDia';
 import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
@@ -189,8 +189,15 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   );
   const [vuelta, setVuelta] = useState(0);
   // Desde la hoja de puntos (en la barra de arriba): "Contale a Patty".
+  const [pista, setPista] = useState<(typeof PISTAS)[keyof typeof PISTAS]>(undefined);
   useEffect(() => {
-    const f = () => setCargando('contar');
+    const f = (e: Event) => {
+      const item = (e as CustomEvent<ItemPuntos | undefined>).detail;
+      // "Cómo te sentís" se contesta con las caritas; lo demás, contándolo, con lo que se eligió ya dicho.
+      if (item === 'animo') return setSintiendo({ momento: 'ahora', estado: null });
+      setPista(item ? PISTAS[item] : undefined);
+      setCargando('contar');
+    };
     window.addEventListener(EVENTO_CONTAR, f);
     return () => window.removeEventListener(EVENTO_CONTAR, f);
   }, []);
@@ -494,7 +501,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />
-          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} foto={cargando === 'foto' ? fotoInicial ?? undefined : undefined} alCerrar={() => setCargando(false)} alGuardar={(otroDia) => { setCargando(false); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
+          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} pista={cargando === 'contar' ? pista : undefined} foto={cargando === 'foto' ? fotoInicial ?? undefined : undefined} alCerrar={() => { setCargando(false); setPista(undefined); }} alGuardar={(otroDia) => { setCargando(false); setPista(undefined); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
         </>
       ) : null}
     </section>

@@ -57,7 +57,7 @@ interface Propuesta {
   lugar?: string | null;
 }
 
-export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto }: {
+export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto, pista }: {
   persona: Persona;
   fecha: string;
   /** `fechaGuardada`: si lo anotado quedó todo en otro día (contado en texto: "ayer a la noche…"), cuál. */
@@ -68,6 +68,8 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
   /** Abrir directo en "Contarlo" con la cámara (el botón de la foto del Día). */
   /** Una foto ya sacada (desde el botón de la cámara del Día): Patty la mira apenas se abre. */
   foto?: Foto;
+  /** Qué se eligió anotar (desde los puntos: "la merienda de hoy"): se muestra arriba y se le pasa a la IA. */
+  pista?: { texto: string; titulo: string };
 }) {
   const { categorias, sesion, festejar } = useEstado();
   const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>(contar || foto ? 'texto' : 'rapido');
@@ -103,7 +105,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
       </div>
 
       {modo === 'texto' ? (
-        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto} fotoInicial={foto} sinFoto={contar && !foto} />
+        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto} fotoInicial={foto} sinFoto={contar && !foto} pista={pista} />
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
@@ -263,7 +265,7 @@ interface Duda {
   opciones: string[];
 }
 
-function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInicial, sinFoto = false }: {
+function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInicial, sinFoto = false, pista }: {
   persona: Persona;
   /** El día que se estaba mirando: si no se dice cuándo pasó, es ese. */
   fecha: string;
@@ -272,6 +274,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   fotoInicial?: Foto;
   /** Abierto para hablar: sin el botón de la foto (la cámara tiene su propio botón en el Día). */
   sinFoto?: boolean;
+  pista?: { texto: string; titulo: string };
 }) {
   const { categorias, festejar, sesion } = useEstado();
   const vozServidor = Boolean(sesion?.voz);
@@ -327,7 +330,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: Array<Duda | string> }>(
         'POST',
         foto ? '/api/registros/foto' : '/api/registros/interpretar',
-        foto ? { persona_id: persona.id, texto: contado, fecha, imagen: foto.datos, tipo: foto.tipo } : { persona_id: persona.id, texto: contado, fecha },
+        foto ? { persona_id: persona.id, texto: contado, fecha, imagen: foto.datos, tipo: foto.tipo, pista: pista?.texto } : { persona_id: persona.id, texto: contado, fecha, pista: pista?.texto },
       );
       setTexto(contado);
       setPropuesta(r.registros);
@@ -597,6 +600,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   }
   return (
     <div className="valor">
+      {pista && !propuesta ? <p className="pista-carga">{pista.titulo}</p> : null}
       {foto && estado === 'ordenando' ? (
         <div className="mirando-foto">
           <img className="foto-mandada" src={foto.url} alt={t('La foto que mandaste')} />

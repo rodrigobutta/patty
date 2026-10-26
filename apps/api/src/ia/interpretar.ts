@@ -123,6 +123,8 @@ export async function interpretarTexto(
   referencia?: string,
   imagen?: { tipo: 'image/jpeg' | 'image/png' | 'image/webp'; datos: string },
   idioma: Idioma = 'es',
+  /** Qué eligió anotar antes de contarlo ("la merienda", desde los puntos): para no preguntarlo. */
+  pista = '',
 ) {
   if (!texto && !imagen) throw new ErrorApi('Escribí qué pasó.');
   if (texto.length > 4000) throw new ErrorApi('El texto es muy largo (máximo 4000 letras).');
@@ -214,6 +216,7 @@ export async function interpretarTexto(
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     '',
     ...(imagen ? ['La persona mandó una foto (arriba) para anotar.'] : []),
+    ...(pista ? [`La persona eligió anotar esto: ${pista}. Es eso: no preguntes qué comida o momento fue.`] : []),
     'Texto de la persona:',
     texto || '(sin texto: solo la foto)',
   ].join('\n');

@@ -226,4 +226,12 @@ export const PERMISOS: Record<string, string> = {
   'Nuevos: {lista}': 'New: {lista}',
   'Anotado: con {lista} 👥': 'Logged: with {lista} 👥',
   '1 vez': '1 time',
+  '☕ Contame qué desayunaste': '☕ Tell me what you had for breakfast',
+  '🍝 Contame qué almorzaste': '🍝 Tell me what you had for lunch',
+  '🧉 Contame qué merendaste': '🧉 Tell me your afternoon snack',
+  '🍽️ Contame qué cenaste': '🍽️ Tell me what you had for dinner',
+  '😴 ¿A qué hora te acostaste y te levantaste?': '😴 What time did you go to bed and get up?',
+  '🏃 ¿Te moviste hoy? Contame qué hiciste': '🏃 Did you move today? Tell me what you did',
+  '🥤 ¿Qué tomaste hoy?': '🥤 What did you drink today?',
+  '💊 ¿Qué remedios tomaste?': '💊 Which meds did you take?',
 };
