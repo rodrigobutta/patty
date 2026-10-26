@@ -15,7 +15,8 @@ import { avisarAnotado } from '../mascota/cara';
 import type { Cara } from '../mascota/dibujo';
 import { Mascota } from '../mascota/Mascota';
 import { IconoCamara, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
-import { Cargar } from './Cargar';
+import { Cargar, ElegirFoto } from './Cargar';
+import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { CicloDelDia } from './CicloDelDia';
@@ -98,6 +99,20 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const [abierto, setAbierto] = useState<string | null>(null);
   /** La hoja de anotar abierta: normal, o directo en "Contarlo" (el botón grande de hablarle). */
   const [cargando, setCargando] = useState<false | 'normal' | 'contar' | 'foto'>(false);
+  // La cámara del Día: primero cámara o galería; con la foto ya sacada se abre la carga (si se cancela, nada).
+  const [eligiendoFoto, setEligiendoFoto] = useState(false);
+  const [fotoInicial, setFotoInicial] = useState<Foto | null>(null);
+  const fotoDe = async (origen: 'camara' | 'galeria') => {
+    setEligiendoFoto(false);
+    try {
+      const f = await sacarFoto(origen);
+      if (!f) return;
+      setFotoInicial(f);
+      setCargando('foto');
+    } catch (e) {
+      avisar((e as Error).message);
+    }
+  };
   /** La hoja de "¿cómo te sentís?" abierta: en el momento o del día, con el estado ya elegido o no. */
   const [sintiendo, setSintiendo] = useState<{ momento: Momento; estado: EstadoAnimo | null } | null>(null);
   const [error, setError] = useState('');
@@ -457,7 +472,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             {hayVoz(sesion.voz) ? <IconoMicrofono /> : <IconoLapiz />}
             {t('Contale a Patty')}
           </button>
-          <button className="camara-flotante" onClick={() => setCargando('foto')} aria-label={t('Sacale una foto a lo que comiste')}><IconoCamara /></button>
+          <button className="camara-flotante" onClick={() => setEligiendoFoto(true)} aria-label={t('Sacale una foto a lo que comiste')}><IconoCamara /></button>
+          {eligiendoFoto ? <ElegirFoto alElegir={(o) => void fotoDe(o)} alCancelar={() => setEligiendoFoto(false)} /> : null}
         </>
       ) : null}
       <button className="fab" onClick={() => setCargando('normal')} aria-label={t('Anotar')}>＋</button>
@@ -470,7 +486,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />
-          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} foto={cargando === 'foto'} alCerrar={() => setCargando(false)} alGuardar={(otroDia) => { setCargando(false); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
+          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} foto={cargando === 'foto' ? fotoInicial ?? undefined : undefined} alCerrar={() => setCargando(false)} alGuardar={(otroDia) => { setCargando(false); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
         </>
       ) : null}
     </section>

@@ -57,7 +57,7 @@ interface Propuesta {
   lugar?: string | null;
 }
 
-export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto = false }: {
+export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto }: {
   persona: Persona;
   fecha: string;
   /** `fechaGuardada`: si lo anotado quedó todo en otro día (contado en texto: "ayer a la noche…"), cuál. */
@@ -66,7 +66,8 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
   /** Abrir directo en "Contarlo" y, si se puede, empezar a escuchar (el botón grande del Día). */
   contar?: boolean;
   /** Abrir directo en "Contarlo" con la cámara (el botón de la foto del Día). */
-  foto?: boolean;
+  /** Una foto ya sacada (desde el botón de la cámara del Día): Patty la mira apenas se abre. */
+  foto?: Foto;
 }) {
   const { categorias, sesion, festejar } = useEstado();
   const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>(contar || foto ? 'texto' : 'rapido');
@@ -96,7 +97,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
       </div>
 
       {modo === 'texto' ? (
-        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto} fotoAlAbrir={foto} />
+        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto} fotoInicial={foto} />
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
@@ -256,13 +257,13 @@ interface Duda {
   opciones: string[];
 }
 
-function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAbrir = false }: {
+function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInicial }: {
   persona: Persona;
   /** El día que se estaba mirando: si no se dice cuándo pasó, es ese. */
   fecha: string;
   alGuardar(fechaGuardada?: string): void;
   dictarAlAbrir?: boolean;
-  fotoAlAbrir?: boolean;
+  fotoInicial?: Foto;
 }) {
   const { categorias, festejar, sesion } = useEstado();
   const vozServidor = Boolean(sesion?.voz);
@@ -384,12 +385,14 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
     setOnda(escucha.current?.onda);
   };
 
-  // Desde el botón de la cámara del Día: se abre la cámara apenas se abre.
+  // Desde el botón de la cámara del Día: la foto ya viene sacada y Patty la mira apenas se abre.
   const fotoPedida = useRef(false);
   useEffect(() => {
-    if (!fotoAlAbrir || fotoPedida.current) return;
+    if (!fotoInicial || fotoPedida.current) return;
     fotoPedida.current = true;
-    void tomarFoto();
+    fotoRef.current = fotoInicial;
+    setFoto(fotoInicial);
+    void interpretar('', fotoInicial);
   });
 
   // Desde el botón grande del Día: se empieza a escuchar apenas se abre.
@@ -562,24 +565,27 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoAlAb
       ) : null}
       {entrada(false)}
       {error ? <p className="neg">{error}</p> : null}
-      {eligiendoFoto
-        ? createPortal(
-            <>
-              <div className="velo" onClick={() => setEligiendoFoto(false)} />
-              <div className="hoja modal-cuanto elegir-foto" role="dialog" aria-label={t('Foto para Patty')}>
-                <p className="pregunta-cuanto">{t('Foto para Patty')}</p>
-                <button className="btn primario grande-foto" onClick={() => void fotoDe('camara')}>
-                  <IconoCamara tamano={28} /> {t('Sacar una foto')}
-                </button>
-                <button className="btn grande-foto" onClick={() => void fotoDe('galeria')}>
-                  <IconoGaleria tamano={28} /> {t('Elegir de la galería')}
-                </button>
-                <button className="enlace chico cancelar-cuanto" onClick={() => setEligiendoFoto(false)}>{t('Cancelar')}</button>
-              </div>
-            </>,
-            document.body,
-          )
-        : null}
+      {eligiendoFoto ? <ElegirFoto alElegir={(o) => void fotoDe(o)} alCancelar={() => setEligiendoFoto(false)} /> : null}
     </div>
+  );
+}
+
+/** Cámara o galería, con dos botones grandes (en vez del menú chiquito del sistema). */
+export function ElegirFoto({ alElegir, alCancelar }: { alElegir(origen: 'camara' | 'galeria'): void; alCancelar(): void }) {
+  return createPortal(
+    <>
+      <div className="velo" onClick={alCancelar} />
+      <div className="hoja modal-cuanto elegir-foto" role="dialog" aria-label={t('Foto para Patty')}>
+        <p className="pregunta-cuanto">{t('Foto para Patty')}</p>
+        <button className="btn primario grande-foto" onClick={() => alElegir('camara')}>
+          <IconoCamara tamano={28} /> {t('Sacar una foto')}
+        </button>
+        <button className="btn grande-foto" onClick={() => alElegir('galeria')}>
+          <IconoGaleria tamano={28} /> {t('Elegir de la galería')}
+        </button>
+        <button className="enlace chico cancelar-cuanto" onClick={alCancelar}>{t('Cancelar')}</button>
+      </div>
+    </>,
+    document.body,
   );
 }
