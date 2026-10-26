@@ -68,7 +68,7 @@ export interface Parada extends Coordenadas {
 }
 
 /** Desde cuánto tiempo en un mismo lugar sin nombre se pregunta qué lugar es. */
-export const PARADA_MIN = 45;
+export const PARADA_MIN = 30;
 
 /**
  * Dónde se quedó un buen rato sin que sea un lugar con nombre: un punto guardado (el teléfono manda uno cada vez que
