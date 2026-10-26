@@ -179,6 +179,10 @@ export async function interpretarTexto(
     'Si una comida no es casera (afuera o delivery) y no se dijo de dónde, preguntá en dudas de dónde era, con los ' +
     'lugares donde ya comió como opciones (los más probables para esa comida y ese momento) y alguno nuevo típico si ' +
     'cuadra; así se van guardando los lugares, que pueden explicar cosas. Una sola pregunta por todas esas comidas. ' +
+    'Si cuenta un viaje o traslado ("fui en colectivo a la oficina, una hora, mucho tráfico"), en la categoría viaje: ' +
+    '"Viaje en auto", "Viaje en colectivo", "Viaje en tren o subte", "Viaje en bici", "Viaje caminando" o "Viaje en taxi", ' +
+    'con duracion_min y la intensidad de cuánto pesó (2 tranquilo, 5 normal, 8 pesado); si fue pesado (tráfico, lleno, ' +
+    'demoras), además un registro "Viaje pesado" en viaje. ' +
     'Si cuenta que estuvo con alguien ("comí con mi hermana", "vino Juan", "salí con amigos"), un registro en la ' +
     'categoría gente por cada persona, con su nombre corto (si ya está en "Su gente", exactamente ese nombre); para un ' +
     'grupo sin nombres, "Amigos", "Familia", "Compañeros de trabajo". ' +

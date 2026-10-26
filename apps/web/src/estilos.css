@@ -916,3 +916,9 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 /* La barra sin línea abajo: se une con el encabezado del día y el búho queda como saliendo de ella. */
 .barra { border-bottom-color: transparent; }
 .barra .boton-buho .buho-puntos { top: -4px; }
+.viajes h3 { margin: 0 0 6px; }
+.viaje { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.viaje .que { display: flex; flex-direction: column; }
+.pista-pesada { color: var(--ambar); font-weight: 600; }
+.botones-como { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dia .tarjeta.viajes { background: color-mix(in srgb, var(--acento) 8%, var(--panel)); border-color: color-mix(in srgb, var(--acento) 22%, var(--borde)); }

@@ -48,6 +48,7 @@ export const CATEGORIAS_INICIALES: CategoriaBase[] = [
   { clave: 'otro', nombre: 'Otro', icono: '📝', rol: 'ambos', tipo_valor: 'evento', unidad: null, orden: 13 },
   { clave: 'ciclo', nombre: 'Ciclo menstrual', icono: '🩸', rol: 'ambos', tipo_valor: 'intensidad', unidad: null, orden: 14 },
   { clave: 'gente', nombre: 'Con gente', icono: '👥', rol: 'causa', tipo_valor: 'evento', unidad: null, orden: 15 },
+  { clave: 'viaje', nombre: 'Viajes', icono: '🚗', rol: 'causa', tipo_valor: 'duracion', unidad: 'min', orden: 16 },
 ];
 
 /** Conceptos que conviene que existan desde el principio (los que van a llenar los relojes y el clima). */
@@ -1146,3 +1147,50 @@ export function calcularPuntos(o: {
 
 /** Desde cuántos puntos un día cuenta para la racha. */
 export const PUNTOS_RACHA = 50;
+
+// ---------- Viajes ----------
+
+export type ModoViaje = 'caminando' | 'bici' | 'auto' | 'colectivo' | 'tren' | 'taxi';
+export const MODOS_VIAJE: Record<ModoViaje, { nombre: string; icono: string; concepto: string }> = {
+  caminando: { nombre: 'Caminando', icono: '🚶', concepto: 'Viaje caminando' },
+  bici: { nombre: 'Bici', icono: '🚲', concepto: 'Viaje en bici' },
+  auto: { nombre: 'Auto', icono: '🚗', concepto: 'Viaje en auto' },
+  colectivo: { nombre: 'Colectivo', icono: '🚌', concepto: 'Viaje en colectivo' },
+  tren: { nombre: 'Tren o subte', icono: '🚆', concepto: 'Viaje en tren o subte' },
+  taxi: { nombre: 'Taxi o Uber', icono: '🚕', concepto: 'Viaje en taxi' },
+};
+/** Cómo fue el viaje: se guarda como intensidad (cuánto pesó) y, si fue pesado, además como "Viaje pesado". */
+export const COMO_VIAJE = [
+  { clave: 'tranquilo', nombre: 'Tranquilo', icono: '😌', intensidad: 2 },
+  { clave: 'normal', nombre: 'Normal', icono: '😐', intensidad: 5 },
+  { clave: 'pesado', nombre: 'Pesado', icono: '😩', intensidad: 8 },
+] as const;
+export const VIAJE_PESADO = 'Viaje pesado';
+
+/** Un viaje detectado con la ubicación, con lo que se adivina (en qué fue y si fue pesado) y si ya se contó. */
+export interface ViajeDelDia {
+  inicio: string;
+  fin: string;
+  minutos: number;
+  km: number;
+  /** km/h promedio */
+  velocidad: number;
+  modo: ModoViaje;
+  /** Lo que se deduce en palabras ("Lento para ir en auto: ¿tráfico?"). */
+  pista: string;
+  pesado: boolean;
+  /** Si ya se contó cómo fue (hay un registro de viaje a esa hora). */
+  contado: boolean;
+}
+
+/** Qué se adivina de un viaje por su velocidad y largo: en qué fue y si parece pesado (tráfico, mucho tiempo). */
+export function adivinarViaje(km: number, minutos: number): { modo: ModoViaje; pista: string; pesado: boolean } {
+  const v = km / Math.max(minutos / 60, 1 / 60);
+  if (v < 6) return { modo: 'caminando', pista: 'A paso de caminata', pesado: minutos >= 50 };
+  if (v < 16)
+    return km >= 6
+      ? { modo: 'auto', pista: 'Lento para ir en auto o colectivo: ¿tráfico?', pesado: true }
+      : { modo: 'bici', pista: 'A velocidad de bici (o con tráfico)', pesado: minutos >= 45 };
+  if (v < 40) return { modo: 'auto', pista: 'Velocidad de ciudad', pesado: minutos >= 50 };
+  return { modo: 'auto', pista: 'Rápido: ruta, autopista o tren', pesado: minutos >= 90 };
+}

@@ -5,7 +5,7 @@ import { alTocarAvisoPush } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { guardarSentir, useAlPedirSentir, type Momento } from '../lib/sentir';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, estacionDe, CUANTO, TELE, teleDeTipo, teleEnCanal, type DatoAutomatico, type EstadoAnimo, type ItemPuntos, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, VIAJE_PESADO, ESTACIONES, estacionDe, CUANTO, TELE, teleDeTipo, teleEnCanal, type DatoAutomatico, type EstadoAnimo, type ItemPuntos, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { idioma, locale, t } from '../lib/idioma';
 import { useEstado } from '../estado';
@@ -21,6 +21,7 @@ import { Editar } from './Editar';
 import { Puntuales } from './Puntuales';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
+import { ViajesDelDia } from './ViajesDelDia';
 import { EVENTO_CONTAR, PISTAS } from './PuntosDelDia';
 import { RemediosDelDia } from './RemediosDelDia';
 import { Avisarle } from './Supervision';
@@ -370,6 +371,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             .filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio))
             .filter((r) => r.categoria_id !== sintomaId || !registros.some((o) => esSentir(o) && o.inicio === r.inicio))
             .filter((r) => r.categoria_id !== genteId || !registros.some((o) => o.categoria_id !== genteId && o.inicio === r.inicio))
+            // "Viaje pesado" va con su viaje (está para los patrones): no hace falta un renglón aparte.
+            .filter((r) => r.concepto !== VIAJE_PESADO || !registros.some((o) => o.id !== r.id && o.categoria_id === r.categoria_id && o.inicio === r.inicio))
             // Lo más reciente arriba: lo que se acaba de anotar se ve primero.
             .slice()
             .reverse()
@@ -412,6 +415,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </ul>
       )}
       <ParadasDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
+      <ViajesDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       {automaticos.length ? (
         <div className="tarjeta automatico">
           <h3 className="chico suave">{t('Llegó solo')}</h3>

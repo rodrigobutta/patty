@@ -118,3 +118,25 @@ describe('paradas en lugares sin nombre', () => {
     expect(r.map((x) => [x.lat, (x.salida - x.llegada) / 60000])).toEqual([[-34.65, 210], [-34.7, 60]]);
   });
 });
+
+describe('viajes del día', () => {
+  it('junta los tramos en movimiento y adivina en qué fue', async () => {
+    const { viajesDelDia } = await import('../src/ubicacion/resumen.js');
+    const { adivinarViaje } = await import('shared');
+    const m = (min: number) => Date.parse('2026-10-24T12:00:00Z') + min * 60000;
+    // Quieto en casa, después 3 tramos de ~2,2 km cada 6 min (≈22 km/h), y quieto de nuevo.
+    const v = viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.62, lon: -58.4, instante: m(180) },
+      { lat: -34.64, lon: -58.4, instante: m(186) },
+      { lat: -34.66, lon: -58.4, instante: m(192) },
+      { lat: -34.68, lon: -58.4, instante: m(198) },
+    ]);
+    expect(v).toHaveLength(1);
+    expect((v[0].fin - v[0].inicio) / 60000).toBe(18);
+    expect(Math.round(v[0].metros / 100) / 10).toBeCloseTo(6.7, 0);
+    expect(adivinarViaje(6.7, 18).modo).toBe('auto');
+    expect(adivinarViaje(8, 60)).toMatchObject({ modo: 'auto', pesado: true }); // 8 km/h: tráfico
+    expect(adivinarViaje(2, 30).modo).toBe('caminando');
+  });
+});

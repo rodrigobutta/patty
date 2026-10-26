@@ -10,15 +10,15 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { distanciaMetros, lugarDe, nombreLindo, normalizar, puntoNuevo, RADIO_LUGAR_M, type DiaUbicacion, type Lugar, type ParadaSinNombre } from 'shared';
+import { adivinarViaje, COMO_VIAJE, MODOS_VIAJE, traducir, VIAJE_PESADO, type ModoViaje, type ViajeDelDia, distanciaMetros, lugarDe, nombreLindo, normalizar, puntoNuevo, RADIO_LUGAR_M, type DiaUbicacion, type Lugar, type ParadaSinNombre } from 'shared';
 import { direccionDe } from '../ubicacion/direccion.js';
 import { filas, una, type Tx } from '../db/client.js';
-import { fuentes, lugares, mediciones, puntos } from '../db/schema.js';
+import { fuentes, lugares, mediciones, puntos, registros } from '../db/schema.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
-import { paradasSinNombre, resumirDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
+import { paradasSinNombre, resumirDia, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
 import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
 import { conceptoMedido } from './ingesta.js';
 
@@ -196,6 +196,79 @@ export const rutasUbicacion = new Hono<Env>()
       })),
     };
     return c.json(res);
+  })
+  .get('/viajes', async (c) => {
+    // ?persona=1&fecha=AAAA-MM-DD: los viajes del día con lo que se adivina (en qué fue, si parece pesado) y si ya se
+    // contó cómo fue.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const fecha = c.req.query('fecha');
+    const dia = esFecha(fecha) ? fecha : diaDePatty(new Date(), p.zona_horaria);
+    const ps = await filas<{ instante: string; lat: number; lon: number }>(c.var.db, sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia}`);
+    const contados = new Set(
+      (await filas<{ inicio: string }>(
+        c.var.db,
+        sql`SELECT r.inicio FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
+            WHERE r.persona_id = ${p.id} AND r.fecha = ${dia} AND r.borrado IS NULL AND k.clave = 'viaje'`,
+      )).map((x) => new Date(x.inicio).getTime()),
+    );
+    const r: ViajeDelDia[] = viajesDelDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon }))).map((v) => {
+      const minutos = Math.max(1, Math.round((v.fin - v.inicio) / 60000));
+      const km = Math.round(v.metros / 100) / 10;
+      const g = adivinarViaje(km, minutos);
+      return {
+        inicio: new Date(v.inicio).toISOString(),
+        fin: new Date(v.fin).toISOString(),
+        minutos,
+        km,
+        velocidad: Math.round(km / (minutos / 60)),
+        modo: g.modo,
+        pista: traducir(c.var.idioma, g.pista),
+        pesado: g.pesado,
+        contado: [...contados].some((t) => Math.abs(t - v.inicio) < 60000),
+      };
+    });
+    return c.json(r);
+  })
+  .post('/viajes', async (c) => {
+    // {persona_id, inicio, fin, minutos, km, modo, como}: cómo fue un viaje. Queda como "Viaje en auto" (con los minutos
+    // y cuánto pesó) y, si fue pesado, además "Viaje pesado": así entra en los patrones.
+    const d = await cuerpo(c);
+    const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
+    const modo = MODOS_VIAJE[d.modo as ModoViaje] ? (d.modo as ModoViaje) : 'auto';
+    const como = COMO_VIAJE.find((x) => x.clave === d.como) ?? COMO_VIAJE[1];
+    const inicio = leerInstante(d.inicio, 'inicio');
+    const fin = leerInstante(d.fin, 'fin');
+    const minutos = Math.max(1, Math.min(24 * 60, Math.round(Number(d.minutos) || (fin.getTime() - inicio.getTime()) / 60000)));
+    const km = Math.max(0, Number(d.km) || 0);
+    await c.var.db.transaction(async (tx) => {
+      const cat = (await una<{ id: number }>(tx, sql`SELECT id FROM categorias WHERE clave = 'viaje'`))!.id;
+      // Si ya se había contado este viaje, se reemplaza.
+      await tx.execute(sql`UPDATE registros r SET borrado = now() FROM conceptos c JOIN categorias k ON k.id = c.categoria_id
+        WHERE c.id = r.concepto_id AND k.clave = 'viaje' AND r.persona_id = ${p.id} AND r.borrado IS NULL
+          AND abs(extract(epoch FROM r.inicio - ${inicio.toISOString()}::timestamptz)) < 60`);
+      const viaje = (await obtenerOCrearConcepto(tx, { nombre: MODOS_VIAJE[modo].concepto, categoriaId: cat, tipoValor: 'duracion', unidad: 'min' })).concepto;
+      const nuevos = [{ concepto_id: viaje.id, valor: minutos, unidad: 'min', intensidad: como.intensidad, nota: km ? `${String(km).replace('.', ',')} km` : null }];
+      if (como.clave === 'pesado') {
+        const pesado = (await obtenerOCrearConcepto(tx, { nombre: VIAJE_PESADO, categoriaId: cat, tipoValor: 'evento', unidad: null })).concepto;
+        nuevos.push({ concepto_id: pesado.id, valor: null as unknown as number, unidad: null as unknown as string, intensidad: como.intensidad, nota: null });
+      }
+      for (const n of nuevos) {
+        await tx.insert(registros).values({
+          persona_id: p.id,
+          concepto_id: n.concepto_id,
+          inicio: inicio.toISOString(),
+          fin: fin.toISOString(),
+          fecha: diaDePatty(inicio, p.zona_horaria),
+          valor: n.valor,
+          unidad: n.unidad,
+          intensidad: n.intensidad,
+          nota: n.nota,
+          origen: 'manual',
+          creado_por: c.var.usuario.id,
+        });
+      }
+    });
+    return c.json({ ok: true }, 201);
   })
   .get('/frecuentes', async (c) => {
     // ?persona=1&dias=90: para el mapa de Patrones. Los lugares con nombre con cuánto tiempo y cuántos días se estuvo

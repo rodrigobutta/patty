@@ -1,7 +1,7 @@
 // Lo anotado como una frase corta y natural ("3 porciones de pizza", "Me siento bien", "Con un poco de sueño"), con lo
 // que Patty entendió resaltado (la cantidad en un color, lo que fue en otro) en vez de varias etiquetas sueltas.
 import type { ReactNode } from 'react';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, conUnidad, CUANTO, ESTADOS_PUNTUALES, estadoDe, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, COMO_VIAJE, conUnidad, CUANTO, ESTADOS_PUNTUALES, estadoDe, VIAJE_PESADO, type Registro } from 'shared';
 import { duracion } from '../lib/automatico';
 import { idioma, t } from '../lib/idioma';
 
@@ -37,6 +37,18 @@ export function Frase({ r, tipo, categoria }: { r: Registro; tipo?: string; cate
     const que = m[1];
     const cuanto = c === 'Poco' ? 'un poco de' : c === 'Bastante' ? 'bastante' : FEMENINOS.has(que) ? 'mucha' : 'mucho';
     return <>Con <C>{cuanto}</C> <Q>{que}</Q></>;
+  }
+  // Viajes: "45 min de viaje en auto (pesado)".
+  if (categoria === 'viaje') {
+    if (r.concepto === VIAJE_PESADO) return <Q>{nombre}</Q>;
+    const como = r.intensidad === null ? null : COMO_VIAJE.reduce((a, b) => (Math.abs(b.intensidad - r.intensidad!) < Math.abs(a.intensidad - r.intensidad!) ? b : a));
+    return (
+      <>
+        {r.valor !== null ? <><C>{duracion(r.valor)}</C> {en ? 'of' : 'de'} </> : null}
+        <Q>{enFrase(nombre)}</Q>
+        {como ? <> <C>({t(como.nombre).toLowerCase()})</C></> : null}
+      </>
+    );
   }
   // Dolores y molestias: "Dolor de cabeza fuerte".
   if (r.intensidad !== null) return <><Q>{nombre}</Q> <C>{fuerza(r.intensidad)}</C></>;

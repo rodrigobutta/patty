@@ -89,3 +89,36 @@ export function paradasSinNombre(puntosDia: Punto[], lugares: LugarZona[], fin: 
   });
   return r;
 }
+
+export interface Viaje {
+  inicio: number;
+  fin: number;
+  metros: number;
+}
+
+/**
+ * Los viajes del día con los puntos guardados (uno cada vez que se movió más de 1 km): tramos seguidos en movimiento,
+ * es decir, más de 800 m en menos de una hora y media. La salida es aproximada (el primer punto ya es en camino).
+ */
+export function viajesDelDia(puntosDia: Punto[]): Viaje[] {
+  const orden = [...puntosDia].sort((a, b) => a.instante - b.instante);
+  const r: Viaje[] = [];
+  let actual: Viaje | null = null;
+  for (let i = 1; i < orden.length; i++) {
+    const a = orden[i - 1];
+    const b = orden[i];
+    const d = distanciaMetros(a, b);
+    const dt = b.instante - a.instante;
+    const moviendose = d >= 800 && dt <= 90 * 60000 && d / Math.max(dt / 3600000, 1e-6) >= 2000;
+    if (moviendose) {
+      if (actual && actual.fin === a.instante) {
+        actual.fin = b.instante;
+        actual.metros += d;
+      } else {
+        actual = { inicio: a.instante, fin: b.instante, metros: d };
+        r.push(actual);
+      }
+    }
+  }
+  return r.filter((v) => v.metros >= 1500);
+}
