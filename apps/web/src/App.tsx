@@ -144,7 +144,8 @@ export function App() {
             {personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
         ) : (
-          <span className="persona">{persona.nombre}</span>
+          // Con una sola persona no hace falta decir de quién es el día: queda más aire.
+          <span className="persona" aria-hidden />
         )}
         {propia ? <PuntosDelDia persona={propia} /> : null}
         {sesion?.usuario ? (
