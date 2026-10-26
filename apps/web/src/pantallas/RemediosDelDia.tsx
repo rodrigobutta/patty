@@ -2,6 +2,7 @@
 // ven atrasadas (todavía se pueden tomar) y, después de unas horas, olvidadas. Los remedios "cuando haga falta" tienen
 // su botón para anotarlos con un toque.
 import { useCallback, useEffect, useState } from 'react';
+import { IconoCategoria } from '../ui/IconosPatty';
 import { dosisTexto, HORAS_PARA_OLVIDADA, type Persona, type Toma, type Tratamiento } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
@@ -139,7 +140,7 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
   return (
     <div className={`tarjeta remedios-dia${abierto ? ' abierto' : ''}`}>
       <button className="cabeza-plegable" onClick={cambiarAbierto} aria-expanded={abierto}>
-        <span className="titulo-plegable">{t('💊 Remedios')}</span>
+        <span className="titulo-plegable con-icono"><IconoCategoria clave="medicacion" tamano={24} /> {t('Remedios')}</span>
         <span className="suave chico resumen-plegable">
           {paraTomar ? <span className="para-tomar">{t('{n} para tomar', { n: paraTomar })}</span> : null}
           {tomas.length ? t('{n} de {total} tomadas', { n: tomadas, total: fecha === hoy ? vencidas || tomas.length : tomas.length }) : t('cuando haga falta')}

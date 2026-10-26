@@ -1094,3 +1094,10 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .menu-mas .icono-menu .icono-propio { width: 30px; height: 30px; }
 .cabeza-sub .icono-titulo { display: flex; align-items: center; color: var(--texto); flex: none; }
 .cabeza-sub .icono-titulo .icono-propio { width: 32px; height: 32px; }
+
+/* Íconos propios del Día (categorías, caritas, viajes). */
+.con-icono { display: inline-flex; align-items: center; gap: 8px; }
+.icono .icono-propio, .chip .icono-propio, .btn .icono-propio { vertical-align: middle; flex: none; color: var(--texto); }
+.chip .icono-propio, .botones-como .icono-propio { margin-right: 4px; }
+.carita .emoji .icono-propio { display: block; margin: 0 auto 2px; }
+.lista .icono { display: inline-flex; align-items: center; justify-content: center; }

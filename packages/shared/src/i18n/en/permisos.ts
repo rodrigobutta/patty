@@ -425,4 +425,5 @@ export const PERMISOS: Record<string, string> = {
   'Todo lo de «{nombre}» (estadías y lo anotado ahí) pasa al que elijas, y «{nombre}» se borra.': "Everything from “{nombre}” (stays and what was logged there) moves to the one you choose, and “{nombre}” is deleted.",
   'a {n} m': "{n} m away",
   'a {n} km': "{n} km away",
+  '¿Cómo fueron tus viajes?': 'How were your trips?',
 };

@@ -2,6 +2,7 @@
 // mal o muy mal, se pregunta qué pasa y cuánto (dolor de cabeza mucho, descompuesto poco…) y eso queda anotado como
 // síntomas con su intensidad, para que Patty pueda buscar qué vino antes.
 import { useEffect, useState } from 'react';
+import { IconoAnimo } from '../ui/IconosPatty';
 import { CUANTO, ESTADOS, SINTOMAS_COMUNES, type Concepto, type EstadoAnimo, type Persona } from 'shared';
 import { api } from '../api';
 import { t } from '../lib/idioma';
@@ -15,7 +16,7 @@ export function Caritas({ elegir }: { elegir(e: EstadoAnimo): void }) {
     <div className="caritas">
       {ESTADOS.map((e) => (
         <button key={e.clave} className={`carita ${e.clave}`} onClick={() => elegir(e)}>
-          <span className="emoji" aria-hidden>{e.emoji}</span>
+          <span className="emoji" aria-hidden><IconoAnimo clave={e.clave} tamano={40} /></span>
           {t(e.nombre)}
         </button>
       ))}

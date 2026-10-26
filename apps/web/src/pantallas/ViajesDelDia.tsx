@@ -2,6 +2,7 @@
 // Patty adivina (en qué fue, si parece que hubo tráfico) y la pregunta de cómo fue, para contestar con dos toques.
 // Lo contado entra en los patrones ("los días con viaje pesado te duele la cabeza").
 import { useCallback, useEffect, useState } from 'react';
+import { IconoAnimo, IconoCategoria, IconoModo } from '../ui/IconosPatty';
 import { COMO_VIAJE, MODOS_VIAJE, type ModoViaje, type Persona, type ViajeDelDia } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
@@ -36,7 +37,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
 
   return (
     <div className="tarjeta viajes">
-      <h3>{t('🚗 ¿Cómo fueron tus viajes?')}</h3>
+      <h3 className="con-icono"><IconoCategoria clave="viaje" tamano={26} /> {t('¿Cómo fueron tus viajes?')}</h3>
       <ul className="lista">
         {pendientes.map((v) => {
           const m = modo[v.inicio] ?? v.modo;
@@ -52,7 +53,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
               <span className="chips envolver">
                 {(Object.keys(MODOS_VIAJE) as ModoViaje[]).map((k) => (
                   <button key={k} className={`chip${m === k ? ' activa' : ''}`} onClick={() => setModo({ ...modo, [v.inicio]: k })}>
-                    {MODOS_VIAJE[k].icono} {t(MODOS_VIAJE[k].nombre)}
+                    <IconoModo modo={k} tamano={22} /> {t(MODOS_VIAJE[k].nombre)}
                   </button>
                 ))}
               </span>
@@ -60,7 +61,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
               <span className="botones-como">
                 {COMO_VIAJE.map((c) => (
                   <button key={c.clave} className={`btn chico${c.clave === 'pesado' && v.pesado ? ' primario' : ''}`} onClick={() => void contar(v, c.clave)}>
-                    {c.icono} {t(c.nombre)}
+                    <IconoAnimo clave={c.clave === 'pesado' ? 'mal' : c.clave} tamano={22} /> {t(c.nombre)}
                   </button>
                 ))}
               </span>

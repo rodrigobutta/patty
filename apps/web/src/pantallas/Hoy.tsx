@@ -1,5 +1,6 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { IconoAnimo, IconoCategoria } from '../ui/IconosPatty';
 import { alPedirIrAlDia, fechaPedidaParaVer, olvidarFechaPedida } from '../lib/avisos';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
 import { alTocarAvisoPush } from '../lib/push';
@@ -454,7 +455,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                 alBorrar={() => void quitar(r)}
               >
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
-                <span className="icono">{esSentir(r) && r.intensidad !== null ? estadoDe(r.intensidad).emoji : cat?.icono}</span>
+                <span className="icono">{esSentir(r) && r.intensidad !== null ? <IconoAnimo clave={estadoDe(r.intensidad).clave} /> : <IconoCategoria clave={cat?.clave} emoji={cat?.icono} />}</span>
                 <span className="que">
                   <span className="frase"><Frase r={r} tipo={cat?.tipo_valor} categoria={cat?.clave} juntos={comidaIds.includes(r.categoria_id) ? registros.filter((o) => o.id !== r.id && comidaIds.includes(o.categoria_id) && mismoMinuto(o, r)) : []} sintomas={esSentir(r) ? partesDe(r, registros, sintomaId) : []} /></span>
                   {(() => {
