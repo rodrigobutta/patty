@@ -71,6 +71,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
 }) {
   const { categorias, sesion, festejar } = useEstado();
   const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>(contar || foto ? 'texto' : 'rapido');
+  const enfocado = contar || Boolean(foto);
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [elegido, setElegido] = useState<Elegido | null>(null);
   const [pidiendoCategoria, setPidiendoCategoria] = useState<string | null>(null);
@@ -88,16 +89,21 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
   return (
     <div className="hoja" role="dialog" aria-label={t('Anotar')}>
       <div className="hoja-cabeza">
-        <div className="segmentos">
-          <button className={modo === 'rapido' ? 'activa' : ''} onClick={() => setModo('rapido')}>{t('Rápido')}</button>
-          <button className={modo === 'tele' ? 'activa' : ''} onClick={() => setModo('tele')}>{t('📺 Tele')}</button>
-          {sesion?.ia ? <button className={modo === 'texto' ? 'activa' : ''} onClick={() => setModo('texto')}>{t('Contarlo ✨')}</button> : null}
-        </div>
+        {/* Desde "Contale a Patty" o la cámara: solo eso, sin las otras formas de cargar arriba. */}
+        {enfocado ? (
+          <span />
+        ) : (
+          <div className="segmentos">
+            <button className={modo === 'rapido' ? 'activa' : ''} onClick={() => setModo('rapido')}>{t('Rápido')}</button>
+            <button className={modo === 'tele' ? 'activa' : ''} onClick={() => setModo('tele')}>{t('📺 Tele')}</button>
+            {sesion?.ia ? <button className={modo === 'texto' ? 'activa' : ''} onClick={() => setModo('texto')}>{t('Contarlo ✨')}</button> : null}
+          </div>
+        )}
         <button className="btn-icono" onClick={alCerrar} aria-label={t('Cerrar')}>✕</button>
       </div>
 
       {modo === 'texto' ? (
-        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto} fotoInicial={foto} />
+        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto} fotoInicial={foto} sinFoto={contar && !foto} />
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
@@ -257,13 +263,15 @@ interface Duda {
   opciones: string[];
 }
 
-function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInicial }: {
+function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInicial, sinFoto = false }: {
   persona: Persona;
   /** El día que se estaba mirando: si no se dice cuándo pasó, es ese. */
   fecha: string;
   alGuardar(fechaGuardada?: string): void;
   dictarAlAbrir?: boolean;
   fotoInicial?: Foto;
+  /** Abierto para hablar: sin el botón de la foto (la cámara tiene su propio botón en el Día). */
+  sinFoto?: boolean;
 }) {
   const { categorias, festejar, sesion } = useEstado();
   const vozServidor = Boolean(sesion?.voz);
@@ -469,7 +477,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
         </span>
         <p className="leyenda-voz">{leyenda}</p>
         {oido && (estado === 'escuchando' || estado === 'transcribiendo' || estado === 'ordenando') ? <blockquote className="oido">{oido}</blockquote> : null}
-        {!paraResponder ? (
+        {!paraResponder && !sinFoto ? (
           <button className="btn foto-boton" onClick={() => void tomarFoto()} disabled={ocupado || estado === 'escuchando'}><IconoCamara tamano={20} /> {t('O mandale una foto (de tu plato, por ejemplo)')}</button>
         ) : null}
         <button className="enlace" onClick={() => setModo('escribir')} disabled={estado === 'escuchando'}>{t('✍️ Prefiero escribir')}</button>
@@ -485,7 +493,9 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
         <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
           placeholder={t('Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»')} />
         <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? t('Ordenando…') : t('Ordenarlo')}</button>
-        <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? t('Ordenarlo con una foto') : t('Mandale una foto')}</button>
+        {sinFoto ? null : (
+          <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? t('Ordenarlo con una foto') : t('Mandale una foto')}</button>
+        )}
         {conVoz ? <button className="enlace" onClick={() => setModo('voz')}>{t('🎙️ Prefiero hablar')}</button> : null}
       </>
     );
