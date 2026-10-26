@@ -1035,3 +1035,5 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .widget-linea { font-size: 17px; font-weight: 800; line-height: 1.2; }
 .widget-sub { font-size: 13px; color: var(--suave); line-height: 1.25; }
 .widget-auto.apagado .widget-linea { font-size: 14px; font-weight: 600; color: var(--suave); }
+.widget-auto.sin-datos { background: var(--panel); border-style: dashed; }
+.widget-auto.sin-datos .widget-linea { font-size: 15px; }

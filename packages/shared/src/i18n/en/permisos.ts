@@ -396,4 +396,6 @@ export const PERMISOS: Record<string, string> = {
   'Arriba {hora}': 'Up at {hora}',
   '{n} lpm en reposo': '{n} bpm resting',
   'Sueño y salud': 'Sleep and health',
+  '¿Cómo dormiste?': 'How did you sleep?',
+  'Tocá para contarlo': 'Tap to tell me',
 };

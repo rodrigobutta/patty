@@ -452,7 +452,14 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </ul>
       )}
       {/* Lo que llegó solo (clima, ubicación, teléfono, sueño y salud): widgets chicos, distintos de lo anotado. */}
-      <WidgetsDelDia automaticos={automaticos} registros={registros ?? []} categorias={categorias} apagadas={apagadas} alActivar={setActivando} />
+      <WidgetsDelDia
+        automaticos={automaticos}
+        registros={registros ?? []}
+        categorias={categorias}
+        apagadas={apagadas}
+        alActivar={setActivando}
+        alContarSueno={fecha === hoy && sesion?.ia && sesion.usuario?.rol !== 'lector' && !persona.supervisada ? () => { setPista(PISTAS.sueno); setCargando('contar'); } : undefined}
+      />
       </div>
       {/* Las hojas van fuera del contenido animado: si no, quedan atrás de la lista mientras se anima. */}
       {activando ? (

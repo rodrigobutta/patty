@@ -95,12 +95,14 @@ function widgetSueno(todos: DatoAutomatico[], grupos: GrupoAutomatico[], registr
 /** El lugar de cada permiso que falta (el de la ubicación también trae el clima). */
 const LUGAR_DE: Record<Fuente, Lugar> = { ubicacion: 'ubicacion', telefono: 'telefono', salud: 'sueno' };
 
-export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, alActivar }: {
+export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, alActivar, alContarSueno }: {
   automaticos: DatoAutomatico[];
   registros: Registro[];
   categorias: Categoria[];
   apagadas: Fuente[];
   alActivar(f: Fuente): void;
+  /** Si se puede anotar: sin datos de sueño, el widget invita a contar cómo durmió. */
+  alContarSueno?: () => void;
 }) {
   const [abierto, setAbierto] = useState<Lugar | null>(null);
   const grupos = agruparAutomaticos(automaticos);
@@ -137,6 +139,13 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
           </Fragment>
         ) : apagada ? (
           <WidgetApagado key={l} fuente={apagada} alTocar={() => alActivar(apagada)} />
+        ) : l === 'sueno' && alContarSueno ? (
+          // Sin reloj ni nada anotado: el lugar del sueño queda, para contar cómo dormiste.
+          <button key={l} className="widget-auto sin-datos" onClick={alContarSueno}>
+            <IconoSueno />
+            <span className="widget-linea">{t('¿Cómo dormiste?')}</span>
+            <span className="widget-sub">{t('Tocá para contarlo')}</span>
+          </button>
         ) : null,
       )}
     </div>
