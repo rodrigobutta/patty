@@ -5,7 +5,7 @@ import { Fragment, useState, type ReactNode } from 'react';
 import type { Categoria, DatoAutomatico, Registro } from 'shared';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
 import { locale, t } from '../lib/idioma';
-import { IconoCelular, IconoCielo, IconoLugar, IconoSueno, type Cielo } from '../ui/IconosWidget';
+import { IconoCelular, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
 import { WidgetApagado, type Fuente } from './FuenteApagada';
 
 type Lugar = 'clima' | 'ubicacion' | 'telefono' | 'sueno';
@@ -50,18 +50,25 @@ function widgetClima(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget
   return { lugar: 'clima', icono: <IconoCielo cielo={cielo} />, linea: temp || '—', sub, grupos: grupos.filter((g) => g.tipo === 'clima'), nombre: t('Clima') };
 }
 
+/** Moverse: los viajes (de la ubicación) y los pasos (del reloj o el teléfono), juntos. */
 function widgetUbicacion(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
   const viajes = dato(todos, 'ubicacion', 'Viajes');
   const km = dato(todos, 'ubicacion', 'Km recorridos');
-  if (!viajes && !km) return null;
+  const pasos = dato(todos, 'reloj', 'Pasos');
+  if (!viajes && !km && !pasos) return null;
   const n = Math.round(viajes?.suma ?? 0);
+  const textoViajes = n === 0 ? t('Sin viajes') : n === 1 ? t('1 viaje') : t('{n} viajes', { n });
+  const textoPasos = pasos ? t('{n} pasos', { n: entero(pasos.suma) }) : '';
+  const textoKm = km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : '';
+  // Con viajes, los viajes van grandes (y los pasos abajo); sin viajes, los pasos.
+  const conViajes = n > 0 || !pasos;
   return {
     lugar: 'ubicacion',
-    icono: <IconoLugar />,
-    linea: n === 0 ? t('Sin viajes') : n === 1 ? t('1 viaje') : t('{n} viajes', { n }),
-    sub: km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : undefined,
-    grupos: grupos.filter((g) => g.tipo === 'ubicacion'),
-    nombre: t('Ubicación'),
+    icono: conViajes ? <IconoLugar /> : <IconoPasos />,
+    linea: conViajes ? textoViajes : textoPasos,
+    sub: (conViajes ? textoPasos || textoKm : viajes ? textoViajes : '') || undefined,
+    grupos: grupos.filter((g) => g.tipo === 'ubicacion' || g.tipo === 'reloj').map((g) => (g.tipo === 'reloj' ? { ...g, lineas: g.lineas.filter((l) => !SUENO.has(l.concepto)) } : g)),
+    nombre: t('Movimiento'),
   };
 }
 
@@ -80,16 +87,26 @@ function widgetTelefono(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Wid
   };
 }
 
+/** Lo del sueño (del reloj, o anotado a mano). */
+const SUENO = new Set(['Horas de sueño', 'Hora de dormir', 'Hora de despertar']);
+
 function widgetSueno(todos: DatoAutomatico[], grupos: GrupoAutomatico[], registros: Registro[]): Widget | null {
   const horas = dato(todos, 'reloj', 'Horas de sueño');
-  const pasos = dato(todos, 'reloj', 'Pasos');
+  const durmio = dato(todos, 'reloj', 'Hora de dormir');
   const pulso = dato(todos, 'reloj', 'Pulso en reposo');
   // Sin reloj, lo que se anotó a mano: a qué hora se levantó.
   const levanto = registros.find((r) => r.concepto === 'Me levanté' && r.valor !== null);
-  if (!horas && !pasos && !pulso && !levanto) return null;
-  const linea = horas ? duracion(horas.suma * 60) : pasos ? t('{n} pasos', { n: entero(pasos.suma) }) : levanto ? t('Arriba {hora}', { hora: reloj(levanto.valor!) }) : '—';
-  const sub = horas && pasos ? t('{n} pasos', { n: entero(pasos.suma) }) : pulso ? t('{n} lpm en reposo', { n: entero(pulso.suma) }) : undefined;
-  return { lugar: 'sueno', icono: <IconoSueno />, linea, sub, grupos: grupos.filter((g) => g.tipo === 'reloj'), nombre: t('Sueño y salud') };
+  if (!horas && !levanto) return null;
+  const linea = horas ? duracion(horas.suma * 60) : t('Arriba {hora}', { hora: reloj(levanto!.valor!) });
+  const sub = durmio ? t('a dormir {hora}', { hora: reloj(durmio.suma) }) : pulso ? t('{n} lpm en reposo', { n: entero(pulso.suma) }) : undefined;
+  return {
+    lugar: 'sueno',
+    icono: <IconoSueno />,
+    linea,
+    sub,
+    grupos: grupos.filter((g) => g.tipo === 'reloj').map((g) => ({ ...g, lineas: g.lineas.filter((l) => SUENO.has(l.concepto) || l.concepto.startsWith('Pulso')) })),
+    nombre: t('Sueño'),
+  };
 }
 
 /** El lugar de cada permiso que falta (el de la ubicación también trae el clima). */

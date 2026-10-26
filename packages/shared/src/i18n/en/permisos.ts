@@ -400,4 +400,6 @@ export const PERMISOS: Record<string, string> = {
   'Tocá para contarlo': 'Tap to tell me',
   'Mirando el reloj…': 'Checking your watch…',
   'Health Connect': 'Health Connect',
+  'a dormir {hora}': 'to bed at {hora}',
+  'Sueño': 'Sleep',
 };

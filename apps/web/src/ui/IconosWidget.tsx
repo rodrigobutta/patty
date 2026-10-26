@@ -88,3 +88,14 @@ export function IconoSueno() {
     </svg>
   );
 }
+
+export function IconoPasos() {
+  return (
+    <svg {...props}>
+      <path d="M9 30 c0-7 3-13 7-13 c3 0 4 3 4 6 c0 3 1 5 4 6 l8 3 c3 1 5 3 5 6 v1 H11 c-1.5 0-2-1-2-3 z" fill="#8f78d6" stroke={TRAZO} strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M9 37 H37" stroke={TRAZO} strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M21 27 l3-2 M24 30 l3-2" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+      <path d="M6 18 h5 M4 23 h6 M7 13 h4" stroke="#c9bcf2" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
