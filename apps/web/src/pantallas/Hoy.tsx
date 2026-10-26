@@ -352,7 +352,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {fecha === hoy && !persona.supervisada && registros !== null ? (
         <GloboDelBuho
           visible={!contestadoHacePoco && !sintiendo}
-          texto={momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís?')}
+          texto={momento === 'dia' ? t('¿Cómo te sentiste hoy?') : t('¿Cómo te sentís ahora?')}
           alTocar={() => setSintiendo({ momento, estado: null })}
         />
       ) : null}
