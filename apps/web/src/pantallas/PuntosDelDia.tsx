@@ -129,7 +129,7 @@ export function PuntosDelDia({ persona, cara, alTocarBuho }: { persona: Persona;
       {/* El búho "dice" los puntos: su cara (contento, esperando, con sueño…) y el globito con la estrella. */}
       <span className={`mini-puntos${ganancia ? ' gana' : ''}`} key={ganancia?.id ?? 0}>
         <button className="boton-buho" onClick={alTocarBuho} aria-label={t('Patty: contale cómo te sentís')}>
-          {cara ? <Mascota cara={cara} tamano={52} className={`buho-puntos${ganancia ? ' saltando' : ' vivo'}`} /> : null}
+          {cara ? <Mascota cara={cara} tamano={64} className={`buho-puntos${ganancia ? ' saltando' : ' vivo'}`} /> : null}
         </button>
         <button className="globo-puntos" onClick={() => setAbierta(true)} aria-label={t('{n} puntos de 100', { n: hoy.puntos })}>
         <span className="estrella" aria-hidden>⭐</span>
