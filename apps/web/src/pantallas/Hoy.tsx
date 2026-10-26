@@ -24,6 +24,8 @@ import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } 
 import { WidgetsDelDia } from './WidgetsDelDia';
 import { esNativa } from '../lib/nativo';
 import { hayDatosDelTelefono } from '../lib/telefono';
+import { haceCuantoSalud, ponerSalud, saludActivada, sincronizarSalud } from '../lib/salud';
+import { permisoListo } from './Permisos';
 import { CicloDelDia } from './CicloDelDia';
 import { ParadasDelDia } from './ParadasDelDia';
 import { CompaniaSugerida } from './CompaniaSugerida';
@@ -331,6 +333,27 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const contestadoHacePoco = Boolean(ultimoSentir && Date.now() - new Date(ultimoSentir.inicio).getTime() < HORAS_SIN_PREGUNTAR * 3600000);
 
   const tiposConDatos = new Set(automaticos.map((a) => a.tipo_fuente));
+  // Con permiso de salud y sin nada del reloj hoy: se le pide a Health Connect / Salud al abrir el Día (si pasaron 5
+  // minutos de la última vez), así lo que el reloj sincronizó aparece sin esperar a la media hora.
+  const saludDada = conPermisos && permisoListo('salud', estadoPermisos);
+  const [buscandoSalud, setBuscandoSalud] = useState(false);
+  const buscarSalud = useCallback(async () => {
+    setBuscandoSalud(true);
+    try {
+      if (!saludActivada()) ponerSalud(true);
+      const n = await sincronizarSalud(persona.id);
+      if (n) await traer();
+      return n;
+    } catch {
+      return 0;
+    } finally {
+      setBuscandoSalud(false);
+    }
+  }, [persona.id, traer]);
+  const sinReloj = !tiposConDatos.has('reloj');
+  useEffect(() => {
+    if (fecha === hoy && saludDada && sinReloj && registros !== null && haceCuantoSalud() > 5 * 60000) void buscarSalud();
+  }, [fecha, hoy, saludDada, sinReloj, registros !== null, buscarSalud]);
   const apagadas: Fuente[] =
     conPermisos && fecha === hoy
       ? (['ubicacion', 'telefono', 'salud'] as const).filter(
@@ -458,7 +481,15 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         categorias={categorias}
         apagadas={apagadas}
         alActivar={setActivando}
-        alContarSueno={fecha === hoy && sesion?.ia && sesion.usuario?.rol !== 'lector' && !persona.supervisada ? () => { setPista(PISTAS.sueno); setCargando('contar'); } : undefined}
+        buscandoSalud={buscandoSalud}
+        alContarSueno={fecha === hoy && sesion?.ia && sesion.usuario?.rol !== 'lector' && !persona.supervisada ? () => {
+          // Con permiso de salud, primero se busca en el reloj; si no hay nada, se cuenta.
+          void (async () => {
+            if (saludDada && (await buscarSalud())) return;
+            setPista(PISTAS.sueno);
+            setCargando('contar');
+          })();
+        } : undefined}
       />
       </div>
       {/* Las hojas van fuera del contenido animado: si no, quedan atrás de la lista mientras se anima. */}

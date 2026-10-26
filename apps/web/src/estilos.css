@@ -1037,3 +1037,5 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .widget-auto.apagado .widget-linea { font-size: 14px; font-weight: 600; color: var(--suave); }
 .widget-auto.sin-datos { background: var(--panel); border-style: dashed; }
 .widget-auto.sin-datos .widget-linea { font-size: 15px; }
+.widget-auto.buscando svg { animation: late-luna 1.2s ease-in-out infinite; }
+@keyframes late-luna { 0%, 100% { transform: none; } 50% { transform: scale(1.08) rotate(-6deg); } }

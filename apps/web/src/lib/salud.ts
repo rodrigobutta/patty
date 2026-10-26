@@ -194,6 +194,16 @@ export async function sincronizarSalud(personaId: number): Promise<number> {
   return lista.length;
 }
 
+/** Hace cuánto se mandó la salud por última vez (ms; Infinity si nunca). */
+export function haceCuantoSalud(): number {
+  try {
+    const u = Number(localStorage.getItem(ULTIMA) ?? 0);
+    return u ? Date.now() - u : Infinity;
+  } catch {
+    return Infinity;
+  }
+}
+
 /** Con la salud prendida, la manda al abrir o volver a Patty (como mucho cada media hora). */
 export function useSalud(personaId: number | undefined): void {
   useEffect(() => {
