@@ -31,7 +31,10 @@ public class MascotaPlugin extends Plugin {
 
     private static final String PREFS = "mascota";
     private static final String ULTIMA = "ultima";
-    private static final String[] CARAS = { "feliz", "espera", "triste" };
+    private static final String[] CARAS = { "feliz", "espera", "triste", "dormida" };
+    /** A qué hora se suele dormir (minutos desde las 0); de esa hora a las 6, el búho tiene sueño. */
+    private static final String DORMIR = "dormir";
+    private static final int DORMIR_POR_DEFECTO = 23 * 60;
     /** Hasta cuántos días sin anotar espera; después se pone triste. */
     private static final int DIAS_ESPERANDO = 2;
     /** El día de Patty empieza a las 5 de la mañana. */
@@ -130,6 +133,8 @@ public class MascotaPlugin extends Plugin {
         SharedPreferences.Editor e = getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
         if (ultima == null) e.remove(ULTIMA);
         else e.putString(ULTIMA, ultima);
+        Integer dormir = call.getInt("dormir");
+        if (dormir != null) e.putInt(DORMIR, dormir);
         e.apply();
         call.resolve();
     }
@@ -141,6 +146,12 @@ public class MascotaPlugin extends Plugin {
     }
 
     static String caraDeHoy(Context ctx) {
+        // De noche (desde la hora en que se suele dormir hasta las 6), con sueño.
+        int dormir = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(DORMIR, DORMIR_POR_DEFECTO);
+        Calendar ya = Calendar.getInstance();
+        int minutos = ya.get(Calendar.HOUR_OF_DAY) * 60 + ya.get(Calendar.MINUTE);
+        boolean noche = dormir >= 6 * 60 ? minutos >= dormir || minutos < 6 * 60 : minutos >= dormir && minutos < 6 * 60;
+        if (noche) return "dormida";
         String ultima = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(ULTIMA, null);
         if (ultima == null) return "triste";
         try {

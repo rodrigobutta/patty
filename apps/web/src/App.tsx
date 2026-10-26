@@ -136,7 +136,6 @@ export function App() {
     <div className="app">
       <header className="barra">
         <button className="marca" onClick={() => { setPestana('hoy'); pedirSentir(); }} aria-label={t('Patty: contale cómo te sentís')}>
-          {cara ? <Mascota cara={cara} tamano={34} /> : null}
           Patty
         </button>
         {personas.length > 1 ? (
@@ -147,7 +146,7 @@ export function App() {
           // Con una sola persona no hace falta decir de quién es el día: queda más aire.
           <span className="persona" aria-hidden />
         )}
-        {propia ? <PuntosDelDia persona={propia} /> : null}
+        {propia ? <PuntosDelDia persona={propia} cara={cara} /> : null}
         {sesion?.usuario ? (
           <button className="btn-avatar" onClick={() => setPestana('mas')} aria-label={t('Tu cuenta')}>
             <Avatar foto={sesion.usuario.foto} nombre={sesion.usuario.apodo || sesion.usuario.nombre} tamano={32} />

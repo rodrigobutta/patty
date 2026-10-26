@@ -9,6 +9,8 @@ import { EVENTO_ANOTADO } from '../mascota/cara';
 import { irAlDia } from '../lib/avisos';
 import { locale, t } from '../lib/idioma';
 import { Tablero } from './Tablero';
+import { Mascota } from '../mascota/Mascota';
+import type { Cara } from '../mascota/dibujo';
 
 interface Respuesta {
   hoy: PuntosDia;
@@ -42,7 +44,7 @@ export const PISTAS: Partial<Record<ItemPuntos, { texto: string; titulo: string 
   remedios: { texto: 'los remedios que tomó hoy', titulo: '💊 ¿Qué remedios tomaste?' },
 };
 
-export function PuntosDelDia({ persona }: { persona: Persona }) {
+export function PuntosDelDia({ persona, cara }: { persona: Persona; cara: Cara | null }) {
   const { festejar } = useEstado();
   const [r, setR] = useState<Respuesta | null>(null);
   const [tablero, setTablero] = useState(false);
@@ -124,9 +126,13 @@ export function PuntosDelDia({ persona }: { persona: Persona }) {
 
   return (
     <>
+      {/* El búho "dice" los puntos: su cara (contento, esperando, con sueño…) y el globito con la estrella. */}
       <button className={`mini-puntos${ganancia ? ' gana' : ''}`} key={ganancia?.id ?? 0} onClick={() => setAbierta(true)} aria-label={t('{n} puntos de 100', { n: hoy.puntos })}>
+        {cara ? <Mascota cara={cara} tamano={34} className={`buho-puntos${ganancia ? ' saltando' : ''}`} /> : null}
+        <span className="globo-puntos">
         <span className="estrella" aria-hidden>⭐</span>
         <span className="numero">{mostrado}</span>
+        </span>
         {ganancia ? (
           <>
             <span className="mas-puntos" aria-hidden>+{ganancia.n}</span>
@@ -142,7 +148,7 @@ export function PuntosDelDia({ persona }: { persona: Persona }) {
       <div className="cabeza-juego">
         <button className="btn-icono cerrar-juego" onClick={() => setAbierta(false)} aria-label={t('Cerrar')}>✕</button>
         {estado === 'completo' ? <span className="confeti" aria-hidden>{['🎉', '⭐', '✨', '🏆', '🎊', '⭐', '✨'].map((c, k) => <i key={k} style={{ ['--k' as string]: k }}>{c}</i>)}</span> : null}
-        <span className="emoji-estado" aria-hidden>{ESTADOS_PUNTOS[estado].emoji}</span>
+        <Mascota cara={estado === 'completo' || estado === 'casi' ? 'feliz' : cara === 'dormida' ? 'dormida' : 'espera'} tamano={78} className="emoji-estado" />
         <strong className="titulo-estado">{t(ESTADOS_PUNTOS[estado].titulo)}</strong>
         <span className="frase-estado">
           {estado === 'completo'

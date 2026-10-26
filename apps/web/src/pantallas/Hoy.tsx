@@ -38,6 +38,7 @@ const PEDIDOS: Record<Cara, string> = {
   espera: t('¿Cómo va el día? Contame algo y me pongo contenta.'),
   triste: t('Hace días que no me contás nada… Anotá algo, aunque sea a qué hora te levantaste.'),
   enojada: '',
+  dormida: '',
 };
 
 /** «Tele: Noticias» y «Tele en TN» van con su «Tele»: en el Día se ve uno solo (y se borran juntos). */

@@ -260,4 +260,5 @@ export const PERMISOS: Record<string, string> = {
   'Para sumar más:': 'To add more:',
   'Lo que más suma:': 'What adds the most:',
   'Cada cosa de más que anotes suma +2.': 'Each extra thing you log adds +2.',
+  'Con sueño': 'Sleepy',
 };
