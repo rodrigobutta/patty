@@ -1,7 +1,9 @@
-// "¿Algo puntual?": tengo sueño, tengo hambre, estoy con energía… Ni bien ni mal: se anota al toque con cuánto.
+// "¿Algo puntual?": tengo sueño, tengo hambre, estoy con energía… Ni bien ni mal: al tocarlo aparece una ventanita que
+// pregunta cuánto, y con eso se anota.
 // "Con dolor" pregunta qué (cabeza, garganta, panza… o un malestar común: fiebre, resfrío) y va a «Dolores y molestias»,
 // así Patty puede buscar qué lo causa.
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CUANTO, DOLORES, ESTADOS_PUNTUALES, MALESTARES, type Persona } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
@@ -21,12 +23,8 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
   useEffect(() => {
     if (elegido === 'dolor') panel.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [elegido]);
-  // Y lo mismo con "¿cuánto?": es lo que guarda, no puede quedar fuera de la vista.
-  const cuanto = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (elegido && elegido !== 'dolor' && elegido !== 'otro') cuanto.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    else if (dolor && dolor !== 'otro') cuanto.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [elegido, dolor]);
+  /** Lo que se está por anotar: mientras tanto, la ventanita de "¿cuánto?". */
+  const [preguntando, setPreguntando] = useState<string | null>(null);
   const sintoma = categorias.find((c) => c.clave === 'sintoma');
 
   const guardar = async (nombre: string, intensidad: number, cuanto: string) => {
@@ -42,6 +40,7 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
       setElegido(null);
       setDolor(null);
       setOtro('');
+      setPreguntando(null);
       alGuardar();
     } catch (e) {
       setError((e as Error).message);
@@ -52,10 +51,22 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
     setElegido(elegido === e ? null : e);
     setDolor(null);
     setOtro('');
+    // Un estado puntual ya está elegido: se pregunta cuánto.
+    if (e !== 'dolor' && e !== 'otro' && elegido !== e) setPreguntando(e);
   };
-  const nombreElegido = elegido === 'otro' ? otro.trim() : elegido === 'dolor' ? (dolor === 'otro' ? otro.trim() : dolor) : elegido;
+  const elegirDolor = (d: string) => {
+    setDolor(dolor === d ? null : d);
+    if (d !== 'otro' && dolor !== d) setPreguntando(d);
+  };
+  const cancelar = () => {
+    setPreguntando(null);
+    setError('');
+    // Si era un estado puntual, se deselecciona; en "Con dolor" queda abierto para elegir otra cosa.
+    if (elegido !== 'dolor' && elegido !== 'otro') setElegido(null);
+    else if (dolor !== 'otro') setDolor(null);
+  };
   const chipDolor = (d: { nombre: string; emoji: string }) => (
-    <button key={d.nombre} className={`chip${dolor === d.nombre ? ' activa' : ''}`} onClick={() => setDolor(dolor === d.nombre ? null : d.nombre)}>
+    <button key={d.nombre} className={`chip${dolor === d.nombre ? ' activa' : ''}`} onClick={() => elegirDolor(d.nombre)}>
       <span aria-hidden>{d.emoji}</span> {idioma() === 'en' ? t(d.nombre) : d.nombre.replace(/^Dolor (de )?/, '').replace(/^./, (x) => x.toUpperCase())}
     </button>
   );
@@ -81,27 +92,34 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
           <p className="rotulo suave chico">{t('¿O es otra cosa?')}</p>
           <div className="chips envolver">
             {MALESTARES.map(chipDolor)}
-            <button className={`chip${dolor === 'otro' ? ' activa' : ''}`} onClick={() => setDolor(dolor === 'otro' ? null : 'otro')}>{t('✏️ Otro')}</button>
+            <button className={`chip${dolor === 'otro' ? ' activa' : ''}`} onClick={() => elegirDolor('otro')}>{t('✏️ Otro')}</button>
           </div>
         </div>
       ) : null}
       {elegido === 'otro' || dolor === 'otro' ? (
-        <input value={otro} onChange={(e) => setOtro(e.target.value)} placeholder={dolor === 'otro' ? t('ej: dolor de rodilla, sinusitis, herpes') : t('ej: con frío en los pies, con ganas de salir')} autoFocus />
+        <form className="otro-puntual" onSubmit={(e) => { e.preventDefault(); if (otro.trim()) setPreguntando(otro.trim()); }}>
+          <input value={otro} onChange={(e) => setOtro(e.target.value)} placeholder={dolor === 'otro' ? t('ej: dolor de rodilla, sinusitis, herpes') : t('ej: con frío en los pies, con ganas de salir')} autoFocus />
+          <button className="btn primario" disabled={!otro.trim()}>{t('Seguir')}</button>
+        </form>
       ) : null}
-      {elegido && (elegido !== 'dolor' || dolor) ? (
-        <div className="cuanto-puntual" ref={cuanto}>
-          <p className="pregunta-cuanto">
-            {nombreElegido ? <>{t('¿Cuánto?')} <strong>{t(nombreElegido)}</strong></> : t('Escribí qué, y después ¿cuánto?')}
-          </p>
-          <div className="botones-cuanto">
-            {CUANTO.map((c) => (
-              <button key={c.nombre} className="btn primario" disabled={!nombreElegido} onClick={() => nombreElegido && void guardar(nombreElegido, c.intensidad, c.nombre)}>{t(c.nombre)}</button>
-            ))}
+      {/* En el body: adentro del Día (que se anima con transform) el fixed quedaría atado a la tarjeta. */}
+      {preguntando ? createPortal(
+        <>
+          <div className="velo" onClick={cancelar} />
+          <div className="hoja modal-cuanto" role="dialog" aria-label={t('¿Cuánto?')}>
+            <p className="pregunta-cuanto">{t('¿Cuánto?')} <strong>{t(preguntando)}</strong></p>
+            <div className="botones-cuanto">
+              {CUANTO.map((c) => (
+                <button key={c.nombre} className="btn primario" onClick={() => void guardar(preguntando, c.intensidad, c.nombre)}>{t(c.nombre)}</button>
+              ))}
+            </div>
+            {error ? <p className="neg">{error}</p> : null}
+            <button className="enlace chico cancelar-cuanto" onClick={cancelar}>{t('Cancelar')}</button>
           </div>
-          <p className="suave chico">{t('Tocá uno para anotarlo.')}</p>
-        </div>
+        </>,
+        document.body,
       ) : null}
-      {error ? <p className="neg">{error}</p> : null}
+      {error && !preguntando ? <p className="neg">{error}</p> : null}
     </div>
   );
 }

@@ -694,3 +694,10 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .como-activar { display: inline-block; margin-top: 4px; padding: 0; text-align: left; }
 .guia-permiso { display: block; margin-top: 6px; padding: 10px 12px; border-radius: 12px; background: var(--acento-suave); }
 .guia-permiso ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 0.9em; }
+.hoja.modal-cuanto { background: var(--panel); text-align: center; top: 0; bottom: 0; left: 16px; right: 16px; margin: auto; height: fit-content; max-width: 380px; border-radius: 22px; padding: 18px 16px; box-shadow: 0 20px 50px rgb(40 20 90 / 0.25); animation: pop 0.2s ease-out; }
+.modal-cuanto .pregunta-cuanto { margin: 4px 0 14px; font-size: 18px; }
+.modal-cuanto .botones-cuanto { display: flex; gap: 8px; }
+.modal-cuanto .btn { flex: 1; min-width: 0; min-height: 52px; font-size: 16px; padding-left: 8px; padding-right: 8px; }
+.modal-cuanto .cancelar-cuanto { display: block; margin: 14px auto 0; }
+.otro-puntual { display: flex; gap: 8px; margin-top: 10px; }
+.otro-puntual input { flex: 1; min-width: 0; }
