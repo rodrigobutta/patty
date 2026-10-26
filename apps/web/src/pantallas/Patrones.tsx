@@ -119,7 +119,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
       <div className="tarjeta">
         <h2>{t('Patrones de {nombre}', { nombre: persona.nombre })}</h2>
         <p className="suave">
-          {t('Patty compara los días en que pasó algo con los que no, y mira si al rato o unos días después aparece otra cosa más seguido.')}
+          {t('Patty compara los días en que pasó algo con los que no, y mira qué aparece más seguido después.')}
           {sesion?.ia ? ` ${t('La IA explica lo que encuentra.')}` : ''}
         </p>
         {usuario?.rol !== 'lector' ? (

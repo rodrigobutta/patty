@@ -32,7 +32,7 @@ export function DatosSalud({ persona }: { persona: Persona }) {
     try {
       const n = await sincronizarSalud(persona.id);
       if (n) avisar(t('Listo: {n} datos de los últimos 7 días', { n }));
-      else setError(t('{almacen} no tiene datos de los últimos 7 días: la app de tu reloj todavía no le está mandando nada. Abrí la app del reloj y buscá la opción de compartir con {almacen}.', { almacen }));
+      else setError(t('{almacen} no tiene datos de esta semana: en la app de tu reloj, activá compartir con {almacen}.', { almacen }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -61,7 +61,7 @@ export function DatosSalud({ persona }: { persona: Persona }) {
       <h3>{t('⌚ Reloj y salud')}</h3>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => void prender(e.target.checked)} />
-        <span>{t('Traer de {almacen} el sueño, los pasos, el pulso, las calorías y más, un resumen por día.', { almacen })}</span>
+        <span>{t('Traer de {almacen} el sueño, los pasos, el pulso y más (un resumen por día).', { almacen })}</span>
       </label>
       <p className="suave chico">
         {t('Patty lee lo que la app de tu reloj deja en {almacen}', { almacen })}

@@ -81,7 +81,7 @@ export function Tablero({ alCerrar }: { alCerrar(): void }) {
             </p>
           </div>
           <Lista filas={d.familia} />
-          {d.familia.length === 1 ? <p className="suave chico">{t('Sumá a tu familia desde Más → Supervisión: así compiten y se ayudan a cumplir la meta.')}</p> : null}
+          {d.familia.length === 1 ? <p className="suave chico">{t('Sumá a tu familia desde Más → Supervisión para competir y cumplir la meta juntos.')}</p> : null}
         </>
       ) : (
         <>

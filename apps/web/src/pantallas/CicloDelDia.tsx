@@ -155,7 +155,7 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
               {sueleNombres.length ? <li>📝 {t('En esta parte del ciclo solés anotar: {lista}', { lista: sueleNombres.map((x) => t(x)).join(', ') })}</li> : null}
             </ul>
           ) : (
-            <p className="suave chico">{t('Con cada menstruación que anotes calculo en qué día y fase del ciclo estás, cuándo viene la próxima y los días fértiles, y busco qué cambia en cada fase.')}</p>
+            <p className="suave chico">{t('Anotá cada menstruación y calculo tu fase, la próxima y los días fértiles, y veo qué cambia en cada fase.')}</p>
           )}
           <p className="suave chico">{t('Son estimaciones según lo anotado: no sirven como método anticonceptivo.')}</p>
         </>

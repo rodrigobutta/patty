@@ -114,7 +114,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
             setClima(e.target.checked);
             if (e.target.checked) void ubicacion(); // para que el teléfono pida el permiso ahora y no al anotar
           }} />
-          <span>{t('Anotar el clima de cada hora donde estás: temperatura, humedad, lluvia, viento, sol, presión y calidad del aire.')}</span>
+          <span>{t('Anotar el clima de cada hora donde estás (temperatura, lluvia, viento, sol, presión, aire).')}</span>
         </label>
       </div>
       {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
@@ -150,8 +150,8 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         ) : null}
         <p className="suave chico">
           {esNativa()
-            ? t('Desde el aviso contestás «La tomé», «En 15 min» o «No la tomo». En la pantalla bloqueada no se ve qué remedio es.')
-            : t('Los avisos llegan con la app de Android o iPhone. Acá, en el Día, ves las tomas de hoy para marcarlas.')}
+            ? t('Desde el aviso: «La tomé», «En 15 min» o «No la tomo». Con el teléfono bloqueado no se ve el remedio.')
+            : t('Los avisos llegan con la app del teléfono. En el Día ves las tomas de hoy para marcarlas.')}
         </p>
       </div>
       <div className="tarjeta">
@@ -168,8 +168,8 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         ) : null}
         <p className="suave chico">
           {esNativa()
-            ? t('Llega un aviso a esa hora; si no lo contestás, el Día te lo vuelve a preguntar hasta las 5 de la mañana.')
-            : t('Desde esa hora, el Día te pregunta cómo te sentiste. Con la app de Android o iPhone, además, llega un aviso.')}
+            ? t('Llega un aviso a esa hora; si no contestás, el Día te pregunta hasta las 5 de la mañana.')
+            : t('Desde esa hora, el Día te pregunta cómo te sentiste (y en el teléfono llega un aviso).')}
         </p>
         {error ? <p className="neg">{error}</p> : null}
       </div>
@@ -194,7 +194,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       {persona ? (
         <div className="tarjeta">
           <h3>{t('🧍 Datos de {nombre}', { nombre: persona.nombre })}</h3>
-          <p className="suave chico">{perfilTexto(persona, new Date(), idioma()) || t('Edad, altura, peso y condiciones crónicas: opcional, ayuda a entender mejor los patrones.')}</p>
+          <p className="suave chico">{perfilTexto(persona, new Date(), idioma()) || t('Edad, altura, peso y condiciones (opcional): ayuda a entender tus patrones.')}</p>
           {usuario?.rol !== 'lector' ? <button className="btn ancho" onClick={() => setPerfil(true)}>{perfilTexto(persona) ? t('Cambiar') : t('Completar')}</button> : null}
           {perfil ? (
             <>
@@ -235,7 +235,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           <summary>{t('Avanzado: conectar otro dispositivo')}</summary>
           <p className="suave chico">
             {t('Para un reloj, un atajo del teléfono o un servicio que mande datos por su cuenta a')}{' '}
-            <code>{(API_BASE || location.origin) + '/api/ingesta'}</code>. {t('Cada uno usa su propio token. La app ya manda lo suyo sola: esto es solo para otros dispositivos.')}
+            <code>{(API_BASE || location.origin) + '/api/ingesta'}</code>. {t('Cada uno con su token. La app ya manda lo suyo: esto es para otros dispositivos.')}
           </p>
           {fuentes.length ? (
             <ul className="lista">

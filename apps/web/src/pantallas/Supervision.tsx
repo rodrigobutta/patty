@@ -117,7 +117,7 @@ export function Supervision() {
         </div>
       ))}
       <p className="suave chico">
-        {t('Para acompañar a alguien (por ejemplo, una persona mayor): ves su día y sus remedios, te aviso si se olvida una toma o no anota nada en el día, y le podés mandar un aviso. Escribí el código que te muestra en su Patty, o invitalo con su usuario o mail.')}
+        {t('Acompañá a alguien: ves su día y sus remedios, te aviso si se olvida una toma y le podés mandar avisos. Usá el código de su Patty o invitalo con su usuario o mail.')}
       </p>
       {datos?.supervisas.length ? (
         <ul className="lista">

@@ -507,7 +507,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     ) : (
       <>
         <textarea rows={5} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
-          placeholder={t('Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»')} />
+          placeholder={t('Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me dolió la cabeza…»')} />
         <button className="btn primario ancho" onClick={() => contar(texto)} disabled={ocupado || !texto.trim()}>{estado === 'ordenando' ? t('Procesando…') : t('Aceptar')}</button>
         {sinFoto ? null : (
           <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? t('Aceptar con una foto') : t('Mandale una foto')}</button>

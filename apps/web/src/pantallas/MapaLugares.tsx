@@ -46,7 +46,7 @@ export function MapaLugares({ persona, dias }: { persona: Persona; dias: number 
           </li>
         ))}
       </ul>
-      {f.sin_nombre.length ? <p className="suave chico">{t('Los rosas son lugares donde estuviste varios días y todavía no tienen nombre: ponéselo desde «¿Dónde estuviste?» en el Día.')}</p> : null}
+      {f.sin_nombre.length ? <p className="suave chico">{t('Los rosas son lugares frecuentes sin nombre: ponéselo desde «¿Dónde estuviste?» en el Día.')}</p> : null}
     </div>
   );
 }

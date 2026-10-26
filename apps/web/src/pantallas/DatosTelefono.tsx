@@ -48,10 +48,10 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
       <h3>{t('📱 Uso del teléfono y llamadas')}</h3>
       <label className="opcion">
         <input type="checkbox" checked={activo} onChange={(e) => prender(e.target.checked)} />
-        <span>{t('Anotar cada día el tiempo de pantalla, los minutos de cada app y las llamadas de este teléfono.')}</span>
+        <span>{t('Anotar cada día el tiempo de pantalla, el uso de cada app y las llamadas.')}</span>
       </label>
       <p className="suave chico">
-        {t('De las llamadas solo se cuentan cuántas y cuánto duraron (no números ni nombres). Una app entra con su nombre si se usó 5 minutos o más en el día. Se manda al abrir Patty, los últimos 7 días.')}
+        {t('De las llamadas, solo cuántas y cuánto duraron (nunca números ni nombres). Las apps usadas 5 min o más entran con su nombre. Se manda al abrir Patty.')}
       </p>
       {permisos ? (
         <div className="columna">

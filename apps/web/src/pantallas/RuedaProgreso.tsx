@@ -74,7 +74,7 @@ export function RuedaProgreso({ progreso }: { progreso: Progreso }) {
         {listo
           ? siguiente
             ? t('Con {dias} más anotados, lo que encuentre va a ser más confiable.', { dias: dias(faltanDias) })
-            : t('Los patrones que encuentre ya están bien sostenidos. Seguí anotando para que se mantengan al día.')
+            : t('Los patrones ya están bien sostenidos. Seguí anotando para mantenerlos al día.')
           : t('Necesito {n} días con algo anotado, y en unos {m} de ellos saber cómo te sentiste.', { n: progreso.minimo, m: progreso.minimo_efecto })}
       </p>
 

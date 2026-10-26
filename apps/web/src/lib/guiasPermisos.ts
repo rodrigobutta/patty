@@ -41,7 +41,7 @@ export const NOMBRE_MARCA: Record<Marca, string> = {
 
 /** Los pasos para dar un permiso en esta marca de teléfono (ya traducidos). */
 export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
-  const buscar = (que: string) => t('Si no lo encontrás, buscá «{que}» en el buscador de Ajustes.', { que: t(que) });
+  const buscar = (que: string) => t('¿No lo encontrás? Buscá «{que}» en Ajustes.', { que: t(que) });
   if (marca === 'iphone') {
     if (permiso === 'avisos') return [t('Abrí Ajustes → Notificaciones → Patty.'), t('Prendé «Permitir notificaciones».')];
     if (permiso === 'ubicacion') return [t('Abrí Ajustes y bajá hasta Patty.'), t('Tocá Ubicación.'), t('Elegí «Siempre» y dejá prendida «Ubicación exacta».')];

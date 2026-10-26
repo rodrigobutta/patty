@@ -80,8 +80,8 @@ export function Perfil({ persona, bienvenida = false, alTerminar }: { persona: P
       </div>
       <p className="suave chico">
         {propia
-          ? t('Todo opcional. Patty no es una app médica: lo usa solo para entender mejor tus patrones. Lo podés cambiar cuando quieras desde Más.')
-          : t('Todo opcional. Patty no es una app médica: lo usa solo para entender mejor sus patrones. Lo podés cambiar cuando quieras desde Más.')}
+          ? t('Todo opcional: solo sirve para entender mejor tus patrones (Patty no es una app médica). Se cambia desde Más.')
+          : t('Todo opcional: solo sirve para entender mejor sus patrones (Patty no es una app médica). Se cambia desde Más.')}
       </p>
       <div className="fila-datos">
         <label>{t('Nacimiento')}<input type="date" value={nacimiento} onChange={(e) => setNacimiento(e.target.value)} /></label>

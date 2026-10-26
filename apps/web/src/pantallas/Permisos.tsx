@@ -189,7 +189,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
         {bienvenida ? <button className="enlace" onClick={terminar}>{t('Ahora no')}</button> : <button className="btn-icono" onClick={terminar} aria-label={t('Cerrar')}>✕</button>}
       </div>
       <p className="suave chico">
-        {t('Con esto Patty junta datos sola y te avisa. Todo es opcional: activá lo que quieras, ahora o después desde Más.')}
+        {t('Así Patty junta datos sola y te avisa. Todo opcional: activalo ahora o después desde Más.')}
       </p>
       <ul className="lista-permisos">
         {visibles.map((f) => (

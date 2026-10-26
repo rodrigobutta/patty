@@ -17,8 +17,6 @@ export const PATRONES: Record<string, string> = {
   Calendario: 'Calendar',
   Buscar: 'Search',
   'Patrones de {nombre}': "{nombre}'s patterns",
-  'Patty compara los días en que pasó algo con los que no, y mira si al rato o unos días después aparece otra cosa más seguido.':
-    "Patty compares the days when something happened with the days it didn't, and checks whether something else shows up more often soon after, or a few days later.",
   'La IA explica lo que encuentra.': 'AI explains what it finds.',
   'Buscando patrones…': 'Looking for patterns…',
   'Buscar patrones': 'Find patterns',
@@ -37,8 +35,6 @@ export const PATRONES: Record<string, string> = {
   '¡Tengo un montón de datos!': 'I have loads of data!',
   'Juntando datos para encontrar patrones': 'Gathering data to find patterns',
   'Con {dias} más anotados, lo que encuentre va a ser más confiable.': "With {dias} more logged, what I find will be more reliable.",
-  'Los patrones que encuentre ya están bien sostenidos. Seguí anotando para que se mantengan al día.':
-    'The patterns I find are well backed now. Keep logging to keep them up to date.',
   'Necesito {n} días con algo anotado, y en unos {m} de ellos saber cómo te sentiste.':
     'I need {n} days with something logged, and to know how you felt on about {m} of them.',
   'Días anotados': 'Days logged',

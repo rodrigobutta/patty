@@ -75,8 +75,6 @@ export const DIA: Record<string, string> = {
   'Ej: dos porciones, era de mi primo': "E.g. two servings, it was my cousin's",
   Responder: 'Reply',
   '🎙️ Prefiero hablar': "🎙️ I'd rather talk",
-  'Contá tu día como te salga: «me levanté 7:30, desayuné café con tostadas, a las 11 me empezó a doler la cabeza, como un 4…»':
-    'Tell me about your day however you like: “got up at 7:30, had coffee and toast, at 11 my head started hurting, like a 4…”',
   Ordenarlo: 'Sort it out',
   'Ordenarlo con una foto': 'Sort it out with a photo',
   'Mandale una foto': 'Send her a photo',
@@ -202,10 +200,6 @@ export const DIA: Record<string, string> = {
   'Un poquito sobre vos': 'A little about you',
   'Datos de {nombre}': "{nombre}'s details",
   'Ahora no': 'Not now',
-  'Todo opcional. Patty no es una app médica: lo usa solo para entender mejor tus patrones. Lo podés cambiar cuando quieras desde Más.':
-    "All optional. Patty isn't a medical app: she only uses this to better understand your patterns. You can change it anytime from More.",
-  'Todo opcional. Patty no es una app médica: lo usa solo para entender mejor sus patrones. Lo podés cambiar cuando quieras desde Más.':
-    "All optional. Patty isn't a medical app: she only uses this to better understand their patterns. You can change it anytime from More.",
   Nacimiento: 'Birth date',
   'Altura (cm)': 'Height (cm)',
   'Peso (kg)': 'Weight (kg)',
@@ -243,8 +237,6 @@ export const DIA: Record<string, string> = {
   Permisos: 'Permissions',
   'Para que te ayude más': 'So I can help you more',
   'Permisos de este teléfono': "This phone's permissions",
-  'Con esto Patty junta datos sola y te avisa. Todo es opcional: activá lo que quieras, ahora o después desde Más.':
-    'With this, Patty gathers data on her own and sends you reminders. It’s all optional: turn on whatever you like, now or later from More.',
   Activado: 'On',
   Completar: 'Finish',
   Activar: 'Turn on',

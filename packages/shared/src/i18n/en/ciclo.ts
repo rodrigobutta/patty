@@ -44,8 +44,6 @@ export const CICLO: Record<string, string> = {
   irregulares: 'irregular',
   'la menstruación, ~{n} días': 'period ~{n} days',
   'En esta parte del ciclo solés anotar: {lista}': 'In this part of your cycle you often log: {lista}',
-  'Con cada menstruación que anotes calculo en qué día y fase del ciclo estás, cuándo viene la próxima y los días fértiles, y busco qué cambia en cada fase.':
-    'With each period you log I work out your cycle day and phase, when the next one is due and your fertile days, and look for what changes in each phase.',
   'Son estimaciones según lo anotado: no sirven como método anticonceptivo.': 'These are estimates from what you logged: not a method of birth control.',
   'Ovulación (estimada)': 'Ovulation (estimated)',
   'Días fértiles (estimados)': 'Fertile days (estimated)',
