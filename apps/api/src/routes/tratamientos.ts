@@ -229,7 +229,7 @@ export const rutasTratamientos = new Hono<Env>()
       c.var.db,
       sql`SELECT ${COLUMNAS} ${DESDE} WHERE t.borrado IS NULL AND t.terminado IS NULL
           AND (t.fin IS NULL OR t.fin > now()) AND (cardinality(t.horarios) > 0 OR t.cada_horas IS NOT NULL)
-          AND (${u.rol === 'admin'} OR EXISTS (SELECT 1 FROM accesos pu WHERE pu.persona_id = t.persona_id AND pu.usuario_id = ${u.id}))`,
+          AND EXISTS (SELECT 1 FROM accesos pu WHERE pu.persona_id = t.persona_id AND pu.usuario_id = ${u.id})`,
     );
     return c.json((await tomasDe(c.var.db, lista, desde, hasta)).filter((t) => t.estado === null));
   })

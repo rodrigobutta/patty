@@ -59,7 +59,8 @@ export const rutasPersonas = new Hono<Env>()
               EXISTS (SELECT 1 FROM persona_usuarios d WHERE d.persona_id = p.id AND d.usuario_id = ${u.id} AND d.rol = 'dueno') AS propia,
               EXISTS (SELECT 1 FROM accesos a WHERE a.persona_id = p.id AND a.usuario_id = ${u.id} AND a.por_supervision) AS supervisada
             FROM personas p
-            WHERE ${u.rol === 'admin'} OR EXISTS (SELECT 1 FROM accesos pu WHERE pu.persona_id = p.id AND pu.usuario_id = ${u.id})
+            -- Solo las propias, las compartidas y las que supervisa: ser administrador no muestra los datos de los demás.
+            WHERE EXISTS (SELECT 1 FROM accesos pu WHERE pu.persona_id = p.id AND pu.usuario_id = ${u.id})
             ORDER BY p.nombre`,
       ),
     );
