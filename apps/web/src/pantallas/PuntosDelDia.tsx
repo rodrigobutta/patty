@@ -44,7 +44,7 @@ export const PISTAS: Partial<Record<ItemPuntos, { texto: string; titulo: string 
   remedios: { texto: 'los remedios que tomó hoy', titulo: '💊 ¿Qué remedios tomaste?' },
 };
 
-export function PuntosDelDia({ persona, cara }: { persona: Persona; cara: Cara | null }) {
+export function PuntosDelDia({ persona, cara, alTocarBuho }: { persona: Persona; cara: Cara | null; alTocarBuho(): void }) {
   const { festejar } = useEstado();
   const [r, setR] = useState<Respuesta | null>(null);
   const [tablero, setTablero] = useState(false);
@@ -127,19 +127,21 @@ export function PuntosDelDia({ persona, cara }: { persona: Persona; cara: Cara |
   return (
     <>
       {/* El búho "dice" los puntos: su cara (contento, esperando, con sueño…) y el globito con la estrella. */}
-      <button className={`mini-puntos${ganancia ? ' gana' : ''}`} key={ganancia?.id ?? 0} onClick={() => setAbierta(true)} aria-label={t('{n} puntos de 100', { n: hoy.puntos })}>
-        {cara ? <Mascota cara={cara} tamano={34} className={`buho-puntos${ganancia ? ' saltando' : ''}`} /> : null}
-        <span className="globo-puntos">
+      <span className={`mini-puntos${ganancia ? ' gana' : ''}`} key={ganancia?.id ?? 0}>
+        <button className="boton-buho" onClick={alTocarBuho} aria-label={t('Patty: contale cómo te sentís')}>
+          {cara ? <Mascota cara={cara} tamano={52} className={`buho-puntos${ganancia ? ' saltando' : ' vivo'}`} /> : null}
+        </button>
+        <button className="globo-puntos" onClick={() => setAbierta(true)} aria-label={t('{n} puntos de 100', { n: hoy.puntos })}>
         <span className="estrella" aria-hidden>⭐</span>
         <span className="numero">{mostrado}</span>
-        </span>
+        </button>
         {ganancia ? (
           <>
             <span className="mas-puntos" aria-hidden>+{ganancia.n}</span>
             <span className="chispas-puntos" aria-hidden>{['✨', '⭐', '✨', '💫'].map((c, k) => <i key={k} style={{ ['--k' as string]: k }}>{c}</i>)}</span>
           </>
         ) : null}
-      </button>
+      </span>
       {abierta
         ? createPortal(
             <>
