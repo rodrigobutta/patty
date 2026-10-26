@@ -594,12 +594,12 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   );
 }
 
-/** Cámara o galería, con dos botones grandes (en vez del menú chiquito del sistema). */
+/** Cámara o galería, con dos botones grandes (en vez del menú chiquito del sistema), en una hoja desde abajo como la de hablar. */
 export function ElegirFoto({ alElegir, alCancelar }: { alElegir(origen: 'camara' | 'galeria'): void; alCancelar(): void }) {
   return createPortal(
     <>
       <div className="velo" onClick={alCancelar} />
-      <div className="hoja modal-cuanto elegir-foto" role="dialog" aria-label={t('Foto para Patty')}>
+      <div className="hoja elegir-foto" role="dialog" aria-label={t('Foto para Patty')}>
         <p className="pregunta-cuanto">{t('Foto para Patty')}</p>
         <button className="btn primario grande-foto" onClick={() => alElegir('camara')}>
           <IconoCamara tamano={28} /> {t('Sacar una foto')}
