@@ -91,6 +91,8 @@ export function avisoDeTomas(
     tipo: 'toma',
     persona_id: String(pendientes[0].persona_id),
     tomas: JSON.stringify(pendientes.map((t) => ({ tratamiento_id: t.tratamiento_id, programada: t.programada }))),
+    // La cara del búho al costado: esperando la toma; con varias olvidadas, enojada.
+    cara: pendientes.length > 1 && momento !== 'supervisor' ? 'enojada' : 'espera',
     ...(momento === 'supervisor'
       ? { supervision: 'si' }
       : { boton_tomada: pendientes.length === 1 ? traducir(i, 'La tomé') : traducir(i, 'Las tomé todas'), boton_salteada: traducir(i, 'No la tomo') }),
@@ -202,7 +204,7 @@ export async function revisarDiasSinAnotar(db: Db, ahora = new Date()): Promise<
       const aviso = {
         titulo: traducir(i, '📝 {nombre} no anotó nada hoy', { nombre: p.nombre }),
         cuerpo: traducir(i, 'Quizás le venga bien un aviso para que le cuente a Patty cómo fue su día.'),
-        datos: { tipo: 'sin_anotar', persona_id: String(p.id) },
+        datos: { tipo: 'sin_anotar', persona_id: String(p.id), cara: 'espera' },
       };
       if (await avisarUnaVez(db, d, `sinanotar|${p.id}|${dia}`, aviso)) enviados++;
     }

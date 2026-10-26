@@ -61,7 +61,7 @@ export const rutasSupervision = new Hono<Env>()
       titulo: 'Patty',
       cuerpo: traducir(i, '{nombre} quiere supervisarte: ver tu día y avisarte si te olvidás algo. ¿Aceptás?', { nombre: u.nombre }),
       // Con el id, el aviso trae los botones Aceptar y No (AvisosPushService).
-      datos: { tipo: 'supervision', supervision_id: String(nueva!.id) },
+      datos: { tipo: 'supervision', supervision_id: String(nueva!.id), cara: 'feliz' },
     }));
     return c.json({ ok: true, nombre: otro.nombre }, 201);
   })
@@ -101,7 +101,7 @@ export const rutasSupervision = new Hono<Env>()
     await avisarAUsuario(c.var.db, r.usuario_id, (i) => ({
       titulo: 'Patty',
       cuerpo: traducir(i, '{nombre} ya te supervisa. Lo podés quitar cuando quieras desde Más.', { nombre: u.nombre }),
-      datos: { tipo: 'supervision' },
+      datos: { tipo: 'supervision', cara: 'feliz' },
     }));
     return c.json({ ok: true, nombre: r.nombre }, 201);
   })
@@ -117,7 +117,7 @@ export const rutasSupervision = new Hono<Env>()
       await avisarAUsuario(c.var.db, s.supervisor_id, (i) => ({
         titulo: 'Patty',
         cuerpo: traducir(i, '{nombre} aceptó tu supervisión. Ya podés ver su día en Patty.', { nombre: u.nombre }),
-        datos: { tipo: 'supervision' },
+        datos: { tipo: 'supervision', cara: 'feliz' },
       }));
     }
     return c.json({ ok: true });

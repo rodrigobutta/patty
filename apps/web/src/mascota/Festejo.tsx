@@ -9,15 +9,17 @@ export function Festejo() {
   const { festejo, terminarFestejo } = useEstado();
   if (!festejo) return null;
   const contento = festejo.cara === 'feliz';
+  const enojada = festejo.cara === 'enojada';
   return (
     <div className="festejo" key={festejo.id} role="status" onClick={terminarFestejo}>
-      <div className={`festejo-tarjeta${contento ? ' contento' : ''}`}>
+      <div className={`festejo-tarjeta${contento ? ' contento' : ''}${enojada ? ' enojada' : ''}`}>
         {contento ? (
           <div className="chispas" aria-hidden>
             {CHISPAS.map((c, i) => <span key={i} style={{ ['--i' as string]: i }}>{c}</span>)}
           </div>
         ) : null}
-        <Mascota cara={festejo.cara} tamano={104} className="saltando" />
+        {/* Enojada no salta: niega con la cabeza. */}
+        <Mascota cara={festejo.cara} tamano={104} className={enojada ? 'negando' : 'saltando'} />
         <p>{festejo.texto}</p>
       </div>
     </div>

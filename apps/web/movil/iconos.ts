@@ -59,6 +59,8 @@ for (const cara of CARAS) {
 `,
   );
 }
+// La cara enojada no es ícono de la app: solo va al costado de algunos avisos (una toma que no se tomó).
+for (const [d, f] of Object.entries(DENSIDADES)) png(svgMascota('enojada', { lado: 108 * f, zona: 250 }), 108 * f, `${RES}/mipmap-${d}/icono_enojada_frente.png`);
 writeFileSync(
   `${RES}/values/icono_fondo.xml`,
   `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO}</color>\n    <color name="patty_acento">#6b4fbb</color>\n</resources>\n`,

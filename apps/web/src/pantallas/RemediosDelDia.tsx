@@ -90,7 +90,7 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
       const vieja = ahora - Date.parse(tm.programada) > HORAS_PARA_OLVIDADA * 3600000;
       await marcarToma(tm, estado, vieja ? tm.programada : undefined);
       if (estado === 'tomada') festejar(t('¡Bien! {que} tomado 💊', { que: t(tm.remedio) }));
-      else avisar(t('Anotado que no la tomaste'));
+      else festejar(t('¡Ey! Anotado que no la tomaste… La próxima no te la saltees 😤'), 'enojada');
       alCambiar();
     } catch (e) {
       avisar((e as Error).message);

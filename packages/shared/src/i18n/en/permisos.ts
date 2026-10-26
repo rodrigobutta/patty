@@ -73,4 +73,6 @@ export const PERMISOS: Record<string, string> = {
   '¡Anotado en {dia}!': 'Logged on {dia}!',
   'Aceptar con una foto': 'Accept with a photo',
   'Procesando…': 'Working on it…',
+  '¡Ey! Anotado que no la tomaste… La próxima no te la saltees 😤': 'Hey! Logged that you skipped it… Don’t skip the next one 😤',
+  Enojada: 'Annoyed',
 };

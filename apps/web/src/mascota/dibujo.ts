@@ -1,11 +1,13 @@
 // La mascota de Patty, dibujada en SVG (300 x 300): el mismo dibujo se usa adentro de la app y para generar los
-// íconos del teléfono (movil/iconos.ts). Tiene tres caras según cómo viene la persona con lo que anota.
+// íconos del teléfono (movil/iconos.ts). Tiene tres caras según cómo viene la persona con lo que anota, y una cuarta,
+// enojada, para retar un poco (no se tomó un remedio, se olvidó varias tomas): esa no es ícono de la app, solo de avisos.
 // Para cambiar de animal alcanza con cambiar ANIMAL (y volver a generar los íconos).
 
-export type Cara = 'feliz' | 'espera' | 'triste';
+export type Cara = 'feliz' | 'espera' | 'triste' | 'enojada';
 export type Animal = 'buho' | 'carpincho' | 'zorro';
 
 export const ANIMAL: Animal = 'buho';
+/** Las caras que puede tener el ícono de la app (la enojada no). */
 export const CARAS: Cara[] = ['feliz', 'espera', 'triste'];
 
 const TINTA = '#2a2440';
@@ -15,6 +17,11 @@ function ojos(cara: Cara, x1: number, x2: number, y: number, r: number): string 
     .map((x) => {
       if (cara === 'feliz') return `<path d="M${x - r} ${y + 2} Q${x} ${y - r - 4} ${x + r} ${y + 2}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
       if (cara === 'espera') return `<circle cx="${x}" cy="${y}" r="${r * 0.75}" fill="${TINTA}"/><circle cx="${x + r * 0.3}" cy="${y - r * 0.3}" r="${r * 0.25}" fill="#fff"/>`;
+      if (cara === 'enojada') {
+        // Enojada: cejas en V (bajan hacia el pico) y la mirada un poco entornada.
+        const baja = x === x1 ? 1 : -1;
+        return `<circle cx="${x}" cy="${y + 4}" r="${r * 0.7}" fill="${TINTA}"/><path d="M${x - r - 4} ${y - r - 6 * baja} L${x + r + 4} ${y - r + 6 * baja}" stroke="${TINTA}" stroke-width="8" stroke-linecap="round"/>`;
+      }
       // Triste: cejas caídas hacia afuera.
       const caida = x === x1 ? 4 : -4;
       return `<circle cx="${x}" cy="${y + 3}" r="${r * 0.7}" fill="${TINTA}"/><path d="M${x - r - 2} ${y - r + caida} L${x + r + 2} ${y - r - caida}" stroke="${TINTA}" stroke-width="6" stroke-linecap="round"/>`;
@@ -25,6 +32,7 @@ function ojos(cara: Cara, x1: number, x2: number, y: number, r: number): string 
 function boca(cara: Cara, x: number, y: number, w: number): string {
   if (cara === 'feliz') return `<path d="M${x - w} ${y} Q${x} ${y + w * 1.1} ${x + w} ${y}" stroke="${TINTA}" stroke-width="7" fill="#e85d75" stroke-linejoin="round"/>`;
   if (cara === 'espera') return `<path d="M${x - w * 0.5} ${y + 6} L${x + w * 0.5} ${y + 2}" stroke="${TINTA}" stroke-width="7" stroke-linecap="round"/>`;
+  if (cara === 'enojada') return `<path d="M${x - w * 0.55} ${y + 10} Q${x} ${y} ${x + w * 0.55} ${y + 10}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   return `<path d="M${x - w * 0.6} ${y + 12} Q${x} ${y - 4} ${x + w * 0.6} ${y + 12}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
 }
 
@@ -32,6 +40,9 @@ function boca(cara: Cara, x: number, y: number, w: number): string {
 function extra(cara: Cara, x: number, y: number): string {
   if (cara === 'feliz') return `<circle cx="${x - 62}" cy="${y}" r="13" fill="#ff8fa3" opacity=".55"/><circle cx="${x + 62}" cy="${y}" r="13" fill="#ff8fa3" opacity=".55"/>`;
   if (cara === 'triste') return `<path d="M${x + 48} ${y - 8} q8 14 0 22 q-8 -8 0 -22z" fill="#6fb7ff"/>`;
+  // La venita de enojo arriba a la derecha y los cachetes colorados.
+  if (cara === 'enojada')
+    return `<g stroke="#e5484d" stroke-width="6" stroke-linecap="round" fill="none"><path d="M${x + 58} ${y - 118} q6 6 0 12"/><path d="M${x + 76} ${y - 118} q-6 6 0 12"/><path d="M${x + 61} ${y - 128} q6 -6 12 0"/><path d="M${x + 61} ${y - 98} q6 6 12 0"/></g><circle cx="${x - 62}" cy="${y}" r="13" fill="#e5484d" opacity=".45"/><circle cx="${x + 62}" cy="${y}" r="13" fill="#e5484d" opacity=".45"/>`;
   return '';
 }
 

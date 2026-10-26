@@ -1,7 +1,7 @@
 import { svgMascota, type Cara } from './dibujo';
 import { t } from '../lib/idioma';
 
-const TEXTOS: Record<Cara, string> = { feliz: t('Contenta'), espera: t('Esperando que anotes'), triste: t('Triste: hace días que no anotás') };
+const TEXTOS: Record<Cara, string> = { feliz: t('Contenta'), espera: t('Esperando que anotes'), triste: t('Triste: hace días que no anotás'), enojada: t('Enojada') };
 
 export function Mascota({ cara, tamano = 40, className }: { cara: Cara; tamano?: number; className?: string }) {
   return (

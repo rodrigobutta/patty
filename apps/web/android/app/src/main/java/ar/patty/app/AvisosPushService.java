@@ -68,7 +68,7 @@ public class AvisosPushService extends FirebaseMessagingService {
             .setContentIntent(pi);
         // Con la cara del búho al costado (por ejemplo, triste en "hoy no me contaste nada").
         String cara = datos.get("cara");
-        if (cara != null && cara.matches("feliz|espera|triste")) {
+        if (cara != null && cara.matches("feliz|espera|triste|enojada")) {
             int res = getResources().getIdentifier("icono_" + cara + "_frente", "mipmap", getPackageName());
             if (res != 0) {
                 android.graphics.Bitmap img = android.graphics.BitmapFactory.decodeResource(getResources(), res);

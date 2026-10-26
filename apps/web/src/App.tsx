@@ -38,7 +38,7 @@ const PESTANAS: Array<{ id: Pestana; nombre: string }> = [
 ];
 
 export function App() {
-  const { fase, error, persona, personas, elegirPersona, aviso, sesion, avisar, recargar } = useEstado();
+  const { fase, error, persona, personas, elegirPersona, aviso, sesion, avisar, festejar, recargar } = useEstado();
   // patty.today/#admin abre la administración directo (para mirarla en la compu).
   const [pestana, setPestana] = useState<Pestana>(() => (location.hash === '#admin' ? 'admin' : 'hoy'));
   // Cada pestaña arranca arriba de todo (si no, queda el scroll de la anterior).
@@ -95,12 +95,13 @@ export function App() {
           void (async () => {
             const tomas = JSON.parse(d.tomas) as Array<{ tratamiento_id: number; programada: string }>;
             for (const x of tomas) await marcarToma(x, estado);
-            avisar(estado === 'salteada' ? t('Anotado que no la tomaste') : tomas.length > 1 ? t('¡Bien! Marqué {n} tomas 💊', { n: tomas.length }) : t('¡Bien! Anotado 💊'));
+            if (estado === 'salteada') festejar(t('¡Ey! Anotado que no la tomaste… La próxima no te la saltees 😤'), 'enojada');
+            else festejar(tomas.length > 1 ? t('¡Bien! Marqué {n} tomas 💊', { n: tomas.length }) : t('¡Bien! Anotado 💊'));
           })().catch((e: Error) => avisar(e.message));
         }
         if (d.persona_id && personas.some((p) => p.id === Number(d.persona_id))) elegirPersona(Number(d.persona_id));
       }),
-    [personas, elegirPersona, avisar, recargar],
+    [personas, elegirPersona, avisar, festejar, recargar],
   );
 
   if (fase === 'arrancando') return <div className="centro suave">{t('Abriendo Patty…')}</div>;
