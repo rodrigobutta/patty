@@ -4,7 +4,7 @@ import { setTimeout as esperar } from 'node:timers/promises';
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import type { Sesion } from 'shared';
+import type { Sesion, VersionApp } from 'shared';
 import { claveOk, hashClave } from '../auth/claves.js';
 import { verificarGoogle } from '../auth/google.js';
 import { cerrarSesion, cookieSesion, DURACION_SESION, iniciarSesion, usuarioDeToken } from '../auth/sesion.js';
@@ -35,6 +35,7 @@ export const rutasSesion = new Hono<Env>()
       ia: iaDisponible(),
       voz: vozDisponible(),
       push: pushDisponible(),
+      app: (await una<{ valor: VersionApp }>(c.var.db, sql`SELECT valor FROM ajustes WHERE clave = 'version_app'`))?.valor ?? null,
     };
     return c.json(s);
   })

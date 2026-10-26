@@ -146,3 +146,27 @@ describe('encuesta de la noche por push', () => {
     expect(r.body).toMatchObject({ persona_id: personaId, concepto: 'Cómo me sentí en el día', intensidad: 7 });
   });
 });
+
+describe('avisos desde la administración', () => {
+  it('manda a todos o a uno, y publica la versión de la app avisando a quien la tiene vieja', async () => {
+    const { ana } = await conAdmin();
+    const enviados: Array<{ token: string; a: Aviso }> = [];
+    usarEnvioPrueba(async (token, a) => {
+      enviados.push({ token, a });
+      return 'ok';
+    });
+    await ana.post('/api/dispositivos', { token: 'tel-ana', plataforma: 'android' });
+    await ana.post('/api/dispositivos/estado', { instalacion: 'aaaaaaaa11', plataforma: 'android', version: { web: '1.4.1', app: '1.2.0' } });
+    expect((await ana.post('/api/admin/avisos', { titulo: 'Hola', cuerpo: '¡Gracias por probar Patty!' })).body).toEqual({ enviados: 1, telefonos: 1 });
+    expect(enviados[0].a).toMatchObject({ titulo: 'Hola', cuerpo: '¡Gracias por probar Patty!' });
+    expect((await ana.post('/api/admin/avisos', { cuerpo: '' })).status).toBe(400);
+
+    const r = (await ana.put('/api/admin/version-app', { version: '1.4.0', url: 'https://ejemplo.com/patty.apk', avisar: true })).body;
+    expect(r).toMatchObject({ desactualizados: 1, enviados: 1 });
+    expect(enviados[1].a.datos).toMatchObject({ tipo: 'version', url: 'https://ejemplo.com/patty.apk' });
+    expect((await ana.get('/api/sesion')).body.app).toEqual({ version: '1.4.0', url: 'https://ejemplo.com/patty.apk' });
+    // con la app al día, ya no cuenta
+    await ana.post('/api/dispositivos/estado', { instalacion: 'aaaaaaaa11', plataforma: 'android', version: { web: '1.4.1', app: '1.4.0' } });
+    expect((await ana.get('/api/admin/version-app')).body.desactualizados).toBe(0);
+  });
+});

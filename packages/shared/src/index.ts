@@ -158,6 +158,21 @@ export interface Sesion {
   voz: boolean;
   /** Si el servidor puede mandar avisos push (Firebase configurado). */
   push: boolean;
+  /** La última versión publicada de la app de Android y de dónde bajarla (si la administración la cargó). */
+  app?: VersionApp | null;
+}
+
+export interface VersionApp {
+  version: string;
+  url: string;
+}
+
+/** Compara versiones "1.4.0" (negativo si a es más vieja que b). */
+export function compararVersiones(a: string, b: string): number {
+  const x = a.split('.').map(Number);
+  const y = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
+  return 0;
 }
 
 export interface Persona {

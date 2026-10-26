@@ -5,10 +5,40 @@ import { Hono } from 'hono';
 import { exigirRol } from '../auth/sesion.js';
 import { filas, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
-import { idParam, type Env } from '../lib/http.js';
+import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
+import { compararVersiones, type VersionApp } from 'shared';
+import { enviarAviso, type Aviso } from '../push/firebase.js';
+import { hayEnvio } from '../push/firebase.js';
 
 /** Los registros de los últimos 14 días, por día, para la rayita de actividad. */
 const ULTIMOS_DIAS = 14;
+
+/** Manda un aviso a los teléfonos de esos usuarios (o de todos). Devuelve a cuántos llegó. */
+async function avisarA(db: Env['Variables']['db'], usuarios: number[] | null, aviso: Aviso): Promise<{ enviados: number; telefonos: number }> {
+  if (!hayEnvio()) throw new ErrorApi('El servidor todavía no tiene Firebase configurado.');
+  const lista = await filas<{ id: number; token: string }>(
+    db,
+    sql`SELECT d.id, d.token FROM dispositivos d JOIN usuarios u ON u.id = d.usuario_id AND u.activo
+        WHERE ${usuarios === null} OR d.usuario_id IN (${sql.join((usuarios?.length ? usuarios : [0]).map((x) => sql`${x}`), sql`, `)})`,
+  );
+  let enviados = 0;
+  for (const d of lista) {
+    const r = await enviarAviso(d.token, aviso);
+    if (r === 'ok') enviados++;
+    if (r === 'invalido') await db.execute(sql`DELETE FROM dispositivos WHERE id = ${d.id}`);
+  }
+  return { enviados, telefonos: lista.length };
+}
+
+/** Los usuarios con la app de Android más vieja que `version` (o tan vieja que no la cuenta). */
+async function desactualizados(db: Env['Variables']['db'], version: string): Promise<number[]> {
+  const l = await filas<{ usuario_id: number; app: string | null }>(
+    db,
+    sql`SELECT DISTINCT ON (i.usuario_id) i.usuario_id, i.estado->'version'->>'app' AS app FROM instalaciones i
+        JOIN usuarios u ON u.id = i.usuario_id AND u.activo WHERE i.plataforma = 'android' ORDER BY i.usuario_id, i.actualizado DESC`,
+  );
+  return l.filter((x) => !x.app || compararVersiones(x.app, version) < 0).map((x) => x.usuario_id);
+}
 
 export const rutasAdmin = new Hono<Env>()
   .use('*', async (c, next) => {
@@ -112,4 +142,38 @@ export const rutasAdmin = new Hono<Env>()
             WHERE r.borrado IS NULL ORDER BY r.creado DESC LIMIT 80`,
       ),
     );
+  })
+  .post('/avisos', async (c) => {
+    // {titulo, cuerpo, usuario_id?}: un aviso a un usuario o, sin usuario, a todos.
+    const d = await cuerpo(c);
+    const titulo = texto(d.titulo).slice(0, 80) || 'Patty';
+    const mensaje = texto(d.cuerpo).slice(0, 400);
+    if (!mensaje) throw new ErrorApi('Escribí el mensaje.');
+    const usuario = d.usuario_id ? Number(d.usuario_id) : null;
+    return c.json(await avisarA(c.var.db, usuario ? [usuario] : null, { titulo, cuerpo: mensaje, datos: { tipo: 'anuncio', cara: 'feliz' } }));
+  })
+  .get('/version-app', async (c) => {
+    const v = (await una<{ valor: VersionApp }>(c.var.db, sql`SELECT valor FROM ajustes WHERE clave = 'version_app'`))?.valor ?? null;
+    return c.json({ actual: v, desactualizados: v ? (await desactualizados(c.var.db, v.version)).length : null });
+  })
+  .put('/version-app', async (c) => {
+    // {version, url, avisar}: la última versión de la app de Android y de dónde bajarla; con `avisar`, un aviso a
+    // quienes tienen una más vieja (al tocarlo se abre el link).
+    const d = await cuerpo(c);
+    const version = texto(d.version);
+    const url = texto(d.url);
+    if (!/^\d+\.\d+\.\d+$/.test(version)) throw new ErrorApi('La versión tiene que ser como 1.4.0.');
+    if (!/^https:\/\//.test(url)) throw new ErrorApi('El link tiene que empezar con https://');
+    const valor: VersionApp = { version, url };
+    await c.var.db.execute(sql`INSERT INTO ajustes (clave, valor) VALUES ('version_app', ${JSON.stringify(valor)}::jsonb)
+      ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, creado = now()`);
+    const viejos = await desactualizados(c.var.db, version);
+    const r = d.avisar && viejos.length
+      ? await avisarA(c.var.db, viejos, {
+          titulo: '📲 Hay una versión nueva de Patty',
+          cuerpo: `Ya está la ${version}. Tocá para bajarla e instalarla.`,
+          datos: { tipo: 'version', url, cara: 'feliz' },
+        })
+      : { enviados: 0, telefonos: 0 };
+    return c.json({ desactualizados: viejos.length, ...r });
   });

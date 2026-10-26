@@ -76,6 +76,8 @@ let enviarPrueba: ((token: string, a: Aviso) => Promise<'ok' | 'invalido'>) | nu
 export const usarEnvioPrueba = (f: typeof enviarPrueba) => {
   enviarPrueba = f;
 };
+/** Si se pueden mandar avisos (Firebase o APNs configurados, o el envío de las pruebas). */
+export const hayEnvio = (): boolean => enviarPrueba !== null || pushDisponible();
 
 /**
  * Manda un aviso a un teléfono. "invalido": el token ya no sirve (se desinstaló la app) y hay que olvidarlo. Los

@@ -8,6 +8,7 @@ import { useEstado } from '../estado';
 import { idioma, locale, t } from '../lib/idioma';
 import { Avatar } from '../ui/Avatar';
 import { VERSION } from '../lib/version';
+import type { VersionApp } from 'shared';
 
 interface Resumen {
   usuarios: number;
@@ -155,7 +156,7 @@ function Barritas({ datos, alto = 60 }: { datos: number[]; alto?: number }) {
 }
 
 export function Admin({ alVolver }: { alVolver(): void }) {
-  const [vista, setVista] = useState<'resumen' | 'usuarios' | 'actividad'>('resumen');
+  const [vista, setVista] = useState<'resumen' | 'usuarios' | 'actividad' | 'avisos'>('resumen');
   const [elegido, setElegido] = useState<number | null>(null);
   return (
     <section className="admin">
@@ -167,9 +168,99 @@ export function Admin({ alVolver }: { alVolver(): void }) {
         <button className={vista === 'resumen' ? 'activa' : ''} onClick={() => { setVista('resumen'); setElegido(null); }}>{t('Resumen')}</button>
         <button className={vista === 'usuarios' ? 'activa' : ''} onClick={() => setVista('usuarios')}>{t('Usuarios')}</button>
         <button className={vista === 'actividad' ? 'activa' : ''} onClick={() => { setVista('actividad'); setElegido(null); }}>{t('Actividad')}</button>
+        <button className={vista === 'avisos' ? 'activa' : ''} onClick={() => { setVista('avisos'); setElegido(null); }}>{t('📣 Avisos')}</button>
       </div>
-      {vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
+      {vista === 'avisos' ? <VistaAvisos /> : vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
     </section>
+  );
+}
+
+/** Mandar un aviso a un usuario o a todos, y publicar la versión nueva de la app de Android (avisando a quien la tiene vieja). */
+function VistaAvisos() {
+  const { avisar } = useEstado();
+  const [usuarios, setUsuarios] = useState<FilaUsuario[]>([]);
+  const [para, setPara] = useState('');
+  const [titulo, setTitulo] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  const [mandando, setMandando] = useState(false);
+  const [version, setVersion] = useState<{ actual: VersionApp | null; desactualizados: number | null } | null>(null);
+  const [nueva, setNueva] = useState({ version: VERSION, url: '' });
+  const [avisarViejos, setAvisarViejos] = useState(true);
+  const [error, setError] = useState('');
+  const traerVersion = () =>
+    void api<{ actual: VersionApp | null; desactualizados: number | null }>('GET', '/api/admin/version-app')
+      .then((v) => {
+        setVersion(v);
+        if (v.actual) setNueva((n) => ({ ...n, url: n.url || v.actual!.url }));
+      })
+      .catch(() => {});
+  useEffect(() => {
+    void api<FilaUsuario[]>('GET', '/api/admin/usuarios').then(setUsuarios).catch(() => {});
+    traerVersion();
+  }, []);
+
+  const mandar = async () => {
+    if (!mensaje.trim()) return;
+    const quien = para ? usuarios.find((u) => String(u.id) === para)?.nombre : t('todos');
+    if (!confirm(t('¿Mandar el aviso a {quien}?', { quien: quien ?? '' }))) return;
+    setMandando(true);
+    setError('');
+    try {
+      const r = await api<{ enviados: number; telefonos: number }>('POST', '/api/admin/avisos', { usuario_id: para ? Number(para) : null, titulo, cuerpo: mensaje });
+      avisar(t('Llegó a {n} de {total} teléfonos', { n: r.enviados, total: r.telefonos }));
+      setMensaje('');
+      setTitulo('');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setMandando(false);
+    }
+  };
+
+  const publicar = async () => {
+    setError('');
+    try {
+      const r = await api<{ desactualizados: number; enviados: number }>('PUT', '/api/admin/version-app', { ...nueva, avisar: avisarViejos });
+      avisar(avisarViejos ? t('Publicada. Avisé a {n} teléfonos con la app vieja', { n: r.enviados }) : t('Publicada'));
+      traerVersion();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  return (
+    <>
+      <div className="tarjeta">
+        <h3>{t('📣 Mandar un aviso')}</h3>
+        <label>
+          {t('A quién')}
+          <select value={para} onChange={(e) => setPara(e.target.value)}>
+            <option value="">{t('A todos')}</option>
+            {usuarios.filter((u) => u.activo).map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+          </select>
+        </label>
+        <label>{t('Título (opcional)')}<input value={titulo} onChange={(e) => setTitulo(e.target.value)} maxLength={80} placeholder="Patty" /></label>
+        <label>{t('Mensaje')}<textarea rows={3} value={mensaje} onChange={(e) => setMensaje(e.target.value)} maxLength={400} /></label>
+        <button className="btn primario ancho" disabled={mandando || !mensaje.trim()} onClick={() => void mandar()}>{mandando ? t('Mandando…') : t('Mandar')}</button>
+      </div>
+      <div className="tarjeta">
+        <h3>{t('📲 Versión de la app')}</h3>
+        <p className="suave chico">
+          {version?.actual
+            ? t('Publicada: {v}. Con una más vieja: {n} usuarios.', { v: version.actual.version, n: version.desactualizados ?? 0 })
+            : t('Todavía no se publicó ninguna versión.')}
+        </p>
+        <label>{t('Versión')}<input value={nueva.version} onChange={(e) => setNueva({ ...nueva, version: e.target.value.trim() })} placeholder="1.4.0" /></label>
+        <label>{t('Link para bajar el APK')}<input value={nueva.url} onChange={(e) => setNueva({ ...nueva, url: e.target.value.trim() })} placeholder="https://…" /></label>
+        <label className="opcion">
+          <input type="checkbox" checked={avisarViejos} onChange={(e) => setAvisarViejos(e.target.checked)} />
+          <span>{t('Mandar un aviso a quienes tienen una versión más vieja')}</span>
+        </label>
+        <button className="btn primario ancho" onClick={() => void publicar()}>{t('Publicar versión')}</button>
+        <p className="suave chico">{t('Quien tenga una más vieja ve además un cartel en la app para bajarla.')}</p>
+      </div>
+      {error ? <p className="neg">{error}</p> : null}
+    </>
   );
 }
 

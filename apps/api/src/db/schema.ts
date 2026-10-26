@@ -501,3 +501,11 @@ export const hallazgos = pgTable(
     index('hallazgos_persona_idx').on(t.persona_id, t.puntaje.desc()),
   ],
 );
+
+/** Ajustes de toda la app que maneja la administración (por ejemplo, la última versión de la app de Android). */
+export const ajustes = pgTable('ajustes', {
+  clave: text('clave').primaryKey(),
+  valor: jsonb('valor').notNull(),
+  /** Cuándo se cambió por última vez. */
+  creado: creado(),
+});

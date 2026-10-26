@@ -20,6 +20,7 @@ import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
 import { Avatar } from './ui/Avatar';
+import { CartelVersion } from './ui/CartelVersion';
 import { Patrones } from './pantallas/Patrones';
 import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
 import { useProgreso } from './lib/progreso';
@@ -84,6 +85,8 @@ export function App() {
               .catch((e: Error) => avisar(e.message));
           }
         }
+        // Una versión nueva de la app: el aviso abre el link para bajarla.
+        if (d.tipo === 'version' && d.url?.startsWith('https://')) window.open(d.url, '_blank');
         // La encuesta de la noche tocada (o "Mal" contestado desde el aviso, para contar qué pasó): el Día la abre.
         if (d.tipo === 'encuesta') abrirEncuesta();
         // Un permiso que falta: Más, con los pasos para darlo en este teléfono.
@@ -148,6 +151,7 @@ export function App() {
           </button>
         ) : null}
       </header>
+      <CartelVersion app={sesion?.app} />
       <main>
         {pestana === 'admin' && sesion?.usuario?.rol === 'admin' ? (
           <Admin alVolver={() => { setPestana('mas'); if (location.hash) history.replaceState(null, '', location.pathname); }} />

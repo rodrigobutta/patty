@@ -120,6 +120,13 @@
       "when": 1792981077720,
       "tag": "0016_encuesta_hora",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792981441995,
+      "tag": "0017_ajustes",
+      "breakpoints": true
     }
   ]
 }
