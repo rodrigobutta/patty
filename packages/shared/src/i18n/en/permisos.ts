@@ -402,4 +402,12 @@ export const PERMISOS: Record<string, string> = {
   'Health Connect': 'Health Connect',
   'a dormir {hora}': 'to bed at {hora}',
   'Sueño': 'Sleep',
+  'Listo: «{a}» ahora es parte de «{b}»': 'Done: “{a}” is now part of “{b}”',
+  '📍 «{a}» y «{b}» parecen el mismo lugar. ¿Los unimos?': '📍 “{a}” and “{b}” look like the same place. Merge them?',
+  'Dejar «{n}»': 'Keep “{n}”',
+  'Son distintos': 'They are different',
+  'Unir {nombre} con otro lugar': 'Merge {nombre} with another place',
+  'Es el mismo lugar que:': 'It is the same place as:',
+  'Elegí…': 'Choose…',
+  'Sin datos todavía.': 'No data yet.',
 };

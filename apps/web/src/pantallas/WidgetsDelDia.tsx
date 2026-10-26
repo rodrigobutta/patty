@@ -2,6 +2,7 @@
 // cortito, sin títulos. Cuatro lugares fijos: clima, ubicación, teléfono, sueño y salud. Los que no tienen datos porque
 // falta el permiso van grises (ver FuenteApagada); tocando uno con datos se ve el detalle a lo ancho.
 import { Fragment, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { Categoria, DatoAutomatico, Registro } from 'shared';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
 import { locale, t } from '../lib/idioma';
@@ -139,22 +140,11 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
       {celdas.map(({ l, w, apagada }) =>
         w ? (
           <Fragment key={l}>
-            <button className={`widget-auto${abierto === l ? ' abierto' : ''}`} onClick={() => setAbierto(abierto === l ? null : l)} aria-expanded={abierto === l} aria-label={`${w.nombre}: ${w.linea}${w.sub ? `, ${w.sub}` : ''}`}>
+            <button className="widget-auto" onClick={() => setAbierto(l)} aria-haspopup="dialog" aria-label={`${w.nombre}: ${w.linea}${w.sub ? `, ${w.sub}` : ''}`}>
               {w.icono}
               <span className="widget-linea">{w.linea}</span>
               {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
             </button>
-            {abierto === l && w.grupos.length ? (
-              <ul className="detalle-auto widget-detalle">
-                {w.grupos.flatMap((g) => g.lineas).map((x) => (
-                  <li key={x.concepto}>
-                    <span className="icono">{categorias.find((c) => c.id === x.categoria_id)?.icono}</span>
-                    <span className="que">{t(x.concepto)}</span>
-                    <span className="valor-chip">{x.valor}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
           </Fragment>
         ) : apagada ? (
           <WidgetApagado key={l} fuente={apagada} alTocar={() => alActivar(apagada)} />
@@ -167,6 +157,41 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
           </button>
         ) : null,
       )}
+      {/* El detalle, en una hoja: el ícono grande, el resumen y cada dato. */}
+      {abierto
+        ? (() => {
+            const w = widgets.find((x) => x?.lugar === abierto);
+            if (!w) return null;
+            return createPortal(
+              <>
+                <div className="velo" onClick={() => setAbierto(null)} />
+                <div className="hoja hoja-widget" role="dialog" aria-label={w.nombre}>
+                  <div className="hoja-cabeza">
+                    <h3>{w.nombre}</h3>
+                    <button className="btn-icono" onClick={() => setAbierto(null)} aria-label={t('Cerrar')}>✕</button>
+                  </div>
+                  <div className="widget-grande">
+                    {w.icono}
+                    <span className="widget-linea">{w.linea}</span>
+                    {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
+                  </div>
+                  {w.grupos.length ? (
+                    <ul className="detalle-auto">
+                      {w.grupos.flatMap((g) => g.lineas).map((x) => (
+                        <li key={`${x.concepto}-${x.valor}`}>
+                          <span className="icono">{categorias.find((c) => c.id === x.categoria_id)?.icono}</span>
+                          <span className="que">{t(x.concepto)}</span>
+                          <span className="valor-chip">{x.valor}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              </>,
+              document.body,
+            );
+          })()
+        : null}
     </div>
   );
 }

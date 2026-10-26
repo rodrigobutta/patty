@@ -1,7 +1,7 @@
 // Ubicación y lugares (en Más): prender el seguimiento en este teléfono, ver los viajes y lugares de hoy, y nombrar
 // lugares (Casa, lo de mamá, Supermercado) para que entren en los patrones.
 import { useCallback, useEffect, useState } from 'react';
-import { lugarDe, type DiaUbicacion, type Lugar, type Persona } from 'shared';
+import { distanciaMetros, lugarDe, type DiaUbicacion, type Lugar, type Persona } from 'shared';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
 import { horaEn } from '../lib/fechas';
@@ -46,6 +46,36 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
       vivo = false;
     };
   }, [activo, lugares]);
+
+  // Lugares que se pisan (guardados dos veces en el mismo sitio, con nombres distintos): se ofrece unirlos.
+  const [descartados, setDescartados] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('lugares-no-unir') ?? '[]') as string[];
+    } catch {
+      return [];
+    }
+  });
+  const parDe = (a: Lugar, b: Lugar) => [a.id, b.id].sort((x, y) => x - y).join('-');
+  const parecidos: Array<[Lugar, Lugar]> = [];
+  for (const [i, a] of lugares.entries()) {
+    for (const b of lugares.slice(i + 1)) {
+      if (distanciaMetros(a, b) < a.radio_m + b.radio_m && !descartados.includes(parDe(a, b))) parecidos.push([a, b]);
+    }
+  }
+  const noUnir = (a: Lugar, b: Lugar) => {
+    const l = [...descartados, parDe(a, b)];
+    setDescartados(l);
+    try {
+      localStorage.setItem('lugares-no-unir', JSON.stringify(l));
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
+  /** Une `a` en `b`: lo de `a` pasa a `b` y `a` se borra. */
+  const unir = (a: Lugar, b: Lugar) =>
+    void hacer(() => api('POST', `/api/ubicacion/lugares/${a.id}/unir`, { en: b.id }), t('Listo: «{a}» ahora es parte de «{b}»', { a: a.nombre, b: b.nombre }));
+  /** El lugar con el selector de "Unir con…" abierto. */
+  const [uniendo, setUniendo] = useState<number | null>(null);
 
   const hacer = async (f: () => Promise<unknown>, aviso: string) => {
     setError('');
@@ -129,6 +159,18 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
         </div>
       ) : null}
 
+      {puedeEscribir
+        ? parecidos.map(([a, b]) => (
+            <div key={parDe(a, b)} className="tarjeta nota-ia lugares-parecidos">
+              <p>{t('📍 «{a}» y «{b}» parecen el mismo lugar. ¿Los unimos?', { a: a.nombre, b: b.nombre })}</p>
+              <div className="fila">
+                <button className="btn chico primario" onClick={() => unir(a, b)}>{t('Dejar «{n}»', { n: b.nombre })}</button>
+                <button className="btn chico primario" onClick={() => unir(b, a)}>{t('Dejar «{n}»', { n: a.nombre })}</button>
+                <button className="btn chico" onClick={() => noUnir(a, b)}>{t('Son distintos')}</button>
+              </div>
+            </div>
+          ))
+        : null}
       <ul className="lista">
         {lugares.map((l) => (
           <li key={l.id} className={viendo === l.id ? 'con-mapa' : ''}>
@@ -141,8 +183,20 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
               <>
                 <button className="btn-icono chico" onClick={() => renombrar(l)} aria-label={t('Renombrar {nombre}', { nombre: l.nombre })}>✏️</button>
                 <button className="btn-icono chico" onClick={() => void moverAca(l)} aria-label={t('Mover {nombre} a donde estoy', { nombre: l.nombre })}>🎯</button>
+                {lugares.length > 1 ? (
+                  <button className="btn-icono chico" onClick={() => setUniendo(uniendo === l.id ? null : l.id)} aria-label={t('Unir {nombre} con otro lugar', { nombre: l.nombre })}>🔗</button>
+                ) : null}
                 <button className="btn-icono chico" onClick={() => borrar(l)} aria-label={t('Borrar {nombre}', { nombre: l.nombre })}>🗑</button>
               </>
+            ) : null}
+            {uniendo === l.id ? (
+              <span className="fila unir-lugar">
+                <span className="suave chico">{t('Es el mismo lugar que:')}</span>
+                <select defaultValue="" onChange={(e) => { const b = lugares.find((x) => x.id === Number(e.target.value)); setUniendo(null); if (b) unir(l, b); }}>
+                  <option value="" disabled>{t('Elegí…')}</option>
+                  {lugares.filter((x) => x.id !== l.id).map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
+                </select>
+              </span>
             ) : null}
             {viendo === l.id ? <Mapa puntos={[{ lat: l.lat, lon: l.lon, radio: l.radio_m, etiqueta: l.nombre }]} alto={170} className="mapa-lugar" /> : null}
           </li>

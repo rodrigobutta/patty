@@ -399,6 +399,34 @@ export const rutasUbicacion = new Hono<Env>()
     });
     return c.json((await buscarLugar(c.var.db, c, id, false)).lugar);
   })
+  .post('/lugares/:id/unir', async (c) => {
+    // Dos lugares que son el mismo ("Casa" y "Mi casa", guardados con un rato de diferencia): lo del primero pasa al
+    // segundo, solo de esta persona (los conceptos son de todos), y el primero se borra. El segundo crece para abarcar
+    // a los dos.
+    const id = idParam(c);
+    const en = Number((await cuerpo(c)).en);
+    if (!en || en === id) throw new ErrorApi('Elegí con qué lugar unirlo.');
+    await c.var.db.transaction(async (tx) => {
+      const { lugar: a, p } = await buscarLugar(tx, c, id, true);
+      const { lugar: b } = await buscarLugar(tx, c, en, true);
+      if (a.persona_id !== b.persona_id) throw new ErrorApi('Son de personas distintas.');
+      await tx.execute(sql`UPDATE registros SET concepto_id = ${b.concepto_id} WHERE persona_id = ${p.id} AND concepto_id = ${a.concepto_id}`);
+      await tx.execute(
+        sql`UPDATE registros SET datos = jsonb_set(datos, '{lugar_concepto_id}', to_jsonb(${b.concepto_id}::int))
+            WHERE persona_id = ${p.id} AND (datos->>'lugar_concepto_id')::int = ${a.concepto_id}`,
+      );
+      await tx.execute(sql`UPDATE mediciones m SET concepto_id = ${b.concepto_id} WHERE persona_id = ${p.id} AND concepto_id = ${a.concepto_id}
+                           AND NOT EXISTS (SELECT 1 FROM mediciones o WHERE o.persona_id = m.persona_id AND o.concepto_id = ${b.concepto_id}
+                                           AND o.inicio = m.inicio AND o.fuente_id = m.fuente_id)`);
+      await tx.execute(sql`DELETE FROM mediciones WHERE persona_id = ${p.id} AND concepto_id = ${a.concepto_id}`);
+      await tx.execute(sql`DELETE FROM hallazgos WHERE persona_id = ${p.id} AND (causa_id = ${a.concepto_id} OR efecto_id = ${a.concepto_id})`);
+      const d = distanciaMetros(a, b);
+      await tx.execute(sql`UPDATE lugares SET radio_m = ${radio(Math.min(1000, Math.max(b.radio_m, Math.round(d + a.radio_m / 2))))} WHERE id = ${b.id}`);
+      await tx.execute(sql`DELETE FROM lugares WHERE id = ${a.id}`);
+      await recalcularTodo(tx, p);
+    });
+    return c.json((await buscarLugar(c.var.db, c, en, false)).lugar);
+  })
   .delete('/lugares/:id', async (c) => {
     const id = idParam(c);
     await c.var.db.transaction(async (tx) => {

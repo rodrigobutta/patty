@@ -1,5 +1,7 @@
 import { puntoNuevo } from 'shared';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
+import { cerrarDb } from '../src/db/client.js';
+import { conAdmin } from './ayudas.js';
 import { paradasSinNombre, resumirDia } from '../src/ubicacion/resumen.js';
 
 // Puntos de Buenos Aires: 0,01° de latitud son ~1,1 km.
@@ -138,5 +140,23 @@ describe('viajes del día', () => {
     expect(adivinarViaje(6.7, 18).modo).toBe('auto');
     expect(adivinarViaje(8, 60)).toMatchObject({ modo: 'auto', pesado: true }); // 8 km/h: tráfico
     expect(adivinarViaje(2, 30).modo).toBe('caminando');
+  });
+});
+
+describe('unir lugares', () => {
+  afterAll(() => cerrarDb());
+  it('lo de un lugar pasa al otro (solo de esta persona) y el primero se borra', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const casa = (await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Casa', lat: -34.6, lon: -58.4 })).body;
+    const micasa = (await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Mi casa', lat: -34.6005, lon: -58.4 })).body;
+    await ana.post('/api/registros', { persona_id: personaId, concepto_id: micasa.concepto_id, categoria_id: categorias.lugar, inicio: '2026-10-20T15:00:00.000Z', valor: 30 });
+    const r = await ana.post(`/api/ubicacion/lugares/${micasa.id}/unir`, { en: casa.id });
+    expect(r.status).toBe(200);
+    expect(r.body.radio_m).toBeGreaterThanOrEqual(casa.radio_m);
+    const lugares = (await ana.get(`/api/ubicacion/lugares?persona=${personaId}`)).body;
+    expect(lugares.map((l: any) => l.nombre)).toEqual(['Casa']);
+    const regs = (await ana.get(`/api/registros?persona=${personaId}&desde=2026-10-20&hasta=2026-10-20`)).body;
+    expect(regs[0].concepto_id).toBe(casa.concepto_id);
+    expect((await ana.post(`/api/ubicacion/lugares/${casa.id}/unir`, { en: casa.id })).status).toBe(400);
   });
 });

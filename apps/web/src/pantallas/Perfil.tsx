@@ -26,7 +26,8 @@ const yaOfrecido = (id: number) => {
   }
 };
 
-export function Perfil({ persona, bienvenida = false, alTerminar }: { persona: Persona; bienvenida?: boolean; alTerminar(): void }) {
+/** `enLinea`: dentro de la pantalla (en Más, a la vista), sin cerrar ni salir al guardar. */
+export function Perfil({ persona, bienvenida = false, enLinea = false, alTerminar }: { persona: Persona; bienvenida?: boolean; enLinea?: boolean; alTerminar(): void }) {
   const { recargar, avisar } = useEstado();
   const [nacimiento, setNacimiento] = useState(persona.nacimiento ?? '');
   const [sexo, setSexo] = useState(persona.sexo ?? null);
@@ -64,7 +65,8 @@ export function Perfil({ persona, bienvenida = false, alTerminar }: { persona: P
       });
       await recargar();
       avisar(t('¡Gracias! Lo voy a tener en cuenta'));
-      salir();
+      if (enLinea) setEnviando(false);
+      else salir();
     } catch (e) {
       setError((e as Error).message);
       setEnviando(false);
@@ -73,10 +75,10 @@ export function Perfil({ persona, bienvenida = false, alTerminar }: { persona: P
 
   const otras = condiciones.filter((c) => !CONDICIONES_COMUNES.includes(c));
   return (
-    <div className={bienvenida ? 'perfil perfil-bienvenida' : 'hoja perfil'} role={bienvenida ? undefined : 'dialog'} aria-label={t('Datos de la persona')}>
+    <div className={enLinea ? 'tarjeta perfil perfil-en-linea' : bienvenida ? 'perfil perfil-bienvenida' : 'hoja perfil'} role={bienvenida || enLinea ? undefined : 'dialog'} aria-label={t('Datos de la persona')}>
       <div className="hoja-cabeza">
         <h3>{bienvenida ? t('Un poquito sobre vos') : t('Datos de {nombre}', { nombre: persona.nombre })}</h3>
-        {bienvenida ? <button className="enlace" onClick={salir}>{t('Ahora no')}</button> : <button className="btn-icono" onClick={alTerminar} aria-label={t('Cerrar')}>✕</button>}
+        {enLinea ? null : bienvenida ? <button className="enlace" onClick={salir}>{t('Ahora no')}</button> : <button className="btn-icono" onClick={alTerminar} aria-label={t('Cerrar')}>✕</button>}
       </div>
       <p className="suave chico">
         {propia

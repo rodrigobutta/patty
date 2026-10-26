@@ -244,6 +244,7 @@ export const ESTADOS_PUNTUALES: Array<{ nombre: string; emoji: string }> = [
   { nombre: 'Con sueño', emoji: '😴' },
   { nombre: 'Con energía', emoji: '⚡' },
   { nombre: 'Con hambre', emoji: '🍽️' },
+  { nombre: 'Con sed', emoji: '💧' },
   { nombre: 'Con pesadez', emoji: '🫃' },
   { nombre: 'Con ansiedad', emoji: '😰' },
   { nombre: 'Con estrés', emoji: '😤' },

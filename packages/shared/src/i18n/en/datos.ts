@@ -68,6 +68,7 @@ export const DATOS: Record<string, string> = {
   'Con sueño': 'Sleepy',
   'Con energía': 'Energetic',
   'Con hambre': 'Hungry',
+  'Con sed': 'Thirsty',
   'Con pesadez': 'Heavy',
   'Con ansiedad': 'Anxious',
   'Con estrés': 'Stressed',

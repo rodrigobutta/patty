@@ -32,7 +32,6 @@ type Seccion = 'datos' | 'remedios' | 'avisos' | 'supervision' | 'personas' | 's
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
   const [nueva, setNueva] = useState(false);
-  const [perfil, setPerfil] = useState(false);
   const [permisos, setPermisos] = useState(false);
   /** La sub-pantalla abierta (null: el menú). */
   const [seccion, setSeccion] = useState<Seccion | null>(null);
@@ -244,18 +243,16 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       </div>
   </>);
   if (seccion === 'salud') return pantalla(t('🩺 Tus datos de salud'), <>
+      {/* Los datos se completan acá mismo, a la vista (sin otra tarjeta que abrir). */}
       {persona ? (
-        <div className="tarjeta">
-          <h3>{t('🩺 Datos de {nombre}', { nombre: persona.nombre })}</h3>
-          <p className="suave chico">{perfilTexto(persona, new Date(), idioma()) || t('Edad, altura, peso y condiciones (opcional): ayuda a entender tus patrones.')}</p>
-          {usuario?.rol !== 'lector' ? <button className="btn ancho" onClick={() => setPerfil(true)}>{perfilTexto(persona) ? t('Cambiar') : t('Completar')}</button> : null}
-          {perfil ? (
-            <>
-              <div className="velo" onClick={() => setPerfil(false)} />
-              <Perfil persona={persona} alTerminar={() => setPerfil(false)} />
-            </>
-          ) : null}
-        </div>
+        usuario?.rol !== 'lector' ? (
+          <Perfil key={persona.id} persona={persona} enLinea alTerminar={() => {}} />
+        ) : (
+          <div className="tarjeta">
+            <h3>{t('🩺 Datos de {nombre}', { nombre: persona.nombre })}</h3>
+            <p className="suave chico">{perfilTexto(persona, new Date(), idioma()) || t('Sin datos todavía.')}</p>
+          </div>
+        )
       ) : null}
   </>, true);
   if (seccion === 'cuenta') return pantalla(t('👤 Tu cuenta'), <>
