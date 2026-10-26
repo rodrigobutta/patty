@@ -735,3 +735,4 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .duda p { margin: 0 0 6px; }
 .opciones-duda { margin: 0 0 12px; }
 .opciones-duda .chip { min-height: 40px; padding: 8px 14px; font-size: 15px; }
+.prefiero-escribir { min-height: 48px; margin-top: 6px; font-weight: 600; }

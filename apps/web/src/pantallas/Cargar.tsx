@@ -370,6 +370,16 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     } else void interpretar(n);
   };
 
+  /** "Prefiero escribir" también mientras escucha: deja de escuchar sin ordenar nada y pasa al cuadro de texto. */
+  const aEscribir = useRef(false);
+  const pasarAEscribir = () => {
+    if (estado === 'escuchando' && escucha.current) {
+      aEscribir.current = true;
+      escucha.current.parar();
+    }
+    setModo('escribir');
+  };
+
   const escucharAhora = async () => {
     if (estado === 'escuchando') return escucha.current?.parar();
     setError('');
@@ -383,6 +393,13 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       },
       (err) => {
         escucha.current = null;
+        // Pasó a escribir mientras hablaba: lo dicho queda en el cuadro para seguir escribiendo.
+        if (aEscribir.current) {
+          aEscribir.current = false;
+          setEstado('quieto');
+          if (dicho.trim()) setTexto(dicho.trim());
+          return;
+        }
         if (err) {
           setEstado('quieto');
           setError(err);
@@ -480,7 +497,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
         {!paraResponder && !sinFoto ? (
           <button className="btn foto-boton" onClick={() => void tomarFoto()} disabled={ocupado || estado === 'escuchando'}><IconoCamara tamano={20} /> {t('O mandale una foto (de tu plato, por ejemplo)')}</button>
         ) : null}
-        <button className="enlace" onClick={() => setModo('escribir')} disabled={estado === 'escuchando'}>{t('✍️ Prefiero escribir')}</button>
+        <button className="btn ancho prefiero-escribir" onClick={pasarAEscribir} disabled={estado === 'transcribiendo' || estado === 'ordenando'}>{t('✍️ Prefiero escribir')}</button>
       </div>
     ) : paraResponder ? (
       <div className="responder">
