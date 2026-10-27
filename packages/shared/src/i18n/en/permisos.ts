@@ -526,4 +526,5 @@ export const PERMISOS: Record<string, string> = {
   'De los días con algo anotado en cada fase, en el último año.': 'From the days with something logged in each phase, over the last year.',
   'Molestias': 'Symptoms',
   'premenstrual': 'premenstrual',
+  'Te gustó': 'You liked it',
 };

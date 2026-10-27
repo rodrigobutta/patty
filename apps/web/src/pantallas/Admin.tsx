@@ -132,7 +132,7 @@ interface Detalle {
   avisos: Array<{ id: number; tipo: string | null; titulo: string; cuerpo: string; resultado: string; creado: string }>;
   uso: Array<{ fecha: string; segundos: number; aperturas: number }>;
   preguntas: Array<{ id: number; pregunta: string; respuesta: string; creado: string }>;
-  comentarios: Array<{ id: number; persona_id: number; fecha: string; emoji: string; texto: string; estado: 'nuevo' | 'visto' | 'gusta' }>;
+  comentarios: Array<{ id: number; persona_id: number; fecha: string; emoji: string; texto: string; estado: 'nuevo' | 'visto' | 'gusta'; hora?: string }>;
 }
 
 interface Uso {
@@ -719,7 +719,7 @@ function LoQuePattyLeDice({ d }: { d: Detalle }) {
             {d.comentarios.map((x) => (
               <li key={x.id}>
                 {x.emoji} {x.texto}
-                <span className="suave chico"> · {x.fecha}{x.estado === 'gusta' ? ' · 👍' : x.estado === 'visto' ? ` · ${t('visto')}` : ''}{varias ? ` · ${nombre.get(x.persona_id)}` : ''}</span>
+                <span className="suave chico"> · {x.fecha}{x.hora ? ` ${x.hora}` : ''}{x.estado === 'gusta' ? ' · 👍' : x.estado === 'visto' ? ` · ${t('visto')}` : ''}{varias ? ` · ${nombre.get(x.persona_id)}` : ''}</span>
               </li>
             ))}
           </ul>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { api } from '../api';
+import { horaEn, nombreDia } from '../lib/fechas';
 import { t } from '../lib/idioma';
 
 export interface Comentario {
@@ -11,6 +12,8 @@ export interface Comentario {
   emoji: string;
   texto: string;
   estado: 'nuevo' | 'visto' | 'gusta';
+  /** Cuándo lo dijo Patty. */
+  creado?: string;
 }
 
 /** En el Día de hoy: el primero de los comentarios nuevos, con 👍 y ✕; al contestar uno aparece el siguiente. */
@@ -53,16 +56,35 @@ export function LoQueVoyNotando({ persona }: { persona: Persona }) {
   useEffect(() => {
     api<Comentario[]>('GET', `/api/comentarios?persona=${persona.id}&dias=14`).then(setLista).catch(() => setLista([]));
   }, [persona.id]);
+  const [todos, setTodos] = useState(false);
   if (!lista?.length) return null;
+  // Como una charla: los globitos de Patty agrupados por día, cada uno con la hora en que lo dijo.
+  const visibles = todos ? lista : lista.slice(0, 8);
+  const dias = [...new Set(visibles.map((c) => c.fecha))];
   return (
     <div className="tarjeta voy-notando">
       <h3>{t('🦉 Lo que voy notando')}</h3>
       <p className="suave chico">{t('Mientras junto días para encontrar patrones, esto es lo que ya veo en lo que me contás.')}</p>
-      <ul className="lista-simple">
-        {lista.slice(0, 8).map((c) => (
-          <li key={c.id}><span aria-hidden="true">{c.emoji}</span> {c.texto}</li>
+      <div className="charla-patty">
+        {dias.map((dia) => (
+          <section key={dia}>
+            <p className="dia-charla"><span>{nombreDia(dia, persona.zona_horaria)}</span></p>
+            {visibles.filter((c) => c.fecha === dia).map((c) => (
+              <div key={c.id} className="globo-fila">
+                <span className="avatar-globo" aria-hidden="true">{c.emoji}</span>
+                <div className="globo-patty">
+                  <p>{c.texto}</p>
+                  <span className="hora-globo">
+                    {c.estado === 'gusta' ? <span aria-label={t('Te gustó')}>👍 </span> : null}
+                    {c.creado ? horaEn(c.creado, persona.zona_horaria) : ''}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </section>
         ))}
-      </ul>
+      </div>
+      {!todos && lista.length > 8 ? <button className="enlace chico" onClick={() => setTodos(true)}>{t('Ver todo ({n})', { n: lista.length })}</button> : null}
     </div>
   );
 }

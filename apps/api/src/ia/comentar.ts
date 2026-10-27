@@ -21,6 +21,8 @@ export interface Comentario {
   emoji: string;
   texto: string;
   estado: 'nuevo' | 'visto' | 'gusta';
+  /** Cuándo lo dijo Patty. */
+  creado?: string;
 }
 
 /** Una sola vez por `clave` (aunque haya varios servidores o se pida dos veces). */

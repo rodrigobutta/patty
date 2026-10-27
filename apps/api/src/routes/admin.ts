@@ -164,7 +164,7 @@ export const rutasAdmin = new Hono<Env>()
     const comentariosDe = ids.length
       ? await filas(
           db,
-          sql`SELECT id, persona_id, to_char(fecha, 'YYYY-MM-DD') AS fecha, emoji, texto, estado FROM comentarios
+          sql`SELECT id, persona_id, to_char(fecha, 'YYYY-MM-DD') AS fecha, emoji, texto, estado, to_char(creado AT TIME ZONE (SELECT p.zona_horaria FROM personas p WHERE p.id = comentarios.persona_id), 'HH24:MI') AS hora FROM comentarios
               WHERE persona_id IN ${ids} ORDER BY fecha DESC, id LIMIT 40`,
         )
       : [];

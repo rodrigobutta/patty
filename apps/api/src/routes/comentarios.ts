@@ -26,7 +26,7 @@ export const rutasComentarios = new Hono<Env>()
     return c.json(
       await filas<Comentario>(
         db,
-        sql`SELECT id, persona_id, to_char(fecha, 'YYYY-MM-DD') AS fecha, emoji, texto, estado FROM comentarios
+        sql`SELECT id, persona_id, to_char(fecha, 'YYYY-MM-DD') AS fecha, emoji, texto, estado, creado FROM comentarios
             WHERE persona_id = ${p.id} AND fecha > ${sumarDias(hoy, -dias)} ORDER BY fecha DESC, id`,
       ),
     );
