@@ -89,8 +89,10 @@ export function nombreLindo(texto: string): string {
 
 // ---------- Ubicación y lugares ----------
 
-/** Moverse más que esto desde el último punto guardado cuenta como un viaje (y se guarda un punto nuevo). */
+/** Un viaje es de al menos esto (las vueltas cortas no cuentan). */
 export const DISTANCIA_VIAJE_M = 1000;
+/** Moverse más que esto desde el último punto guardado guarda uno nuevo: así queda el recorrido (una caminata entera). */
+export const DISTANCIA_PUNTO_M = 150;
 /** El radio con el que se crea un lugar: alcanza para una casa o un súper, con el error del GPS. */
 export const RADIO_LUGAR_M = 150;
 
@@ -121,7 +123,7 @@ export function lugarDe<L extends Coordenadas & { id: number; radio_m: number }>
 
 /**
  * Si vale la pena guardar un punto nuevo, comparado con el último guardado: es el primero del día, se movió más de
- * DISTANCIA_VIAJE_M, o entró o salió de un lugar con nombre. Así no se guarda un punto cada vez que se abre la app.
+ * DISTANCIA_PUNTO_M, o entró o salió de un lugar con nombre. Así no se guarda un punto cada vez que se abre la app.
  */
 export function puntoNuevo<L extends Coordenadas & { id: number; radio_m: number }>(
   anterior: (Coordenadas & { dia: string }) | null,
@@ -129,7 +131,7 @@ export function puntoNuevo<L extends Coordenadas & { id: number; radio_m: number
   lugares: L[],
 ): boolean {
   if (!anterior || anterior.dia !== p.dia) return true;
-  if (distanciaMetros(anterior, p) >= DISTANCIA_VIAJE_M) return true;
+  if (distanciaMetros(anterior, p) >= DISTANCIA_PUNTO_M) return true;
   return lugarDe(anterior, lugares)?.id !== lugarDe(p, lugares)?.id;
 }
 

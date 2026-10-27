@@ -41,10 +41,10 @@ describe('resumen de un día de ubicación', () => {
 describe('qué puntos se guardan', () => {
   const p = (lat: number, dia = '2026-10-24') => ({ lat, lon: -58.4, dia });
 
-  it('el primero del día, al moverse más de 1 km, o al entrar o salir de un lugar', () => {
+  it('el primero del día, al moverse más de 150 m, o al entrar o salir de un lugar', () => {
     expect(puntoNuevo(null, p(-34.6), [])).toBe(true);
-    expect(puntoNuevo(p(-34.6), p(-34.603), [])).toBe(false); // 330 m, sin lugares
-    expect(puntoNuevo(p(-34.6), p(-34.61), [])).toBe(true); // 1,1 km
+    expect(puntoNuevo(p(-34.6), p(-34.6008), [])).toBe(false); // 90 m, sin lugares
+    expect(puntoNuevo(p(-34.6), p(-34.603), [])).toBe(true); // 330 m
     expect(puntoNuevo(p(-34.6, '2026-10-23'), p(-34.6), [])).toBe(true); // otro día
     expect(puntoNuevo(p(-34.6), p(-34.603), [CASA])).toBe(true); // salió de casa
     expect(puntoNuevo(p(-34.6), p(-34.6005), [CASA, SUPER])).toBe(true); // el súper está más cerca
@@ -122,6 +122,26 @@ describe('paradas en lugares sin nombre', () => {
 });
 
 describe('viajes del día', () => {
+  it('con puntos cada ~150 m: un viaje es uno solo; la vuelta a pie con el perro no es un viaje', async () => {
+    const { viajesDelDia } = await import('../src/ubicacion/resumen.js');
+    const m = (min: number) => Date.parse('2026-10-26T12:00:00Z') + min * 60000;
+    // En auto: 5 km hacia el sur, un punto cada 150 m (cada ~20 s).
+    const auto = Array.from({ length: 34 }, (_, i) => ({ lat: -34.6 - i * 0.00135, lon: -58.4, instante: m(i / 3) }));
+    // A pie, donde terminó el auto: 1,2 km en un cuadrado que vuelve al mismo lugar, a ~4,5 km/h, un rato después.
+    const fin = auto[auto.length - 1];
+    const lado = 0.0027;
+    const esquinas = [[0, 0], [lado, 0], [lado, lado], [0, lado], [0, 0]];
+    const pie: Array<{ lat: number; lon: number; instante: number }> = [];
+    esquinas.slice(0, -1).forEach(([la, lo], k) => {
+      const [la2, lo2] = esquinas[k + 1];
+      for (let j = 0; j < 2; j++) pie.push({ lat: fin.lat + la + ((la2 - la) * j) / 2, lon: -58.4 + lo + ((lo2 - lo) * j) / 2, instante: m(100 + (k * 2 + j) * 2) });
+    });
+    pie.push({ lat: fin.lat, lon: -58.4, instante: m(116) });
+    const v = viajesDelDia([...auto, ...pie]);
+    expect(v).toHaveLength(1);
+    expect(Math.round(v[0].metros / 1000)).toBe(5);
+  });
+
   it('un día real: 4 viajes en auto de varios km (un punto por km) cuentan como 4, no como 30', async () => {
     const { resumirDia } = await import('../src/ubicacion/resumen.js');
     const m = (min: number) => Date.parse('2026-10-26T12:00:00Z') + min * 60000;

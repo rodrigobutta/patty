@@ -1,7 +1,7 @@
 // Qué dice la ubicación de un día: cuántos viajes hubo, cuántos km y en qué lugares con nombre estuvo la persona.
 // Sin base de datos: recibe los puntos del día (ya filtrados: uno por cada movimiento de más de 1 km o cambio de lugar)
 // y los lugares, así se prueba con datos armados.
-import { distanciaMetros, lugarDe, type Coordenadas } from 'shared';
+import { DISTANCIA_VIAJE_M, distanciaMetros, lugarDe, type Coordenadas } from 'shared';
 
 export interface Punto extends Coordenadas {
   /** ms */
@@ -85,24 +85,27 @@ export interface Viaje {
   metros: number;
 }
 
-/** Entre dos puntos de un mismo viaje no pasa más que esto (en movimiento, el teléfono guarda uno cada ~1 km). */
+/** Entre dos puntos de un mismo viaje no pasa más que esto (en movimiento, el teléfono guarda uno cada ~150 m). */
 const CONTINUO_MIN = 20;
-/** Un tramo cuenta como movimiento si es de al menos esto. */
-const TRAMO_M = 800;
-/** Un viaje es de al menos esto (las vueltas cortas a la manzana no cuentan). */
-const VIAJE_M = 1000;
+/** Menos que esto entre dos puntos es el GPS que tiembla, no un movimiento. */
+const TRAMO_M = 60;
+/** Un viaje es de al menos esto (las vueltas cortas no cuentan). */
+const VIAJE_M = DISTANCIA_VIAJE_M;
+/** Una vuelta que termina donde empezó, a paso de caminata, es un paseo (una caminata), no un viaje. */
+const VUELTA_M = 300;
+const CAMINANDO_KMH = 7;
 
 /**
- * Los viajes del día con los puntos guardados (uno cada vez que se movió más de 1 km, o al entrar o salir de un lugar):
- * tramos de más de 800 m seguidos, sin quedarse en ningún lado en el medio. Si entre un punto y el siguiente pasó más
- * de 20 minutos, o si el punto es en un lugar con nombre (llegó a casa, al súper), ahí hubo una parada y empieza otro
- * viaje. Así un viaje de 10 km en auto es uno solo, no diez.
- * La salida es aproximada (el primer punto ya es en camino).
+ * Los viajes del día con los puntos guardados (uno cada ~150 m al moverse, o al entrar o salir de un lugar): puntos
+ * seguidos en movimiento, sin quedarse en ningún lado en el medio. Si entre un punto y el siguiente pasaron más de 20
+ * minutos, o si el punto es en un lugar con nombre (llegó a casa, al súper), ahí hubo una parada y empieza otro viaje.
+ * Así un viaje de 10 km en auto es uno solo. Las vueltas a pie que terminan donde empezaron (sacar al perro) son
+ * caminatas, no viajes: no se cuentan. La salida es aproximada (el primer punto ya es en camino).
  */
 export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Viaje[] {
   const orden = [...puntosDia].sort((a, b) => a.instante - b.instante);
-  const r: Viaje[] = [];
-  let actual: Viaje | null = null;
+  const r: Array<Viaje & { desde: Punto; hasta: Punto }> = [];
+  let actual: (Viaje & { desde: Punto; hasta: Punto }) | null = null;
   for (let i = 1; i < orden.length; i++) {
     const a = orden[i - 1];
     const b = orden[i];
@@ -113,11 +116,19 @@ export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
     if (seguido) {
       actual!.fin = b.instante;
       actual!.metros += d;
+      actual!.hasta = b;
     } else {
       // Si estuvo un rato quieto antes, el viaje empezó cerca del final de ese tramo (la hora de salida es aproximada).
-      actual = { inicio: largo ? b.instante : a.instante, fin: b.instante, metros: d };
+      actual = { inicio: largo ? b.instante : a.instante, fin: b.instante, metros: d, desde: largo ? b : a, hasta: b };
       r.push(actual);
     }
   }
-  return r.filter((v) => v.metros >= VIAJE_M);
+  return r
+    .filter((v) => v.metros >= VIAJE_M)
+    .filter((v) => {
+      const horas = Math.max((v.fin - v.inicio) / 3600000, 1 / 60);
+      const vuelta = distanciaMetros(v.desde, v.hasta) < VUELTA_M;
+      return !(vuelta && v.metros / 1000 / horas < CAMINANDO_KMH);
+    })
+    .map(({ inicio, fin, metros }) => ({ inicio, fin, metros }));
 }

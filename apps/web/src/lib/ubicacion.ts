@@ -138,7 +138,8 @@ export async function seguirNativo(personaId: number, alFallar: (mensaje: string
         requestPermissions: true,
         stale: false,
         distanceFilter: 100,
-        minIntervalMs: 2 * 60000,
+        // Uno por minuto como mucho al moverse (con 100 m de por medio): alcanza para dibujar una caminata entera.
+        minIntervalMs: 60000,
         networkFallback: true,
         url: ingestaUrl('/ubicacion'),
         headers: { Authorization: `Bearer ${token}` },
