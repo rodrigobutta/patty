@@ -11,7 +11,11 @@ const CLAVE_ABIERTO = 'ciclo-abierto';
 /** Lo último traído por persona, para que la tarjeta no aparezca de golpe al volver al Día. */
 const YA_TRAIDO = new Map<number, Ciclo>();
 
-type Ciclo = ResumenCiclo & { por_fase: Record<FaseCiclo | 'premenstrual', Array<{ concepto: string; dias: number }>> };
+type ClaveFase = FaseCiclo | 'premenstrual';
+type Ciclo = ResumenCiclo & {
+  por_fase: Record<ClaveFase, Array<{ concepto: string; dias: number }>>;
+  cruce?: Record<ClaveFase, { dias: number; animo: number | null; molestias: number | null; sueno: number | null }>;
+};
 
 const corta = (fecha: string) =>
   new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(fecha + 'T12:00:00Z'));
@@ -154,7 +158,9 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
               </li>
               {sueleNombres.length ? <li>📝 {t('En esta parte del ciclo solés anotar: {lista}', { lista: sueleNombres.map((x) => t(x)).join(', ') })}</li> : null}
             </ul>
-          ) : (
+          ) : null}
+          {ciclo.periodos.length && ciclo.cruce ? <CruceFases cruce={ciclo.cruce} actual={fase} premenstrual={!enPeriodo && ciclo.faltan !== null && ciclo.faltan >= 0 && ciclo.faltan <= 5} /> : null}
+          {ciclo.periodos.length ? null : (
             <p className="suave chico">{t('Anotá cada menstruación y calculo tu fase, la próxima y los días fértiles, y veo qué cambia en cada fase.')}</p>
           )}
           <p className="suave chico">{t('Son estimaciones según lo anotado: no sirven como método anticonceptivo.')}</p>
@@ -171,4 +177,45 @@ function hoyDelCiclo(c: ResumenCiclo): string {
   const d = new Date(ultimo.inicio + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + c.dia - 1);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Cómo te va en cada fase: el ánimo promedio, en qué parte de los días hubo molestias y cuánto dormiste, con barras
+ * simples. Solo las fases con al menos 3 días anotados y algún dato.
+ */
+function CruceFases({ cruce, actual, premenstrual }: { cruce: NonNullable<Ciclo['cruce']>; actual: FaseCiclo | null; premenstrual: boolean }) {
+  const filas = (['menstrual', 'folicular', 'ovulatoria', 'lutea', 'premenstrual'] as ClaveFase[])
+    .map((clave) => ({ clave, ...cruce[clave] }))
+    .filter((f) => f.dias >= 3 && (f.animo !== null || f.molestias !== null || f.sueno !== null));
+  if (filas.length < 2) return null;
+  const nombre = (c: ClaveFase) => (c === 'premenstrual' ? t('premenstrual') : t(FASES_CICLO[c].nombre));
+  return (
+    <div className="cruce-fases">
+      <p className="chico pregunta-ciclo">{t('Cómo te va en cada fase')}</p>
+      <div className="cruce-tabla">
+        <span />
+        <span className="suave chico">{t('Ánimo')}</span>
+        <span className="suave chico">{t('Molestias')}</span>
+        <span className="suave chico">{t('Sueño')}</span>
+        {filas.map((f) => (
+          <div key={f.clave} className={`cruce-fila${f.clave === actual || (premenstrual && f.clave === 'premenstrual') ? ' actual' : ''}`}>
+            <span className="chico">{nombre(f.clave)}</span>
+            <Barra valor={f.animo === null ? null : f.animo / 10} texto={f.animo === null ? '—' : String(Math.round(f.animo))} />
+            <Barra valor={f.molestias} texto={f.molestias === null ? '—' : `${Math.round(f.molestias * 100)}%`} mala />
+            <span className="chico">{f.sueno === null ? '—' : t('{n} h', { n: Math.round(f.sueno * 10) / 10 })}</span>
+          </div>
+        ))}
+      </div>
+      <p className="suave chico">{t('De los días con algo anotado en cada fase, en el último año.')}</p>
+    </div>
+  );
+}
+
+function Barra({ valor, texto, mala = false }: { valor: number | null; texto: string; mala?: boolean }) {
+  return (
+    <span className="cruce-barra">
+      <span className={`relleno${mala ? ' mala' : ''}`} style={{ width: `${Math.round((valor ?? 0) * 100)}%` }} />
+      <span className="chico">{texto}</span>
+    </span>
+  );
 }

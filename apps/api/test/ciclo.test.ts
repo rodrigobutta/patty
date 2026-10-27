@@ -28,6 +28,9 @@ describe('ciclo menstrual', () => {
     expect(c).toMatchObject({ duracion_ciclo: 28, duracion_periodo: 4, ciclos: 2, regular: true, dia: 4, fase: 'menstrual', en_periodo: true, proxima: sumarDias(hoy, 25), faltan: 25 });
     expect(c.periodos).toHaveLength(3);
     expect(c.por_fase.menstrual).toEqual([{ concepto: 'Cólicos', dias: 1 }]);
+    // El cruce: los 12 días de menstruación anotados, uno con molestias; sin ánimo anotado no hay promedio.
+    expect(c.cruce.menstrual).toEqual({ dias: 12, animo: null, molestias: 0.1, sueno: null });
+    expect(c.cruce.folicular.dias).toBe(0);
 
     const cal = (await ana.get(`/api/estadisticas/calendario?persona=${personaId}&capa=ciclo&desde=${sumarDias(hoy, -10)}&hasta=${sumarDias(hoy, 40)}`)).body;
     const emoji = (f: string) => cal.dias.find((d: any) => d.fecha === f)?.emoji;

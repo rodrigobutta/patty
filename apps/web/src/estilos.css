@@ -1179,3 +1179,20 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .que-paso-antes { margin: 0 0 12px; }
 .linea-antes { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
 .linea-antes li { display: grid; grid-template-columns: 6.5em 1fr; gap: 6px; font-size: 14px; }
+.cruce-fases { margin-top: 10px; }
+.cruce-tabla { display: grid; grid-template-columns: 6.5em 1fr 1fr 3.5em; gap: 6px 8px; align-items: center; }
+.cruce-fila { display: contents; }
+.cruce-fila.actual > span:first-child { font-weight: 600; color: var(--acento); }
+.cruce-barra { position: relative; display: flex; align-items: center; height: 18px; border-radius: 9px; background: var(--acento-suave); overflow: hidden; }
+.cruce-barra .relleno { position: absolute; inset: 0 auto 0 0; background: var(--acento); opacity: 0.35; border-radius: 9px; }
+.cruce-barra .relleno.mala { background: var(--rojo, #e07a5f); }
+.cruce-barra .chico { position: relative; padding-left: 8px; }
+.animo-linea { display: block; margin: 0 auto; overflow: visible; }
+.animo-linea.grande { max-width: 340px; margin: 6px auto 10px; }
+.animo-linea .trazo { fill: none; stroke: var(--acento); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.animo-linea.grande .trazo { stroke-width: 3; }
+.animo-linea .alta { fill: var(--acento); }
+.animo-linea .baja { fill: var(--rojo); }
+.animo-linea .vacio { fill: var(--acento-suave); }
+.animo-linea .medio { stroke: var(--acento-suave); stroke-dasharray: 3 4; }
+.animo-linea .dia { font-size: 11px; fill: currentColor; opacity: 0.6; }

@@ -2,7 +2,7 @@
 // duración promedio, la próxima, la ovulación y los días fértiles (estimados), y qué síntomas aparecen en cada fase.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { ESTACIONES, estacionDe, FASES_CICLO, fasesPorDia, MENSTRUACION, PREMENSTRUAL, resumenCiclo, type FaseCiclo, type ResumenCiclo, type RolCategoria } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, estacionDe, FASES_CICLO, fasesPorDia, MENSTRUACION, PREMENSTRUAL, resumenCiclo, type FaseCiclo, type ResumenCiclo, type RolCategoria } from 'shared';
 import { filas, type Tx } from '../db/client.js';
 import { persona } from '../lib/acceso.js';
 import { diaDePatty, sumarDias } from '../lib/fechas.js';
@@ -25,6 +25,53 @@ export async function diasDeMenstruacion(tx: Tx, personaId: number): Promise<str
 export interface CicloRespuesta extends ResumenCiclo {
   /** Lo que más se anotó (dolores, molestias, ánimo) en cada fase: para ver qué trae cada parte del ciclo. */
   por_fase: Record<FaseCiclo | 'premenstrual', Array<{ concepto: string; dias: number }>>;
+  /**
+   * Cada fase cruzada con cómo estuvo: de los días con algo anotado en esa fase, el ánimo promedio (0 a 10), en qué
+   * parte hubo alguna molestia, y las horas de sueño promedio. Para ver si una fase trae peor ánimo o más dolores.
+   */
+  cruce: Record<FaseCiclo | 'premenstrual', { dias: number; animo: number | null; molestias: number | null; sueno: number | null }>;
+}
+
+type ClaveFase = FaseCiclo | 'premenstrual';
+const CLAVES: ClaveFase[] = ['menstrual', 'folicular', 'ovulatoria', 'lutea', 'premenstrual'];
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/** El cruce de las fases con el ánimo, las molestias y el sueño (ver CicloRespuesta.cruce). */
+async function cruzarFases(tx: Tx, personaId: number, fases: ReturnType<typeof fasesPorDia>, desde: string, hasta: string): Promise<CicloRespuesta['cruce']> {
+  const dias = await filas<{ fecha: string; animo: number | null; molestia: boolean; sueno: number | null }>(
+    tx,
+    sql`WITH d AS (
+          SELECT r.fecha,
+                 avg(r.intensidad) FILTER (WHERE c.nombre IN (${COMO_ME_SIENTO}, ${COMO_ME_SENTI})) AS animo,
+                 bool_or(k.clave = 'sintoma') AS molestia
+          FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
+          WHERE r.persona_id = ${personaId} AND r.borrado IS NULL AND r.origen IN ('manual', 'ia') AND r.fecha BETWEEN ${desde} AND ${hasta}
+          GROUP BY r.fecha)
+        SELECT to_char(d.fecha, 'YYYY-MM-DD') AS fecha, d.animo::float AS animo, d.molestia,
+               (SELECT sum(m.valor)::float FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id
+                WHERE m.persona_id = ${personaId} AND m.fecha = d.fecha AND c.nombre = 'Horas de sueño') AS sueno
+        FROM d`,
+  );
+  const acum = new Map<ClaveFase, { dias: number; animo: number[]; molestias: number; sueno: number[] }>();
+  for (const d of dias) {
+    const f = fases.get(d.fecha);
+    if (!f) continue;
+    for (const clave of [f.fase, ...(f.premenstrual ? ['premenstrual' as const] : [])]) {
+      const a = acum.get(clave) ?? { dias: 0, animo: [], molestias: 0, sueno: [] };
+      a.dias++;
+      if (d.animo !== null) a.animo.push(d.animo);
+      if (d.molestia) a.molestias++;
+      if (d.sueno !== null) a.sueno.push(d.sueno);
+      acum.set(clave, a);
+    }
+  }
+  const prom = (xs: number[]) => (xs.length >= 2 ? r1(xs.reduce((s, x) => s + x, 0) / xs.length) : null);
+  return Object.fromEntries(
+    CLAVES.map((clave) => {
+      const a = acum.get(clave);
+      return [clave, a ? { dias: a.dias, animo: prom(a.animo), molestias: a.dias >= 2 ? r1(a.molestias / a.dias) : null, sueno: prom(a.sueno) } : { dias: 0, animo: null, molestias: null, sueno: null }];
+    }),
+  ) as CicloRespuesta['cruce'];
 }
 
 export const rutasCiclo = new Hono<Env>().get('/', async (c) => {
@@ -56,7 +103,8 @@ export const rutasCiclo = new Hono<Env>().get('/', async (c) => {
       por_fase[clave as FaseCiclo] = [...m].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([concepto, dias]) => ({ concepto, dias }));
     }
   }
-  const r: CicloRespuesta = { ...resumen, por_fase };
+  const cruce = await cruzarFases(c.var.db, p.id, fases, desde, hoy);
+  const r: CicloRespuesta = { ...resumen, por_fase, cruce };
   return c.json(r);
 });
 

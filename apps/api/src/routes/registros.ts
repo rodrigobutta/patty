@@ -1,7 +1,7 @@
 // Lo que se anota de cada persona. Un registro es "este concepto, a esta hora, con este valor".
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { comidaEn, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
+import { comidaEn, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { registros } from '../db/schema.js';
 import { interpretarTexto } from '../ia/interpretar.js';
@@ -166,6 +166,24 @@ export const rutasRegistros = new Hono<Env>()
             AND r.fecha BETWEEN ${sumarDias(hoy, -21)} AND ${hoy}`,
     );
     return c.json(rutinasDe(anotado, hoy));
+  })
+  .get('/animo-semana', async (c) => {
+    // ?persona=1&hasta=AAAA-MM-DD: el ánimo promedio (1 a 10) de cada uno de los 14 días hasta esa fecha (null si no
+    // se anotó), para el mini gráfico de la semana del Día y compararla con la anterior.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const pedida = c.req.query('hasta') ?? '';
+    const hasta = esFecha(pedida) ? pedida : diaDePatty(new Date(), p.zona_horaria);
+    const desde = sumarDias(hasta, -13);
+    const hay = await filas<{ fecha: string; animo: number }>(
+      c.var.db,
+      sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, avg(r.intensidad)::float AS animo
+          FROM registros r JOIN conceptos k ON k.id = r.concepto_id
+          WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND k.nombre IN (${COMO_ME_SIENTO}, ${COMO_ME_SENTI})
+            AND r.intensidad IS NOT NULL AND r.fecha BETWEEN ${desde} AND ${hasta}
+          GROUP BY r.fecha`,
+    );
+    const por = new Map(hay.map((x) => [x.fecha, Math.round(x.animo * 10) / 10]));
+    return c.json(Array.from({ length: 14 }, (_, i) => sumarDias(desde, i)).map((fecha) => ({ fecha, animo: por.get(fecha) ?? null })));
   })
   .get('/lugares-comida', async (c) => {
     // ?persona=1: los lugares donde se comió antes (para sugerirlos), los más usados y recientes primero.

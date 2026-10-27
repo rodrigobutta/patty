@@ -25,6 +25,7 @@ import { RutinasDelDia } from './RutinasDelDia';
 import { TarjetaSemana } from './Semanas';
 import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
+import { AnimoSemana } from './AnimoSemana';
 import { WidgetsDelDia } from './WidgetsDelDia';
 import { IconoFranja } from '../ui/IconosWidget';
 import { esNativa } from '../lib/nativo';
@@ -496,7 +497,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         alActivar={setActivando}
         persona={persona}
         fecha={fecha}
-        antes={<RemediosDelDia widget persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />}
+        antes={
+          <>
+            <RemediosDelDia widget persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
+            <AnimoSemana persona={persona} fecha={fecha} vuelta={vuelta} />
+          </>
+        }
         buscandoSalud={buscandoSalud}
         alContarSueno={fecha === hoy && sesion?.ia && sesion.usuario?.rol !== 'lector' && !persona.supervisada ? () => {
           // Con permiso de salud, primero se busca en el reloj; si no hay nada, se cuenta.
