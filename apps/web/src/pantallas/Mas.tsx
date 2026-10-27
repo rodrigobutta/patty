@@ -1,6 +1,7 @@
 // Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
 // lo avanzado (tokens para que otros dispositivos manden datos).
 import { useEffect, useState, type ReactNode } from 'react';
+import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
 import { avisarAnotado, olvidarDeNoche } from '../mascota/cara';
@@ -188,10 +189,18 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         </label>
         <p className="chico ejemplo-permiso">{t('💡 Por ejemplo: «con presión baja te duele más la cabeza» o «los días de lluvia tenés menos energía».')}</p>
         {clima && persona ? (
-          <button className="btn primario ancho" disabled={sincronizando} onClick={() => void sincronizar(async () => { await anotarClima(persona.id, horasRecientes()); }, t('Listo: el clima de las últimas horas está al día'))}>
+          <button className="btn primario ancho" disabled={sincronizando} onClick={() => void sincronizar(async () => {
+            await anotarClima(persona.id, horasRecientes());
+            try {
+              localStorage.setItem(CLAVES_SYNC.clima, String(Date.now()));
+            } catch {
+              /* sin almacenamiento */
+            }
+          }, t('Listo: el clima de las últimas horas está al día'))}>
             {sincronizando ? t('Sincronizando…') : t('🔄 Sincronizar ahora')}
           </button>
         ) : null}
+        {clima ? <UltimaVez ms={leerUltimaVez(CLAVES_SYNC.clima)} /> : null}
       </div>
   </>);
   if (seccion === 'telefono') return pantalla(t('Uso del teléfono'), <>

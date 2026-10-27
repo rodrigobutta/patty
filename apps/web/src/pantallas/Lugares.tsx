@@ -12,12 +12,15 @@ import { t } from '../lib/idioma';
 import { mandarPunto, ponerLugares, ponerSeguimiento, seguimientoActivado, seguirNativo } from '../lib/ubicacion';
 import { Mapa } from '../ui/Mapa';
 import { IconoLugar } from '../ui/IconosWidget';
+import { UltimaVez } from '../ui/UltimaVez';
 
 export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEscribir: boolean }) {
   const { avisar } = useEstado();
   const [activo, setActivo] = useState(seguimientoActivado());
   const [lugares, setLugares] = useState<Lugar[]>([]);
   const [dia, setDia] = useState<DiaUbicacion | null>(null);
+  /** Cuándo llegó el último punto de ubicación al servidor. */
+  const [ultimo, setUltimo] = useState<number | null>(null);
   const [error, setError] = useState('');
   /** El lugar con nombre donde está ahora (si está en uno): ahí no tiene sentido ofrecer "Guardar dónde estoy". */
   const [aca, setAca] = useState<Lugar | null>(null);
@@ -26,10 +29,12 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
 
   const traer = useCallback(async () => {
     try {
-      const [l, d] = await Promise.all([
+      const [l, d, u] = await Promise.all([
         api<Lugar[]>('GET', `/api/ubicacion/lugares?persona=${persona.id}`),
         api<DiaUbicacion>('GET', `/api/ubicacion/dia?persona=${persona.id}`),
+        api<{ instante: string | null }>('GET', `/api/ubicacion/ultimo?persona=${persona.id}`).catch(() => ({ instante: null })),
       ]);
+      setUltimo(u.instante ? Date.parse(u.instante) : null);
       setLugares(l);
       ponerLugares(l);
       setDia(d);
@@ -211,7 +216,10 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
         <div className="columna">
           {aca ? null : <button className="btn" onClick={() => void guardarAca()}>{t('📍 Guardar dónde estoy')}</button>}
           {activo ? (
-            <button className="btn primario" disabled={sincronizando} onClick={() => void sincronizarAca()}>{sincronizando ? t('Sincronizando…') : t('🔄 Sincronizar ubicación')}</button>
+            <>
+              <button className="btn primario" disabled={sincronizando} onClick={() => void sincronizarAca()}>{sincronizando ? t('Sincronizando…') : t('🔄 Sincronizar ubicación')}</button>
+              <UltimaVez ms={ultimo} />
+            </>
           ) : null}
           <button className="btn suave-btn" onClick={borrarHistorial}>{t('Borrar historial de ubicación')}</button>
         </div>

@@ -309,6 +309,12 @@ export const rutasUbicacion = new Hono<Env>()
         .map((g) => ({ lat: g.lat, lon: g.lon, minutos: Math.round(g.minutos), dias: g.dias.size })),
     });
   })
+  .get('/ultimo', async (c) => {
+    // ?persona=1: cuándo llegó el último punto (para "Última sincronización" en Lugares; lo manda también el teléfono solo).
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const r = await una<{ instante: string | null }>(c.var.db, sql`SELECT max(instante) AS instante FROM puntos WHERE persona_id = ${p.id}`);
+    return c.json({ instante: r?.instante ?? null });
+  })
   .get('/calor', async (c) => {
     // ?persona=1&dias=30: el mapa de calor de Descubrir. Los puntos guardados, juntados en cuadraditos de ~150 m, con
     // cuántos hay en cada uno (más puntos: más tiempo o más idas y vueltas por ahí).

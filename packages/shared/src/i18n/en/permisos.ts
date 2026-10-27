@@ -468,4 +468,5 @@ export const PERMISOS: Record<string, string> = {
   'Ya estaba al día': "It was already up to date",
   'Estás acá': "You're here",
   '🔄 Sincronizar ubicación': "🔄 Sync location",
+  'Última sincronización: {cuando}': 'Last sync: {cuando}',
 };

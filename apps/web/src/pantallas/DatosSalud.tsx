@@ -1,6 +1,7 @@
 // Reloj y salud (en Más, en la app nativa): prender el envío de lo que el reloj deja en Health Connect (Android) o
 // Salud (iPhone), dar el permiso y ver qué se puede leer.
 import { Health } from '@capgo/capacitor-health';
+import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
 import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { useEstado } from '../estado';
@@ -83,6 +84,7 @@ export function DatosSalud({ persona }: { persona: Persona }) {
       {activo ? (
         <div className="columna">
           <button className="btn primario" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Sincronizando…') : t('🔄 Sincronizar ahora')}</button>
+          <UltimaVez ms={leerUltimaVez(CLAVES_SYNC.salud)} />
           <button className="btn" onClick={() => void prender(true)}>{t('Permisos')}</button>
           {plataforma() === 'android' ? (
             // En Android 14+ Health Connect no tiene ícono: vive dentro de Ajustes. Desde acá se abre directo.

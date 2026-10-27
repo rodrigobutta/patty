@@ -1,6 +1,7 @@
 // Datos del teléfono (en Más, solo en la app de Android): prender el envío del tiempo de uso de cada app y de las
 // llamadas, dar los dos permisos y ver qué se mandó.
 import { useEffect, useState } from 'react';
+import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
 import type { Persona } from 'shared';
 import { useEstado } from '../estado';
 import { datosActivados, ponerDatos, sincronizar, Telefono } from '../lib/telefono';
@@ -72,7 +73,10 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
         <p className="suave chico">{t('«Permitir uso de apps» abre Ajustes: buscá Patty en la lista y prendé «Permitir acceso al uso».')}</p>
       ) : null}
       {activo ? (
-        <button className="btn primario" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Sincronizando…') : t('🔄 Sincronizar ahora')}</button>
+        <>
+          <button className="btn primario" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Sincronizando…') : t('🔄 Sincronizar ahora')}</button>
+          <UltimaVez ms={leerUltimaVez(CLAVES_SYNC.telefono)} />
+        </>
       ) : null}
       {error ? <p className="neg">{error}</p> : null}
     </div>
