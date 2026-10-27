@@ -5,7 +5,7 @@ import { Fragment, useState, type ReactNode } from 'react';
 import { IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
 import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
-import { GraficoSueno } from './GraficoSueno';
+import { GraficoSueno, ResumenNoche } from './GraficoSueno';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
 import { locale, t } from '../lib/idioma';
 import { IconoCelular, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
@@ -209,7 +209,12 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                     <span className="widget-linea">{w.linea}</span>
                     {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
                   </div>
-                  {w.lugar === 'sueno' ? <GraficoSueno persona={persona} fecha={fecha} /> : null}
+                  {w.lugar === 'sueno' ? (
+                    <>
+                      <ResumenNoche persona={persona} fecha={fecha} />
+                      <GraficoSueno persona={persona} fecha={fecha} />
+                    </>
+                  ) : null}
                   {w.grupos.length ? (
                     <ul className="detalle-auto">
                       {w.grupos.flatMap((g) => g.lineas).map((x) => (

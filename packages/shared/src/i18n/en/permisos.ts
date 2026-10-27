@@ -469,4 +469,6 @@ export const PERMISOS: Record<string, string> = {
   'Estás acá': "You're here",
   '🔄 Sincronizar ubicación': "🔄 Sync location",
   'Última sincronización: {cuando}': 'Last sync: {cuando}',
+  'Patty está mirando tu noche…': 'Patty is looking at your night…',
+  '🦉 Cómo fue tu noche': '🦉 How your night went',
 };

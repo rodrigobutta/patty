@@ -640,3 +640,21 @@ export const suenoEtapas = pgTable(
   },
   (t) => [index('sueno_etapas_noche_idx').on(t.persona_id, t.noche)],
 );
+
+/**
+ * Cómo fue cada noche según la IA (mirando las etapas, las horas y lo que se anotó la tarde anterior y a la mañana):
+ * un resumen corto y una nota de calidad de 1 a 10, que además entra en los patrones como "Calidad del sueño".
+ */
+export const resumenNoche = pgTable(
+  'resumen_noche',
+  {
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    noche: date('noche', { mode: 'string' }).notNull(),
+    texto: text('texto').notNull(),
+    calidad: integer('calidad').notNull(),
+    creado: creado(),
+  },
+  (t) => [primaryKey({ columns: [t.persona_id, t.noche] })],
+);

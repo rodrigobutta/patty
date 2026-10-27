@@ -7,6 +7,7 @@ import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, sumarDias } from '../lib/fechas.js';
 import { cuerpo, type Env } from '../lib/http.js';
+import { resumenGuardado, resumirNoche } from '../ia/resumirNoche.js';
 import { despertarRepetido, type EtapaNoche } from '../patrones/despertares.js';
 
 const ETAPAS = ['despierto', 'ligero', 'profundo', 'rem', 'dormido'];
@@ -46,6 +47,19 @@ export const rutasSueno = new Hono<Env>()
     return c.json(
       await filas(c.var.db, sql`SELECT inicio, fin, etapa FROM sueno_etapas WHERE persona_id = ${p.id} AND noche = ${fecha} ORDER BY inicio`),
     );
+  })
+  .get('/resumen', async (c) => {
+    // ?persona=1&fecha=AAAA-MM-DD: cómo fue la noche según la IA. Si no está y hay datos, se arma en el momento.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const fecha = c.req.query('fecha');
+    if (!esFecha(fecha)) throw new ErrorApi('Fecha inválida.');
+    if (p.rol === 'lector') return c.json(await resumenGuardado(c.var.db, p.id, fecha));
+    try {
+      return c.json(await resumirNoche(c.var.db, p, fecha, c.var.idioma));
+    } catch (e) {
+      console.error('Resumen de la noche:', e instanceof Error ? e.message : e);
+      return c.json(await resumenGuardado(c.var.db, p.id, fecha));
+    }
   })
   .get('/despertares', async (c) => {
     // ?persona=1: si en la última semana se despierta varias noches a la misma hora, cuál (para preguntarle por qué).

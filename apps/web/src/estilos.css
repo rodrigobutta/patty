@@ -1149,3 +1149,9 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .pregunta-despertar h3 { margin: 0 0 4px; }
 .pregunta-despertar .chips { margin: 8px 0 4px; }
 .ultima-vez { margin: 6px 0 0; text-align: center; }
+.resumen-noche { margin: 0 0 12px; }
+.cabeza-resumen-noche { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.calidad-sueno { font-weight: 800; font-size: 14px; padding: 3px 10px; border-radius: 999px; color: #fff; background: var(--acento); }
+.calidad-sueno.c1 { background: #e5484d; }
+.calidad-sueno.c2 { background: #e3a008; }
+.calidad-sueno.c3 { background: #2f9e6a; }

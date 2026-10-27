@@ -85,3 +85,28 @@ export function GraficoSueno({ persona, fecha }: { persona: Persona; fecha: stri
     </div>
   );
 }
+
+/** "Cómo fue tu noche", según la IA (se arma solo a la mañana; si falta, al abrir esto). */
+export function ResumenNoche({ persona, fecha }: { persona: Persona; fecha: string }) {
+  const [r, setR] = useState<{ texto: string; calidad: number } | null | undefined>(undefined);
+  useEffect(() => {
+    setR(undefined);
+    api<{ texto: string; calidad: number } | null>('GET', `/api/sueno/resumen?persona=${persona.id}&fecha=${fecha}`).then(setR).catch(() => setR(null));
+  }, [persona.id, fecha]);
+  if (r === null) return null;
+  return (
+    <div className="nota-ia resumen-noche">
+      {r === undefined ? (
+        <p className="suave chico">{t('Patty está mirando tu noche…')}</p>
+      ) : (
+        <>
+          <p className="cabeza-resumen-noche">
+            <strong>{t('🦉 Cómo fue tu noche')}</strong>
+            <span className={`calidad-sueno c${Math.ceil(r.calidad / 3.4)}`}>{r.calidad}/10</span>
+          </p>
+          <p>{r.texto}</p>
+        </>
+      )}
+    </div>
+  );
+}

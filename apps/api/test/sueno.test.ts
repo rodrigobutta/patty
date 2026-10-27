@@ -1,9 +1,14 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import type Anthropic from '@anthropic-ai/sdk';
+import { sql } from 'drizzle-orm';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { filas, obtenerDb } from '../src/db/client.js';
+import { usarClientePrueba } from '../src/ia/cliente.js';
 import { cerrarDb } from '../src/db/client.js';
 import { despertarRepetido, type EtapaNoche } from '../src/patrones/despertares.js';
 import { conAdmin } from './ayudas.js';
 
 afterAll(() => cerrarDb());
+afterEach(() => usarClientePrueba(null));
 
 /** Una noche de 23:00 a 7:00 con un despertar a `desp` (minutos desde las 0 del día anterior) de `dura` minutos. */
 const noche = (fecha: string, desp: number | null, dura = 15): EtapaNoche[] => {
@@ -37,5 +42,30 @@ describe('despertares que se repiten', () => {
     await ana.post('/api/sueno/etapas', { persona_id: personaId, noches: [{ noche: '2026-10-26', etapas: etapas.slice(0, 2) }] });
     const r = (await ana.get(`/api/sueno/noche?persona=${personaId}&fecha=2026-10-26`)).body;
     expect(r.map((x: any) => x.etapa)).toEqual(['profundo', 'despierto']);
+  });
+});
+
+describe('resumen de la noche', () => {
+  it('la IA lo arma una vez, se guarda por noche y la nota entra como «Calidad del sueño»', async () => {
+    const { ana, personaId } = await conAdmin();
+    const pedidos: any[] = [];
+    const crear = async (p: any) => {
+      pedidos.push(p);
+      return { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ texto: 'Dormiste 8 horas, con un despertar a las 2.', calidad: 7 }) }] };
+    };
+    usarClientePrueba({ messages: { create: crear }, beta: { messages: { create: crear } } } as unknown as Anthropic);
+    expect((await ana.get(`/api/sueno/resumen?persona=${personaId}&fecha=2026-10-26`)).body).toBeNull(); // sin datos, nada
+    await ana.post('/api/sueno/etapas', { persona_id: personaId, noches: [{ noche: '2026-10-26', etapas: [
+      { inicio: '2026-10-26T02:00:00Z', fin: '2026-10-26T05:00:00Z', etapa: 'profundo' },
+      { inicio: '2026-10-26T05:00:00Z', fin: '2026-10-26T05:10:00Z', etapa: 'despierto' },
+      { inicio: '2026-10-26T05:10:00Z', fin: '2026-10-26T10:00:00Z', etapa: 'ligero' },
+    ] }] });
+    const r = (await ana.get(`/api/sueno/resumen?persona=${personaId}&fecha=2026-10-26`)).body;
+    expect(r).toEqual({ noche: '2026-10-26', texto: 'Dormiste 8 horas, con un despertar a las 2.', calidad: 7 });
+    expect(pedidos[0].messages[0].content).toContain('02:00–02:10 despierto');
+    await ana.get(`/api/sueno/resumen?persona=${personaId}&fecha=2026-10-26`);
+    expect(pedidos).toHaveLength(1);
+    const m = await filas<{ valor: number }>(obtenerDb(), sql`SELECT m.valor FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id WHERE m.persona_id = ${personaId} AND c.nombre = 'Calidad del sueño'`);
+    expect(m.map((x) => x.valor)).toEqual([7]);
   });
 });
