@@ -3,6 +3,7 @@
 // su botón para anotarlos con un toque.
 import { useCallback, useEffect, useState } from 'react';
 import { IconoCategoria } from '../ui/IconosPatty';
+import { irAMas } from '../lib/navegar';
 import { dosisTexto, HORAS_PARA_OLVIDADA, type Persona, type Toma, type Tratamiento } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
@@ -139,6 +140,7 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
 
   return (
     <div className={`tarjeta remedios-dia${abierto ? ' abierto' : ''}`}>
+      <div className="fila-cabeza-remedios">
       <button className="cabeza-plegable" onClick={cambiarAbierto} aria-expanded={abierto}>
         <span className="titulo-plegable con-icono"><IconoCategoria clave="medicacion" tamano={24} /> {t('Remedios')}</span>
         <span className="suave chico resumen-plegable">
@@ -148,6 +150,14 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
         </span>
         <span className="suave" aria-hidden>{abierto ? '▴' : '▾'}</span>
       </button>
+      {/* Configurar: agregar, cambiar horarios o terminar un remedio (en Más → Remedios). */}
+      <button className="btn-icono chico configurar-remedios" onClick={() => irAMas('remedios')} aria-label={t('Configurar remedios')}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />
+        </svg>
+      </button>
+      </div>
       {abierto ? (
       <>
       <ul className="lista tomas">

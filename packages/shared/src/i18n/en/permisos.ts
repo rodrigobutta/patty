@@ -431,4 +431,5 @@ export const PERMISOS: Record<string, string> = {
   'Más fuerte: donde más estuviste o más pasaste': "Stronger: where you spent more time or passed by more",
   'Dónde pasaste más tiempo': "Where you spent the most time",
   'Mapa': "Map",
+  'Configurar remedios': 'Set up medications',
 };

@@ -14,6 +14,7 @@ import { perfilTexto } from 'shared';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { idioma, idiomaElegido, locale, ponerIdioma, t } from '../lib/idioma';
 import { Cuenta } from './Cuenta';
+import { alPedirIrAMas, tomarSeccionPedida, verSeccionPedida } from '../lib/navegar';
 import { IconoAvanzado, IconoAvisos, IconoCuenta, IconoDatos, IconoFamilia, IconoGente, IconoLugares, IconoRemedios, IconoSalud } from '../ui/IconosMas';
 import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
@@ -35,7 +36,15 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const [nueva, setNueva] = useState(false);
   const [permisos, setPermisos] = useState(false);
   /** La sub-pantalla abierta (null: el menú). */
-  const [seccion, setSeccion] = useState<Seccion | null>(null);
+  const [seccion, setSeccion] = useState<Seccion | null>(() => verSeccionPedida() as Seccion | null);
+  // Pedida desde otra pantalla con Más ya abierta (la tarjeta de remedios del Día, por ejemplo).
+  useEffect(() => {
+    tomarSeccionPedida();
+    return alPedirIrAMas(() => {
+      const s = tomarSeccionPedida();
+      if (s) setSeccion(s as Seccion);
+    });
+  }, []);
   // Tocar «Más» abajo estando en una sección vuelve al menú.
   useEffect(() => {
     const f = (e: Event) => {

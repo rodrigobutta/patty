@@ -31,6 +31,7 @@ import { ofrecerPermisos, pedirGuia, Permisos, type Paso } from './pantallas/Per
 import { useReportarEstado } from './lib/estadoTelefono';
 import { t } from './lib/idioma';
 import { useMedirUso } from './lib/uso';
+import { alPedirIrAMas } from './lib/navegar';
 
 type Pestana = 'hoy' | 'patrones' | 'mas' | 'admin';
 
@@ -71,6 +72,7 @@ export function App() {
   usePush(fase === 'listo', Boolean(sesion?.push));
   useMedirUso(fase === 'listo', pestana);
   useEffect(() => alPedirIrAlDia(() => setPestana('hoy')), []);
+  useEffect(() => alPedirIrAMas(() => setPestana('mas')), []);
   // Un aviso push de otra persona (una que se supervisa) la elige; uno de supervisión lleva a Más.
   useEffect(
     () =>
