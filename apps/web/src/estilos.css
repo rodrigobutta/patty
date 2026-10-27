@@ -1206,3 +1206,8 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .globo-patty p { margin: 0; line-height: 1.35; }
 .hora-globo { display: block; text-align: right; font-size: 11px; opacity: 0.6; margin-top: 2px; }
 @keyframes globo-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Descubrir: pestañas como fichas, el ícono arriba y el nombre abajo, con aire entre ellas. */
+.patrones .subvistas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 6px; border-radius: 18px; }
+.patrones .subvistas button { flex-direction: column; gap: 4px; padding: 9px 2px 8px; border-radius: 13px; font-size: 12px; letter-spacing: 0; min-height: 58px; }
+.patrones .subvistas button svg { width: 22px; height: 22px; }
+.patrones .subvistas button:not(.activa):active { background: var(--acento-suave); }
