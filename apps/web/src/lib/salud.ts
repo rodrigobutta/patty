@@ -97,6 +97,53 @@ export function etapasDeLaNoche(sesiones: HealthSample[]): EtapaSueno[] {
   return r.sort((a, b) => a.inicio.localeCompare(b.inicio));
 }
 
+export interface Caminata {
+  inicio: string;
+  fin: string;
+  pasos: number;
+}
+
+/** Una caminata: al menos esto seguido (minutos), a buen ritmo, con cortes cortos permitidos. */
+const CAMINATA_MIN = 10;
+const PASOS_POR_MIN = 60;
+const CORTE_MIN = 4;
+
+/**
+ * Las caminatas de un día a partir de las muestras de pasos (cada una con su tramo de tiempo): se reparten por minuto,
+ * y una caminata es un rato de al menos 10 minutos a 60 pasos por minuto o más (con cortes de hasta 4 minutos: un
+ * semáforo, el perro que se para). Los paseos cortos por el barrio no dejan puntos de ubicación; así se ven igual.
+ */
+export function caminatasDe(muestras: Array<{ startDate: string; endDate: string; value: number }>): Caminata[] {
+  const porMinuto = new Map<number, number>();
+  for (const m of muestras) {
+    const a = Math.floor(Date.parse(m.startDate) / 60000);
+    const b = Math.max(a + 1, Math.ceil(Date.parse(m.endDate) / 60000));
+    const cada = m.value / (b - a);
+    for (let x = a; x < b; x++) porMinuto.set(x, (porMinuto.get(x) ?? 0) + cada);
+  }
+  const minutos = [...porMinuto.keys()].filter((x) => (porMinuto.get(x) ?? 0) >= PASOS_POR_MIN).sort((a, b) => a - b);
+  const r: Caminata[] = [];
+  let ini = -1;
+  let fin = -1;
+  let pasos = 0;
+  const cerrar = () => {
+    if (ini >= 0 && fin - ini + 1 >= CAMINATA_MIN) r.push({ inicio: new Date(ini * 60000).toISOString(), fin: new Date((fin + 1) * 60000).toISOString(), pasos: Math.round(pasos) });
+  };
+  for (const x of minutos) {
+    if (ini >= 0 && x - fin <= CORTE_MIN) {
+      for (let y = fin + 1; y <= x; y++) pasos += porMinuto.get(y) ?? 0;
+      fin = x;
+      continue;
+    }
+    cerrar();
+    ini = x;
+    fin = x;
+    pasos = porMinuto.get(x) ?? 0;
+  }
+  cerrar();
+  return r;
+}
+
 /** Qué se suma o promedia por día, y cómo se llama en Patty. */
 const AGREGADOS: Array<{ tipo: HealthDataType; como: 'sum' | 'average' | 'min' | 'max'; concepto: string; categoria: string; unidad: string; factor?: number; decimales?: number }> = [
   { tipo: 'steps', como: 'sum', concepto: 'Pasos', categoria: 'actividad', unidad: 'pasos', decimales: 0 },
@@ -208,6 +255,19 @@ export async function sincronizarSalud(personaId: number): Promise<number> {
   }
 
   if (lista.length) await ingesta(personaId, '', { mediciones: lista }, 'salud');
+  // Las caminatas de cada día (de las muestras de pasos, con su hora).
+  if (permitidos.has('steps')) {
+    try {
+      const { samples } = await Health.readSamples({ dataType: 'steps', startDate: desde, endDate: hasta, limit: 5000, ascending: true });
+      const dias = periodo.map((p) => ({
+        fecha: p.desde.toLocaleDateString('en-CA'),
+        caminatas: caminatasDe(samples.filter((m) => new Date(m.startDate) >= p.desde && new Date(m.startDate) < p.hasta)),
+      }));
+      await api('POST', '/api/actividad/caminatas', { persona_id: personaId, dias }).catch(() => {});
+    } catch {
+      /* sin muestras de pasos */
+    }
+  }
   // Las etapas con su hora (para el gráfico de la noche y los despertares que se repiten).
   if (noches.length) await api('POST', '/api/sueno/etapas', { persona_id: personaId, noches }).catch(() => {});
   try {

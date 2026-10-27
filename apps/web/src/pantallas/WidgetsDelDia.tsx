@@ -6,7 +6,7 @@ import { IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
 import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
 import { GraficoSueno, ResumenNoche } from './GraficoSueno';
-import { RecorridoDelDia } from './RecorridoDelDia';
+import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
 import { locale, t } from '../lib/idioma';
 import { IconoCelular, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
@@ -79,11 +79,15 @@ function widgetPasos(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget
   const km = dato(todos, 'reloj', 'Km caminados');
   const viajes = dato(todos, 'ubicacion', 'Viajes');
   const sinViajes = viajes && Math.round(viajes.suma) === 0;
+  // Las caminatas (detectadas en los pasos): cuántas hubo.
+  const caminatas = todos.filter((d) => d.tipo_fuente === 'reloj' && d.concepto === 'Caminata').reduce((n, d) => n + d.cantidad, 0);
   return {
     lugar: 'pasos',
     icono: <IconoPasos />,
     linea: t('{n} pasos', { n: entero(pasos.suma) }),
-    sub: km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : sinViajes ? t('Sin viajes') : undefined,
+    sub: caminatas
+      ? caminatas === 1 ? t('1 caminata') : t('{n} caminatas', { n: caminatas })
+      : km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : sinViajes ? t('Sin viajes') : undefined,
     grupos: grupos.filter((g) => g.tipo === 'reloj').map((g) => ({ ...g, lineas: g.lineas.filter((l) => !SUENO.has(l.concepto) && !l.concepto.startsWith('Pulso')) })),
     nombre: t('Movimiento'),
   };
@@ -211,6 +215,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                     {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
                   </div>
                   {w.lugar === 'ubicacion' || w.lugar === 'pasos' ? <RecorridoDelDia persona={persona} fecha={fecha} /> : null}
+                  {w.lugar === 'pasos' ? <CaminatasDelDia persona={persona} fecha={fecha} /> : null}
                   {w.lugar === 'sueno' ? (
                     <>
                       <ResumenNoche persona={persona} fecha={fecha} />

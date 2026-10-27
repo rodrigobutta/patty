@@ -51,3 +51,19 @@ describe('etapas de la noche', () => {
     ]);
   });
 });
+
+describe('caminatas en los pasos', () => {
+  it('10 minutos o más a buen ritmo, con cortes cortos; lo suelto no cuenta', async () => {
+    const { caminatasDe } = await import('./salud');
+    const min = (m: number) => new Date(Date.parse('2026-10-26T13:00:00Z') + m * 60000).toISOString();
+    const tramo = (desde: number, hasta: number, porMin: number) => ({ startDate: min(desde), endDate: min(hasta), value: (hasta - desde) * porMin });
+    const r = caminatasDe([
+      tramo(0, 8, 100), tramo(10, 20, 100), // un paseo de 20 min con un corte de 2 min
+      tramo(60, 65, 100), // 5 min: no alcanza
+      tramo(120, 135, 30), // 15 min pero lento (30 pasos/min): no
+    ]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ inicio: min(0), fin: min(20) });
+    expect(r[0].pasos).toBe(1800);
+  });
+});

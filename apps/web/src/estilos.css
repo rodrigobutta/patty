@@ -1161,3 +1161,5 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .punto-ini, .punto-fin { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--borde); }
 .punto-ini { background: #2f9e6a; }
 .punto-fin { background: #f2a33a; }
+.caminatas-dia { margin: 0 0 12px; }
+.caminatas-dia li { display: flex; align-items: center; gap: 8px; }

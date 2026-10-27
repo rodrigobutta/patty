@@ -4,7 +4,9 @@
 import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { api } from '../api';
+import { horaEn } from '../lib/fechas';
 import { t } from '../lib/idioma';
+import { IconoCategoria } from '../ui/IconosPatty';
 import { Mapa, type Ruta } from '../ui/Mapa';
 
 interface Recorrido extends Ruta {
@@ -32,6 +34,27 @@ export function RecorridoDelDia({ persona, fecha }: { persona: Persona; fecha: s
         <span className="punto-ini" aria-hidden /> {t('salida')} · <span className="punto-fin" aria-hidden /> {t('llegada')}
         {r.antes || r.despues ? ` · ${t('punteado: del día anterior o siguiente')}` : ''}
       </p>
+    </div>
+  );
+}
+
+/** Las caminatas del día (detectadas en los pasos del reloj), con su hora y cuánto duraron. */
+export function CaminatasDelDia({ persona, fecha }: { persona: Persona; fecha: string }) {
+  const [l, setL] = useState<Array<{ inicio: string; fin: string; minutos: number }>>([]);
+  useEffect(() => {
+    api<Array<{ inicio: string; fin: string; minutos: number }>>('GET', `/api/actividad/caminatas?persona=${persona.id}&fecha=${fecha}`).then(setL).catch(() => {});
+  }, [persona.id, fecha]);
+  if (!l.length) return null;
+  return (
+    <div className="caminatas-dia">
+      <p className="suave chico">{t('Caminatas (10 minutos o más caminando seguido):')}</p>
+      <ul className="lista-simple">
+        {l.map((c) => (
+          <li key={c.inicio} className="con-icono">
+            <IconoCategoria clave="actividad" tamano={22} /> {horaEn(c.inicio, persona.zona_horaria)} – {horaEn(c.fin, persona.zona_horaria)} · {t('{n} min', { n: c.minutos })}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

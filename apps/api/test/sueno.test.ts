@@ -69,3 +69,15 @@ describe('resumen de la noche', () => {
     expect(m.map((x) => x.valor)).toEqual([7]);
   });
 });
+
+describe('caminatas', () => {
+  it('se guardan por día (reemplazando el día) y se leen con su hora', async () => {
+    const { ana, personaId } = await conAdmin();
+    const dia = { fecha: '2026-10-26', caminatas: [{ inicio: '2026-10-26T13:00:00Z', fin: '2026-10-26T13:25:00Z', pasos: 2500 }, { inicio: 'x', fin: 'y' }] };
+    expect((await ana.post('/api/actividad/caminatas', { persona_id: personaId, dias: [dia] })).body).toEqual({ ok: true, caminatas: 1 });
+    await ana.post('/api/actividad/caminatas', { persona_id: personaId, dias: [dia] });
+    const l = (await ana.get(`/api/actividad/caminatas?persona=${personaId}&fecha=2026-10-26`)).body;
+    expect(l).toHaveLength(1);
+    expect(l[0].minutos).toBe(25);
+  });
+});
