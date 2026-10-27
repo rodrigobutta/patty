@@ -21,6 +21,7 @@ import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
 import { GloboDelBuho } from './GloboDelBuho';
 import { ComentarioDelDia } from './ComentariosDePatty';
+import { RutinasDelDia } from './RutinasDelDia';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
 import { WidgetsDelDia } from './WidgetsDelDia';
 import { IconoFranja } from '../ui/IconosWidget';
@@ -397,6 +398,9 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         />
       ) : null}
       {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
+      {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
+        <RutinasDelDia persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
+      ) : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
       {/* A la noche, si todavía no se anotó nada a mano: contar el día entero de una vez (Patty lo desglosa por horas). */}
       {fecha === hoy && sesion?.ia && registros && sesion.usuario?.rol !== 'lector' && new Date().getHours() >= HORA_CONTAR_DIA &&

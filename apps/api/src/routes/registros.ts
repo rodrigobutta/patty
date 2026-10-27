@@ -8,6 +8,7 @@ import { interpretarTexto } from '../ia/interpretar.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, minutosDelDia, sumarDias } from '../lib/fechas.js';
+import { rutinasDe, type AnotadoRutina } from '../patrones/rutinas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
 import { obtenerOCrearConcepto } from './conceptos.js';
 import { vincularToma } from './tratamientos.js';
@@ -119,6 +120,23 @@ export const rutasRegistros = new Hono<Env>()
             ORDER BY r.inicio, r.id`,
       ),
     );
+  })
+  .get('/rutinas', async (c) => {
+    // ?persona=1: lo que se viene anotando seguido y hoy todavía no (ver patrones/rutinas.ts). Solo cosas que se hacen
+    // (comida, bebida, actividad…): no cómo se siente ni los remedios, que tienen lo suyo.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const hoy = diaDePatty(new Date(), p.zona_horaria);
+    const anotado = await filas<AnotadoRutina>(
+      c.var.db,
+      sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.concepto_id, c.nombre, c.categoria_id,
+                 (extract(hour FROM r.inicio AT TIME ZONE ${p.zona_horaria}) * 60 + extract(minute FROM r.inicio AT TIME ZONE ${p.zona_horaria}))::int AS minutos,
+                 r.valor::float AS valor, r.unidad
+          FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
+          WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.origen IN ('manual', 'ia')
+            AND k.clave IN ('comida', 'bebida', 'actividad', 'otro', 'lugar', 'gente')
+            AND r.fecha BETWEEN ${sumarDias(hoy, -21)} AND ${hoy}`,
+    );
+    return c.json(rutinasDe(anotado, hoy));
   })
   .get('/lugares-comida', async (c) => {
     // ?persona=1: los lugares donde se comió antes (para sugerirlos), los más usados y recientes primero.

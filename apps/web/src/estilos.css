@@ -1119,3 +1119,10 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .remedios-dia.abierto .fila-cabeza-remedios { margin-bottom: 8px; }
 .remedios-dia.abierto .fila-cabeza-remedios .cabeza-plegable { margin-bottom: 0; }
 .prefiero-escribir { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* "¿Hoy también?": rutinas para anotar con un toque. */
+.rutinas-dia h3 { margin: 0 0 6px; }
+.lista-rutinas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.lista-rutinas li { display: flex; align-items: center; gap: 10px; }
+.lista-rutinas .que { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.botones-rutina { display: flex; gap: 6px; flex: none; }

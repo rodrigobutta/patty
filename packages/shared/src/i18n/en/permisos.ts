@@ -434,4 +434,9 @@ export const PERMISOS: Record<string, string> = {
   'Configurar remedios': 'Set up medications',
   'Prefiero hablar': "I'd rather talk",
   'Prefiero escribir': "I'd rather type",
+  '¿Hoy también?': 'Today too?',
+  'Lo anotaste {n} de los últimos 3 días, a eso de las {hora}': 'You logged it {n} of the last 3 days, around {hora}',
+  'Como los últimos {dia}, a eso de las {hora}': 'Like the last {dia}, around {hora}',
+  'Sí': 'Yes',
+  'Hoy no': 'Not today',
 };
