@@ -8,7 +8,10 @@ import { diaDePatty, sumarDias } from '../lib/fechas.js';
 import { hayIa, pedirJson } from './cliente.js';
 
 const DIAS_MIRADOS = 7;
-const MAX_COMENTARIOS = 3;
+/** Pocos y buenos: uno o dos por día. */
+const MAX_COMENTARIOS = 2;
+/** Lo que llega solo que vale la pena cruzar con lo anotado (por día). */
+const AUTOMATICOS = ['Horas de sueño', 'Pasos', 'Tiempo de pantalla', 'Viajes', 'Km recorridos', 'Minutos de ejercicio'];
 const MAX_FILAS = 250;
 
 export interface Comentario {
@@ -68,15 +71,25 @@ async function armar(
   const perfil = perfilTexto(
     (await una<Persona>(db, sql`SELECT to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones FROM personas WHERE id = ${p.id}`))!,
   );
+  // Lo que llegó solo, resumido por día, para poder cruzarlo con lo anotado ("dormiste más los días que caminaste").
+  const automaticos = await filas<{ fecha: string; que: string; valor: number; unidad: string | null }>(
+    db,
+    sql`SELECT to_char(m.fecha, 'YYYY-MM-DD') AS fecha, c.nombre AS que, sum(m.valor)::float AS valor, max(m.unidad) AS unidad
+        FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id
+        WHERE m.persona_id = ${p.id} AND m.fecha BETWEEN ${desde} AND ${hoy} AND c.nombre IN ${AUTOMATICOS}
+        GROUP BY m.fecha, c.nombre ORDER BY m.fecha DESC`,
+  );
   const lengua = idioma === 'en' ? 'English' : 'castellano rioplatense (voseo)';
   const r = await pedirJson<{ comentarios: Array<{ emoji: string; texto: string }> }>({
     sistema:
       `Sos Patty, una app amiga que acompaña a una persona que anota su día (comidas, sueño, actividad, ánimo, molestias). ` +
-      `Todavía no hay patrones firmes: tu tarea es mostrarle que tenés en cuenta lo que te cuenta. Escribí de 1 a ${MAX_COMENTARIOS} ` +
-      `comentarios cortos (máximo 140 letras cada uno), en ${lengua}, cálidos y concretos, basados SOLO en lo que anotó: ` +
-      `reconocé hábitos buenos ("¡qué bien que comas huevo seguido, es muy nutritivo!"), celebrá lo que hace por sí o por otros ` +
-      `("genial que saques a los perros, de paso caminás un poco"), notá repeticiones o cambios ("ya van 3 días durmiendo más de 7 horas"), ` +
-      `o mostrá curiosidad amable por algo que se repite ("el café de la tarde se repite: después contame cómo dormís"). ` +
+      `Todavía no hay patrones firmes: tu tarea es mostrarle que tenés en cuenta lo que te cuenta. Escribí 1 o como mucho ${MAX_COMENTARIOS} ` +
+      `comentarios cortos (máximo 140 letras cada uno), en ${lengua}, cálidos y concretos, basados SOLO en sus datos. ` +
+      `Lo más importante: que cada comentario junte VARIOS datos, no uno suelto. Nada de "¡qué bien que comiste kiwi!": mejor ` +
+      `agrupá y mirá la semana ("varios días comiste fruta y verdura: ¡qué bien que estás comiendo sano!"), cruzá cosas distintas ` +
+      `("los días que sacaste a los perros caminaste más de 6.000 pasos y dormiste mejor"), notá tendencias ("ya van 3 días durmiendo ` +
+      `más de 7 horas y te sentiste bien") o mostrá curiosidad amable por algo que se repite junto con otra cosa ("el café de la tarde ` +
+      `se repite los días que dormís menos"). Si hay poco anotado, un solo comentario alcanza. ` +
       `Nunca retes ni hagas sentir culpa, no des diagnósticos ni consejos médicos, no inventes datos ni números que no estén. ` +
       `Mencioná cosas reales de su semana. No repitas ideas de los comentarios anteriores. Un emoji que acompañe cada uno. ` +
       `Hoy es ${hoy}.`,
@@ -84,6 +97,9 @@ async function armar(
       `Persona: ${p.nombre}${perfil ? ` (${perfil})` : ''}.\n\n` +
       `Lo anotado del ${desde} al ${hoy} (lo más nuevo primero):\n` +
       anotado.map((x) => `${x.fecha} ${x.hora} · ${x.categoria}: ${x.que}${x.valor !== null ? ` ${x.valor}${x.unidad ? ' ' + x.unidad : ''}` : ''}${x.intensidad !== null ? ` (${x.intensidad}/10)` : ''}${x.nota ? ` · "${x.nota}"` : ''}`).join('\n') +
+      (automaticos.length
+        ? `\n\nLo que llegó solo (reloj, teléfono, ubicación), por día:\n${automaticos.map((a) => `${a.fecha} · ${a.que}: ${Math.round(a.valor * 10) / 10}${a.unidad ? ' ' + a.unidad : ''}`).join('\n')}`
+        : '') +
       (anteriores.length ? `\n\nComentarios que ya le hiciste (no los repitas):\n${anteriores.map((a) => `- ${a.texto}`).join('\n')}` : ''),
     esquema: {
       type: 'object',
