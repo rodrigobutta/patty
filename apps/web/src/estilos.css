@@ -1126,3 +1126,7 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .lista-rutinas li { display: flex; align-items: center; gap: 10px; }
 .lista-rutinas .que { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .botones-rutina { display: flex; gap: 6px; flex: none; }
+/* Remedios como widget: ámbar si hay alguno para tomar. */
+.widget-auto.widget-remedios.para-tomar { border: 2px solid var(--ambar); }
+.widget-auto.widget-remedios.para-tomar .widget-sub { color: var(--ambar); font-weight: 700; }
+.hoja-remedios .lista.tomas { margin-top: 4px; }

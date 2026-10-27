@@ -10,7 +10,7 @@ import { locale, t } from '../lib/idioma';
 import { IconoCelular, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
 import { WidgetApagado, type Fuente } from './FuenteApagada';
 
-type Lugar = 'clima' | 'ubicacion' | 'telefono' | 'sueno';
+type Lugar = 'clima' | 'ubicacion' | 'pasos' | 'telefono' | 'sueno';
 
 interface Widget {
   lugar: Lugar;
@@ -52,24 +52,37 @@ function widgetClima(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget
   return { lugar: 'clima', icono: <IconoCielo cielo={cielo} />, linea: temp || '—', sub, grupos: grupos.filter((g) => g.tipo === 'clima'), nombre: t('Clima') };
 }
 
-/** Moverse: los viajes (de la ubicación) y los pasos (del reloj o el teléfono), juntos. */
+/** Los viajes (de la ubicación). Sin viajes pero con pasos, el widget es de los pasos (ver widgetPasos). */
 function widgetUbicacion(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
   const viajes = dato(todos, 'ubicacion', 'Viajes');
   const km = dato(todos, 'ubicacion', 'Km recorridos');
   const pasos = dato(todos, 'reloj', 'Pasos');
-  if (!viajes && !km && !pasos) return null;
+  if (!viajes && !km) return null;
   const n = Math.round(viajes?.suma ?? 0);
-  const textoViajes = n === 0 ? t('Sin viajes') : n === 1 ? t('1 viaje') : t('{n} viajes', { n });
-  const textoPasos = pasos ? t('{n} pasos', { n: entero(pasos.suma) }) : '';
-  const textoKm = km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : '';
-  // Con viajes, los viajes van grandes (y los pasos abajo); sin viajes, los pasos.
-  const conViajes = n > 0 || !pasos;
+  if (n === 0 && pasos) return null;
   return {
     lugar: 'ubicacion',
-    icono: conViajes ? <IconoLugar /> : <IconoPasos />,
-    linea: conViajes ? textoViajes : textoPasos,
-    sub: (conViajes ? textoPasos || textoKm : viajes ? textoViajes : '') || undefined,
-    grupos: grupos.filter((g) => g.tipo === 'ubicacion' || g.tipo === 'reloj').map((g) => (g.tipo === 'reloj' ? { ...g, lineas: g.lineas.filter((l) => !SUENO.has(l.concepto)) } : g)),
+    icono: <IconoLugar />,
+    linea: n === 0 ? t('Sin viajes') : n === 1 ? t('1 viaje') : t('{n} viajes', { n }),
+    sub: km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : undefined,
+    grupos: grupos.filter((g) => g.tipo === 'ubicacion'),
+    nombre: t('Viajes'),
+  };
+}
+
+/** Los pasos (del reloj o el teléfono), con lo que se caminó. Si no hubo viajes, abajo lo dice. */
+function widgetPasos(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
+  const pasos = dato(todos, 'reloj', 'Pasos');
+  if (!pasos) return null;
+  const km = dato(todos, 'reloj', 'Km caminados');
+  const viajes = dato(todos, 'ubicacion', 'Viajes');
+  const sinViajes = viajes && Math.round(viajes.suma) === 0;
+  return {
+    lugar: 'pasos',
+    icono: <IconoPasos />,
+    linea: t('{n} pasos', { n: entero(pasos.suma) }),
+    sub: km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : sinViajes ? t('Sin viajes') : undefined,
+    grupos: grupos.filter((g) => g.tipo === 'reloj').map((g) => ({ ...g, lineas: g.lineas.filter((l) => !SUENO.has(l.concepto) && !l.concepto.startsWith('Pulso')) })),
     nombre: t('Movimiento'),
   };
 }
@@ -114,7 +127,7 @@ function widgetSueno(todos: DatoAutomatico[], grupos: GrupoAutomatico[], registr
 /** El lugar de cada permiso que falta (el de la ubicación también trae el clima). */
 const LUGAR_DE: Record<Fuente, Lugar> = { ubicacion: 'ubicacion', telefono: 'telefono', salud: 'sueno' };
 
-export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, alActivar, alContarSueno, buscandoSalud = false }: {
+export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, alActivar, alContarSueno, buscandoSalud = false, antes }: {
   automaticos: DatoAutomatico[];
   registros: Registro[];
   categorias: Categoria[];
@@ -124,20 +137,24 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
   alContarSueno?: () => void;
   /** Mientras se le pide al reloj (Health Connect / Salud) lo de hoy. */
   buscandoSalud?: boolean;
+  /** Widgets que van primero (los remedios del día). */
+  antes?: ReactNode;
 }) {
   const [abierto, setAbierto] = useState<Lugar | null>(null);
   const grupos = agruparAutomaticos(automaticos);
   const widgets = [
     widgetClima(automaticos, grupos),
     widgetUbicacion(automaticos, grupos),
+    widgetPasos(automaticos, grupos),
     widgetTelefono(automaticos, grupos),
     widgetSueno(automaticos, grupos, registros),
   ];
-  const orden: Lugar[] = ['clima', 'ubicacion', 'telefono', 'sueno'];
+  const orden: Lugar[] = ['clima', 'ubicacion', 'pasos', 'telefono', 'sueno'];
   const celdas = orden.map((l) => ({ l, w: widgets.find((w) => w?.lugar === l) ?? null, apagada: apagadas.find((f) => LUGAR_DE[f] === l) }));
-  if (!celdas.some((c) => c.w || c.apagada)) return null;
+  if (!antes && !celdas.some((c) => c.w || c.apagada)) return null;
   return (
     <div className="widgets-auto">
+      {antes}
       {celdas.map(({ l, w, apagada }) =>
         w ? (
           <Fragment key={l}>

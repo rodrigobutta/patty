@@ -416,7 +416,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {registros && sesion?.usuario?.rol !== 'lector' ? <CompaniaSugerida persona={persona} fecha={fecha} registros={registros} categorias={categorias} alCambiar={() => void traer()} /> : null}
       <ParadasDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       <ViajesDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
-      <RemediosDelDia persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
       {fecha === hoy ? <CicloDelDia persona={persona} registros={registros ?? []} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} /> : null}
       {registros === null ? (
         <ul className="lista esqueleto" aria-label={t('Cargando')}>
@@ -489,6 +488,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         categorias={categorias}
         apagadas={apagadas}
         alActivar={setActivando}
+        antes={<RemediosDelDia widget persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />}
         buscandoSalud={buscandoSalud}
         alContarSueno={fecha === hoy && sesion?.ia && sesion.usuario?.rol !== 'lector' && !persona.supervisada ? () => {
           // Con permiso de salud, primero se busca en el reloj; si no hay nada, se cuenta.

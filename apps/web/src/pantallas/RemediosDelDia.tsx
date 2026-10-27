@@ -2,6 +2,7 @@
 // ven atrasadas (todavía se pueden tomar) y, después de unas horas, olvidadas. Los remedios "cuando haga falta" tienen
 // su botón para anotarlos con un toque.
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconoCategoria } from '../ui/IconosPatty';
 import { irAMas } from '../lib/navegar';
 import { dosisTexto, HORAS_PARA_OLVIDADA, type Persona, type Toma, type Tratamiento } from 'shared';
@@ -37,8 +38,10 @@ const LEYENDA: Record<Situacion, string> = {
   despues: '',
 };
 
-export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
+export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar, widget = false }: {
   persona: Persona;
+  /** Como un widget más (con los de lo que llega solo): el detalle se abre en una hoja. */
+  widget?: boolean;
   fecha: string;
   hoy: string;
   /** Cambia cada vez que el Día se vuelve a traer (se anotó o borró algo): las tomas se actualizan con él. */
@@ -58,6 +61,7 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
     }
   });
   const puede = usuario?.rol !== 'lector';
+  const [hoja, setHoja] = useState(false);
 
   const traer = useCallback(async () => {
     try {
@@ -138,27 +142,7 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
     }
   };
 
-  return (
-    <div className={`tarjeta remedios-dia${abierto ? ' abierto' : ''}`}>
-      <div className="fila-cabeza-remedios">
-      <button className="cabeza-plegable" onClick={cambiarAbierto} aria-expanded={abierto}>
-        <span className="titulo-plegable con-icono"><IconoCategoria clave="medicacion" tamano={24} /> {t('Remedios')}</span>
-        <span className="suave chico resumen-plegable">
-          {paraTomar ? <span className="para-tomar">{t('{n} para tomar', { n: paraTomar })}</span> : null}
-          {tomas.length ? t('{n} de {total} tomadas', { n: tomadas, total: fecha === hoy ? vencidas || tomas.length : tomas.length }) : t('cuando haga falta')}
-          {proxima && !paraTomar ? ' · ' + t('próxima {hora}', { hora: horaEn(proxima.programada, persona.zona_horaria) }) : ''}
-        </span>
-        <span className="suave" aria-hidden>{abierto ? '▴' : '▾'}</span>
-      </button>
-      {/* Configurar: agregar, cambiar horarios o terminar un remedio (en Más → Remedios). */}
-      <button className="btn-icono chico configurar-remedios" onClick={() => irAMas('remedios')} aria-label={t('Configurar remedios')}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />
-        </svg>
-      </button>
-      </div>
-      {abierto ? (
+  const cuerpo = (
       <>
       <ul className="lista tomas">
         {tomas.map((tm) => {
@@ -200,7 +184,64 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar }: {
         </div>
       ) : null}
       </>
-      ) : null}
+  );
+  const engranaje = (
+    // Configurar: agregar, cambiar horarios o terminar un remedio (en Más → Remedios).
+    <button className="btn-icono chico configurar-remedios" onClick={() => irAMas('remedios')} aria-label={t('Configurar remedios')}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />
+      </svg>
+    </button>
+  );
+  const resumen = tomas.length ? t('{n} de {total}', { n: tomadas, total: fecha === hoy ? vencidas || tomas.length : tomas.length }) : t('cuando haga falta');
+  const debajo = paraTomar ? t('{n} para tomar', { n: paraTomar }) : proxima ? t('próxima {hora}', { hora: horaEn(proxima.programada, persona.zona_horaria) }) : tomas.length ? t('tomadas') : '';
+
+  if (widget) {
+    return (
+      <>
+        <button className={`widget-auto widget-remedios${paraTomar ? ' para-tomar' : ''}`} onClick={() => setHoja(true)} aria-haspopup="dialog" aria-label={`${t('Remedios')}: ${resumen}${debajo ? `, ${debajo}` : ''}`}>
+          <IconoCategoria clave="medicacion" tamano={44} />
+          <span className="widget-linea">{resumen}</span>
+          {debajo ? <span className="widget-sub">{debajo}</span> : null}
+        </button>
+        {hoja
+          ? createPortal(
+              <>
+                <div className="velo" onClick={() => setHoja(false)} />
+                <div className="hoja hoja-remedios" role="dialog" aria-label={t('Remedios')}>
+                  <div className="hoja-cabeza">
+                    <h3 className="con-icono"><IconoCategoria clave="medicacion" tamano={26} /> {t('Remedios')}</h3>
+                    <span className="fila">
+                      {engranaje}
+                      <button className="btn-icono" onClick={() => setHoja(false)} aria-label={t('Cerrar')}>✕</button>
+                    </span>
+                  </div>
+                  {cuerpo}
+                </div>
+              </>,
+              document.body,
+            )
+          : null}
+      </>
+    );
+  }
+
+  return (
+    <div className={`tarjeta remedios-dia${abierto ? ' abierto' : ''}`}>
+      <div className="fila-cabeza-remedios">
+      <button className="cabeza-plegable" onClick={cambiarAbierto} aria-expanded={abierto}>
+        <span className="titulo-plegable con-icono"><IconoCategoria clave="medicacion" tamano={24} /> {t('Remedios')}</span>
+        <span className="suave chico resumen-plegable">
+          {paraTomar ? <span className="para-tomar">{t('{n} para tomar', { n: paraTomar })}</span> : null}
+          {tomas.length ? t('{n} de {total} tomadas', { n: tomadas, total: fecha === hoy ? vencidas || tomas.length : tomas.length }) : t('cuando haga falta')}
+          {proxima && !paraTomar ? ' · ' + t('próxima {hora}', { hora: horaEn(proxima.programada, persona.zona_horaria) }) : ''}
+        </span>
+        <span className="suave" aria-hidden>{abierto ? '▴' : '▾'}</span>
+      </button>
+      {engranaje}
+      </div>
+      {abierto ? cuerpo : null}
     </div>
   );
 }
