@@ -680,3 +680,19 @@ export const resumenSemana = pgTable(
   },
   (t) => [primaryKey({ columns: [t.persona_id, t.semana] })],
 );
+
+/**
+ * "¿Qué pasó antes?": para un dolor, una molestia o un mal momento anotado, lo de las 48 horas previas (comidas, sueño,
+ * clima, movimiento, lugares) y unas líneas de la IA. Lo arma un job al rato de anotarlo; se ve al abrir el registro.
+ */
+export const contextoRegistro = pgTable('contexto_registro', {
+  registro_id: bigint('registro_id', { mode: 'number' })
+    .primaryKey()
+    .references(() => registros.id, { onDelete: 'cascade' }),
+  persona_id: integer('persona_id')
+    .notNull()
+    .references(() => personas.id, { onDelete: 'cascade' }),
+  texto: text('texto'),
+  items: jsonb('items').$type<Array<{ cuando: string; emoji: string; texto: string }>>().notNull().default([]),
+  creado: creado(),
+});

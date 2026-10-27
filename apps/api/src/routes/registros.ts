@@ -121,6 +121,14 @@ export const rutasRegistros = new Hono<Env>()
       ),
     );
   })
+  .get('/:id/contexto', async (c) => {
+    // "¿Qué pasó antes?" de una molestia o un mal momento (lo arma un job al rato de anotarlo; null si todavía no).
+    const id = idParam(c);
+    const r = await una<{ persona_id: number }>(c.var.db, sql`SELECT persona_id FROM registros WHERE id = ${id}`);
+    if (!r) throw new ErrorApi('No existe.', 404);
+    await persona(c.var.db, c.var.usuario, r.persona_id, false);
+    return c.json(await una(c.var.db, sql`SELECT texto, items FROM contexto_registro WHERE registro_id = ${id}`));
+  })
   .get('/rutinas', async (c) => {
     // ?persona=1: lo que se viene anotando seguido y hoy todavía no (ver patrones/rutinas.ts). Solo cosas que se hacen
     // (comida, bebida, actividad…): no cómo se siente ni los remedios, que tienen lo suyo.

@@ -8,6 +8,7 @@ import { diaDePatty, minutosDelDia, sumarDias } from '../lib/fechas.js';
 import { hayEnvio, type Aviso } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
 import { comentarDia } from '../ia/comentar.js';
+import { armarContexto, pendientes } from '../ia/contexto.js';
 import { resumirNoche } from '../ia/resumirNoche.js';
 import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
 import { analizarPersona } from './analizar.js';
@@ -159,6 +160,20 @@ export async function resumirSemanas(db: Db, ahora = new Date()): Promise<number
   return n;
 }
 
+/** "¿Qué pasó antes?" de las molestias y los malos momentos recién anotados (unos pocos por vuelta). */
+export async function contextosPendientes(db: Db): Promise<number> {
+  let n = 0;
+  for (const x of await pendientes(db)) {
+    try {
+      await armarContexto(db, x.id, x.zona_horaria, esIdioma(x.idioma) ? x.idioma : 'es');
+      n++;
+    } catch (e) {
+      console.error(`¿Qué pasó antes? del registro ${x.id}:`, e instanceof Error ? e.message : e);
+    }
+  }
+  return n;
+}
+
 /** El aviso del búho con lo mejor que apareció ("Encontré algo: …"). */
 export function avisoDeHallazgo(personaId: number, explicacion: string, otros: number, i: Idioma): Aviso {
   const corto = explicacion.length > 160 ? `${explicacion.slice(0, 157).trimEnd()}…` : explicacion;
@@ -208,6 +223,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await comentarDeManana(db);
       await resumirNochesDeHoy(db);
       await resumirSemanas(db);
+      await contextosPendientes(db);
     } catch (e) {
       console.error('Error con los patrones de noche:', e);
     } finally {

@@ -9,6 +9,8 @@ import { horaEn, instanteDelDia } from '../lib/fechas';
 import { DondeComida } from '../ui/DondeComida';
 import { genteGuardada, traerGente, type Alguien } from '../lib/gente';
 
+import { QuePasoAntes } from './QuePasoAntes';
+
 export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBorrar }: {
   persona: Persona;
   registro: Registro;
@@ -93,6 +95,8 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
         <h3>{cat?.icono} {t(r.concepto)}</h3>
         <button className="btn-icono" onClick={alCerrar} aria-label={t('Cerrar')}>✕</button>
       </div>
+      {/* Una molestia o un mal momento: qué pasó antes (lo arma Patty al rato de anotarlo). */}
+      {cat?.clave === 'sintoma' || (esSentir && r.intensidad !== null && r.intensidad <= 4) ? <QuePasoAntes persona={persona} registroId={r.id} /> : null}
       <div className="valor">
         {esSentir ? (
           <div className="caritas">

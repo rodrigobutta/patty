@@ -42,3 +42,24 @@ describe('resumen de la semana', () => {
     expect(l[0]).toMatchObject({ semana: '2026-10-19', titulo: 'Una semana tranquila', numeros: { dias_anotados: 2, molestias: 1 } });
   });
 });
+
+describe('¿qué pasó antes?', () => {
+  it('para una molestia arma lo de las 48 h previas y unas líneas, una vez; se ve en el registro', async () => {
+    const { contextosPendientes } = await import('../src/patrones/noche.js');
+    const { sql } = await import('drizzle-orm');
+    const { ana, personaId, categorias } = await conAdmin();
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Salame', categoria_id: categorias.comida, inicio: '2026-10-26T15:00:00Z' });
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Café', categoria_id: categorias.bebida, inicio: '2026-10-24T15:00:00Z' }); // más de 48 h antes
+    const dolor = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Dolor de panza', categoria_id: categorias.sintoma, inicio: '2026-10-26T20:00:00Z', intensidad: 6 })).body;
+    const crear = async () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ texto: 'Antes comiste salame.' }) }] });
+    usarClientePrueba({ messages: { create: crear }, beta: { messages: { create: crear } } } as unknown as Anthropic);
+    const db = obtenerDb();
+    expect(await contextosPendientes(db)).toBe(0); // recién anotado: espera un minuto
+    await db.execute(sql`UPDATE registros SET creado = now() - interval '5 minutes' WHERE persona_id = ${personaId}`);
+    expect(await contextosPendientes(db)).toBe(1);
+    expect(await contextosPendientes(db)).toBe(0);
+    const c = (await ana.get(`/api/registros/${dolor.id}/contexto`)).body;
+    expect(c.texto).toBe('Antes comiste salame.');
+    expect(c.items.map((x: any) => x.texto)).toEqual(['Salame']);
+  });
+});
