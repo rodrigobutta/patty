@@ -148,7 +148,19 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
     widgetPasos(automaticos, grupos),
     widgetTelefono(automaticos, grupos),
     widgetSueno(automaticos, grupos, registros),
-  ];
+  ].map((w) => {
+    // Lo del reloj se reparte por categoría: actividad (pasos, km, calorías, ejercicio) al de los pasos; el sueño y la
+    // salud (pulso, oxígeno, peso) al del sueño.
+    if (!w || (w.lugar !== 'pasos' && w.lugar !== 'sueno')) return w;
+    const actividad = categorias.find((c) => c.clave === 'actividad')?.id;
+    const deActividad = (catId: number) => catId === actividad;
+    return {
+      ...w,
+      grupos: grupos
+        .filter((g) => g.tipo === 'reloj')
+        .map((g) => ({ ...g, lineas: g.lineas.filter((l) => (w.lugar === 'pasos' ? deActividad(l.categoria_id) : !deActividad(l.categoria_id))) })),
+    };
+  });
   const orden: Lugar[] = ['clima', 'ubicacion', 'pasos', 'telefono', 'sueno'];
   const celdas = orden.map((l) => ({ l, w: widgets.find((w) => w?.lugar === l) ?? null, apagada: apagadas.find((f) => LUGAR_DE[f] === l) }));
   if (!antes && !celdas.some((c) => c.w || c.apagada)) return null;
