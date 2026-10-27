@@ -100,3 +100,38 @@ export const IconoAvanzado = () => (
     <circle cx="16" cy="16" r="4" fill={A} {...T} />
   </Base>
 );
+
+/** Permisos: un escudo con tilde. */
+export const IconoPermisos = () => (
+  <Base>
+    <path d="M16 3 L26 7 V15 C26 21.5 21.5 26 16 29 C10.5 26 6 21.5 6 15 V7 Z" fill={V} {...T} />
+    <path d="M11 16 l3.5 3.5 L21.5 12" stroke={A} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+  </Base>
+);
+
+/** Clima: sol con nube. */
+export const IconoClima = () => (
+  <Base>
+    <circle cx="12" cy="11" r="5.5" fill={A} {...T} />
+    <path d="M12 2.5 v1.5 M4.5 11 H3 M6.5 5.5 l-1-1 M17.5 5.5 l1-1" {...T} />
+    <path d="M10 27 H24 a5 5 0 0 0 0-10 a7 7 0 0 0-13 1.5 a4.3 4.3 0 0 0-1 8.5 Z" fill={V} {...T} />
+  </Base>
+);
+
+/** Uso del teléfono: un celular. */
+export const IconoTelefono = () => (
+  <Base>
+    <rect x="9" y="3.5" width="14" height="25" rx="3.5" fill={V} {...T} />
+    <rect x="11.5" y="7" width="9" height="15.5" rx="1.5" fill={A} />
+    <circle cx="16" cy="25.5" r="1.2" fill="currentColor" />
+  </Base>
+);
+
+/** Reloj y salud: un reloj con pulso. */
+export const IconoReloj = () => (
+  <Base>
+    <path d="M11 7 l1-4 h8 l1 4 M11 25 l1 4 h8 l1-4" {...T} />
+    <rect x="7" y="7" width="18" height="18" rx="5" fill={V} {...T} />
+    <path d="M10 16 h3 l1.5-3 l2.5 6 l1.5-3 h3.5" stroke={A} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </Base>
+);

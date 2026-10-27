@@ -72,7 +72,7 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
         <p className="suave chico">{t('«Permitir uso de apps» abre Ajustes: buscá Patty en la lista y prendé «Permitir acceso al uso».')}</p>
       ) : null}
       {activo ? (
-        <button className="btn" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Mandando…') : t('Mandar ahora')}</button>
+        <button className="btn primario" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Sincronizando…') : t('🔄 Sincronizar ahora')}</button>
       ) : null}
       {error ? <p className="neg">{error}</p> : null}
     </div>

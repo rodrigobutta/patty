@@ -80,6 +80,22 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
   const [acciones, setAcciones] = useState<Lugar | null>(null);
   const [uniendo, setUniendo] = useState<Lugar | null>(null);
 
+  // Mandar ahora dónde está (y traer de nuevo el día): por si el seguimiento se cortó un rato.
+  const [sincronizando, setSincronizando] = useState(false);
+  const sincronizarAca = async () => {
+    setSincronizando(true);
+    setError('');
+    try {
+      const u = await ubicacion();
+      if (!u) return setError(t('No pude saber dónde estás.'));
+      const nuevo = await mandarPunto(persona.id, u);
+      await traer();
+      avisar(nuevo ? t('Listo: ubicación al día') : t('Ya estaba al día'));
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
   const hacer = async (f: () => Promise<unknown>, aviso: string) => {
     setError('');
     try {
@@ -194,6 +210,9 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
       {puedeEscribir ? (
         <div className="columna">
           {aca ? null : <button className="btn" onClick={() => void guardarAca()}>{t('📍 Guardar dónde estoy')}</button>}
+          {activo ? (
+            <button className="btn primario" disabled={sincronizando} onClick={() => void sincronizarAca()}>{sincronizando ? t('Sincronizando…') : t('🔄 Sincronizar ubicación')}</button>
+          ) : null}
           <button className="btn suave-btn" onClick={borrarHistorial}>{t('Borrar historial de ubicación')}</button>
         </div>
       ) : null}

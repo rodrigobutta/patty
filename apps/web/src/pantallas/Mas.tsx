@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { api, API_BASE } from '../api';
 import { useEstado } from '../estado';
 import { avisarAnotado, olvidarDeNoche } from '../mascota/cara';
-import { climaActivado, ponerClima, ubicacion } from '../lib/clima';
+import { anotarClima, climaActivado, horasRecientes, ponerClima, ubicacion } from '../lib/clima';
 import { esIOS, instalada, instalarApp } from '../lib/instalar';
 import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
 import { esNativa } from '../lib/nativo';
@@ -15,7 +15,7 @@ import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { idioma, idiomaElegido, locale, ponerIdioma, t } from '../lib/idioma';
 import { Cuenta } from './Cuenta';
 import { alPedirIrAMas, tomarSeccionPedida, verSeccionPedida } from '../lib/navegar';
-import { IconoAvanzado, IconoAvisos, IconoCuenta, IconoDatos, IconoFamilia, IconoGente, IconoLugares, IconoRemedios, IconoSalud } from '../ui/IconosMas';
+import { IconoAvanzado, IconoAvisos, IconoClima, IconoCuenta, IconoPermisos, IconoReloj, IconoTelefono, IconoFamilia, IconoGente, IconoLugares, IconoRemedios, IconoSalud } from '../ui/IconosMas';
 import { DatosSalud } from './DatosSalud';
 import { DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
@@ -29,12 +29,25 @@ import { COMMIT, VERSION, versionNativa } from '../lib/version';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
-type Seccion = 'datos' | 'lugares' | 'remedios' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
+type Seccion = 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
   const [nueva, setNueva] = useState(false);
   const [permisos, setPermisos] = useState(false);
+  // "Sincronizar ahora" de las fuentes que se traen de otro lado (el clima, por ejemplo).
+  const [sincronizando, setSincronizando] = useState(false);
+  const sincronizar = async (f: () => Promise<void>, listo: string) => {
+    setSincronizando(true);
+    try {
+      await f();
+      avisar(listo);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSincronizando(false);
+    }
+  };
   /** La sub-pantalla abierta (null: el menú). */
   const [seccion, setSeccion] = useState<Seccion | null>(() => verSeccionPedida() as Seccion | null);
   // Pedida desde otra pantalla con Más ya abierta (la tarjeta de remedios del Día, por ejemplo).
@@ -65,7 +78,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       const g = tomarGuia();
       if (!g) return;
       setGuia(g);
-      setSeccion('datos');
+      setSeccion(null);
       setPermisos(true);
     };
     abrir();
@@ -140,7 +153,10 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   // El título de cada sección lleva el mismo ícono dibujado que en el menú (sin el emoji del texto).
   const ICONO_SECCION: Record<Seccion, () => ReactNode> = {
     salud: () => <IconoSalud />,
-    datos: () => <IconoDatos />,
+    datos: () => <IconoPermisos />,
+    clima: () => <IconoClima />,
+    telefono: () => <IconoTelefono />,
+    reloj: () => <IconoReloj />,
     lugares: () => <IconoLugares />,
     remedios: () => <IconoRemedios />,
     avisos: () => <IconoAvisos />,
@@ -160,20 +176,8 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     </section>
   );
 
-  if (seccion === 'datos') return pantalla(t('📡 Lo que Patty junta sola'), <>
-      {esNativa() && persona ? (
-        <>
-          <button className="btn ancho" onClick={() => setPermisos(true)}>{t('🔐 Revisar los permisos de este teléfono')}</button>
-          {permisos ? (
-            <>
-              <div className="velo" onClick={() => { setPermisos(false); setGuia(undefined); }} />
-              <Permisos key={guia ?? 'todos'} persona={persona} guia={guia} alTerminar={() => { setPermisos(false); setGuia(undefined); }} />
-            </>
-          ) : null}
-        </>
-      ) : null}
+  if (seccion === 'clima') return pantalla(t('Clima'), <>
       <div className="tarjeta">
-        <h3>{t('🌤️ Clima')}</h3>
         <label className="opcion">
           <input type="checkbox" checked={clima} onChange={(e) => {
             ponerClima(e.target.checked);
@@ -183,10 +187,18 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           <span>{t('Anotar el clima de cada hora donde estás (temperatura, lluvia, viento, sol, presión, aire).')}</span>
         </label>
         <p className="chico ejemplo-permiso">{t('💡 Por ejemplo: «con presión baja te duele más la cabeza» o «los días de lluvia tenés menos energía».')}</p>
+        {clima && persona ? (
+          <button className="btn primario ancho" disabled={sincronizando} onClick={() => void sincronizar(async () => { await anotarClima(persona.id, horasRecientes()); }, t('Listo: el clima de las últimas horas está al día'))}>
+            {sincronizando ? t('Sincronizando…') : t('🔄 Sincronizar ahora')}
+          </button>
+        ) : null}
       </div>
+  </>);
+  if (seccion === 'telefono') return pantalla(t('Uso del teléfono'), <>
       {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
+  </>);
+  if (seccion === 'reloj') return pantalla(t('Reloj y salud'), <>
       {persona && esNativa() ? <DatosSalud persona={persona} /> : null}
-
   </>);
   if (seccion === 'lugares') return pantalla(t('📍 Lugares'), <>
       {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
@@ -339,9 +351,12 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       ) : null}
   </>);
 
-  const opciones: Array<{ clave: Seccion; icono: ReactNode; titulo: string; sub: string; ver?: boolean }> = [
+  const opciones: Array<{ clave: Seccion; icono: ReactNode; titulo: string; sub: string; ver?: boolean; accion?: () => void }> = [
     { clave: 'salud', icono: <IconoSalud />, titulo: t('Tus datos de salud'), sub: t('Edad, peso, altura y condiciones'), ver: Boolean(persona) },
-    { clave: 'datos', icono: <IconoDatos />, titulo: t('Lo que Patty junta sola'), sub: t('Permisos, clima, ubicación, teléfono y salud') },
+    { clave: 'datos', icono: <IconoPermisos />, titulo: t('Permisos de este teléfono'), sub: t('Avisos, ubicación, uso del teléfono y salud'), ver: esNativa() && Boolean(persona), accion: () => setPermisos(true) },
+    { clave: 'clima', icono: <IconoClima />, titulo: t('Clima'), sub: t('El clima de cada hora donde estás') },
+    { clave: 'telefono', icono: <IconoTelefono />, titulo: t('Uso del teléfono'), sub: t('Pantalla, apps y llamadas'), ver: hayDatosDelTelefono() && Boolean(persona) },
+    { clave: 'reloj', icono: <IconoReloj />, titulo: t('Reloj y salud'), sub: t('Sueño, pasos y pulso'), ver: esNativa() && Boolean(persona) },
     { clave: 'lugares', icono: <IconoLugares />, titulo: t('Lugares'), sub: t('Casa, trabajo y los lugares a los que vas'), ver: Boolean(persona) },
     { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
     { clave: 'avisos', icono: <IconoAvisos />, titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
@@ -353,10 +368,16 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
 
   return (
     <section className="mas">
+      {permisos && persona ? (
+        <>
+          <div className="velo" onClick={() => { setPermisos(false); setGuia(undefined); }} />
+          <Permisos key={guia ?? 'todos'} persona={persona} guia={guia} alTerminar={() => { setPermisos(false); setGuia(undefined); }} />
+        </>
+      ) : null}
       <ul className="menu-mas">
         {opciones.filter((o) => o.ver !== false).map((o) => (
           <li key={o.clave}>
-            <button onClick={() => setSeccion(o.clave)}>
+            <button onClick={() => (o.accion ? o.accion() : setSeccion(o.clave))}>
               <span className="icono-menu" aria-hidden>{o.icono}</span>
               <span className="que">
                 <strong>{o.titulo}</strong>

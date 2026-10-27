@@ -82,7 +82,7 @@ export function DatosSalud({ persona }: { persona: Persona }) {
       ) : null}
       {activo ? (
         <div className="columna">
-          <button className="btn" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Mandando…') : t('Mandar ahora')}</button>
+          <button className="btn primario" disabled={mandando} onClick={() => void mandar()}>{mandando ? t('Sincronizando…') : t('🔄 Sincronizar ahora')}</button>
           <button className="btn" onClick={() => void prender(true)}>{t('Permisos')}</button>
           {plataforma() === 'android' ? (
             // En Android 14+ Health Connect no tiene ícono: vive dentro de Ajustes. Desde acá se abre directo.
