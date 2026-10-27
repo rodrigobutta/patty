@@ -190,6 +190,13 @@
       "when": 1793120342112,
       "tag": "0026_resumen_noche",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793143098550,
+      "tag": "0027_resumen_semana",
+      "breakpoints": true
     }
   ]
 }

@@ -23,6 +23,7 @@ import { rutasPreguntar } from './routes/preguntar.js';
 import { rutasComentarios } from './routes/comentarios.js';
 import { rutasSueno } from './routes/sueno.js';
 import { rutasActividad } from './routes/actividad.js';
+import { rutasSemanas } from './routes/semanas.js';
 import { rutasPersonas } from './routes/personas.js';
 import { rutasRegistros } from './routes/registros.js';
 import { rutasSesion } from './routes/sesion.js';
@@ -116,6 +117,7 @@ export function crearApp(): Hono<Env> {
   api.route('/comentarios', rutasComentarios);
   api.route('/sueno', rutasSueno);
   api.route('/actividad', rutasActividad);
+  api.route('/semanas', rutasSemanas);
   api.all('*', () => {
     throw new ErrorApi('Ruta desconocida.', 404);
   });

@@ -658,3 +658,25 @@ export const resumenNoche = pgTable(
   },
   (t) => [primaryKey({ columns: [t.persona_id, t.noche] })],
 );
+
+/**
+ * El resumen de cada semana (de lunes a domingo) que arma Patty el domingo a la noche: un título, unas líneas, lo que
+ * se destacó y 1 o 2 cosas para probar, más los números de la semana (para comparar y para los gráficos).
+ */
+export const resumenSemana = pgTable(
+  'resumen_semana',
+  {
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    /** El lunes de esa semana. */
+    semana: date('semana', { mode: 'string' }).notNull(),
+    titulo: text('titulo').notNull(),
+    texto: text('texto').notNull(),
+    destacados: jsonb('destacados').$type<Array<{ emoji: string; texto: string }>>().notNull().default([]),
+    sugerencias: jsonb('sugerencias').$type<string[]>().notNull().default([]),
+    numeros: jsonb('numeros').$type<Record<string, number | null>>().notNull().default({}),
+    creado: creado(),
+  },
+  (t) => [primaryKey({ columns: [t.persona_id, t.semana] })],
+);

@@ -9,6 +9,7 @@ import { hayEnvio, type Aviso } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
 import { comentarDia } from '../ia/comentar.js';
 import { resumirNoche } from '../ia/resumirNoche.js';
+import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
 import { analizarPersona } from './analizar.js';
 import { DIAS_MINIMOS } from './motor.js';
 
@@ -18,6 +19,8 @@ const HORA_AVISO = 9;
 const HORA_COMENTARIOS = 6;
 /** El resumen de la noche (ia/resumirNoche.ts), cuando ya se suele haber sincronizado el reloj. */
 const HORA_RESUMEN_NOCHE = 10;
+/** El domingo a esta hora se arma el resumen de la semana y el búho avisa. */
+const HORA_SEMANA = 20;
 /** Solo se analiza a quien anotó algo en estos últimos días (si no, no cambió nada desde la última vez). */
 const DIAS_ACTIVO = 3;
 
@@ -116,6 +119,46 @@ export async function resumirNochesDeHoy(db: Db, ahora = new Date()): Promise<nu
   return n;
 }
 
+/** El domingo a las 20, el resumen de la semana de quienes anotaron algo, con un aviso del búho. */
+export async function resumirSemanas(db: Db, ahora = new Date()): Promise<number> {
+  const lista = await filas<PersonaNoche>(
+    db,
+    sql`SELECT p.id, p.nombre, p.zona_horaria,
+               (SELECT u.idioma FROM persona_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id
+                WHERE pu.persona_id = p.id ORDER BY (pu.rol = 'dueno') DESC, u.id LIMIT 1) AS idioma
+        FROM personas p
+        WHERE EXISTS (SELECT 1 FROM registros r WHERE r.persona_id = p.id AND r.borrado IS NULL AND r.origen IN ('manual', 'ia')
+                      AND r.creado > ${ahora.toISOString()}::timestamptz - interval '7 days')`,
+  );
+  let n = 0;
+  for (const p of lista) {
+    if (!enHora(ahora, p.zona_horaria, HORA_SEMANA)) continue;
+    const hoy = diaDePatty(ahora, p.zona_horaria);
+    if (new Date(`${hoy}T12:00:00Z`).getUTCDay() !== 0) continue;
+    const lunes = lunesDe(hoy);
+    if (!(await primeraVez(db, `semana|${p.id}|${lunes}`))) continue;
+    try {
+      const idioma: Idioma = esIdioma(p.idioma) ? p.idioma : 'es';
+      const r = await resumirSemana(db, p, lunes, idioma);
+      if (!r) continue;
+      n++;
+      if (!hayEnvio()) continue;
+      for (const d of await dispositivosDe(db, p.id, false)) {
+        const i: Idioma = esIdioma(d.idioma) ? d.idioma : 'es';
+        await avisarUnaVez(db, d, `aviso-semana|${p.id}|${lunes}`, {
+          titulo: traducir(i, '🦉 Tu semana'),
+          cuerpo: r.titulo,
+          datos: { tipo: 'semana', persona_id: String(p.id), cara: 'feliz' },
+          etiqueta: `semana|${p.id}`,
+        });
+      }
+    } catch (e) {
+      console.error(`Resumen de la semana: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+    }
+  }
+  return n;
+}
+
 /** El aviso del búho con lo mejor que apareció ("Encontré algo: …"). */
 export function avisoDeHallazgo(personaId: number, explicacion: string, otros: number, i: Idioma): Aviso {
   const corto = explicacion.length > 160 ? `${explicacion.slice(0, 157).trimEnd()}…` : explicacion;
@@ -164,6 +207,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await avisarHallazgosNuevos(db);
       await comentarDeManana(db);
       await resumirNochesDeHoy(db);
+      await resumirSemanas(db);
     } catch (e) {
       console.error('Error con los patrones de noche:', e);
     } finally {

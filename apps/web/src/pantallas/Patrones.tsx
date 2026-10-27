@@ -9,6 +9,7 @@ import { Calendario } from './Calendario';
 import { Numeros } from './Numeros';
 import { Preguntar } from './Preguntar';
 import { LoQueVoyNotando } from './ComentariosDePatty';
+import { ListaSemanas } from './Semanas';
 import { RuedaProgreso } from './RuedaProgreso';
 import { IconoBuscar, IconoCalendario, IconoMapa, IconoNumeros, IconoRelacion } from '../ui/Iconos';
 import { MapaDescubrir } from './MapaDescubrir';
@@ -150,6 +151,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
 
       {ultimo?.resumen ? <div className="tarjeta nota-ia"><p>{ultimo.resumen}</p></div> : null}
 
+      <ListaSemanas persona={persona} />
       {hallazgos && !firmes.length ? <LoQueVoyNotando persona={persona} /> : null}
 
       {firmes.map(tarjeta)}

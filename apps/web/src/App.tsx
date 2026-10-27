@@ -95,7 +95,7 @@ export function App() {
         // La encuesta de la noche tocada (o "Mal" contestado desde el aviso, para contar qué pasó): el Día la abre.
         if (d.tipo === 'encuesta') abrirEncuesta(d.contar === 'dia' ? 'dia' : 'sentir');
         // Algo nuevo que encontró el análisis de la noche: Patrones.
-        if (d.tipo === 'hallazgo') setPestana('patrones');
+        if (d.tipo === 'hallazgo' || d.tipo === 'semana') setPestana('patrones');
         // Un permiso que falta: Más, con los pasos para darlo en este teléfono.
         if (d.tipo === 'permiso' && ['avisos', 'ubicacion', 'telefono', 'salud'].includes(d.permiso)) {
           setPestana('mas');

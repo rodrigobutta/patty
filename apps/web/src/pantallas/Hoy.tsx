@@ -22,6 +22,7 @@ import { Editar } from './Editar';
 import { GloboDelBuho } from './GloboDelBuho';
 import { ComentarioDelDia } from './ComentariosDePatty';
 import { RutinasDelDia } from './RutinasDelDia';
+import { TarjetaSemana } from './Semanas';
 import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
 import { WidgetsDelDia } from './WidgetsDelDia';
@@ -398,6 +399,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           alTocar={() => setSintiendo({ momento, estado: null })}
         />
       ) : null}
+      {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
       {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
         <RutinasDelDia persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
