@@ -17,35 +17,40 @@ function Base({ children, tamano = 26 }: { children: ReactNode; tamano?: number 
 }
 
 /** Una carita (también la del ánimo): de 'muy_bien' a 'muy_mal'. */
+/** La tinta y los colores fijos de las caritas (como el búho): se ven igual en modo claro y oscuro. */
+const TINTA = '#2a2440';
+const TC = { ...T, stroke: TINTA } as const;
+
+/** Una carita (también la del ánimo): de 'muy_bien' a 'muy_mal'. */
 function Cara({ como }: { como: 'muy_bien' | 'bien' | 'mal' | 'muy_mal' | 'tranquilo' | 'normal' }) {
   const boca = {
-    muy_bien: <path d="M10.5 18.5 Q16 25 21.5 18.5 Z" fill={V} {...T} />,
-    bien: <path d="M11 19 Q16 23 21 19" {...T} />,
-    tranquilo: <path d="M11.5 19.5 Q16 22.5 20.5 19.5" {...T} />,
-    normal: <path d="M11.5 20 H20.5" {...T} />,
-    mal: <path d="M11 21.5 Q16 17.5 21 21.5" {...T} />,
-    muy_mal: <path d="M10.5 22.5 Q16 16.5 21.5 22.5" {...T} />,
+    muy_bien: <path d="M10.5 18.5 Q16 25 21.5 18.5 Z" fill="#e85d75" {...TC} />,
+    bien: <path d="M11 19 Q16 23 21 19" {...TC} />,
+    tranquilo: <path d="M11.5 19.5 Q16 22.5 20.5 19.5" {...TC} />,
+    normal: <path d="M11.5 20 H20.5" {...TC} />,
+    mal: <path d="M11 21.5 Q16 17.5 21 21.5" {...TC} />,
+    muy_mal: <path d="M10.5 22.5 Q16 16.5 21.5 22.5" {...TC} />,
   }[como];
   const ojos =
     como === 'muy_mal' ? (
-      <path d="M9.5 11 l3 2 l-3 2 M22.5 11 l-3 2 l3 2" {...T} />
+      <path d="M9.5 11 l3 2 l-3 2 M22.5 11 l-3 2 l3 2" {...TC} />
     ) : como === 'muy_bien' || como === 'tranquilo' ? (
-      <path d="M9.5 13.5 Q11.5 11 13.5 13.5 M18.5 13.5 Q20.5 11 22.5 13.5" {...T} />
+      <path d="M9.5 13.5 Q11.5 11 13.5 13.5 M18.5 13.5 Q20.5 11 22.5 13.5" {...TC} />
     ) : (
       <>
-        <circle cx="11.5" cy="13" r="1.6" fill="currentColor" />
-        <circle cx="20.5" cy="13" r="1.6" fill="currentColor" />
+        <circle cx="11.5" cy="13" r="1.7" fill={TINTA} />
+        <circle cx="20.5" cy="13" r="1.7" fill={TINTA} />
       </>
     );
   return (
     <>
-      <circle cx="16" cy="16" r="12.5" fill={A} {...T} />
+      <circle cx="16" cy="16" r="12.5" fill="#ffd166" {...TC} />
       {ojos}
       {boca}
-      {como === 'muy_bien' || como === 'bien' ? (
+      {como === 'muy_bien' || como === 'bien' || como === 'tranquilo' ? (
         <>
-          <circle cx="8.5" cy="18" r="1.8" fill={V} />
-          <circle cx="23.5" cy="18" r="1.8" fill={V} />
+          <circle cx="8.5" cy="18" r="1.9" fill="#ff8fa3" opacity=".7" />
+          <circle cx="23.5" cy="18" r="1.9" fill="#ff8fa3" opacity=".7" />
         </>
       ) : null}
     </>

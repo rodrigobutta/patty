@@ -23,6 +23,7 @@ import { GloboDelBuho } from './GloboDelBuho';
 import { ComentarioDelDia } from './ComentariosDePatty';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
 import { WidgetsDelDia } from './WidgetsDelDia';
+import { IconoFranja } from '../ui/IconosWidget';
 import { esNativa } from '../lib/nativo';
 import { hayDatosDelTelefono } from '../lib/telefono';
 import { haceCuantoSalud, ponerSalud, saludActivada, sincronizarSalud } from '../lib/salud';
@@ -76,9 +77,9 @@ const partesDe = (r: Registro, todos: Registro[], sintomaId?: number, genteId?: 
 
 /** En qué parte del día pasó algo (el día de Patty empieza a las 5). */
 const FRANJAS = [
-  { desde: 5, nombre: t('Mañana'), emoji: '🌅' },
-  { desde: 12, nombre: t('Tarde'), emoji: '☀️' },
-  { desde: 19, nombre: t('Noche'), emoji: '🌙' },
+  { desde: 5, nombre: t('Mañana'), cual: 'manana' as const },
+  { desde: 12, nombre: t('Tarde'), cual: 'tarde' as const },
+  { desde: 19, nombre: t('Noche'), cual: 'noche' as const },
 ];
 function franja(inicio: string, zona: string) {
   const h = Number(horaEn(inicio, zona).slice(0, 2));
@@ -447,7 +448,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             const nuevaFranja = i === 0 || franja(todos[i - 1].inicio, persona.zona_horaria) !== f;
             return (
               <Fragment key={r.id}>
-                {nuevaFranja ? <li className="franja" aria-hidden><span>{f.emoji}</span> {f.nombre}</li> : null}
+                {nuevaFranja ? <li className="franja" aria-hidden><IconoFranja cual={f.cual} /> {f.nombre}</li> : null}
               <FilaDeslizable
                 className={`tocable ${vistos.current && !vistos.current.has(r.id) ? 'recien' : vistos.current ? '' : 'entra'}`}
                 style={{ ['--n' as string]: Math.min(i, 12) }}

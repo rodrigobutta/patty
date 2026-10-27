@@ -99,3 +99,22 @@ export function IconoPasos() {
     </svg>
   );
 }
+
+/** La parte del día en la lista del Día (mañana, tarde, noche), con el mismo sol y luna de los widgets. */
+export function IconoFranja({ cual }: { cual: 'manana' | 'tarde' | 'noche' }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden>
+      {cual === 'tarde' ? <Sol r={10} /> : null}
+      {cual === 'manana' ? (
+        <>
+          <clipPath id="patty-horizonte"><rect x="0" y="0" width="48" height="31" /></clipPath>
+          <g clipPath="url(#patty-horizonte)"><Sol y={30} r={9} /></g>
+          <path d="M6 32 H42" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        </>
+      ) : null}
+      {cual === 'noche' ? (
+        <path d="M30 8 a15 15 0 1 0 10 25 a12 12 0 0 1-10-25 z" fill="#ffe08a" stroke={TRAZO} strokeWidth="2.5" strokeLinejoin="round" />
+      ) : null}
+    </svg>
+  );
+}
