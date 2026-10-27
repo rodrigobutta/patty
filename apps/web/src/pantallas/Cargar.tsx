@@ -14,7 +14,7 @@ import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
 import { DondeComida, etiquetaDonde } from '../ui/DondeComida';
-import { IconoCamara, IconoGaleria, IconoMicrofono } from '../ui/Iconos';
+import { IconoCamara, IconoGaleria, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { OndaVoz } from '../ui/OndaVoz';
 
 interface Elegido {
@@ -511,13 +511,13 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
         {!paraResponder && !sinFoto ? (
           <button className="btn foto-boton" onClick={() => void tomarFoto()} disabled={ocupado || estado === 'escuchando'}><IconoCamara tamano={20} /> {t('O mandale una foto (de tu plato, por ejemplo)')}</button>
         ) : null}
-        <button className="btn ancho prefiero-escribir" onClick={pasarAEscribir} disabled={estado === 'transcribiendo' || estado === 'ordenando'}>{t('✍️ Prefiero escribir')}</button>
+        <button className="btn ancho prefiero-escribir" onClick={pasarAEscribir} disabled={estado === 'transcribiendo' || estado === 'ordenando'}><IconoLapiz tamano={20} /> {t('Prefiero escribir')}</button>
       </div>
     ) : paraResponder ? (
       <div className="responder">
         <input value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder={t('Ej: dos porciones, era de mi primo')} onKeyDown={(e) => e.key === 'Enter' && contar(respuesta)} />
         <button className="btn primario" disabled={ocupado || !respuesta.trim()} onClick={() => contar(respuesta)}>{estado === 'ordenando' ? t('Procesando…') : t('Responder')}</button>
-        {conVoz ? <button className="btn ancho prefiero-escribir" onClick={() => setModo('voz')} disabled={ocupado}>{t('🎙️ Prefiero hablar')}</button> : null}
+        {conVoz ? <button className="btn ancho prefiero-escribir" onClick={() => setModo('voz')} disabled={ocupado}><IconoMicrofono tamano={20} /> {t('Prefiero hablar')}</button> : null}
       </div>
     ) : (
       <>
@@ -527,7 +527,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
         {sinFoto ? null : (
           <button className="btn ancho foto-boton" onClick={() => void tomarFoto()} disabled={ocupado}><IconoCamara tamano={20} /> {texto.trim() ? t('Aceptar con una foto') : t('Mandale una foto')}</button>
         )}
-        {conVoz ? <button className="btn ancho prefiero-escribir" onClick={() => setModo('voz')} disabled={ocupado}>{t('🎙️ Prefiero hablar')}</button> : null}
+        {conVoz ? <button className="btn ancho prefiero-escribir" onClick={() => setModo('voz')} disabled={ocupado}><IconoMicrofono tamano={20} /> {t('Prefiero hablar')}</button> : null}
       </>
     );
 

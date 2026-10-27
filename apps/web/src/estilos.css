@@ -1118,3 +1118,4 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .configurar-remedios:active { background: var(--acento-suave); }
 .remedios-dia.abierto .fila-cabeza-remedios { margin-bottom: 8px; }
 .remedios-dia.abierto .fila-cabeza-remedios .cabeza-plegable { margin-bottom: 0; }
+.prefiero-escribir { display: flex; align-items: center; justify-content: center; gap: 8px; }

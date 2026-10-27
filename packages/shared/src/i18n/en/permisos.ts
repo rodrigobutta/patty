@@ -432,4 +432,6 @@ export const PERMISOS: Record<string, string> = {
   'Dónde pasaste más tiempo': "Where you spent the most time",
   'Mapa': "Map",
   'Configurar remedios': 'Set up medications',
+  'Prefiero hablar': "I'd rather talk",
+  'Prefiero escribir': "I'd rather type",
 };
