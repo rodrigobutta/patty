@@ -1,4 +1,4 @@
-// "¿Qué pasó antes?" (al abrir una molestia o un mal momento): unas líneas de Patty y lo de las 48 horas previas. Lo
+// "¿Qué pasó antes?" (al abrir una molestia o un mal momento): unas líneas de Patty y lo de las 72 horas previas. Lo
 // arma el servidor al rato de anotarlo; si todavía no está, se avisa que viene en camino.
 import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
@@ -37,7 +37,7 @@ export function QuePasoAntes({ persona, registroId }: { persona: Persona; regist
               ))}
             </ul>
           ) : (
-            <p className="suave chico">{t('No hay nada anotado en las 48 horas anteriores.')}</p>
+            <p className="suave chico">{t('No hay nada anotado en las 72 horas anteriores.')}</p>
           )}
           {c.items.length > 6 && !verTodo ? <button className="enlace chico" onClick={() => setVerTodo(true)}>{t('Ver todo ({n})', { n: c.items.length })}</button> : null}
         </>

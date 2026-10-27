@@ -490,7 +490,7 @@ export const PERMISOS: Record<string, string> = {
   '🦉 Tu semana': '🦉 Your week',
   '🦉 Tus semanas': '🦉 Your weeks',
   'Estoy mirando lo de las horas anteriores: en un ratito lo ves acá.': "I'm looking at the hours before: you'll see it here in a bit.",
-  'No hay nada anotado en las 48 horas anteriores.': 'Nothing was logged in the previous 48 hours.',
+  'No hay nada anotado en las 72 horas anteriores.': 'Nothing was logged in the previous 72 hours.',
   'Ver todo ({n})': 'See all ({n})',
   '🦉 Lo que pasó antes': '🦉 What happened before',
   'Porción {x}': 'Portion: {x}',

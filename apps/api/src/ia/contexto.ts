@@ -1,4 +1,4 @@
-// "¿Qué pasó antes?": para un dolor, una molestia o un "mal" anotado, lo de las 48 horas previas — lo anotado (comidas,
+// "¿Qué pasó antes?": para un dolor, una molestia o un "mal" anotado, lo de las 72 horas previas — lo anotado (comidas,
 // bebidas, actividad, remedios, lugares, gente), la noche anterior, el clima de esos días, los pasos y la pantalla — y
 // unas líneas de la IA que lo cuentan sin afirmar causas. Lo arma un job (patrones/noche.ts) al rato de anotarlo.
 import { sql } from 'drizzle-orm';
@@ -7,7 +7,7 @@ import { filas, una, type Db } from '../db/client.js';
 import { sumarDias } from '../lib/fechas.js';
 import { hayIa, pedirJson } from './cliente.js';
 
-const HORAS = 48;
+const HORAS = 72;
 /** Las intensidades de "cómo me siento" que cuentan como un mal momento (mal y muy mal). */
 const MAL = 4;
 
@@ -48,14 +48,14 @@ export async function armarContexto(db: Db, registroId: number, zona: string, id
         WHERE r.persona_id = ${r.persona_id} AND r.borrado IS NULL AND r.id <> ${registroId}
           AND r.inicio < ${r.inicio} AND r.inicio > ${r.inicio}::timestamptz - make_interval(hours => ${HORAS})
           AND k.clave IN ('comida', 'bebida', 'actividad', 'medicacion', 'lugar', 'gente', 'otro', 'sintoma', 'animo', 'sueno', 'viaje')
-        ORDER BY r.inicio DESC LIMIT 60`,
+        ORDER BY r.inicio DESC LIMIT 90`,
   );
-  // Lo que llegó solo esos dos días (por día): sueño, pasos, caminatas, pantalla y el clima del día.
+  // Lo que llegó solo esos tres días (por día): sueño, pasos, caminatas, pantalla y el clima del día.
   const datos = await filas<{ fecha: string; que: string; valor: number; unidad: string | null }>(
     db,
     sql`SELECT to_char(m.fecha, 'YYYY-MM-DD') AS fecha, c.nombre AS que, avg(m.valor)::float AS valor, max(m.unidad) AS unidad
         FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id
-        WHERE m.persona_id = ${r.persona_id} AND m.fecha BETWEEN ${sumarDias(r.fecha, -1)} AND ${r.fecha}
+        WHERE m.persona_id = ${r.persona_id} AND m.fecha BETWEEN ${sumarDias(r.fecha, -2)} AND ${r.fecha}
           AND c.nombre IN ('Horas de sueño', 'Calidad del sueño', 'Pasos', 'Caminata', 'Tiempo de pantalla', 'Temperatura máxima',
                            'Temperatura mínima', 'Lluvia del día', 'Cambio de presión', 'Humedad media', 'Viajes')
         GROUP BY m.fecha, c.nombre ORDER BY m.fecha`,

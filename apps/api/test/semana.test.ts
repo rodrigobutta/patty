@@ -44,12 +44,12 @@ describe('resumen de la semana', () => {
 });
 
 describe('¿qué pasó antes?', () => {
-  it('para una molestia arma lo de las 48 h previas y unas líneas, una vez; se ve en el registro', async () => {
+  it('para una molestia arma lo de las 72 h previas y unas líneas, una vez; se ve en el registro', async () => {
     const { contextosPendientes } = await import('../src/patrones/noche.js');
     const { sql } = await import('drizzle-orm');
     const { ana, personaId, categorias } = await conAdmin();
     await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Salame', categoria_id: categorias.comida, inicio: '2026-10-26T15:00:00Z' });
-    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Café', categoria_id: categorias.bebida, inicio: '2026-10-24T15:00:00Z' }); // más de 48 h antes
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Café', categoria_id: categorias.bebida, inicio: '2026-10-23T15:00:00Z' }); // más de 72 h antes
     const dolor = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Dolor de panza', categoria_id: categorias.sintoma, inicio: '2026-10-26T20:00:00Z', intensidad: 6 })).body;
     const crear = async () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ texto: 'Antes comiste salame.' }) }] });
     usarClientePrueba({ messages: { create: crear }, beta: { messages: { create: crear } } } as unknown as Anthropic);

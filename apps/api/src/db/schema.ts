@@ -682,7 +682,7 @@ export const resumenSemana = pgTable(
 );
 
 /**
- * "¿Qué pasó antes?": para un dolor, una molestia o un mal momento anotado, lo de las 48 horas previas (comidas, sueño,
+ * "¿Qué pasó antes?": para un dolor, una molestia o un mal momento anotado, lo de las 72 horas previas (comidas, sueño,
  * clima, movimiento, lugares) y unas líneas de la IA. Lo arma un job al rato de anotarlo; se ve al abrir el registro.
  */
 export const contextoRegistro = pgTable('contexto_registro', {
