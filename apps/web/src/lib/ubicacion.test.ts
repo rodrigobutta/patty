@@ -14,7 +14,7 @@ describe('seguimiento de la ubicación', () => {
     expect(seguimientoActivado()).toBe(true);
   });
 
-  it('manda el primer punto, y después solo si se movió más de 1 km o cambió de lugar', async () => {
+  it('manda el primer punto, y después solo si se movió más de 150 m o cambió de lugar', async () => {
     const f = vi.fn(async () => new Response('{"ok":true}', { status: 200 }));
     vi.stubGlobal('fetch', f);
     const t = Date.parse('2026-10-24T15:00:00Z');
@@ -25,9 +25,9 @@ describe('seguimiento de la ubicación', () => {
       persona_id: 1,
       puntos: [{ lat: -34.6, lon: -58.4, precision: 20, instante: '2026-10-24T15:00:00.000Z' }],
     });
-    expect(await mandarPunto(1, { latitude: -34.603, longitude: -58.4 }, t + 60000)).toBe(false); // 330 m
-    ponerLugares([{ id: 1, persona_id: 1, concepto_id: 9, nombre: 'Casa', lat: -34.6, lon: -58.4, radio_m: 150 }]);
-    expect(await mandarPunto(1, { latitude: -34.603, longitude: -58.4 }, t + 120000)).toBe(true); // salió de casa
+    expect(await mandarPunto(1, { latitude: -34.6008, longitude: -58.4 }, t + 60000)).toBe(false); // 90 m
+    ponerLugares([{ id: 1, persona_id: 1, concepto_id: 9, nombre: 'Casa', lat: -34.6, lon: -58.4, radio_m: 50 }]);
+    expect(await mandarPunto(1, { latitude: -34.6008, longitude: -58.4 }, t + 120000)).toBe(true); // salió de casa (radio 50 m)
     expect(await mandarPunto(1, { latitude: -34.615, longitude: -58.4 }, t + 180000)).toBe(true); // 1,3 km
     expect(await mandarPunto(2, { latitude: -34.615, longitude: -58.4 }, t + 180000)).toBe(true); // otra persona
     expect(f).toHaveBeenCalledTimes(4);
