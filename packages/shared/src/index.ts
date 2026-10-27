@@ -387,6 +387,9 @@ export interface Registro {
   /** Solo comidas y bebidas: dónde fue y en qué lugar (si se dijo). */
   donde?: Donde | null;
   lugar?: string | null;
+  /** Solo comidas: el tamaño y cómo es el plato (frito, harinas, verdura…). */
+  porcion?: Porcion | null;
+  tipos?: TipoComida[];
 }
 
 /** Dónde fue una comida o bebida: casera, afuera (restaurante, casa de alguien) o pedida. */
@@ -399,6 +402,31 @@ export type Donde = (typeof DONDE_COMIDA)[number]['clave'];
 export const esDonde = (x: unknown): x is Donde => DONDE_COMIDA.some((d) => d.clave === x);
 /** El concepto con el que entra a los patrones cada lugar donde se comió ("Comida en La Parolaccia"). */
 export const comidaEn = (lugar: string) => `Comida en ${lugar}`;
+
+/**
+ * Cómo es un plato (lo estima la IA de la foto o del texto, y se puede corregir): cada tipo entra a los patrones como
+ * un concepto más del día ("Comida frita", "Con lácteos"), igual que dónde se comió.
+ */
+export const TIPOS_COMIDA = [
+  { clave: 'frito', nombre: 'Frito', concepto: 'Comida frita', icono: '🍟' },
+  { clave: 'harinas', nombre: 'Harinas', concepto: 'Con harinas', icono: '🍞' },
+  { clave: 'verdura', nombre: 'Verdura', concepto: 'Con verdura', icono: '🥦' },
+  { clave: 'proteina', nombre: 'Proteína', concepto: 'Con proteína', icono: '🍗' },
+  { clave: 'lacteos', nombre: 'Lácteos', concepto: 'Con lácteos', icono: '🧀' },
+  { clave: 'dulce', nombre: 'Dulce', concepto: 'Algo dulce', icono: '🍰' },
+  { clave: 'picante', nombre: 'Picante', concepto: 'Comida picante', icono: '🌶️' },
+  { clave: 'ultraprocesado', nombre: 'Ultraprocesado', concepto: 'Ultraprocesado', icono: '📦' },
+] as const;
+export type TipoComida = (typeof TIPOS_COMIDA)[number]['clave'];
+export const esTipoComida = (x: unknown): x is TipoComida => TIPOS_COMIDA.some((d) => d.clave === x);
+/** El tamaño del plato. La mediana no suma concepto: es lo normal. */
+export const PORCIONES = [
+  { clave: 'chica', nombre: 'Chica', concepto: 'Porción chica' },
+  { clave: 'mediana', nombre: 'Mediana', concepto: null },
+  { clave: 'grande', nombre: 'Grande', concepto: 'Porción grande' },
+] as const;
+export type Porcion = (typeof PORCIONES)[number]['clave'];
+export const esPorcion = (x: unknown): x is Porcion => PORCIONES.some((d) => d.clave === x);
 
 export interface NuevoRegistro {
   persona_id: number;
@@ -414,6 +442,8 @@ export interface NuevoRegistro {
   nota?: string | null;
   donde?: Donde | null;
   lugar?: string | null;
+  porcion?: Porcion | null;
+  tipos?: TipoComida[];
 }
 
 /** Un lugar con nombre de una persona (Casa, Supermercado, Farmacia). Cada uno es un concepto de «Lugares y salidas». */

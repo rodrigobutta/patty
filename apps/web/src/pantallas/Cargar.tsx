@@ -1,7 +1,7 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde } from 'shared';
+import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde, type Porcion, type TipoComida } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
@@ -13,7 +13,7 @@ import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
-import { DondeComida, etiquetaDonde } from '../ui/DondeComida';
+import { DondeComida, etiquetaDonde, etiquetaPlato } from '../ui/DondeComida';
 import { IconoCamara, IconoGaleria, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { OndaVoz } from '../ui/OndaVoz';
 
@@ -55,6 +55,8 @@ interface Propuesta {
   nota: string | null;
   donde?: Donde | null;
   lugar?: string | null;
+  porcion?: Porcion | null;
+  tipos?: TipoComida[];
 }
 
 export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto, pista }: {
@@ -551,6 +553,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
                   {p.nuevo ? <span className="etiqueta">{t('nuevo')}</span> : null}
                   {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${conUnidad(p.valor, p.unidad, 2, idioma())}` : ''}
                   {etiquetaDonde(p.donde, p.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(p.donde, p.lugar)}</span> : null}
+                  {etiquetaPlato(p.porcion, p.tipos) ? <span className="etiqueta-donde">{etiquetaPlato(p.porcion, p.tipos)}</span> : null}
                   {p.nota ? <span className="suave chico"> — {p.nota}</span> : null}
                 </span>
               </li>

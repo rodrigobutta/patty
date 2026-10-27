@@ -466,4 +466,21 @@ describe('dónde se comió', () => {
     expect(lista[0]).toMatchObject({ donde: 'delivery', lugar: null });
     expect((await ana.get(`/api/registros/lugares-comida?persona=${personaId}`)).body.map((x: any) => x.lugar)).toEqual(['Sushi Club']);
   });
+
+  it('cómo era el plato: porción y tipos entran a la serie diaria, junto con dónde', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const r = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Milanesa con papas fritas', categoria_id: categorias.comida, inicio: '2026-10-21T23:00:00.000Z', donde: 'casa', porcion: 'grande', tipos: ['frito', 'proteina', 'nada'] })).body;
+    expect(r).toMatchObject({ donde: 'casa', porcion: 'grande', tipos: ['frito', 'proteina'] });
+    const db = (await import('../src/db/client.js')).obtenerDb();
+    const { sql } = await import('drizzle-orm');
+    const serie = async () =>
+      [...(await db.execute(sql`SELECT k.nombre FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id WHERE s.persona_id = ${personaId} AND s.fecha = '2026-10-21'`))].map((x: any) => x.nombre).sort();
+    expect(await serie()).toEqual(['Comida casera', 'Comida frita', 'Con proteína', 'Milanesa con papas fritas', 'Porción grande']);
+    // corregirlo: mediana y con verdura (la mediana no suma concepto); dónde no se toca
+    await ana.put(`/api/registros/${r.id}`, { inicio: r.inicio, porcion: 'mediana', tipos: ['verdura'] });
+    expect(await serie()).toEqual(['Comida casera', 'Con verdura', 'Milanesa con papas fritas']);
+    // a una bebida no se le guarda
+    const b = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Coca', categoria_id: categorias.bebida, tipos: ['dulce'] })).body;
+    expect(b).toMatchObject({ porcion: null, tipos: [] });
+  });
 });

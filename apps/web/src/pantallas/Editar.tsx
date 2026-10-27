@@ -1,12 +1,12 @@
 // Cambiar algo ya anotado: la hora, la cantidad o los minutos, la intensidad (o cómo te sentías) y la nota. Lo que
 // fue (el concepto) no se cambia acá: para eso se borra y se anota de nuevo.
 import { useEffect, useState } from 'react';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS, ESTADOS_PUNTUALES, estadoDe, unidadPara, type Donde, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS, ESTADOS_PUNTUALES, estadoDe, unidadPara, type Donde, type Porcion, type TipoComida, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { horaEn, instanteDelDia } from '../lib/fechas';
-import { DondeComida } from '../ui/DondeComida';
+import { DondeComida, PlatoComida } from '../ui/DondeComida';
 import { genteGuardada, traerGente, type Alguien } from '../lib/gente';
 
 import { QuePasoAntes } from './QuePasoAntes';
@@ -34,6 +34,10 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
   const esComida = cat?.clave === 'comida' || cat?.clave === 'bebida';
   const [donde, setDonde] = useState<Donde | null>(r.donde ?? null);
   const [lugar, setLugar] = useState(r.lugar ?? '');
+  /** Solo comidas: el tamaño y cómo era el plato. */
+  const esPlato = cat?.clave === 'comida';
+  const [porcion, setPorcion] = useState<Porcion | null>(r.porcion ?? null);
+  const [tipos, setTipos] = useState<TipoComida[]>(r.tipos ?? []);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   // Con quién estuvo: la gente anotada junto con esto (a la misma hora), para sumar o sacar personas de tu gente.
@@ -69,6 +73,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
         intensidad: propio ? intensidad : x.intensidad,
         nota: propio ? nota.trim() || null : x.nota,
         ...(propio && esComida ? { donde, lugar: lugar.trim() || null } : {}),
+        ...(propio && esPlato ? { porcion, tipos } : {}),
       });
     try {
       await cambio(r, true);
@@ -134,6 +139,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
         ) : null}
         <label>{cat?.tipo_valor === 'hora' ? t('Hora') : t('Cuándo')}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
         {esComida ? <DondeComida personaId={persona.id} donde={donde} lugar={lugar} alCambiar={(d, l) => { setDonde(d); setLugar(l); }} /> : null}
+        {esPlato ? <PlatoComida porcion={porcion} tipos={tipos} alCambiar={(p, x) => { setPorcion(p); setTipos(x); }} /> : null}
         {conGente ? (
           <div className="con-quien">
             <p className="rotulo-campo">{t('👥 Con quién')}</p>

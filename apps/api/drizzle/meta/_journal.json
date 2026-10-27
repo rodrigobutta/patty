@@ -204,6 +204,13 @@
       "when": 1793143245680,
       "tag": "0028_contexto_registro",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793143493792,
+      "tag": "0029_serie_con_plato",
+      "breakpoints": true
     }
   ]
 }

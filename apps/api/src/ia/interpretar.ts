@@ -1,7 +1,7 @@
 // Carga en texto libre: "desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos.
 // No guarda nada: la app los muestra para que la persona los revise y después los manda a /api/registros/varios.
 import { sql } from 'drizzle-orm';
-import { frecuenciaTexto, normalizar, TIPOS_VALOR, type Categoria, type Idioma } from 'shared';
+import { esPorcion, esTipoComida, frecuenciaTexto, normalizar, PORCIONES, TIPOS_COMIDA, TIPOS_VALOR, type Categoria, type Idioma } from 'shared';
 import { filas, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -32,8 +32,10 @@ const ESQUEMA = {
           nota: nulo('string', 'Detalle que no entra en el concepto (lugar del dolor, con quién, marca)'),
           donde: { anyOf: [{ type: 'string', enum: ['casa', 'afuera', 'delivery'] }, { type: 'null' }], description: 'Solo comidas y bebidas: casera, afuera o pedida' },
           lugar: nulo('string', 'Solo comidas y bebidas de afuera o delivery: el restaurante, bar, casa de alguien o de dónde se pidió'),
+          porcion: { anyOf: [{ type: 'string', enum: PORCIONES.map((x) => x.clave) }, { type: 'null' }], description: 'Solo comidas: el tamaño del plato, si se ve o se dijo' },
+          tipos: { type: 'array', items: { type: 'string', enum: TIPOS_COMIDA.map((x) => x.clave) }, description: 'Solo comidas: cómo es (vacío si no aplica o no se sabe)' },
         },
-        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar'],
+        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar', 'porcion', 'tipos'],
         additionalProperties: false,
       },
     },
@@ -93,6 +95,8 @@ interface Respuesta {
     nota: string | null;
     donde?: 'casa' | 'afuera' | 'delivery' | null;
     lugar?: string | null;
+    porcion?: string | null;
+    tipos?: string[];
   }>;
   tratamientos: Array<{
     remedio: string;
@@ -198,7 +202,11 @@ export async function interpretarTexto(
     'cólicos y otras molestias del ciclo van como sintoma. ' +
     'Si viene una foto, mirá qué se ve y anotalo: en un plato de comida, cada comida o ingrediente principal que se ' +
     'reconozca (con una cantidad estimada si se puede, por ejemplo 2 empanadas, 1 vaso), una bebida, la caja de un ' +
-    'remedio (su nombre). La hora es ahora, salvo que el texto diga otra cosa. Si no se distingue bien qué es, ' +
+    'remedio (su nombre). En cada comida (de la foto o del texto), además, la porción (chica, mediana, grande; null si no ' +
+    'se puede saber) y los tipos que tenga: frito, harinas (pan, pasta, masa, arroz), verdura, proteina (carne, pollo, ' +
+    'pescado, huevo, legumbres), lacteos, dulce, picante, ultraprocesado (snacks, gaseosas, embutidos, comida de paquete); ' +
+    'solo los que se vean o se digan, sin inventar. En lo que no es comida, porcion null y tipos vacío. ' +
+    'La hora es ahora, salvo que el texto diga otra cosa. Si no se distingue bien qué es, ' +
     'preguntalo en dudas en vez de inventar; si la foto no tiene nada para anotar, no propongas registros y decilo en dudas. ' +
     'Si al final hay aclaraciones (respuestas a tus preguntas), usalas para completar o corregir los registros: no los ' +
     'repitas, y no vuelvas a preguntar lo que ya se aclaró. Si alguna pregunta anterior quedó sin contestar, volvé a ' +
@@ -278,6 +286,7 @@ export async function interpretarTexto(
           nota: x.nota,
           donde: x.donde ?? null,
           lugar: x.lugar ?? null,
+          ...(x.categoria === 'comida' ? { porcion: esPorcion(x.porcion) ? x.porcion : null, tipos: [...new Set((x.tipos ?? []).filter(esTipoComida))] } : {}),
         };
       }),
   };

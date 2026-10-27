@@ -1,7 +1,7 @@
 // Lo que se anota de cada persona. Un registro es "este concepto, a esta hora, con este valor".
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { comidaEn, DONDE_COMIDA, esDonde, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
+import { comidaEn, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { registros } from '../db/schema.js';
 import { interpretarTexto } from '../ia/interpretar.js';
@@ -15,6 +15,7 @@ import { vincularToma } from './tratamientos.js';
 
 const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char(r.fecha, 'YYYY-MM-DD') AS fecha,
   r.valor, r.intensidad, r.unidad, r.nota, r.origen, r.datos->>'donde' AS donde, r.datos->>'lugar' AS lugar,
+  r.datos->>'porcion' AS porcion, coalesce(r.datos->'tipos', '[]'::jsonb) AS tipos,
   (SELECT c.nombre FROM conceptos c WHERE c.id = r.concepto_id) AS concepto,
   (SELECT c.categoria_id FROM conceptos c WHERE c.id = r.concepto_id) AS categoria_id`;
 
@@ -77,6 +78,24 @@ async function datosComida(tx: Tx, u: Usuario, d: NuevoRegistro, c: Concepto): P
   return datos;
 }
 
+/**
+ * Cómo es el plato (porción y tipos). Se guarda en `datos` con los conceptos de cada uno ("Comida frita", "Porción
+ * grande") en plato_concepto_ids, que la vista serie_diaria suma como dónde se comió. Undefined si no corresponde tocarlo.
+ */
+async function datosPlato(tx: Tx, u: Usuario, d: NuevoRegistro, c: Concepto): Promise<Record<string, unknown> | null | undefined> {
+  if (!('porcion' in d) && !('tipos' in d)) return undefined;
+  const cat = await una<{ clave: string }>(tx, sql`SELECT clave FROM categorias WHERE id = ${c.categoria_id}`);
+  if (cat?.clave !== 'comida') return undefined;
+  const porcion = esPorcion(d.porcion) ? d.porcion : null;
+  const tipos = [...new Set(Array.isArray(d.tipos) ? d.tipos.filter(esTipoComida) : [])];
+  if (!porcion && !tipos.length) return null;
+  const tamano = PORCIONES.find((x) => x.clave === porcion)?.concepto;
+  const nombres: string[] = [...tipos.map((x) => TIPOS_COMIDA.find((t) => t.clave === x)!.concepto), ...(tamano ? [tamano] : [])];
+  const ids: number[] = [];
+  for (const nombre of nombres) ids.push((await obtenerOCrearConcepto(tx, { nombre, categoriaId: c.categoria_id, tipoValor: 'evento', unidad: null, usuarioId: u.id })).concepto.id);
+  return { porcion, tipos, plato_concepto_ids: ids };
+}
+
 export async function guardarRegistro(
   tx: Tx,
   u: Usuario,
@@ -87,9 +106,11 @@ export async function guardarRegistro(
   const p = await persona(tx, u, Number(d.persona_id), true);
   const c = await conceptoDe(tx, d, u);
   const comida = await datosComida(tx, u, d, c);
+  const plato = await datosPlato(tx, u, d, c);
+  const datos = comida || plato ? { ...comida, ...plato } : null;
   const [r] = await tx
     .insert(registros)
-    .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(comida ? { datos: comida } : {}) })
+    .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(datos ? { datos } : {}) })
     .returning({ id: registros.id });
   await tx.execute(sql`UPDATE conceptos SET usos = usos + 1, ultimo_uso = now() WHERE id = ${c.id}`);
   const hecho = (await una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${r.id}`))!;
@@ -196,10 +217,14 @@ export const rutasRegistros = new Hono<Env>()
       const actual = await propio(tx, c.var.usuario, id);
       const concepto = await conceptoDe(tx, { ...d, concepto_id: d.concepto_id ?? (d.concepto_nombre ? undefined : actual.concepto_id) }, c.var.usuario);
       const comida = await datosComida(tx, c.var.usuario, d, concepto);
+      const plato = await datosPlato(tx, c.var.usuario, d, concepto);
       await tx.update(registros).set({ concepto_id: concepto.id, ...valores(d, concepto, actual.persona) }).where(sql`id = ${id}`);
       // Dónde se comió: se reemplaza (o se saca) solo si vino en el pedido.
       if (comida !== undefined) {
         await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'donde' - 'donde_concepto_id' - 'lugar' - 'lugar_concepto_id') || ${JSON.stringify(comida ?? {})}::jsonb WHERE id = ${id}`);
+      }
+      if (plato !== undefined) {
+        await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'porcion' - 'tipos' - 'plato_concepto_ids') || ${JSON.stringify(plato ?? {})}::jsonb WHERE id = ${id}`);
       }
       return una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${id}`);
     });
