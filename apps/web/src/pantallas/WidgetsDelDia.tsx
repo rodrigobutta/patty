@@ -6,6 +6,7 @@ import { IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
 import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
 import { GraficoSueno, ResumenNoche } from './GraficoSueno';
+import { RecorridoDelDia } from './RecorridoDelDia';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
 import { locale, t } from '../lib/idioma';
 import { IconoCelular, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
@@ -209,6 +210,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                     <span className="widget-linea">{w.linea}</span>
                     {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
                   </div>
+                  {w.lugar === 'ubicacion' || w.lugar === 'pasos' ? <RecorridoDelDia persona={persona} fecha={fecha} /> : null}
                   {w.lugar === 'sueno' ? (
                     <>
                       <ResumenNoche persona={persona} fecha={fecha} />

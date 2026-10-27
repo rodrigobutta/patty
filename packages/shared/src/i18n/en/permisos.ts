@@ -471,4 +471,7 @@ export const PERMISOS: Record<string, string> = {
   'Última sincronización: {cuando}': 'Last sync: {cuando}',
   'Patty está mirando tu noche…': 'Patty is looking at your night…',
   '🦉 Cómo fue tu noche': '🦉 How your night went',
+  'salida': 'start',
+  'llegada': 'end',
+  'punteado: del día anterior o siguiente': 'dotted: from the previous or next day',
 };

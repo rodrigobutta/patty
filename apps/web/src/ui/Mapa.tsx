@@ -31,9 +31,17 @@ function colorCalor(w: number): string {
   return w < 0.25 ? '#b4a0f0' : w < 0.5 ? '#8f78d6' : w < 0.8 ? '#e58bb4' : '#f2a33a';
 }
 
-export function Mapa({ puntos, calor = [], alto = 180, interactivo = false, etiquetasFijas = false, className = '' }: {
+/** Un recorrido: los puntos en orden; `bordes` (del día anterior o siguiente) van punteados. */
+export interface Ruta {
+  puntos: Array<{ lat: number; lon: number }>;
+  antes?: { lat: number; lon: number } | null;
+  despues?: { lat: number; lon: number } | null;
+}
+
+export function Mapa({ puntos, calor = [], ruta, alto = 180, interactivo = false, etiquetasFijas = false, className = '' }: {
   puntos: PuntoMapa[];
   calor?: Calor[];
+  ruta?: Ruta;
   alto?: number;
   /** Arrastrar y hacer zoom (en el mapa grande); el mini queda quieto para no pelear con el scroll. */
   interactivo?: boolean;
@@ -42,9 +50,9 @@ export function Mapa({ puntos, calor = [], alto = 180, interactivo = false, etiq
   className?: string;
 }) {
   const caja = useRef<HTMLDivElement>(null);
-  const clave = JSON.stringify(puntos) + JSON.stringify(calor);
+  const clave = JSON.stringify(puntos) + JSON.stringify(calor) + JSON.stringify(ruta ?? null);
   useEffect(() => {
-    if (!caja.current || (!puntos.length && !calor.length)) return;
+    if (!caja.current || (!puntos.length && !calor.length && !ruta?.puntos.length)) return;
     let mapa: import('leaflet').Map | null = null;
     let vivo = true;
     void (async () => {
@@ -77,6 +85,25 @@ export function Mapa({ puntos, calor = [], alto = 180, interactivo = false, etiq
         capa.addTo(mapa);
         capas.push(capa);
       }
+      // El recorrido: una línea violeta por los puntos en orden, con el comienzo y el final marcados; lo del día anterior
+      // o siguiente, punteado.
+      if (ruta?.puntos.length) {
+        const ll = ruta.puntos.map((x) => [x.lat, x.lon] as [number, number]);
+        const linea = L.polyline(ll, { color: ACENTO, weight: 4, opacity: 0.85, lineJoin: 'round', lineCap: 'round' });
+        linea.addTo(mapa);
+        capas.push(linea);
+        for (const [borde, extremo] of [[ruta.antes, ll[0]], [ruta.despues, ll[ll.length - 1]]] as const) {
+          if (!borde) continue;
+          const l2 = L.polyline([[borde.lat, borde.lon], extremo], { color: ACENTO, weight: 3, opacity: 0.6, dashArray: '4 7' });
+          l2.addTo(mapa);
+          capas.push(l2);
+        }
+        const inicio = L.circleMarker(ll[0], { radius: 6, color: '#fff', weight: 2, fillColor: '#2f9e6a', fillOpacity: 1 });
+        const fin = L.circleMarker(ll[ll.length - 1], { radius: 7, color: '#fff', weight: 2, fillColor: '#f2a33a', fillOpacity: 1 });
+        inicio.addTo(mapa);
+        fin.addTo(mapa);
+        capas.push(inicio, fin);
+      }
       for (const p of puntos) {
         const color = p.sinNombre ? SIN_NOMBRE : ACENTO;
         const capa = p.radio
@@ -86,7 +113,7 @@ export function Mapa({ puntos, calor = [], alto = 180, interactivo = false, etiq
         capa.addTo(mapa);
         capas.push(capa);
       }
-      if (puntos.length === 1 && !calor.length) mapa.setView([puntos[0].lat, puntos[0].lon], puntos[0].radio && puntos[0].radio > 400 ? 14 : 16);
+      if (puntos.length === 1 && !calor.length && !ruta?.puntos.length) mapa.setView([puntos[0].lat, puntos[0].lon], puntos[0].radio && puntos[0].radio > 400 ? 14 : 16);
       else mapa.fitBounds(L.featureGroup(capas).getBounds(), { padding: [28, 28], maxZoom: 16 });
     })();
     return () => {

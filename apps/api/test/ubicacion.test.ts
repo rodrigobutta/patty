@@ -178,3 +178,20 @@ describe('mapa de calor', () => {
     expect(r.every((x: any) => x.n >= 1 && typeof x.lat === 'number')).toBe(true);
   });
 });
+
+describe('recorrido del día', () => {
+  afterAll(() => cerrarDb());
+  it('los puntos del día en orden, con el anterior si está cerca de la medianoche', async () => {
+    const { ana, personaId } = await conAdmin();
+    const puntos = [
+      { lat: -34.60, lon: -58.40, instante: '2026-10-26T07:30:00.000Z' }, // 4:30 en Buenos Aires: todavía el día 25
+      { lat: -34.62, lon: -58.40, instante: '2026-10-26T09:00:00.000Z' },
+      { lat: -34.64, lon: -58.40, instante: '2026-10-26T15:00:00.000Z' },
+    ];
+    await ana.post('/api/ubicacion', { persona_id: personaId, puntos });
+    const r = (await ana.get(`/api/ubicacion/recorrido?persona=${personaId}&fecha=2026-10-26`)).body;
+    expect(r.puntos.map((x: any) => x.lat)).toEqual([-34.62, -34.64]);
+    expect(r.antes).toMatchObject({ lat: -34.6 });
+    expect(r.despues).toBeNull();
+  });
+});

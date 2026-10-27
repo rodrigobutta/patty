@@ -197,6 +197,47 @@ export const rutasUbicacion = new Hono<Env>()
     };
     return c.json(res);
   })
+  .get('/recorrido', async (c) => {
+    // ?persona=1&fecha=AAAA-MM-DD: el mapita del día (en el widget de viajes). Los puntos en orden, más el último del día
+    // anterior y el primero del siguiente si están cerca de la medianoche (un viaje que empezó antes o sigue después), y
+    // los lugares con nombre donde estuvo.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const fecha = c.req.query('fecha');
+    const dia = esFecha(fecha) ? fecha : diaDePatty(new Date(), p.zona_horaria);
+    const ps = await filas<{ instante: string; lat: number; lon: number }>(
+      c.var.db,
+      sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia} ORDER BY instante`,
+    );
+    const BORDE_H = 3;
+    const antes = ps.length
+      ? await una<{ instante: string; lat: number; lon: number }>(
+          c.var.db,
+          sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante < ${ps[0].instante}
+                AND instante > ${ps[0].instante}::timestamptz - make_interval(hours => ${BORDE_H}) ORDER BY instante DESC LIMIT 1`,
+        )
+      : null;
+    const despues = ps.length
+      ? await una<{ instante: string; lat: number; lon: number }>(
+          c.var.db,
+          sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante > ${ps[ps.length - 1].instante}
+                AND instante < ${ps[ps.length - 1].instante}::timestamptz + make_interval(hours => ${BORDE_H}) ORDER BY instante LIMIT 1`,
+        )
+      : null;
+    const ls = await filas<LugarZona & { nombre: string }>(
+      c.var.db,
+      sql`SELECT l.id, l.lat, l.lon, l.radio_m, c.nombre FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.persona_id = ${p.id}`,
+    );
+    const r = resumirDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), ls);
+    const visitados = new Set(r.estadias.map((e) => e.lugar_id));
+    return c.json({
+      puntos: ps.map((x) => ({ lat: x.lat, lon: x.lon, instante: new Date(x.instante).toISOString() })),
+      antes: antes ? { lat: antes.lat, lon: antes.lon, instante: new Date(antes.instante).toISOString() } : null,
+      despues: despues ? { lat: despues.lat, lon: despues.lon, instante: new Date(despues.instante).toISOString() } : null,
+      lugares: ls.filter((l) => visitados.has(l.id)).map((l) => ({ nombre: l.nombre, lat: l.lat, lon: l.lon, radio_m: l.radio_m })),
+      viajes: r.viajes,
+      km: r.km,
+    });
+  })
   .get('/viajes', async (c) => {
     // ?persona=1&fecha=AAAA-MM-DD: los viajes del día con lo que se adivina (en qué fue, si parece pesado) y si ya se
     // contó cómo fue.
