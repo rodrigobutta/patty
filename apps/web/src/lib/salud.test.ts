@@ -32,3 +32,22 @@ describe('el sueño de una noche', () => {
     expect(resumenDeSueno([])).toEqual([]);
   });
 });
+
+describe('etapas de la noche', () => {
+  it('cada etapa con su hora; sin etapas, la sesión entera como dormido', async () => {
+    const { etapasDeLaNoche } = await import('./salud');
+    const conEtapas = {
+      startDate: '2026-10-26T02:00:00Z',
+      endDate: '2026-10-26T10:00:00Z',
+      stages: [
+        { startDate: '2026-10-26T02:00:00Z', endDate: '2026-10-26T04:00:00Z', stage: 'deep', durationMinutes: 120 },
+        { startDate: '2026-10-26T04:00:00Z', endDate: '2026-10-26T04:15:00Z', stage: 'awake', durationMinutes: 15 },
+        { startDate: '2026-10-26T04:15:00Z', endDate: '2026-10-26T10:00:00Z', stage: 'light', durationMinutes: 345 },
+      ],
+    };
+    expect(etapasDeLaNoche([conEtapas as never]).map((e) => e.etapa)).toEqual(['profundo', 'despierto', 'ligero']);
+    expect(etapasDeLaNoche([{ startDate: '2026-10-26T02:00:00Z', endDate: '2026-10-26T10:00:00Z' } as never])).toEqual([
+      { inicio: '2026-10-26T02:00:00Z', fin: '2026-10-26T10:00:00Z', etapa: 'dormido' },
+    ]);
+  });
+});

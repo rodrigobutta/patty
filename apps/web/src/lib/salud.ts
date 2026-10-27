@@ -4,6 +4,7 @@
 // (como mucho cada 30 min) manda los últimos 7 días, un valor por día, a la ingesta de la fuente «Reloj y salud».
 import { Health, type HealthDataType, type HealthSample } from '@capgo/capacitor-health';
 import { useEffect } from 'react';
+import { api } from '../api';
 import { ingesta } from './fuenteApp';
 import { esNativa } from './nativo';
 
@@ -77,6 +78,25 @@ export function resumenDeSueno(sesiones: HealthSample[]): Array<Omit<Medicion, '
   return r;
 }
 
+export interface EtapaSueno {
+  inicio: string;
+  fin: string;
+  etapa: 'despierto' | 'ligero' | 'profundo' | 'rem' | 'dormido';
+}
+
+const NOMBRE_ETAPA: Partial<Record<string, EtapaSueno['etapa']>> = { awake: 'despierto', light: 'ligero', deep: 'profundo', rem: 'rem', asleep: 'dormido' };
+
+/** Los tramos de una noche con su hora; si el reloj no distingue etapas, cada sesión es un tramo "dormido". */
+export function etapasDeLaNoche(sesiones: HealthSample[]): EtapaSueno[] {
+  const r: EtapaSueno[] = [];
+  for (const s of sesiones) {
+    const conEtapas = (s.stages ?? []).filter((e) => NOMBRE_ETAPA[e.stage]);
+    if (conEtapas.length) for (const e of conEtapas) r.push({ inicio: e.startDate, fin: e.endDate, etapa: NOMBRE_ETAPA[e.stage]! });
+    else r.push({ inicio: s.startDate, fin: s.endDate, etapa: 'dormido' });
+  }
+  return r.sort((a, b) => a.inicio.localeCompare(b.inicio));
+}
+
 /** Qué se suma o promedia por día, y cómo se llama en Patty. */
 const AGREGADOS: Array<{ tipo: HealthDataType; como: 'sum' | 'average' | 'min' | 'max'; concepto: string; categoria: string; unidad: string; factor?: number; decimales?: number }> = [
   { tipo: 'steps', como: 'sum', concepto: 'Pasos', categoria: 'actividad', unidad: 'pasos', decimales: 0 },
@@ -128,6 +148,7 @@ export async function sincronizarSalud(personaId: number): Promise<number> {
   const permitidos = new Set(await permisosSalud());
   if (!permitidos.size) return 0;
   const lista: Medicion[] = [];
+  const noches: Array<{ noche: string; etapas: EtapaSueno[] }> = [];
   const periodo = dias();
   const desde = periodo[0].desde.toISOString();
   const hasta = periodo[periodo.length - 1].hasta.toISOString();
@@ -161,6 +182,7 @@ export async function sincronizarSalud(personaId: number): Promise<number> {
           return fin >= p.desde && fin < p.hasta;
         });
         for (const m of resumenDeSueno(noche)) poner(p, m);
+        if (noche.length) noches.push({ noche: p.desde.toLocaleDateString('en-CA'), etapas: etapasDeLaNoche(noche) });
       }
     } catch {
       /* sin sueño */
@@ -186,6 +208,8 @@ export async function sincronizarSalud(personaId: number): Promise<number> {
   }
 
   if (lista.length) await ingesta(personaId, '', { mediciones: lista }, 'salud');
+  // Las etapas con su hora (para el gráfico de la noche y los despertares que se repiten).
+  if (noches.length) await api('POST', '/api/sueno/etapas', { persona_id: personaId, noches }).catch(() => {});
   try {
     localStorage.setItem(ULTIMA, String(Date.now()));
   } catch {

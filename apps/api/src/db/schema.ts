@@ -620,3 +620,23 @@ export const comentarios = pgTable(
   },
   (t) => [index('comentarios_persona_idx').on(t.persona_id, t.fecha)],
 );
+
+/**
+ * Las etapas de cada noche con su hora (del reloj, por Health Connect o Salud): despierto, ligero, profundo, REM (o
+ * "dormido" si el reloj no las distingue). `noche` es el día en que uno se despierta, como el resto del sueño. Sirven
+ * para el gráfico de la noche y para notar despertares que se repiten a la misma hora.
+ */
+export const suenoEtapas = pgTable(
+  'sueno_etapas',
+  {
+    id: idGrande(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    noche: date('noche', { mode: 'string' }).notNull(),
+    inicio: instante('inicio').notNull(),
+    fin: instante('fin').notNull(),
+    etapa: text('etapa', { enum: ['despierto', 'ligero', 'profundo', 'rem', 'dormido'] }).notNull(),
+  },
+  (t) => [index('sueno_etapas_noche_idx').on(t.persona_id, t.noche)],
+);

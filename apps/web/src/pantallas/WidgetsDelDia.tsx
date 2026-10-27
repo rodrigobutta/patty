@@ -4,7 +4,8 @@
 import { Fragment, useState, type ReactNode } from 'react';
 import { IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
-import type { Categoria, DatoAutomatico, Registro } from 'shared';
+import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
+import { GraficoSueno } from './GraficoSueno';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
 import { locale, t } from '../lib/idioma';
 import { IconoCelular, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
@@ -127,7 +128,7 @@ function widgetSueno(todos: DatoAutomatico[], grupos: GrupoAutomatico[], registr
 /** El lugar de cada permiso que falta (el de la ubicación también trae el clima). */
 const LUGAR_DE: Record<Fuente, Lugar> = { ubicacion: 'ubicacion', telefono: 'telefono', salud: 'sueno' };
 
-export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, alActivar, alContarSueno, buscandoSalud = false, antes }: {
+export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, alActivar, alContarSueno, buscandoSalud = false, antes, persona, fecha }: {
   automaticos: DatoAutomatico[];
   registros: Registro[];
   categorias: Categoria[];
@@ -139,6 +140,9 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
   buscandoSalud?: boolean;
   /** Widgets que van primero (los remedios del día). */
   antes?: ReactNode;
+  /** Para el gráfico de la noche (en la hoja del sueño). */
+  persona: Persona;
+  fecha: string;
 }) {
   const [abierto, setAbierto] = useState<Lugar | null>(null);
   const grupos = agruparAutomaticos(automaticos);
@@ -205,6 +209,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                     <span className="widget-linea">{w.linea}</span>
                     {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
                   </div>
+                  {w.lugar === 'sueno' ? <GraficoSueno persona={persona} fecha={fecha} /> : null}
                   {w.grupos.length ? (
                     <ul className="detalle-auto">
                       {w.grupos.flatMap((g) => g.lineas).map((x) => (
