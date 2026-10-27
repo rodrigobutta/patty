@@ -1,4 +1,4 @@
-// Los mapas de Patty: base de CARTO (de OpenStreetMap, sin claves), teñida con los violetas de la app, clara u oscura según
+// Los mapas de Patty: base de OpenStreetMap (sin claves), teñida con los violetas de la app, clara u oscura según
 // el tema. Para ver dónde queda un lugar, los lugares frecuentes o el mapa de calor de dónde estuviste. Leaflet se carga
 // recién cuando hace falta un mapa, así no pesa en el resto de la app.
 import { useEffect, useRef } from 'react';
@@ -70,10 +70,10 @@ export function Mapa({ puntos, calor = [], ruta, alto = 180, interactivo = false
         attributionControl: true,
       });
       const oscuro = temaOscuro();
-      L.tileLayer(`https://{s}.basemaps.cartocdn.com/${oscuro ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`, {
+      // OpenStreetMap (sin claves), pasado a grises y teñido con los violetas de Patty por CSS (claro u oscuro).
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '© OpenStreetMap · © CARTO',
+        attribution: '© OpenStreetMap',
         className: oscuro ? 'mapa-patty oscuro' : 'mapa-patty',
       }).addTo(mapa);
       const capas: import('leaflet').Layer[] = [];
@@ -114,7 +114,19 @@ export function Mapa({ puntos, calor = [], ruta, alto = 180, interactivo = false
         capas.push(capa);
       }
       if (puntos.length === 1 && !calor.length && !ruta?.puntos.length) mapa.setView([puntos[0].lat, puntos[0].lon], puntos[0].radio && puntos[0].radio > 400 ? 14 : 16);
-      else mapa.fitBounds(L.featureGroup(capas).getBounds(), { padding: [28, 28], maxZoom: 16 });
+      else {
+        // Los límites con las coordenadas (no con las capas: los círculos en metros todavía no saben medirse hasta que
+        // el mapa tiene vista, y eso dejaba el mapa gris).
+        const todos: Array<[number, number]> = [
+          ...puntos.map((p) => [p.lat, p.lon] as [number, number]),
+          ...calor.map((x) => [x.lat, x.lon] as [number, number]),
+          ...(ruta?.puntos ?? []).map((x) => [x.lat, x.lon] as [number, number]),
+          ...[ruta?.antes, ruta?.despues].filter((x): x is { lat: number; lon: number } => Boolean(x)).map((x) => [x.lat, x.lon] as [number, number]),
+        ];
+        const b = L.latLngBounds(todos);
+        if (todos.length === 1 || b.getNorthEast().equals(b.getSouthWest())) mapa.setView(todos[0], 15);
+        else mapa.fitBounds(b, { padding: [28, 28], maxZoom: 16 });
+      }
     })();
     return () => {
       vivo = false;

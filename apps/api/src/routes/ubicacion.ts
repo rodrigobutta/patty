@@ -12,7 +12,7 @@ import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { adivinarViaje, COMO_VIAJE, MODOS_VIAJE, traducir, VIAJE_PESADO, type ModoViaje, type ViajeDelDia, distanciaMetros, lugarDe, nombreLindo, normalizar, puntoNuevo, RADIO_LUGAR_M, type DiaUbicacion, type Lugar, type ParadaSinNombre } from 'shared';
 import { direccionDe } from '../ubicacion/direccion.js';
-import { filas, una, type Tx } from '../db/client.js';
+import { filas, una, type Db, type Tx } from '../db/client.js';
 import { fuentes, lugares, mediciones, puntos, registros } from '../db/schema.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -94,7 +94,7 @@ export async function recalcular(tx: Tx, p: PersonaZona, fechas: string[]): Prom
 }
 
 /** Todos los días que todavía tienen puntos (para cuando cambian los lugares). */
-async function recalcularTodo(tx: Tx, p: PersonaZona): Promise<void> {
+export async function recalcularTodo(tx: Tx, p: PersonaZona): Promise<void> {
   const dias = await filas<{ fecha: string }>(tx, sql`SELECT DISTINCT to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${p.id}`);
   await recalcular(tx, p, dias.map((d) => d.fecha));
 }
@@ -252,7 +252,8 @@ export const rutasUbicacion = new Hono<Env>()
             WHERE r.persona_id = ${p.id} AND r.fecha = ${dia} AND r.borrado IS NULL AND k.clave = 'viaje'`,
       )).map((x) => new Date(x.inicio).getTime()),
     );
-    const r: ViajeDelDia[] = viajesDelDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon }))).map((v) => {
+    const lugaresP = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
+    const r: ViajeDelDia[] = viajesDelDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), lugaresP).map((v) => {
       const minutos = Math.max(1, Math.round((v.fin - v.inicio) / 60000));
       const km = Math.round(v.metros / 100) / 10;
       const g = adivinarViaje(km, minutos);
@@ -499,3 +500,26 @@ export const rutasUbicacion = new Hono<Env>()
     });
     return c.json({ ok: true });
   });
+
+/**
+ * Cuando cambia la forma de contar (los viajes, por ejemplo), recalcula una sola vez lo guardado de todas las personas
+ * con puntos (`version`: la de la forma nueva; queda anotada en ajustes).
+ */
+export async function recalcularSiCambio(db: Db, version: string): Promise<void> {
+  const clave = 'calculo_ubicacion';
+  const ya = await una<{ valor: string }>(db, sql`SELECT valor FROM ajustes WHERE clave = ${clave}`);
+  if (ya?.valor === version) return;
+  const personas = await filas<PersonaZona>(db, sql`SELECT id, zona_horaria FROM personas WHERE id IN (SELECT DISTINCT persona_id FROM puntos)`);
+  for (const p of personas) {
+    try {
+      await db.transaction((tx) => recalcularTodo(tx, p));
+    } catch (e) {
+      console.error(`Recalcular ubicación de la persona ${p.id}:`, e instanceof Error ? e.message : e);
+    }
+  }
+  await db.execute(
+    sql`INSERT INTO ajustes (clave, valor) VALUES (${clave}, ${JSON.stringify(version)}::jsonb)
+        ON CONFLICT (clave) DO UPDATE SET valor = excluded.valor, creado = now()`,
+  );
+  console.log(`Ubicación recalculada (${version}) para ${personas.length} personas.`);
+}

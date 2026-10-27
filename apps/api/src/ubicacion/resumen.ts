@@ -1,7 +1,7 @@
 // Qué dice la ubicación de un día: cuántos viajes hubo, cuántos km y en qué lugares con nombre estuvo la persona.
 // Sin base de datos: recibe los puntos del día (ya filtrados: uno por cada movimiento de más de 1 km o cambio de lugar)
 // y los lugares, así se prueba con datos armados.
-import { DISTANCIA_VIAJE_M, distanciaMetros, lugarDe, type Coordenadas } from 'shared';
+import { distanciaMetros, lugarDe, type Coordenadas } from 'shared';
 
 export interface Punto extends Coordenadas {
   /** ms */
@@ -29,22 +29,11 @@ export interface ResumenDia {
 
 export function resumirDia(puntosDia: Punto[], lugares: LugarZona[]): ResumenDia {
   const orden = [...puntosDia].sort((a, b) => a.instante - b.instante);
-  // Viajes: cada vez que se alejó más de 1 km del último punto donde estuvo. Los km son en línea recta entre esos puntos.
-  let viajes = 0;
-  let metros = 0;
-  let ancla: Punto | null = null;
-  for (const p of orden) {
-    if (!ancla) {
-      ancla = p;
-      continue;
-    }
-    const d = distanciaMetros(ancla, p);
-    if (d >= DISTANCIA_VIAJE_M) {
-      viajes++;
-      metros += d;
-      ancla = p;
-    }
-  }
+  // Viajes: los tramos seguidos en movimiento (ver viajesDelDia), no cada kilómetro: un viaje de 10 km en auto es uno
+  // solo. Los km son los de esos viajes, en línea recta entre los puntos.
+  const vs = viajesDelDia(orden, lugares);
+  const viajes = vs.length;
+  const metros = vs.reduce((t, v) => t + v.metros, 0);
   // Estadías: puntos seguidos en el mismo lugar con nombre.
   const estadias: Estadia[] = [];
   let actual: Estadia | null = null;
@@ -96,11 +85,21 @@ export interface Viaje {
   metros: number;
 }
 
+/** Entre dos puntos de un mismo viaje no pasa más que esto (en movimiento, el teléfono guarda uno cada ~1 km). */
+const CONTINUO_MIN = 20;
+/** Un tramo cuenta como movimiento si es de al menos esto. */
+const TRAMO_M = 800;
+/** Un viaje es de al menos esto (las vueltas cortas a la manzana no cuentan). */
+const VIAJE_M = 1000;
+
 /**
- * Los viajes del día con los puntos guardados (uno cada vez que se movió más de 1 km): tramos seguidos en movimiento,
- * es decir, más de 800 m en menos de una hora y media. La salida es aproximada (el primer punto ya es en camino).
+ * Los viajes del día con los puntos guardados (uno cada vez que se movió más de 1 km, o al entrar o salir de un lugar):
+ * tramos de más de 800 m seguidos, sin quedarse en ningún lado en el medio. Si entre un punto y el siguiente pasó más
+ * de 20 minutos, o si el punto es en un lugar con nombre (llegó a casa, al súper), ahí hubo una parada y empieza otro
+ * viaje. Así un viaje de 10 km en auto es uno solo, no diez.
+ * La salida es aproximada (el primer punto ya es en camino).
  */
-export function viajesDelDia(puntosDia: Punto[]): Viaje[] {
+export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Viaje[] {
   const orden = [...puntosDia].sort((a, b) => a.instante - b.instante);
   const r: Viaje[] = [];
   let actual: Viaje | null = null;
@@ -108,17 +107,17 @@ export function viajesDelDia(puntosDia: Punto[]): Viaje[] {
     const a = orden[i - 1];
     const b = orden[i];
     const d = distanciaMetros(a, b);
-    const dt = b.instante - a.instante;
-    const moviendose = d >= 800 && dt <= 90 * 60000 && d / Math.max(dt / 3600000, 1e-6) >= 2000;
-    if (moviendose) {
-      if (actual && actual.fin === a.instante) {
-        actual.fin = b.instante;
-        actual.metros += d;
-      } else {
-        actual = { inicio: a.instante, fin: b.instante, metros: d };
-        r.push(actual);
-      }
+    if (d < TRAMO_M) continue;
+    const largo = b.instante - a.instante > CONTINUO_MIN * 60000;
+    const seguido = actual !== null && actual.fin === a.instante && !largo && !lugarDe(a, lugares);
+    if (seguido) {
+      actual!.fin = b.instante;
+      actual!.metros += d;
+    } else {
+      // Si estuvo un rato quieto antes, el viaje empezó cerca del final de ese tramo (la hora de salida es aproximada).
+      actual = { inicio: largo ? b.instante : a.instante, fin: b.instante, metros: d };
+      r.push(actual);
     }
   }
-  return r.filter((v) => v.metros >= 1500);
+  return r.filter((v) => v.metros >= VIAJE_M);
 }

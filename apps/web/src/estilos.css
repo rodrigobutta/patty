@@ -769,8 +769,8 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .mapa-lugar { flex-basis: 100%; margin-top: 8px; }
 .mapa-lugares .mapa { margin-bottom: 12px; }
 .icono.sin-nombre { color: #e58bb4; }
-.mapa .mapa-patty { filter: sepia(0.35) hue-rotate(208deg) saturate(1.35) brightness(1.02); }
-.mapa .mapa-patty.oscuro { filter: sepia(0.4) hue-rotate(210deg) saturate(1.6) brightness(1.1); }
+.mapa .mapa-patty { filter: grayscale(1) sepia(0.3) hue-rotate(215deg) saturate(1.6) brightness(1.04) contrast(0.92); }
+.mapa .mapa-patty.oscuro { filter: invert(1) grayscale(1) sepia(0.35) hue-rotate(215deg) saturate(1.8) brightness(0.8) contrast(1.05); }
 .version-app { margin: 28px 0 8px; text-align: center; font-size: 11px; color: var(--suave); opacity: 0.8; }
 .version-vieja { color: var(--ambar); font-weight: 700; }
 

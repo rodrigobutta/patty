@@ -122,6 +122,19 @@ describe('paradas en lugares sin nombre', () => {
 });
 
 describe('viajes del día', () => {
+  it('un día real: 4 viajes en auto de varios km (un punto por km) cuentan como 4, no como 30', async () => {
+    const { resumirDia } = await import('../src/ubicacion/resumen.js');
+    const m = (min: number) => Date.parse('2026-10-26T12:00:00Z') + min * 60000;
+    const casa = { id: 1, lat: -34.6, lon: -58.5, radio_m: 150 };
+    const fleni = { id: 2, lat: -34.6, lon: -58.42, radio_m: 150 };
+    const resto = { id: 3, lat: -34.56, lon: -58.5, radio_m: 150 };
+    // De a a b en `km` tramos de ~1 km, uno cada 3 minutos, empezando en el minuto `t`.
+    const ir = (a: typeof casa, b: typeof casa, t: number, km: number) =>
+      Array.from({ length: km + 1 }, (_, i) => ({ lat: a.lat + ((b.lat - a.lat) * i) / km, lon: a.lon + ((b.lon - a.lon) * i) / km, instante: m(t + i * 3) }));
+    const puntos = [...ir(casa, fleni, 0, 7), ...ir(fleni, casa, 200, 7).slice(1), ...ir(casa, resto, 400, 4).slice(1), ...ir(resto, casa, 600, 4).slice(1)];
+    expect(resumirDia(puntos, [casa, fleni, resto]).viajes).toBe(4);
+  });
+
   it('junta los tramos en movimiento y adivina en qué fue', async () => {
     const { viajesDelDia } = await import('../src/ubicacion/resumen.js');
     const { adivinarViaje } = await import('shared');
@@ -136,7 +149,8 @@ describe('viajes del día', () => {
     ]);
     expect(v).toHaveLength(1);
     expect((v[0].fin - v[0].inicio) / 60000).toBe(18);
-    expect(Math.round(v[0].metros / 100) / 10).toBeCloseTo(6.7, 0);
+    // Incluye el primer tramo (de casa al primer punto en camino): ~8,9 km.
+    expect(Math.round(v[0].metros / 100) / 10).toBeCloseTo(8.9, 0);
     expect(adivinarViaje(6.7, 18).modo).toBe('auto');
     expect(adivinarViaje(8, 60)).toMatchObject({ modo: 'auto', pesado: true }); // 8 km/h: tráfico
     expect(adivinarViaje(2, 30).modo).toBe('caminando');
