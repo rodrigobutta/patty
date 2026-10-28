@@ -3,6 +3,7 @@
 // cómo está ("sigue · 3 h 12 min" o "terminó · 1 h 05"). Tocando la fila se resuelve ahí: un malestar, ya se me pasó /
 // mejor / igual / peor; una actividad, terminé (a la hora que vio la ubicación, o recién) / sigo; lo terminado, editar.
 // Lo que sigue abierto desde otro día también aparece (entra por la izquierda).
+import { IconoCategoria } from '../ui/IconosPatty';
 import { useEffect, useState } from 'react';
 import type { Categoria, Persona, Registro } from 'shared';
 import { api } from '../api';
@@ -110,7 +111,9 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
                     <span key={e.t} className="gantt-punto" style={{ left: x(Date.parse(e.t)), background: COLOR[e.estado] }} />
                   ))}
                   {(r.remedios ?? []).map((m) => (
-                    <span key={`${m.t}${m.concepto}`} className="gantt-remedio" style={{ left: x(Date.parse(m.t)) }} title={t(m.concepto)} aria-hidden>💊</span>
+                    <span key={`${m.t}${m.concepto}`} className="gantt-remedio" style={{ left: x(Date.parse(m.t)) }} title={t(m.concepto)} aria-hidden>
+                      <IconoCategoria clave="medicacion" tamano={16} />
+                    </span>
                   ))}
                 </span>
               </button>
@@ -119,8 +122,12 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
                   <span className="suave chico">
                     {horaEn(r.inicio, persona.zona_horaria)}
                     {r.fin ? `–${horaEn(r.fin, persona.zona_horaria)}` : ` → ${t('ahora')}`}
-                    {(r.remedios ?? []).map((m) => ` · 💊 ${t(m.concepto)} ${horaEn(m.t, persona.zona_horaria)}`).join('')}
                   </span>
+                  {(r.remedios ?? []).map((m) => (
+                    <span key={`${m.t}${m.concepto}`} className="suave chico remedio-del-malestar">
+                      <IconoCategoria clave="medicacion" tamano={16} /> {t(m.concepto)} {horaEn(m.t, persona.zona_horaria)}
+                    </span>
+                  ))}
                   {sigue && esActividad ? (
                     <>
                       {r.fin_sugerido ? (
