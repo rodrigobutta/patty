@@ -79,7 +79,7 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
             ? t('Abrí Ajustes y buscá «acceso de uso» (puede llamarse «Apps con acceso de uso»).')
             : t('Abrí Ajustes → Apps → Acceso especial de apps (en algunos teléfonos está dentro de «Avanzado»).'),
         t('Entrá a «Acceso a datos de uso», buscá Patty y activá «Permitir acceso al uso».'),
-        t('Para las llamadas: {abrir} Después {permisos} → Registro de llamadas → «Permitir».', { abrir: abrirPatty, permisos }),
+        t('Para las llamadas: {abrir} Después {permisos} → Registro de llamadas (o Teléfono) → «Permitir».', { abrir: abrirPatty, permisos }),
         buscar('acceso de uso'),
       ];
     case 'salud':

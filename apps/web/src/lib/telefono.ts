@@ -8,7 +8,7 @@ import { plataforma } from './nativo';
 import { calendarioActivado, reunionesDelDia, type EventoCalendario } from './calendario';
 
 type Estado = 'granted' | 'denied';
-interface Permisos { uso: Estado; llamadas: Estado; calendario?: Estado }
+interface Permisos { uso: Estado; llamadas: Estado; llamadasDe?: 'registro' | 'en_vivo' | 'nada'; calendario?: Estado }
 interface Periodo { desde: number; hasta: number }
 export interface UsoDeApps { minutos: number; apps: Array<{ paquete: string; nombre: string; minutos: number }> }
 export interface Llamadas { entrantes: number; salientes: number; perdidas: number; segundos: number }

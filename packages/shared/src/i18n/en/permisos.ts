@@ -881,4 +881,7 @@ export const PERMISOS: Record<string, string> = {
   "Ver el tour": "See the tour",
   "Volvé a ver para qué sirve cada parte de la app.": "See again what each part of the app is for.",
   "🦉 El tour de Patty": "🦉 Patty's tour",
+  "Para las llamadas: {abrir} Después {permisos} → Registro de llamadas (o Teléfono) → «Permitir».": "For calls: {abrir} Then {permisos} → Call logs (or Phone) → “Allow”.",
+  "✅ Llamadas (medidas mientras pasan, desde que diste el permiso)": "✅ Calls (measured as they happen, since you allowed it)",
+  "En la misma pantalla de Patty: «Uso de batería» → prendé «Permitir actividad en segundo plano» y «Permitir inicio automático».": "On the same Patty screen: “Battery usage” → turn on “Allow background activity” and “Allow auto-launch”.",
 };

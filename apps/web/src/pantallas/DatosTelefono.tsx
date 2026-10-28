@@ -64,7 +64,9 @@ export function DatosTelefono({ persona }: { persona: Persona }) {
             <button className="btn" onClick={() => void Telefono.pedirPermisoUso()}>{t('Permitir uso de apps')}</button>
           )}
           {permisos.llamadas === 'granted' ? (
-            <span className="chico">{t('✅ Llamadas')}</span>
+            <span className="chico">
+              {permisos.llamadasDe === 'en_vivo' ? t('✅ Llamadas (medidas mientras pasan, desde que diste el permiso)') : t('✅ Llamadas')}
+            </span>
           ) : (
             <button className="btn" onClick={() => void Telefono.pedirPermisoLlamadas().then(setPermisos)}>{t('Permitir llamadas')}</button>
           )}

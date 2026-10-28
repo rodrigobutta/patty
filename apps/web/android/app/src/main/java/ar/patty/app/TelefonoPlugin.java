@@ -33,7 +33,8 @@ import java.util.Set;
  * Datos del teléfono que Patty usa para buscar patrones (solo Android: el iPhone no los deja leer).
  * - Tiempo de uso por app entre dos instantes (permiso "Acceso a datos de uso", se da en Ajustes).
  * - Llamadas entre dos instantes: cuántas entrantes, salientes y perdidas, y los segundos hablados. No se leen números
- *   ni nombres.
+ *   ni nombres. Del registro de llamadas si hay permiso; si no, de lo que anotó LlamadasReceiver mientras pasaban (con el
+ *   permiso del estado del teléfono, que Play Store no restringe).
  * - Las reuniones del calendario del teléfono (todas las cuentas sincronizadas: Google, Outlook, Exchange…): cuándo
  *   empiezan y terminan y cuánta gente hay. Nunca títulos, lugares ni invitados.
  */
@@ -41,6 +42,7 @@ import java.util.Set;
     name = "Telefono",
     permissions = {
         @Permission(alias = "llamadas", strings = { Manifest.permission.READ_CALL_LOG }),
+        @Permission(alias = "estadoLlamadas", strings = { Manifest.permission.READ_PHONE_STATE }),
         @Permission(alias = "calendario", strings = { Manifest.permission.READ_CALENDAR }),
     }
 )
@@ -60,7 +62,8 @@ public class TelefonoPlugin extends Plugin {
     public void permisos(PluginCall call) {
         JSObject r = new JSObject();
         r.put("uso", tienePermisoUso() ? "granted" : "denied");
-        r.put("llamadas", getPermissionState("llamadas") == PermissionState.GRANTED ? "granted" : "denied");
+        r.put("llamadas", tieneRegistro() || tieneEstado() ? "granted" : "denied");
+        r.put("llamadasDe", tieneRegistro() ? "registro" : tieneEstado() ? "en_vivo" : "nada");
         r.put("calendario", getPermissionState("calendario") == PermissionState.GRANTED ? "granted" : "denied");
         call.resolve(r);
     }
@@ -156,10 +159,36 @@ public class TelefonoPlugin extends Plugin {
 
     // ---- Llamadas ----
 
+    private boolean declarado(String permiso) {
+        try {
+            String[] pedidos = getContext()
+                .getPackageManager()
+                .getPackageInfo(getContext().getPackageName(), PackageManager.GET_PERMISSIONS)
+                .requestedPermissions;
+            if (pedidos != null) for (String x : pedidos) if (permiso.equals(x)) return true;
+        } catch (Exception e) {
+            // Sin datos del paquete: se trata como no declarado.
+        }
+        return false;
+    }
+
+    /** El registro de llamadas (puede no estar en el manifiesto, si Play Store no lo aprueba). */
+    private boolean tieneRegistro() {
+        return declarado(Manifest.permission.READ_CALL_LOG) && getPermissionState("llamadas") == PermissionState.GRANTED;
+    }
+
+    private boolean tieneEstado() {
+        return declarado(Manifest.permission.READ_PHONE_STATE) && getPermissionState("estadoLlamadas") == PermissionState.GRANTED;
+    }
+
+    /** Pide los dos: si se da el del registro se usa ese (tiene el historial); si no, alcanza con el del estado. */
     @PluginMethod
     public void pedirPermisoLlamadas(PluginCall call) {
-        if (getPermissionState("llamadas") == PermissionState.GRANTED) permisos(call);
-        else requestPermissionForAlias("llamadas", call, "alPedirLlamadas");
+        java.util.List<String> faltan = new java.util.ArrayList<>();
+        if (declarado(Manifest.permission.READ_CALL_LOG) && !tieneRegistro()) faltan.add("llamadas");
+        if (declarado(Manifest.permission.READ_PHONE_STATE) && !tieneEstado()) faltan.add("estadoLlamadas");
+        if (tieneRegistro() || faltan.isEmpty()) permisos(call);
+        else requestPermissionForAliases(faltan.toArray(new String[0]), call, "alPedirLlamadas");
     }
 
     @PermissionCallback
@@ -241,12 +270,13 @@ public class TelefonoPlugin extends Plugin {
     /** Cuántas llamadas hubo entre `desde` y `hasta` y cuántos segundos se habló. */
     @PluginMethod
     public void llamadas(PluginCall call) {
-        if (getPermissionState("llamadas") != PermissionState.GRANTED) {
-            call.reject("Falta el permiso para leer las llamadas.", "SIN_PERMISO");
-            return;
-        }
         long desde = call.getLong("desde", 0L);
         long hasta = call.getLong("hasta", System.currentTimeMillis());
+        if (!tieneRegistro()) {
+            if (tieneEstado()) llamadasEnVivo(call, desde, hasta);
+            else call.reject("Falta el permiso para leer las llamadas.", "SIN_PERMISO");
+            return;
+        }
         int entrantes = 0, salientes = 0, perdidas = 0;
         long segundos = 0;
         String[] columnas = { CallLog.Calls.TYPE, CallLog.Calls.DURATION };
@@ -275,6 +305,37 @@ public class TelefonoPlugin extends Plugin {
         r.put("salientes", salientes);
         r.put("perdidas", perdidas);
         r.put("segundos", segundos);
+        r.put("de", "registro");
+        call.resolve(r);
+    }
+
+    /** Lo mismo con lo que anotó LlamadasReceiver mientras pasaban (solo desde que se dio el permiso). */
+    private void llamadasEnVivo(PluginCall call, long desde, long hasta) {
+        int entrantes = 0, salientes = 0, perdidas = 0;
+        long segundos = 0;
+        try {
+            org.json.JSONArray lista = new org.json.JSONArray(
+                getContext().getSharedPreferences(LlamadasReceiver.PREFS, Context.MODE_PRIVATE).getString(LlamadasReceiver.LISTA, "[]")
+            );
+            for (int i = 0; i < lista.length(); i++) {
+                org.json.JSONObject l = lista.getJSONObject(i);
+                long inicio = l.getLong("inicio");
+                if (inicio < desde || inicio >= hasta) continue;
+                String tipo = l.getString("tipo");
+                if ("entrante".equals(tipo)) entrantes++;
+                else if ("saliente".equals(tipo)) salientes++;
+                else perdidas++;
+                segundos += l.getLong("segundos");
+            }
+        } catch (Exception e) {
+            // Lista rota: cuenta como sin llamadas.
+        }
+        JSObject r = new JSObject();
+        r.put("entrantes", entrantes);
+        r.put("salientes", salientes);
+        r.put("perdidas", perdidas);
+        r.put("segundos", segundos);
+        r.put("de", "en_vivo");
         call.resolve(r);
     }
 }

@@ -80,7 +80,8 @@ profesional.
 | Permiso | Para qué | Qué esperar |
 |---|---|---|
 | `ACCESS_BACKGROUND_LOCATION` | viajes, paseos y fin de actividades con la app cerrada | Hay que declararlo y mandar un video corto mostrando la función. Suelen aprobarlo si está bien explicado. |
-| `READ_CALL_LOG` | cuántas llamadas por día | **Muy probable que lo rechacen**: Google lo reserva para apps de teléfono o SMS predeterminadas. Plan B: una versión para Play sin esto (las llamadas dejan de contarse). |
+| `READ_CALL_LOG` | cuántas llamadas por día (con historial) | **Muy probable que lo rechacen**: Google lo reserva para apps de teléfono o SMS predeterminadas. Si lo rechazan, se saca esta línea del manifiesto y nada más: la app usa sola el plan B de abajo. |
+| `READ_PHONE_STATE` | plan B de las llamadas: las mide mientras pasan (`LlamadasReceiver`), sin números | No está restringido. Solo cuenta desde que se da el permiso. |
 | `QUERY_ALL_PACKAGES` | el nombre de cada app en el uso del teléfono | Hay que declararlo; puede pedir justificación. Se puede reemplazar por consultas puntuales si lo objetan. |
 | `PACKAGE_USAGE_STATS` | tiempo de pantalla | Lo da la persona en Ajustes; declararlo en el formulario. |
 | `USE_EXACT_ALARM` | avisos de remedios a la hora exacta | Google lo limita a apps de alarma o calendario; si lo objetan, pasar a `SCHEDULE_EXACT_ALARM`. |
