@@ -1,4 +1,5 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
+import { medir } from '../lib/analytics';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { IconoAnimo, IconoCategoria } from '../ui/IconosPatty';
 import { alPedirIrAlDia, fechaPedidaParaVer, olvidarFechaPedida } from '../lib/avisos';
@@ -229,6 +230,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const atenderWidget = useCallback(
     (d: Record<string, string>) => {
       tomarWidgetPendiente();
+      medir('widget', { accion: d.accion_widget ?? 'abrir' });
       setFecha(hoyEn(persona.zona_horaria));
       if (d.accion_widget === 'contar') setCargando('contar');
       else if (d.accion_widget === 'foto') void fotoDe('camara');

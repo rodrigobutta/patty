@@ -1,5 +1,6 @@
 // "Preguntale a Patty" (arriba de Descubrir): una pregunta libre sobre los propios datos ("¿cuándo comí huevos?").
 // Contesta la IA con lo anotado; los días de la respuesta se tocan para ir a verlos y las cosas, para buscarlas.
+import { medir } from '../lib/analytics';
 import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { api } from '../api';
@@ -37,6 +38,7 @@ export function Preguntar({ persona, alBuscar }: { persona: Persona; alBuscar(co
     setError('');
     try {
       const x = await api<Respuesta>('POST', '/api/preguntar', { persona_id: persona.id, pregunta: q });
+      medir('preguntar_patty');
       setR({ ...x, pregunta: q });
       setUltimas((l) => [q, ...l.filter((y) => y !== q)].slice(0, 5));
       setAbierto(false);

@@ -1,4 +1,5 @@
 // Lo que Patty encontró: relaciones entre lo que se hace y cómo se siente, con cuántos días de diferencia.
+import { medir, paginaVista } from '../lib/analytics';
 import { useCallback, useEffect, useState } from 'react';
 import { avanceProgreso, nombreRasgo, type Hallazgo, type Persona, type Progreso, type ResultadoAnalisis } from 'shared';
 import { api } from '../api';
@@ -58,6 +59,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
 
   const marcar = async (h: Hallazgo, estado: Hallazgo['estado']) => {
     await api('PUT', `/api/hallazgos/${h.id}`, { estado });
+    medir('opinion_patron', { opinion: estado });
     setHallazgos((l) => l?.map((x) => (x.id === h.id ? { ...x, estado } : x)) ?? null);
   };
 
@@ -89,6 +91,9 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
     </article>
   );
 
+  useEffect(() => {
+    paginaVista(`/descubrir/${vista}`, `descubrir ${vista}`);
+  }, [vista]);
   const caja = sesion?.ia ? <Preguntar persona={persona} alBuscar={(id) => { setBuscado(id); setVista('buscar'); }} /> : null;
   const listo = progreso ? avanceProgreso(progreso).nivel > 0 : true;
   const pestanas = (

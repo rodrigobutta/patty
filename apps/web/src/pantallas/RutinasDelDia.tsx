@@ -1,5 +1,6 @@
 // "¿Hoy también…?": lo que se viene anotando seguido (café todas las mañanas, fútbol los martes) se ofrece para anotar
 // con un toque, desde un rato antes de la hora de siempre. "Hoy no" lo saca hasta mañana (en este teléfono).
+import { medir } from '../lib/analytics';
 import { useEffect, useState } from 'react';
 import type { Categoria, Persona } from 'shared';
 import { api } from '../api';
@@ -62,6 +63,7 @@ export function RutinasDelDia({ persona, hoy, categorias, alAnotar }: { persona:
       await api('POST', '/api/registros', { persona_id: persona.id, concepto_id: r.concepto_id, inicio, valor: r.valor, unidad: r.unidad });
       setLista((l) => l.filter((x) => x.concepto_id !== r.concepto_id));
       festejar(t('¡Anotado! {que}', { que: t(r.nombre) }));
+      medir('anotar', { metodo: 'rutina' });
       avisarAnotado();
       alAnotar();
     } catch (e) {

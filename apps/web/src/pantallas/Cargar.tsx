@@ -1,4 +1,5 @@
 // Anotar algo, en tres toques: categoría (opcional), qué fue (sugerido o nuevo) y su valor. O contarlo en texto libre.
+import { medir } from '../lib/analytics';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde, type Porcion, type TipoComida } from 'shared';
@@ -115,7 +116,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
-        <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { festejar(t('¡Anotado! {que}', { que: t(elegido.nombre) })); alGuardar(); }} />
+        <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { medir('anotar', { metodo: 'rapido' }); festejar(t('¡Anotado! {que}', { que: t(elegido.nombre) })); alGuardar(); }} />
       ) : (
         <>
           <div className="chips">
@@ -405,6 +406,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     if (!n) return;
     if (propuesta) {
       respondio.current = true;
+      aclaraciones.current++;
+      medir('contestar_pregunta', { con_toque: Object.keys(elegidas).length || dudas.some((d) => d.opciones.includes(n)) ? 1 : 0 });
       const preguntas = dudas.length ? ` (a tus preguntas: ${dudas.map((d) => d.pregunta).join(' / ')})` : '';
       void interpretar(`${texto}\n\nAclaración${preguntas}: ${n}`);
     } else void interpretar(n);
@@ -518,6 +521,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
               : t('¡Anotadas {n} cosas!', { n: lista.length })) + recordar,
       );
       if (sinSenal) sacarContado(sinSenal.id);
+      // Cómo se contó (no qué): con foto, con la voz o escrito, cuántas cosas y si Patty tuvo que preguntar.
+      medir('anotar', { metodo: fotoRef.current ? 'foto' : sinSenal ? 'sin_senal' : modo === 'voz' ? 'voz' : 'escrito', cosas: lista.length, remedios: nuevos.length, quitadas: quitar.size, aclaraciones: aclaraciones.current });
       alGuardar(otroDia);
     } catch (e) {
       setError((e as Error).message);
@@ -528,6 +533,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   // Si ya contestó lo que Patty preguntaba y no quedan dudas, se guarda solo (con el festejo de siempre): no hace
   // falta buscar el botón verde. Si quedan preguntas, se espera a que conteste de nuevo.
   const respondio = useRef(false);
+  /** Cuántas veces se aclaró o corrigió lo propuesto (para Analytics). */
+  const aclaraciones = useRef(0);
   useEffect(() => {
     if (!respondio.current || estado !== 'quieto' || !propuesta) return;
     respondio.current = false;

@@ -18,7 +18,10 @@ import { Admin } from './pantallas/Admin';
 import { Bienvenida, bienvenidaVista } from './pantallas/Bienvenida';
 import { Entrar } from './pantallas/Entrar';
 import { Presentacion } from './pantallas/Presentacion';
-import { esNativa } from './lib/nativo';
+import { esNativa, plataforma } from './lib/nativo';
+import { VERSION } from './lib/version';
+import { iniciarAnalytics, medir, paginaVista, usuarioAnalytics } from './lib/analytics';
+import { idioma } from './lib/idioma';
 import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
@@ -54,6 +57,16 @@ export function App() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [pestana]);
+  // Analytics en la app: el usuario anónimo, desde dónde usa Patty, y cada pestaña como una pantalla.
+  const usuarioId = sesion?.usuario?.id;
+  useEffect(() => {
+    if (fase !== 'listo' || !sesion?.analytics || !usuarioId) return;
+    iniciarAnalytics(sesion.analytics, true);
+    void usuarioAnalytics(usuarioId, { plataforma: plataforma(), idioma: idioma(), version: VERSION });
+  }, [fase, sesion?.analytics, usuarioId]);
+  useEffect(() => {
+    if (fase === 'listo' && usuarioId) paginaVista(`/${pestana === 'patrones' ? 'descubrir' : pestana}`, pestana);
+  }, [fase, pestana, usuarioId]);
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
   // La presentación: en la web, a quien no entró todavía (y con #presentacion, siempre). En la app del teléfono, nunca.
   const [presentacion, setPresentacion] = useState(() => !esNativa() && location.hash !== '#entrar');
@@ -134,7 +147,7 @@ export function App() {
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>{t('Reintentar')}</button></div>;
   if (verPresentacion) return <Presentacion alEntrar={salirDePresentacion} conSesion={fase === 'listo'} />;
   if (fase === 'entrar' || fase === 'configurar') return <Entrar configurar={fase === 'configurar'} />;
-  if (bienvenida) return <Bienvenida alTerminar={() => setBienvenida(false)} />;
+  if (bienvenida) return <Bienvenida alTerminar={() => { medir('bienvenida_terminada'); setBienvenida(false); }} />;
   if (!persona) return <NuevaPersona primera />;
   if (!permisosListo && ofrecerPermisos() && (perfilListo || !ofrecerPerfil(persona))) {
     return (

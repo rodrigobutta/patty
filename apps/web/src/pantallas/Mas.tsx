@@ -1,5 +1,6 @@
 // Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
 // lo avanzado (tokens para que otros dispositivos manden datos).
+import { medir } from '../lib/analytics';
 import { agregarWidget } from '../lib/push';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
@@ -226,7 +227,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         <div className="tarjeta">
           <h3>{t('🦉 Widget en la pantalla de inicio')}</h3>
           <p className="suave chico">{t('Anotá cómo te sentís con un toque, o contale algo a Patty con la voz o una foto, sin buscar la app.')}</p>
-          <button className="btn" onClick={() => void agregarWidget().then((ok) => !ok && avisar(t('Tu teléfono no deja agregarlo desde acá: mantené apretada la pantalla de inicio, tocá "Widgets" y buscá Patty.')))}>
+          <button className="btn" onClick={() => { medir('agregar_widget'); void agregarWidget().then((ok) => !ok && avisar(t('Tu teléfono no deja agregarlo desde acá: mantené apretada la pantalla de inicio, tocá "Widgets" y buscá Patty.'))); }}>
             {t('Agregar el widget')}
           </button>
         </div>

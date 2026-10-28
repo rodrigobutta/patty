@@ -1,6 +1,7 @@
 // "¿Cómo te sentís?": muy bien, bien, mal o muy mal, en el momento o del día entero (la encuesta de la noche). Si es
 // mal o muy mal, se pregunta qué pasa y cuánto (dolor de cabeza mucho, descompuesto poco…) y eso queda anotado como
 // síntomas con su intensidad, para que Patty pueda buscar qué vino antes.
+import { medir } from '../lib/analytics';
 import { useEffect, useState } from 'react';
 import { IconoAnimo } from '../ui/IconosPatty';
 import { CUANTO, ESTADOS, SINTOMAS_COMUNES, type Concepto, type EstadoAnimo, type Persona } from 'shared';
@@ -75,6 +76,7 @@ export function Sentir({ persona, momento, estado: inicial, fecha, alGuardar, al
     if (otro.trim()) lista.push({ nombre: otro.trim(), intensidad: CUANTO[1].intensidad });
     try {
       await guardarSentir({ persona, categorias, momento, estado: e, fecha, sintomas: lista, nota });
+      medir('anotar', { metodo: 'caritas', estado: e.clave, momento, molestias: lista.length });
       festejar(esMalo(e) ? t('Gracias por contarme. Que se mejore pronto 💜') : t('¡Qué bueno! Anotado: {que}', { que: t(e.nombre).toLowerCase() }), esMalo(e) ? 'espera' : 'feliz');
       alGuardar();
     } catch (err) {
