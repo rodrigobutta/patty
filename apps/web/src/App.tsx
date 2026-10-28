@@ -27,6 +27,7 @@ import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
 import { Avatar } from './ui/Avatar';
 import { CartelVersion } from './ui/CartelVersion';
+import { CartelActualizar } from './ui/CartelActualizar';
 import { PuntosDelDia } from './pantallas/PuntosDelDia';
 import { Patrones } from './pantallas/Patrones';
 import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
@@ -190,6 +191,7 @@ export function App() {
         ) : null}
       </header>
       <CartelVersion app={sesion?.app} />
+      <CartelActualizar />
       <main>
         {pestana === 'admin' && sesion?.usuario?.rol === 'admin' ? (
           <Admin alVolver={() => { setPestana('mas'); if (location.hash) history.replaceState(null, '', location.pathname); }} />

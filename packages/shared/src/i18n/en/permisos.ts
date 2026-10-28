@@ -832,4 +832,7 @@ export const PERMISOS: Record<string, string> = {
   "🩺 Salud": "🩺 Health",
   "⚠️ Error del servidor": "⚠️ Server error",
   "⚠️ Falló un proceso: {que}": "⚠️ A process failed: {que}",
+  "✨ Hay una versión nueva de Patty": "✨ There's a new version of Patty",
+  "Actualizar": "Update",
+  "Actualizando…": "Updating…",
 };

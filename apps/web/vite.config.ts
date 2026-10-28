@@ -34,7 +34,9 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // La versión nueva no se aplica sola en medio del uso (la página se recargaba de golpe): la app avisa y se
+        // actualiza al tocar, al pasar a segundo plano o recién abierta (ver lib/actualizar.ts).
+        registerType: 'prompt',
         injectRegister: false, // se registra en main.tsx, que además busca versiones nuevas
         includeAssets: ['iconos/favicon-32.png', 'iconos/apple-touch-icon.png'],
         manifest: {
@@ -58,7 +60,7 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api\//],
-          skipWaiting: true,
+          skipWaiting: false,
           clientsClaim: true,
           cleanupOutdatedCaches: true,
           // Sin señal, la app abre con lo último que se vio (los pedidos de datos van a la red y, si no hay, a lo guardado).
