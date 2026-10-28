@@ -88,3 +88,35 @@ export function LoQueVoyNotando({ persona }: { persona: Persona }) {
     </div>
   );
 }
+
+/** En el Día: lo que se salió de lo normal esta semana (menos sueño, una molestia que se repite…), con ✕ para cerrarlo. */
+export function FueraDeLoNormal({ persona }: { persona: Persona }) {
+  const [lista, setLista] = useState<Array<{ id: number; emoji: string; texto: string; estado: string }>>([]);
+  useEffect(() => {
+    api<typeof lista>('GET', `/api/fuera-de-lo-normal?persona=${persona.id}&dias=7`)
+      .then((l) => setLista(l.filter((x) => x.estado === 'nuevo')))
+      .catch(() => {});
+  }, [persona.id]);
+  if (!lista.length) return null;
+  const cerrar = (id: number) => {
+    setLista((l) => l.filter((x) => x.id !== id));
+    void api('PUT', `/api/fuera-de-lo-normal/${id}`, { estado: 'visto' }).catch(() => {});
+  };
+  return (
+    <>
+      {lista.map((x) => (
+        <div className="tarjeta comentario-patty fuera-de-lo-normal" key={x.id}>
+          <span className="emoji-comentario" aria-hidden="true">{x.emoji}</span>
+          <div className="cuerpo-comentario">
+            <p className="suave chico">{t('🦉 Algo distinto estos días')}</p>
+            <p>{x.texto}</p>
+            <div className="pie-comentario">
+              <span />
+              <button className="btn chico" onClick={() => cerrar(x.id)} aria-label={t('Cerrar')}>✕</button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}

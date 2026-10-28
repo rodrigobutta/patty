@@ -63,8 +63,10 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
 
   // Los que difícilmente sean casualidad (q bajo: ya se tuvo en cuenta cuántas combinaciones se probaron) van primero;
   // el resto queda plegado, y los que la persona confirmó se muestran siempre.
-  const firmes = hallazgos?.filter((h) => h.q_valor <= Q_FIRME || h.estado === 'confirmado') ?? [];
-  const posibles = hallazgos?.filter((h) => !firmes.includes(h)) ?? [];
+  // Los que marcó como obvios o sin sentido se apartan al final (se pueden volver a marcar).
+  const apartados = hallazgos?.filter((h) => h.estado === 'obvio' || h.estado === 'descartado') ?? [];
+  const firmes = hallazgos?.filter((h) => !apartados.includes(h) && (h.q_valor <= Q_FIRME || h.estado === 'confirmado')) ?? [];
+  const posibles = hallazgos?.filter((h) => !apartados.includes(h) && !firmes.includes(h)) ?? [];
   const tarjeta = (h: Hallazgo) => (
     <article key={h.id} className={`tarjeta hallazgo ${h.estado}`}>
       <h3>{nombreRasgo(t(h.causa), h.causa_tipo, h.causa_modo)} <span className="flecha">→</span> {nombreRasgo(t(h.efecto), h.efecto_tipo, h.efecto_modo)}</h3>
@@ -75,9 +77,13 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
       </div>
       {h.explicacion ? <p>{h.explicacion}</p> : null}
       {usuario?.rol !== 'lector' ? (
-        <div className="fila">
-          <button className={`btn chico ${h.estado === 'confirmado' ? 'primario' : ''}`} onClick={() => marcar(h, h.estado === 'confirmado' ? 'nuevo' : 'confirmado')}>👍 {t('Me pasa')}</button>
-          <button className={`btn chico ${h.estado === 'descartado' ? 'primario' : ''}`} onClick={() => marcar(h, h.estado === 'descartado' ? 'nuevo' : 'descartado')}>👎 {t('No creo')}</button>
+        <div className="opinion-hallazgo">
+          <span className="suave chico">{t('¿Te sirve?')}</span>
+          <div className="fila">
+            {([['confirmado', '👍', 'Me sirvió'], ['obvio', '🙄', 'Ya lo sabía'], ['descartado', '👎', 'No tiene sentido']] as const).map(([estado, emoji, texto]) => (
+              <button key={estado} className={`btn chico ${h.estado === estado ? 'primario' : ''}`} onClick={() => marcar(h, h.estado === estado ? 'nuevo' : estado)}>{emoji} {t(texto)}</button>
+            ))}
+          </div>
         </div>
       ) : null}
     </article>
@@ -159,6 +165,13 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
         <details className="posibles">
           <summary>{t('{n} posibles, todavía con pocos datos', { n: posibles.length })}</summary>
           {posibles.map(tarjeta)}
+        </details>
+      ) : null}
+      {apartados.length ? (
+        <details className="posibles">
+          <summary>{t('{n} que marcaste como obvios o sin sentido', { n: apartados.length })}</summary>
+          <p className="suave chico">{t('Ya no te los aviso, y aprendo de esto para los próximos.')}</p>
+          {apartados.map(tarjeta)}
         </details>
       ) : null}
 

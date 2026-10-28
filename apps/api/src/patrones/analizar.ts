@@ -86,6 +86,20 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
   const r = buscarPatrones(datos, conceptos, desde, hasta);
   const nombre = new Map(conceptos.map((x) => [x.id, x.nombre]));
   const tipo = new Map(conceptos.map((x) => [x.id, x.tipo_valor]));
+  // Lo que la persona ya opinó. Un par que marcó como obvio o sin sentido no vuelve como novedad con otro desfase u otro
+  // modo (sí se actualiza el mismo hallazgo, que queda apartado); y la IA aprende de todas las opiniones.
+  const opinados = await filas<{ causa_id: number; efecto_id: number; causa: string; efecto: string; estado: 'confirmado' | 'obvio' | 'descartado'; clave: string }>(
+    db,
+    sql`SELECT h.causa_id, h.efecto_id, ca.nombre AS causa, ef.nombre AS efecto, h.estado,
+               h.causa_id || '|' || h.causa_modo || '|' || h.efecto_id || '|' || h.efecto_modo || '|' || h.desfase_dias AS clave
+        FROM hallazgos h JOIN conceptos ca ON ca.id = h.causa_id JOIN conceptos ef ON ef.id = h.efecto_id
+        WHERE h.persona_id = ${p.id} AND h.estado <> 'nuevo' ORDER BY h.actualizado DESC LIMIT 40`,
+  );
+  const apartados = new Set(opinados.filter((o) => o.estado !== 'confirmado').map((o) => `${o.causa_id}|${o.efecto_id}`));
+  const mismos = new Set(opinados.map((o) => o.clave));
+  r.candidatos = r.candidatos.filter(
+    (x) => !apartados.has(`${x.causa_id}|${x.efecto_id}`) || mismos.has(`${x.causa_id}|${x.causa_modo}|${x.efecto_id}|${x.efecto_modo}|${x.desfase_dias}`),
+  );
   const conNombres = r.candidatos.map((x) => ({
     ...x,
     causa: nombreRasgo(nombre.get(x.causa_id)!, tipo.get(x.causa_id)!, x.causa_modo, idioma),
@@ -102,6 +116,7 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
       ia = await explicarHallazgos({
         persona: p.nombre, perfil: perfilTexto((await una<Persona>(db, sql`SELECT to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones FROM personas WHERE id = ${p.id}`))!), desde, hasta, diasActivos: r.dias_activos, paresEvaluados: r.pares_evaluados,
         candidatos: conNombres.slice(0, 25), frecuentes, idioma,
+        opiniones: opinados.map((o) => ({ causa: o.causa, efecto: o.efecto, opinion: o.estado === 'confirmado' ? 'le sirvió' : o.estado === 'obvio' ? 'ya lo sabía' : 'no tiene sentido' })),
       });
     } catch (e) {
       console.error('Análisis: la IA no pudo explicar los hallazgos:', e instanceof Error ? e.message : e);

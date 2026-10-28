@@ -218,6 +218,13 @@
       "when": 1793144165412,
       "tag": "0030_contexto_72h",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793154914783,
+      "tag": "0031_fuera_de_lo_normal",
+      "breakpoints": true
     }
   ]
 }

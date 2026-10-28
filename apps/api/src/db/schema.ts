@@ -520,7 +520,7 @@ export const hallazgos = pgTable(
     q_valor: doublePrecision('q_valor').notNull(),
     puntaje: doublePrecision('puntaje').notNull(),
     explicacion: text('explicacion'),
-    estado: text('estado', { enum: ['nuevo', 'confirmado', 'descartado'] }).notNull().default('nuevo'),
+    estado: text('estado', { enum: ['nuevo', 'confirmado', 'obvio', 'descartado'] }).notNull().default('nuevo'),
     analisis_id: integer('analisis_id').references(() => analisis.id, { onDelete: 'set null' }),
     detectado: instante('detectado').notNull().defaultNow(),
     actualizado: instante('actualizado').notNull().defaultNow(),
@@ -696,3 +696,29 @@ export const contextoRegistro = pgTable('contexto_registro', {
   items: jsonb('items').$type<Array<{ cuando: string; emoji: string; texto: string }>>().notNull().default([]),
   creado: creado(),
 });
+
+/**
+ * Cuando algo se sale de lo normal de la persona (patrones/fueraDeLoNormal.ts): varias noches durmiendo menos, una
+ * molestia que se repite más que de costumbre, el ánimo más bajo, menos pasos, más pantalla. Lo revisa un job a la
+ * mañana; cada `clave` se avisa a lo sumo una vez por semana.
+ */
+export const fueraDeLoNormal = pgTable(
+  'fuera_de_lo_normal',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    /** El día de Patty en que se detectó. */
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    /** Qué se salió: sueno, pasos, pantalla, animo, sintoma:<concepto_id>. */
+    clave: text('clave').notNull(),
+    emoji: text('emoji').notNull(),
+    texto: text('texto').notNull(),
+    /** Los números con los que se decidió (lo reciente y lo habitual). */
+    datos: jsonb('datos').$type<Record<string, number | string | null>>().notNull().default({}),
+    estado: text('estado', { enum: ['nuevo', 'visto'] }).notNull().default('nuevo'),
+    creado: creado(),
+  },
+  (t) => [uniqueIndex('fuera_de_lo_normal_idx').on(t.persona_id, t.clave, t.fecha)],
+);

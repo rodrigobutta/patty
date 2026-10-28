@@ -12,6 +12,7 @@ import { armarContexto, pendientes } from '../ia/contexto.js';
 import { resumirNoche } from '../ia/resumirNoche.js';
 import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
 import { analizarPersona } from './analizar.js';
+import { guardarFueraDeLoNormal } from './fueraDeLoNormal.js';
 import { DIAS_MINIMOS } from './motor.js';
 
 const HORA_ANALISIS = 4;
@@ -20,6 +21,8 @@ const HORA_AVISO = 9;
 const HORA_COMENTARIOS = 6;
 /** El resumen de la noche (ia/resumirNoche.ts), cuando ya se suele haber sincronizado el reloj. */
 const HORA_RESUMEN_NOCHE = 10;
+/** Lo que se sale de lo normal (patrones/fueraDeLoNormal.ts), después del resumen de la noche (ya con el sueño). */
+const HORA_FUERA_DE_LO_NORMAL = 11;
 /** El domingo a esta hora se arma el resumen de la semana y el búho avisa. */
 const HORA_SEMANA = 20;
 /** Solo se analiza a quien anotó algo en estos últimos días (si no, no cambió nada desde la última vez). */
@@ -160,6 +163,43 @@ export async function resumirSemanas(db: Db, ahora = new Date()): Promise<number
   return n;
 }
 
+/** A las 11, lo que se sale de lo normal de cada persona activa; si hay algo nuevo, el búho avisa. */
+export async function revisarFueraDeLoNormal(db: Db, ahora = new Date()): Promise<number> {
+  const lista = await filas<PersonaNoche>(
+    db,
+    sql`SELECT p.id, p.nombre, p.zona_horaria,
+               (SELECT u.idioma FROM persona_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id
+                WHERE pu.persona_id = p.id ORDER BY (pu.rol = 'dueno') DESC, u.id LIMIT 1) AS idioma
+        FROM personas p
+        WHERE EXISTS (SELECT 1 FROM registros r WHERE r.persona_id = p.id AND r.borrado IS NULL AND r.origen IN ('manual', 'ia')
+                      AND r.creado > ${ahora.toISOString()}::timestamptz - interval '14 days')`,
+  );
+  let n = 0;
+  for (const p of lista) {
+    if (!enHora(ahora, p.zona_horaria, HORA_FUERA_DE_LO_NORMAL)) continue;
+    const hoy = diaDePatty(ahora, p.zona_horaria);
+    if (!(await primeraVez(db, `fuera|${p.id}|${hoy}`))) continue;
+    try {
+      const hechos = await guardarFueraDeLoNormal(db, p.id, hoy, esIdioma(p.idioma) ? p.idioma : 'es');
+      if (!hechos.length) continue;
+      n += hechos.length;
+      if (!hayEnvio()) continue;
+      for (const d of await dispositivosDe(db, p.id, false)) {
+        const i: Idioma = esIdioma(d.idioma) ? d.idioma : 'es';
+        await avisarUnaVez(db, d, `aviso-fuera|${p.id}|${hoy}`, {
+          titulo: traducir(i, '🦉 Algo distinto estos días'),
+          cuerpo: hechos.length > 1 ? `${hechos[0].texto} ${traducir(i, '(y {n} más)', { n: hechos.length - 1 })}` : hechos[0].texto,
+          datos: { tipo: 'fuera', persona_id: String(p.id), cara: 'espera' },
+          etiqueta: `fuera|${p.id}`,
+        });
+      }
+    } catch (e) {
+      console.error(`Fuera de lo normal: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+    }
+  }
+  return n;
+}
+
 /** "¿Qué pasó antes?" de las molestias y los malos momentos recién anotados (unos pocos por vuelta). */
 export async function contextosPendientes(db: Db): Promise<number> {
   let n = 0;
@@ -223,6 +263,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await comentarDeManana(db);
       await resumirNochesDeHoy(db);
       await resumirSemanas(db);
+      await revisarFueraDeLoNormal(db);
       await contextosPendientes(db);
     } catch (e) {
       console.error('Error con los patrones de noche:', e);

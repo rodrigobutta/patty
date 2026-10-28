@@ -20,7 +20,7 @@ import { Cargar, ElegirFoto } from './Cargar';
 import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
 import { GloboDelBuho } from './GloboDelBuho';
-import { ComentarioDelDia } from './ComentariosDePatty';
+import { ComentarioDelDia, FueraDeLoNormal } from './ComentariosDePatty';
 import { RutinasDelDia } from './RutinasDelDia';
 import { TarjetaSemana } from './Semanas';
 import { PreguntaDespertar } from './PreguntaDespertar';
@@ -422,6 +422,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         />
       ) : null}
       {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
+      {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
       {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
         <RutinasDelDia persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />

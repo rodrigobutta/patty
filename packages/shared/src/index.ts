@@ -479,7 +479,8 @@ export interface ParadaSinNombre {
   otros_dias: number;
 }
 
-export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'descartado';
+/** confirmado: le sirvió; obvio: ya lo sabía; descartado: no tiene sentido. Los dos últimos se apartan y no vuelven a avisarse. */
+export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'obvio' | 'descartado';
 /** presente = ese día hubo; alto / bajo = ese día el valor estuvo por encima / debajo de lo habitual de la persona */
 export type Modo = 'presente' | 'alto' | 'bajo';
 

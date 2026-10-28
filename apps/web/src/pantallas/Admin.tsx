@@ -133,6 +133,7 @@ interface Detalle {
   uso: Array<{ fecha: string; segundos: number; aperturas: number }>;
   preguntas: Array<{ id: number; pregunta: string; respuesta: string; creado: string }>;
   comentarios: Array<{ id: number; persona_id: number; fecha: string; emoji: string; texto: string; estado: 'nuevo' | 'visto' | 'gusta'; hora?: string }>;
+  fuera?: Array<{ id: number; persona_id: number; fecha: string; emoji: string; texto: string; estado: 'nuevo' | 'visto' }>;
 }
 
 interface Uso {
@@ -691,7 +692,7 @@ function LoQuePattyLeDice({ d }: { d: Detalle }) {
           <ul className="lista-simple">
             {d.hallazgos.map((h) => (
               <li key={h.id}>
-                {h.estado === 'confirmado' ? '✅' : h.estado === 'descartado' ? '🚫' : '🔎'} {h.explicacion ?? `${t(h.causa)} → ${t(h.efecto)}`}
+                {h.estado === 'confirmado' ? '✅' : h.estado === 'descartado' ? '🚫' : h.estado === 'obvio' ? '🙄' : '🔎'} {h.explicacion ?? `${t(h.causa)} → ${t(h.efecto)}`}
                 {varias ? <span className="suave chico"> · {nombre.get(h.persona_id)}</span> : null}
               </li>
             ))}
@@ -707,6 +708,19 @@ function LoQuePattyLeDice({ d }: { d: Detalle }) {
                 {a.origen === 'noche' ? '🌙' : '👆'} {fechaHora(a.creado)} · {a.origen === 'noche' ? t('de noche') : t('a mano')} · {cuantos(a.dias, 'día', 'días')} ·{' '}
                 {cuantos(a.hallazgos, 'hallazgo', 'hallazgos')}{a.nuevos ? ` · ${t('{n} nuevos', { n: a.nuevos })}` : ''}
                 {varias ? <span className="suave chico"> · {nombre.get(a.persona_id)}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      {d.fuera?.length ? (
+        <details>
+          <summary>{t('Lo que se salió de lo normal')} ({d.fuera.length})</summary>
+          <ul className="lista-simple">
+            {d.fuera.map((x) => (
+              <li key={x.id}>
+                {x.emoji} {x.texto}
+                <span className="suave chico"> · {x.fecha}{x.estado === 'visto' ? ` · ${t('visto')}` : ''}{varias ? ` · ${nombre.get(x.persona_id)}` : ''}</span>
               </li>
             ))}
           </ul>

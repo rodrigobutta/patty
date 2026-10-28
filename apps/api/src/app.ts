@@ -21,6 +21,7 @@ import { rutasIngesta } from './routes/ingesta.js';
 import { rutasPatrones } from './routes/patrones.js';
 import { rutasPreguntar } from './routes/preguntar.js';
 import { rutasComentarios } from './routes/comentarios.js';
+import { rutasFueraDeLoNormal } from './routes/fueraDeLoNormal.js';
 import { rutasSueno } from './routes/sueno.js';
 import { rutasActividad } from './routes/actividad.js';
 import { rutasSemanas } from './routes/semanas.js';
@@ -115,6 +116,7 @@ export function crearApp(): Hono<Env> {
   api.route('/', rutasPatrones);
   api.route('/', rutasPreguntar);
   api.route('/comentarios', rutasComentarios);
+  api.route('/fuera-de-lo-normal', rutasFueraDeLoNormal);
   api.route('/sueno', rutasSueno);
   api.route('/actividad', rutasActividad);
   api.route('/semanas', rutasSemanas);

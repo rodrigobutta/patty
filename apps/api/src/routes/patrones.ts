@@ -48,7 +48,7 @@ export const rutasPatrones = new Hono<Env>()
   .put('/hallazgos/:id', async (c) => {
     const id = idParam(c);
     const estado = (await cuerpo(c)).estado;
-    if (!['nuevo', 'confirmado', 'descartado'].includes(estado as string)) throw new ErrorApi('Estado inválido.');
+    if (!['nuevo', 'confirmado', 'obvio', 'descartado'].includes(estado as string)) throw new ErrorApi('Estado inválido.');
     const h = await una<{ persona_id: number }>(c.var.db, sql`SELECT persona_id FROM hallazgos WHERE id = ${id}`);
     if (!h) throw new ErrorApi('No existe.', 404);
     await persona(c.var.db, c.var.usuario, h.persona_id, true);

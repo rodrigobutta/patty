@@ -43,6 +43,8 @@ export function explicarHallazgos(datos: {
   paresEvaluados: number;
   candidatos: Array<Candidato & { causa: string; efecto: string }>;
   frecuentes: Array<{ nombre: string; dias: number }>;
+  /** Lo que la persona opinó de patrones anteriores: para aprender qué le sirve y qué no. */
+  opiniones?: Array<{ causa: string; efecto: string; opinion: 'le sirvió' | 'ya lo sabía' | 'no tiene sentido' }>;
   /** El idioma de la app: el resumen, las explicaciones y las sugerencias van en ese idioma. */
   idioma?: Idioma;
 }): Promise<Explicaciones> {
@@ -62,6 +64,14 @@ export function explicarHallazgos(datos: {
     `Se probaron ${datos.paresEvaluados} combinaciones (por eso algunas pueden salir por azar: mirá el q).`,
     '',
     'Lo que más se anotó (días): ' + datos.frecuentes.map((f) => `${f.nombre} ${f.dias}`).join(', '),
+    ...(datos.opiniones?.length
+      ? [
+          '',
+          'Lo que opinó de patrones anteriores (aprendé de esto: no le expliques como novedad lo que es obvio para ella, y ' +
+            'marcá con plausibilidad baja lo que se parezca a lo que dijo que no tiene sentido):',
+          ...datos.opiniones.map((o) => `- ${o.causa} → ${o.efecto}: ${o.opinion}`),
+        ]
+      : []),
     '',
     'Candidatos:',
     ...datos.candidatos.map(
