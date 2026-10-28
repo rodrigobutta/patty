@@ -1388,3 +1388,21 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 /* La tarjeta a la que llevó un aviso: un brillo un momento. */
 .resaltada { animation: resaltar 2.2s ease-out; }
 @keyframes resaltar { 0%, 30% { box-shadow: 0 0 0 3px var(--acento); } 100% { box-shadow: 0 0 0 0 transparent; } }
+/* La línea de lo que dura: cada fila se toca para resolverla ahí. */
+.linea-malestares.malestares-abiertos { display: grid; gap: 6px; margin: 0 0 12px; }
+.gantt-item { display: grid; gap: 6px; border-radius: 12px; }
+.gantt-item.abierta { background: color-mix(in srgb, var(--acento) 6%, transparent); padding: 4px 6px 8px; margin: 0 -6px; }
+.tocable-gantt { width: 100%; padding: 4px 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.gantt-fila.tocable-gantt { grid-template-columns: 9em 1fr; }
+.gantt-nombre { display: grid; gap: 1px; min-width: 0; }
+.gantt-nombre > .chico { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.gantt-estado { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--suave); white-space: nowrap; }
+.gantt-estado.sigue { color: var(--rojo); font-weight: 600; }
+.actividad .gantt-estado.sigue { color: var(--verde); }
+.gantt-estado .pulso { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulso-malestar 1.6s ease-in-out infinite; }
+.gantt-pista { height: 20px; }
+.gantt-barra.actividad { background: color-mix(in srgb, var(--verde) 70%, transparent); }
+.gantt-barra.actividad.sigue { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--verde) 70%, transparent) 0 6px, color-mix(in srgb, var(--verde) 40%, transparent) 6px 12px); }
+.gantt-antes { position: absolute; left: 2px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--suave); }
+.gantt-acciones { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.linea-malestares.malestares-abiertos { border-color: var(--borde); }

@@ -802,4 +802,9 @@ export const PERMISOS: Record<string, string> = {
   "🦉 Saliste a caminar {n} min": "🦉 You went for a {n}-min walk",
   "Paseo con los perros": "Walked the dogs",
   "Mandados": "Errands",
+  "a las {hora}": "at {hora}",
+  "sigue · {cuanto}": "ongoing · {cuanto}",
+  "terminó · {cuanto}": "ended · {cuanto}",
+  "⏱️ Lo que dura": "⏱️ Ongoing and timed",
+  "✏️ Editar": "✏️ Edit",
 };

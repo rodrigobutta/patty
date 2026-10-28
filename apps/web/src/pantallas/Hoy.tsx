@@ -30,7 +30,7 @@ import { AnimoSemana } from './AnimoSemana';
 import { ObjetivosSemana } from './ObjetivosSemana';
 import { useCadaTanto } from '../lib/reloj';
 import { SeguimientoDelDia } from './SeguimientoDelDia';
-import { LineaMalestares, MalestaresAbiertos } from './MalestaresAbiertos';
+import { LineaDelDia } from './MalestaresAbiertos';
 import { PaseosPendientes } from './PaseosPendientes';
 import { EVENTO_SUBIDO, SinSenal } from './SinSenal';
 import type { ContadoPendiente } from '../lib/cola';
@@ -502,8 +502,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         />
       ) : null}
       {fecha === hoy ? <SinSenal persona={persona} alRevisar={(c) => { setRevisando(c); setCargando('contar'); }} /> : null}
-      {/* Los malestares que siguen, como badges arriba de todo (tocándolos se cuenta cómo van). */}
-      {fecha === hoy && !persona.supervisada ? <MalestaresAbiertos persona={persona} vuelta={vuelta} alCambiar={() => void traer()} /> : null}
+      {/* Lo que dura (malestares y actividades), arriba de todo: tocando cada barra se cuenta cómo va. */}
+      {registros && !persona.supervisada ? (
+        <LineaDelDia persona={persona} fecha={fecha} hoy={hoy} registros={registros} categorias={categorias} vuelta={vuelta} alCambiar={() => void traer()} alEditar={(r) => setEditando(r)} />
+      ) : null}
       {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
       {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
       {fecha === hoy && registros ? <SeguimientoDelDia persona={persona} registros={registros} categorias={categorias} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
@@ -549,7 +551,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </div>
       ) : (
         <>
-        <LineaMalestares persona={persona} fecha={fecha} hoy={hoy} registros={registros} categorias={categorias} />
         <ul className="lista linea">
           {registros
             .filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio))
