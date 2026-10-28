@@ -1414,14 +1414,15 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .gantt-item.abierta { background: var(--panel); }
 /* Lo que dura, con el estilo de los widgets: fondo clarito y borde; las pistas con rayitas por hora y la de ahora. */
 .linea-malestares.malestares-abiertos { background: color-mix(in srgb, var(--acento-suave) 55%, var(--panel)); border: 1px solid var(--borde); border-radius: 16px; }
-.linea-malestares .gantt-pista { background: none; border-bottom: 1px solid color-mix(in srgb, var(--acento) 25%, transparent); border-radius: 0; height: 22px; }
+.linea-malestares .gantt-pista { background: none; border-bottom: 1px solid color-mix(in srgb, var(--acento) 25%, transparent); border-radius: 0; height: 32px; }
 .gantt-tick { position: absolute; top: 2px; bottom: 0; width: 1px; background: color-mix(in srgb, var(--acento) 22%, transparent); }
 .gantt-ahora { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--acento); opacity: 0.7; }
 .linea-malestares .gantt-horas .gantt-pista { border-bottom: 0; height: 16px; }
 .gantt-horas .gantt-pista span { position: absolute; transform: translateX(-50%); font-size: 11px; }
 .gantt-ahora-rotulo { color: var(--acento); font-weight: 700; top: 0; }
 .gantt-item.abierta { background: color-mix(in srgb, var(--panel) 70%, transparent); }
-.linea-malestares .gantt-barra { top: 5px; bottom: 5px; }
+.linea-malestares .gantt-barra { top: 5px; bottom: 5px; border-radius: 8px; }
+.linea-malestares .gantt-punto { width: 12px; height: 12px; margin: -6px 0 0 -6px; }
 /* Admin → Salud */
 .admin-salud { display: grid; gap: 12px; }
 .tabla-scroll { overflow-x: auto; }
