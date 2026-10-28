@@ -31,6 +31,7 @@ import { ObjetivosSemana } from './ObjetivosSemana';
 import { useCadaTanto } from '../lib/reloj';
 import { SeguimientoDelDia } from './SeguimientoDelDia';
 import { LineaMalestares, MalestaresAbiertos } from './MalestaresAbiertos';
+import { PaseosPendientes } from './PaseosPendientes';
 import { EVENTO_SUBIDO, SinSenal } from './SinSenal';
 import type { ContadoPendiente } from '../lib/cola';
 import { WidgetsDelDia } from './WidgetsDelDia';
@@ -471,6 +472,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
       {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
       {fecha === hoy && registros ? <SeguimientoDelDia persona={persona} registros={registros} categorias={categorias} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
+      {fecha === hoy && !persona.supervisada ? <PaseosPendientes persona={persona} vuelta={vuelta} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
       {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
       {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (

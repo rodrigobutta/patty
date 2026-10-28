@@ -253,6 +253,13 @@
       "when": 1793189127769,
       "tag": "0035_seguimientos",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793197346482,
+      "tag": "0036_paseos_detectados",
+      "breakpoints": true
     }
   ]
 }

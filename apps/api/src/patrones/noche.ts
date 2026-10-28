@@ -16,6 +16,7 @@ import { guardarFueraDeLoNormal } from './fueraDeLoNormal.js';
 import { avisarSeguimientos } from './seguimientos.js';
 import { seguirMalestares } from './malestares.js';
 import { sugerirFinDeActividades } from './actividades.js';
+import { sugerirPaseos } from './paseos.js';
 import { DIAS_MINIMOS } from './motor.js';
 
 const HORA_ANALISIS = 4;
@@ -270,6 +271,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await avisarSeguimientos(db);
       await seguirMalestares(db);
       await sugerirFinDeActividades(db);
+      await sugerirPaseos(db);
       await contextosPendientes(db);
     } catch (e) {
       console.error('Error con los patrones de noche:', e);

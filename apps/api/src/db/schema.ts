@@ -814,3 +814,24 @@ export const seguimientos = pgTable(
   },
   (t) => [index('seguimientos_persona_idx').on(t.persona_id, t.hasta)],
 );
+
+/**
+ * Las vueltas a pie que detectó la ubicación (sacar a los perros, dar una vuelta) para sugerir anotarlas: pendiente
+ * hasta que se anota (registro_id) o se descarta. Lo anotado enseña cómo se llaman (patrones/paseos.ts).
+ */
+export const paseosDetectados = pgTable(
+  'paseos_detectados',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    inicio: instante('inicio').notNull(),
+    fin: instante('fin').notNull(),
+    metros: integer('metros').notNull(),
+    estado: text('estado', { enum: ['pendiente', 'anotado', 'descartado'] }).notNull().default('pendiente'),
+    registro_id: bigint('registro_id', { mode: 'number' }).references(() => registros.id, { onDelete: 'set null' }),
+    creado: creado(),
+  },
+  (t) => [uniqueIndex('paseos_detectados_idx').on(t.persona_id, t.inicio)],
+);

@@ -125,10 +125,49 @@ export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
   }
   return r
     .filter((v) => v.metros >= VIAJE_M)
-    .filter((v) => {
-      const horas = Math.max((v.fin - v.inicio) / 3600000, 1 / 60);
-      const vuelta = distanciaMetros(v.desde, v.hasta) < VUELTA_M;
-      return !(vuelta && v.metros / 1000 / horas < CAMINANDO_KMH);
-    })
+    .filter((v) => !esVuelta(v))
+    .map(({ inicio, fin, metros }) => ({ inicio, fin, metros }));
+}
+
+/** Una vuelta a pie: termina cerca de donde empezó, a paso de caminata. */
+function esVuelta(v: Viaje & { desde: Punto; hasta: Punto }): boolean {
+  const horas = Math.max((v.fin - v.inicio) / 3600000, 1 / 60);
+  return distanciaMetros(v.desde, v.hasta) < VUELTA_M && v.metros / 1000 / horas < CAMINANDO_KMH;
+}
+
+/** Un paseo es de al menos esto (unas cuadras) y este tiempo. */
+const PASEO_M = 300;
+const PASEO_MIN = 5;
+
+/**
+ * Los paseos del día: las vueltas a pie que terminan donde empezaron (sacar a los perros, dar una vuelta), de unas
+ * cuadras para arriba. Son las que viajesDelDia deja afuera; Patty las sugiere para anotar (patrones/paseos.ts).
+ */
+export function paseosDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Viaje[] {
+  const orden = [...puntosDia].sort((a, b) => a.instante - b.instante);
+  const r: Array<Viaje & { desde: Punto; hasta: Punto }> = [];
+  let actual: (Viaje & { desde: Punto; hasta: Punto }) | null = null;
+  for (let i = 1; i < orden.length; i++) {
+    const a = orden[i - 1];
+    const b = orden[i];
+    const d = distanciaMetros(a, b);
+    if (d < TRAMO_M) continue;
+    const largo = b.instante - a.instante > CONTINUO_MIN * 60000;
+    const seguido = actual !== null && actual.fin === a.instante && !largo && !lugarDe(a, lugares);
+    if (seguido) {
+      actual!.fin = b.instante;
+      actual!.metros += d;
+      actual!.hasta = b;
+    } else {
+      // Si sale de un lugar suyo (casa) después de estar quieto, la vuelta empieza ahí: a paso de caminata, un rato
+      // antes del primer punto en camino.
+      const deUnLugar = largo && lugarDe(a, lugares);
+      const inicio = largo ? (deUnLugar ? Math.max(a.instante, b.instante - (d / 1.4) * 1000) : b.instante) : a.instante;
+      actual = { inicio, fin: b.instante, metros: d, desde: largo && !deUnLugar ? b : a, hasta: b };
+      r.push(actual);
+    }
+  }
+  return r
+    .filter((v) => v.metros >= PASEO_M && v.fin - v.inicio >= PASEO_MIN * 60000 && esVuelta(v))
     .map(({ inicio, fin, metros }) => ({ inicio, fin, metros }));
 }

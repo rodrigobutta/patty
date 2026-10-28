@@ -1384,3 +1384,4 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .grupo-plantilla + .grupo-plantilla { margin-top: 4px; }
 .badge-malestar.actividad { border-color: color-mix(in srgb, var(--verde) 45%, var(--borde)); background: color-mix(in srgb, var(--verde) 10%, var(--panel)); }
 .badge-malestar.actividad .pulso { background: var(--verde); }
+.paseo-pendiente p { margin: 0 0 8px; } .paseo-pendiente { border-color: color-mix(in srgb, var(--verde) 40%, var(--borde)); }
