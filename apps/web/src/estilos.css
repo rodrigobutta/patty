@@ -1344,3 +1344,4 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .gantt-punto { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid var(--panel); }
 .gantt-horas .gantt-pista { background: none; height: 14px; }
 .gantt-horas .gantt-pista span { position: absolute; transform: translateX(-50%); }
+.item-seguimiento .frecuencia { font-size: 11px; opacity: 0.6; margin-left: 2px; }

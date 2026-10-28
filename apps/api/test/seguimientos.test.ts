@@ -33,9 +33,18 @@ describe('seguimientos', () => {
     expect(await avisarSeguimientos(db, localAInstante(hoy, '14:00', ZONA))).toBe(0); // una vez
     // Falta cómo se siente; la cena todavía no; los vómitos son opcionales.
     expect(enviados[0]).toMatchObject({ titulo: '🤒 ¿Cómo seguís?', cuerpo: 'Contame cómo te sentís. Te falta anotar: cómo me siento.', datos: { tipo: 'seguimiento' } });
+    // A las 20:30, lo de cada vez (cómo me siento, la temperatura) se vuelve a pedir; el desayuno (una vez al día), no;
+    // la cena todavía no.
+    expect(await avisarSeguimientos(db, localAInstante(hoy, '20:30', ZONA))).toBe(1);
+    expect(enviados[1].cuerpo).toBe('Contame cómo te sentís. Te falta anotar: cómo me siento, temperatura corporal y cena.');
 
     expect((await ana.del(`/api/seguimientos/${l.activos[0].id}`)).status).toBe(200);
     expect((await ana.get(`/api/seguimientos?persona=${personaId}`)).body.activos).toEqual([]);
+
+    // Hasta que se desactive.
+    expect((await ana.post('/api/seguimientos', { persona_id: personaId, plantilla: { ...plantilla, dias: 0 } })).status).toBe(201);
+    const sin = (await ana.get(`/api/seguimientos?persona=${personaId}`)).body.activos[0];
+    expect(Date.parse(sin.hasta) - Date.now()).toBeGreaterThan(50 * 365 * 86400000);
 
     // Plantillas propias.
     const p = await ana.post('/api/seguimientos/plantillas', { persona_id: personaId, nombre: 'Muelas', items: ['sentir', 'dientes'], horarios: ['21:00'], dias: 3 });

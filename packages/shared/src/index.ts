@@ -253,26 +253,31 @@ export interface ItemSeguimiento {
   hasta?: number;
   /** Solo si pasa (vómitos): se anota con un toque, pero no hace falta para dar el día por completo. */
   opcional?: boolean;
+  /**
+   * 'dia': una vez al día (el almuerzo): anotado una vez, ya está por hoy. 'cada_vez': se vuelve a pedir en cada aviso
+   * (la fiebre): cuenta lo anotado desde el último horario.
+   */
+  frecuencia: 'dia' | 'cada_vez';
 }
 export const ITEMS_SEGUIMIENTO: ItemSeguimiento[] = [
-  { clave: 'sentir', nombre: 'Cómo me siento', emoji: '🙂', tipo: 'sentir' },
-  { clave: 'desayuno', nombre: 'Desayuno', emoji: '☕', tipo: 'comida', desde: 5, hasta: 11 },
-  { clave: 'almuerzo', nombre: 'Almuerzo', emoji: '🍝', tipo: 'comida', desde: 11, hasta: 16 },
-  { clave: 'merienda', nombre: 'Merienda', emoji: '🧉', tipo: 'comida', desde: 16, hasta: 19 },
-  { clave: 'cena', nombre: 'Cena', emoji: '🍽️', tipo: 'comida', desde: 19, hasta: 29 },
-  { clave: 'temperatura', nombre: 'Temperatura corporal', emoji: '🌡️', tipo: 'medida', concepto: 'Temperatura corporal', categoria: 'sintoma', unidad: '°C' },
-  { clave: 'agua', nombre: 'Vaso de agua', emoji: '💧', tipo: 'concepto', concepto: 'Vaso de agua', categoria: 'bebida' },
-  { clave: 'pis', nombre: 'Pis', emoji: '🚽', tipo: 'concepto', concepto: 'Pis', categoria: 'bano' },
-  { clave: 'caca', nombre: 'Caca', emoji: '💩', tipo: 'concepto', concepto: 'Caca', categoria: 'bano' },
-  { clave: 'vomitos', nombre: 'Vómitos', emoji: '🤮', tipo: 'concepto', concepto: 'Vómitos', categoria: 'sintoma', opcional: true },
-  { clave: 'diarrea', nombre: 'Diarrea', emoji: '💦', tipo: 'concepto', concepto: 'Diarrea', categoria: 'sintoma', opcional: true },
-  { clave: 'dolor_panza', nombre: 'Dolor de panza', emoji: '🫃', tipo: 'concepto', concepto: 'Dolor de panza', categoria: 'sintoma', opcional: true },
-  { clave: 'dolor_cabeza', nombre: 'Dolor de cabeza', emoji: '🤕', tipo: 'concepto', concepto: 'Dolor de cabeza', categoria: 'sintoma', opcional: true },
-  { clave: 'dientes', nombre: 'Me lavé los dientes', emoji: '🪥', tipo: 'concepto', concepto: 'Me lavé los dientes', categoria: 'higiene' },
-  { clave: 'ducha', nombre: 'Me bañé', emoji: '🚿', tipo: 'concepto', concepto: 'Me bañé', categoria: 'higiene' },
-  { clave: 'caminata', nombre: 'Caminata', emoji: '🚶', tipo: 'concepto', concepto: 'Caminata', categoria: 'actividad' },
-  { clave: 'me_levante', nombre: 'Me levanté', emoji: '🌅', tipo: 'concepto', concepto: 'Me levanté', categoria: 'sueno' },
-  { clave: 'me_acoste', nombre: 'Me acosté', emoji: '🌙', tipo: 'concepto', concepto: 'Me acosté', categoria: 'sueno' },
+  { clave: 'sentir', nombre: 'Cómo me siento', emoji: '🙂', tipo: 'sentir', frecuencia: 'cada_vez' },
+  { clave: 'desayuno', nombre: 'Desayuno', emoji: '☕', tipo: 'comida', desde: 5, hasta: 11, frecuencia: 'dia' },
+  { clave: 'almuerzo', nombre: 'Almuerzo', emoji: '🍝', tipo: 'comida', desde: 11, hasta: 16, frecuencia: 'dia' },
+  { clave: 'merienda', nombre: 'Merienda', emoji: '🧉', tipo: 'comida', desde: 16, hasta: 19, frecuencia: 'dia' },
+  { clave: 'cena', nombre: 'Cena', emoji: '🍽️', tipo: 'comida', desde: 19, hasta: 29, frecuencia: 'dia' },
+  { clave: 'temperatura', nombre: 'Temperatura corporal', emoji: '🌡️', tipo: 'medida', concepto: 'Temperatura corporal', categoria: 'sintoma', unidad: '°C', frecuencia: 'cada_vez' },
+  { clave: 'agua', nombre: 'Vaso de agua', emoji: '💧', tipo: 'concepto', concepto: 'Vaso de agua', categoria: 'bebida', frecuencia: 'cada_vez' },
+  { clave: 'pis', nombre: 'Pis', emoji: '🚽', tipo: 'concepto', concepto: 'Pis', categoria: 'bano', frecuencia: 'cada_vez' },
+  { clave: 'caca', nombre: 'Caca', emoji: '💩', tipo: 'concepto', concepto: 'Caca', categoria: 'bano', frecuencia: 'dia' },
+  { clave: 'vomitos', nombre: 'Vómitos', emoji: '🤮', tipo: 'concepto', concepto: 'Vómitos', categoria: 'sintoma', opcional: true, frecuencia: 'cada_vez' },
+  { clave: 'diarrea', nombre: 'Diarrea', emoji: '💦', tipo: 'concepto', concepto: 'Diarrea', categoria: 'sintoma', opcional: true, frecuencia: 'cada_vez' },
+  { clave: 'dolor_panza', nombre: 'Dolor de panza', emoji: '🫃', tipo: 'concepto', concepto: 'Dolor de panza', categoria: 'sintoma', opcional: true, frecuencia: 'cada_vez' },
+  { clave: 'dolor_cabeza', nombre: 'Dolor de cabeza', emoji: '🤕', tipo: 'concepto', concepto: 'Dolor de cabeza', categoria: 'sintoma', opcional: true, frecuencia: 'cada_vez' },
+  { clave: 'dientes', nombre: 'Me lavé los dientes', emoji: '🪥', tipo: 'concepto', concepto: 'Me lavé los dientes', categoria: 'higiene', frecuencia: 'dia' },
+  { clave: 'ducha', nombre: 'Me bañé', emoji: '🚿', tipo: 'concepto', concepto: 'Me bañé', categoria: 'higiene', frecuencia: 'dia' },
+  { clave: 'caminata', nombre: 'Caminata', emoji: '🚶', tipo: 'concepto', concepto: 'Caminata', categoria: 'actividad', frecuencia: 'dia' },
+  { clave: 'me_levante', nombre: 'Me levanté', emoji: '🌅', tipo: 'concepto', concepto: 'Me levanté', categoria: 'sueno', frecuencia: 'dia' },
+  { clave: 'me_acoste', nombre: 'Me acosté', emoji: '🌙', tipo: 'concepto', concepto: 'Me acosté', categoria: 'sueno', frecuencia: 'dia' },
 ];
 export interface PlantillaSeguimiento {
   id?: number;
@@ -282,6 +287,7 @@ export interface PlantillaSeguimiento {
   items: string[];
   /** A qué horas pregunta (HH:MM). */
   horarios: string[];
+  /** Por cuántos días; 0: hasta que se desactive. */
   dias: number;
 }
 export const PLANTILLAS_SEGUIMIENTO: PlantillaSeguimiento[] = [
@@ -301,19 +307,35 @@ export interface Seguimiento extends PlantillaSeguimiento {
 /** Lo anotado de un día, lo justo para ver qué ítems de un seguimiento ya están (hora local, 0 a 24). */
 export interface AnotadoSeguimiento { concepto: string; categoria: string; hora: number }
 
-/** Los ítems de un seguimiento que ya están hechos hoy (por clave). */
-export function itemsHechos(claves: string[], anotado: AnotadoSeguimiento[]): Set<string> {
+/**
+ * Desde qué hora (local, 5 a 29) cuenta lo de "cada vez": desde el último horario que ya pasó (antes del primero, desde
+ * que empezó el día). `hora` es la hora local de ahora (0 a 24).
+ */
+export function inicioDeVentana(horarios: string[], hora: number): number {
+  const h = (x: number) => (x < 5 ? x + 24 : x);
+  const ahora = h(hora);
+  const pasados = horarios.map((x) => h(Number(x.slice(0, 2)) + Number(x.slice(3, 5)) / 60)).filter((x) => x <= ahora);
+  return pasados.length ? Math.max(...pasados) : 5;
+}
+
+/**
+ * Los ítems de un seguimiento que ya están hechos (por clave): los de una vez al día, si hoy hay algo; los de cada vez,
+ * si hay algo desde `ventana` (ver inicioDeVentana; sin ella, cuenta todo el día).
+ */
+export function itemsHechos(claves: string[], anotado: AnotadoSeguimiento[], ventana = 5): Set<string> {
   const hechos = new Set<string>();
   const norm = (x: string) => normalizar(x);
   for (const clave of claves) {
     const it = ITEMS_SEGUIMIENTO.find((i) => i.clave === clave);
     if (!it) continue;
+    const h = (x: number) => (x < 5 ? x + 24 : x);
+    const enVentana = (a: AnotadoSeguimiento) => it.frecuencia === 'dia' || h(a.hora) >= ventana;
     const ok =
       it.tipo === 'sentir'
-        ? anotado.some((a) => a.concepto === COMO_ME_SIENTO || a.concepto === COMO_ME_SENTI || a.concepto === ENFERMO)
+        ? anotado.some((a) => enVentana(a) && (a.concepto === COMO_ME_SIENTO || a.concepto === COMO_ME_SENTI || a.concepto === ENFERMO))
         : it.tipo === 'comida'
           ? anotado.some((a) => a.categoria === 'comida' && (a.hora < 5 ? a.hora + 24 : a.hora) >= (it.desde ?? 0) && (a.hora < 5 ? a.hora + 24 : a.hora) < (it.hasta ?? 29))
-          : anotado.some((a) => norm(a.concepto) === norm(it.concepto ?? it.nombre));
+          : anotado.some((a) => enVentana(a) && norm(a.concepto) === norm(it.concepto ?? it.nombre));
     if (ok) hechos.add(clave);
   }
   return hechos;

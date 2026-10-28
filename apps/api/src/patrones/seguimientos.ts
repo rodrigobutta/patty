@@ -1,14 +1,17 @@
 // Los avisos de los seguimientos activos: a cada hora elegida (hora de la persona), Patty pregunta cómo sigue y qué le
 // falta anotar de hoy ("Te falta: almuerzo, temperatura"). Corre cada minuto con los demás trabajos (patrones/noche.ts).
 import { sql } from 'drizzle-orm';
-import { esIdioma, ITEMS_SEGUIMIENTO, itemsHechos, traducir, type Idioma } from 'shared';
+import { esIdioma, inicioDeVentana, ITEMS_SEGUIMIENTO, itemsHechos, traducir, type Idioma } from 'shared';
 import { filas, type Db } from '../db/client.js';
 import { diaDePatty, minutosDelDia } from '../lib/fechas.js';
 import { hayEnvio } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
 
-/** Lo que falta de hoy (sin los opcionales, como vómitos), en el idioma de la persona. */
-export async function faltanHoy(db: Db, personaId: number, zona: string, items: string[], ahora = new Date()): Promise<string[]> {
+/**
+ * Lo que falta (sin los opcionales, como vómitos): lo de una vez al día, si no está hoy; lo de cada vez (la fiebre), si
+ * no está desde el horario anterior a ahora.
+ */
+export async function faltanHoy(db: Db, personaId: number, zona: string, items: string[], horarios: string[], ahora = new Date()): Promise<string[]> {
   const hoy = diaDePatty(ahora, zona);
   const anotado = await filas<{ concepto: string; categoria: string; hora: number }>(
     db,
@@ -17,8 +20,9 @@ export async function faltanHoy(db: Db, personaId: number, zona: string, items: 
         FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
         WHERE r.persona_id = ${personaId} AND r.borrado IS NULL AND r.fecha = ${hoy}`,
   );
-  const hechos = itemsHechos(items, anotado);
   const hora = minutosDelDia(ahora, zona) / 60;
+  // El horario de ahora no cuenta como comienzo: lo que se anotó desde el anterior ya vale.
+  const hechos = itemsHechos(items, anotado, inicioDeVentana(horarios, hora - 1 / 60));
   return items.filter((clave) => {
     const it = ITEMS_SEGUIMIENTO.find((i) => i.clave === clave);
     // Las comidas que todavía no llegaron (la cena, a la mañana) no faltan.
@@ -38,7 +42,7 @@ export async function avisarSeguimientos(db: Db, ahora = new Date()): Promise<nu
     const m = minutosDelDia(ahora, s.zona_horaria);
     const hhmm = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
     if (!s.horarios.includes(hhmm)) continue;
-    const faltan = await faltanHoy(db, s.persona_id, s.zona_horaria, s.items, ahora);
+    const faltan = await faltanHoy(db, s.persona_id, s.zona_horaria, s.items, s.horarios, ahora);
     const dia = diaDePatty(ahora, s.zona_horaria);
     for (const d of await dispositivosDe(db, s.persona_id, false)) {
       const i: Idioma = esIdioma(d.idioma) ? d.idioma : 'es';

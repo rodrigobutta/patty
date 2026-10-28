@@ -2,7 +2,7 @@
 // anotado); lo que falta se anota desde acá: las comidas contándolas, cómo me siento con las caritas, lo demás con un
 // toque (la temperatura, con el número).
 import { useEffect, useState } from 'react';
-import { ITEMS_SEGUIMIENTO, itemsHechos, type Categoria, type Persona, type Registro, type Seguimiento } from 'shared';
+import { inicioDeVentana, ITEMS_SEGUIMIENTO, itemsHechos, type Categoria, type Persona, type Registro, type Seguimiento } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { medir } from '../lib/analytics';
@@ -61,14 +61,16 @@ export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: 
   return (
     <>
       {activos.map((s) => {
-        const hechos = itemsHechos(s.items, anotado);
-        const dia = Math.min(s.dias, Math.floor((Date.now() - Date.parse(s.desde)) / 86400000) + 1);
+        // Lo de "cada vez" cuenta desde el último horario que pasó; lo de una vez al día, todo el día.
+        const [hh, mm] = horaEn(new Date().toISOString(), persona.zona_horaria).split(':').map(Number);
+        const hechos = itemsHechos(s.items, anotado, inicioDeVentana(s.horarios, hh + mm / 60));
+        const dia = Math.floor((Date.now() - Date.parse(s.desde)) / 86400000) + 1;
         const pendientes = s.items.filter((c) => !hechos.has(c) && !ITEMS_SEGUIMIENTO.find((i) => i.clave === c)?.opcional).length;
         return (
           <div key={s.id} className="tarjeta seguimiento-dia">
             <div className="seguimiento-cabeza">
               <strong>{s.emoji} {t(s.nombre)}</strong>
-              <span className="suave chico">{t('día {n} de {total}', { n: dia, total: s.dias })}{pendientes ? ` · ${t('faltan {n}', { n: pendientes })}` : ` · ${t('¡todo al día!')}`}</span>
+              <span className="suave chico">{s.dias ? t('día {n} de {total}', { n: Math.min(dia, s.dias), total: s.dias }) : t('día {n}', { n: dia })}{pendientes ? ` · ${t('faltan {n}', { n: pendientes })}` : ` · ${t('¡todo al día!')}`}</span>
             </div>
             <div className="seguimiento-items">
               {s.items.map((clave) => {
@@ -76,9 +78,15 @@ export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: 
                 if (!it) return null;
                 const hecho = hechos.has(clave);
                 return (
-                  <button key={clave} className={`item-seguimiento${hecho ? ' hecho' : ''}${it.opcional ? ' opcional' : ''}`} onClick={() => void anotar(clave)}>
+                  <button
+                    key={clave}
+                    className={`item-seguimiento${hecho ? ' hecho' : ''}${it.opcional ? ' opcional' : ''}`}
+                    onClick={() => void anotar(clave)}
+                    title={it.frecuencia === 'cada_vez' ? t('Se vuelve a pedir en cada aviso') : t('Una vez al día')}
+                  >
                     <span aria-hidden>{hecho ? '✓' : it.emoji}</span>
                     {t(it.nombre)}
+                    <span className="frecuencia" aria-label={it.frecuencia === 'cada_vez' ? t('en cada aviso') : t('una vez al día')}>{it.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
                   </button>
                 );
               })}
@@ -91,7 +99,10 @@ export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: 
                 <button className="btn chico" onClick={() => setMidiendo(null)}>{t('Cancelar')}</button>
               </div>
             ) : null}
-            {s.activado_por ? <p className="suave chico">{t('Lo activó {quien}.', { quien: s.activado_por })}</p> : null}
+            <p className="suave chico">
+              {t('↻ se vuelve a pedir en cada aviso · 1× una vez al día')}
+              {s.activado_por ? ` · ${t('Lo activó {quien}.', { quien: s.activado_por })}` : ''}
+            </p>
           </div>
         );
       })}

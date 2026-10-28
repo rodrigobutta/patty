@@ -10,7 +10,9 @@ import { locale, t } from '../lib/idioma';
 import { activarSeguimiento, EVENTO_SEGUIMIENTOS, terminarSeguimiento, traerSeguimientos } from '../lib/seguimientos';
 
 type Propia = PlantillaSeguimiento & { id: number };
-const DIAS = [1, 3, 5, 7, 14, 30];
+/** 0: hasta que se desactive. */
+const DIAS = [1, 3, 5, 7, 14, 30, 0];
+const nombreDias = (n: number) => (n === 0 ? t('Hasta que lo desactive') : n === 1 ? t('1 día') : t('{n} días', { n }));
 
 export function Seguimientos({ persona, puedeEscribir }: { persona: Persona; puedeEscribir: boolean }) {
   const { festejar, avisar } = useEstado();
@@ -44,7 +46,7 @@ export function Seguimientos({ persona, puedeEscribir }: { persona: Persona; pue
   const activar = (p: PlantillaSeguimiento, clave: string) => {
     const n = dias[clave] ?? p.dias;
     medir('seguimiento_activar', { plantilla: p.nombre, dias: n });
-    void hacer(() => activarSeguimiento(persona.id, { ...p, dias: n }), t('{emoji} Activado por {n} días', { emoji: p.emoji, n }));
+    void hacer(() => activarSeguimiento(persona.id, { ...p, dias: n }), n ? t('{emoji} Activado por {n} días', { emoji: p.emoji, n }) : t('{emoji} Activado hasta que lo desactives', { emoji: p.emoji }));
   };
   const guardar = (p: PlantillaSeguimiento & { id?: number }) =>
     void hacer(async () => {
@@ -60,13 +62,16 @@ export function Seguimientos({ persona, puedeEscribir }: { persona: Persona; pue
     <div key={clave} className="tarjeta plantilla-seguimiento">
       <h3>{p.emoji} {t(p.nombre)}</h3>
       <p className="suave chico">
-        {p.items.map((c) => ITEMS_SEGUIMIENTO.find((i) => i.clave === c)).filter(Boolean).map((i) => `${i!.emoji} ${t(i!.nombre)}`).join(' · ')}
+        {p.items.map((c) => ITEMS_SEGUIMIENTO.find((i) => i.clave === c)).filter(Boolean).map((i) => `${i!.emoji} ${t(i!.nombre)} ${i!.frecuencia === 'cada_vez' ? '↻' : '1×'}`).join(' · ')}
       </p>
-      <p className="suave chico">{p.horarios.length ? t('Pregunta a las {horas}', { horas: p.horarios.join(', ') }) : t('Sin avisos: solo la lista en el Día')}</p>
+      <p className="suave chico">
+        {p.horarios.length ? t('Pregunta a las {horas}', { horas: p.horarios.join(', ') }) : t('Sin avisos: solo la lista en el Día')}
+        {' · '}{t('↻ en cada aviso · 1× una vez al día')}
+      </p>
       {puedeEscribir ? (
         <div className="fila envolver">
           <select value={dias[clave] ?? p.dias} onChange={(e) => setDias({ ...dias, [clave]: Number(e.target.value) })} aria-label={t('Por cuántos días')}>
-            {[...new Set([...DIAS, p.dias])].sort((a, b) => a - b).map((n) => <option key={n} value={n}>{n === 1 ? t('1 día') : t('{n} días', { n })}</option>)}
+            {[...new Set([...DIAS, p.dias])].sort((a, b) => (a || 999) - (b || 999)).map((n) => <option key={n} value={n}>{nombreDias(n)}</option>)}
           </select>
           <button className="btn primario" onClick={() => activar(p, clave)}>{t('Activar')}</button>
           <button className="btn" onClick={() => setEditando(propia ?? { ...p, nombre: p.nombre })}>{propia ? t('Editar') : t('Armar una a partir de esta')}</button>
@@ -85,7 +90,7 @@ export function Seguimientos({ persona, puedeEscribir }: { persona: Persona; pue
           <ul className="lista-simple">
             {activos.map((s) => (
               <li key={s.id} className="fila-activo">
-                <span>{s.emoji} <strong>{t(s.nombre)}</strong> <span className="suave chico">{t('hasta el {fecha}', { fecha: fecha(s.hasta) })}{s.activado_por ? ` · ${t('lo activó {quien}', { quien: s.activado_por })}` : ''}</span></span>
+                <span>{s.emoji} <strong>{t(s.nombre)}</strong> <span className="suave chico">{s.dias ? t('hasta el {fecha}', { fecha: fecha(s.hasta) }) : t('hasta que lo desactives')}{s.activado_por ? ` · ${t('lo activó {quien}', { quien: s.activado_por })}` : ''}</span></span>
                 {puedeEscribir ? <button className="btn chico" onClick={() => void hacer(() => terminarSeguimiento(s.id), t('Seguimiento terminado'))}>{t('Terminar')}</button> : null}
               </li>
             ))}
@@ -116,10 +121,11 @@ function Editor({ plantilla, alGuardar, alCancelar }: { plantilla: PlantillaSegu
       <div className="chips envolver">
         {ITEMS_SEGUIMIENTO.map((i) => (
           <button key={i.clave} type="button" className={`chip${p.items.includes(i.clave) ? ' activa' : ''}`} onClick={() => alternar(i.clave)}>
-            {i.emoji} {t(i.nombre)}
+            {i.emoji} {t(i.nombre)} <span className="suave chico">{i.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
           </button>
         ))}
       </div>
+      <p className="suave chico">{t('↻ se vuelve a pedir en cada aviso (la fiebre, cómo te sentís) · 1× alcanza con una vez al día (el almuerzo)')}</p>
       <p className="rotulo-campo">{t('A qué horas pregunta Patty')}</p>
       <div className="chips envolver">
         {p.horarios.map((h) => (
@@ -130,7 +136,12 @@ function Editor({ plantilla, alGuardar, alCancelar }: { plantilla: PlantillaSegu
         <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} aria-label={t('Hora')} />
         <button type="button" className="btn chico" onClick={() => setP({ ...p, horarios: [...new Set([...p.horarios, hora])].sort() })}>{t('Agregar hora')}</button>
       </div>
-      <label>{t('Por cuántos días (de entrada)')}<input type="number" min={1} max={60} value={p.dias} onChange={(e) => setP({ ...p, dias: Number(e.target.value) })} /></label>
+      <label>
+        {t('Por cuántos días (de entrada)')}
+        <select value={p.dias} onChange={(e) => setP({ ...p, dias: Number(e.target.value) })}>
+          {[...new Set([...DIAS, p.dias])].sort((a, b) => (a || 999) - (b || 999)).map((n) => <option key={n} value={n}>{nombreDias(n)}</option>)}
+        </select>
+      </label>
       <div className="fila">
         <button className="btn primario" disabled={!p.nombre.trim() || !p.items.length} onClick={() => alGuardar(p)}>{t('Guardar')}</button>
         <button className="btn" onClick={alCancelar}>{t('Cancelar')}</button>

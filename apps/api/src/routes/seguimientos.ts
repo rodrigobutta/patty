@@ -21,7 +21,8 @@ function plantillaDe(d: Record<string, unknown>): PlantillaSeguimiento {
   const dias = Math.round(Number(d.dias));
   if (!nombre) throw new ErrorApi('Ponele un nombre.');
   if (!items.length) throw new ErrorApi('Elegí al menos una cosa para seguir.');
-  if (!(dias >= 1 && dias <= 60)) throw new ErrorApi('Elegí de 1 a 60 días.');
+  // 0: hasta que se desactive.
+  if (!(dias >= 0 && dias <= 60)) throw new ErrorApi('Elegí de 1 a 60 días, o hasta que lo desactives.');
   return { nombre, emoji: texto(d.emoji).slice(0, 8) || '🩺', items, horarios, dias };
 }
 
@@ -48,7 +49,7 @@ export const rutasSeguimientos = new Hono<Env>()
     const s = await una<{ id: number }>(
       c.var.db,
       sql`INSERT INTO seguimientos (persona_id, nombre, emoji, items, horarios, dias, desde, hasta, activado_por)
-          VALUES (${p.id}, ${pl.nombre}, ${pl.emoji}, ${arreglo(pl.items)}, ${arreglo(pl.horarios)}, ${pl.dias}, now(), now() + make_interval(days => ${pl.dias}), ${c.var.usuario.id})
+          VALUES (${p.id}, ${pl.nombre}, ${pl.emoji}, ${arreglo(pl.items)}, ${arreglo(pl.horarios)}, ${pl.dias}, now(), now() + make_interval(days => ${pl.dias || 36500}), ${c.var.usuario.id})
           RETURNING id`,
     );
     // Si lo activó alguien de la familia, a la persona le llega un aviso.
@@ -57,7 +58,9 @@ export const rutasSeguimientos = new Hono<Env>()
         const i: Idioma = esIdioma(dev.idioma) ? dev.idioma : 'es';
         await avisarUnaVez(c.var.db, dev, `seguimiento-activado|${s!.id}`, {
           titulo: `${pl.emoji} ${traducir(i, pl.nombre)}`,
-          cuerpo: traducir(i, '{quien} activó un seguimiento por {n} días: Patty te va a preguntar un poco más.', { quien: c.var.usuario.nombre, n: pl.dias }),
+          cuerpo: pl.dias
+            ? traducir(i, '{quien} activó un seguimiento por {n} días: Patty te va a preguntar un poco más.', { quien: c.var.usuario.nombre, n: pl.dias })
+            : traducir(i, '{quien} activó un seguimiento hasta que lo desactiven: Patty te va a preguntar un poco más.', { quien: c.var.usuario.nombre }),
           datos: { tipo: 'seguimiento', persona_id: String(p.id), cara: 'espera' },
           etiqueta: `seguimiento|${p.id}`,
         }).catch(() => {});
