@@ -19,7 +19,8 @@ import { Atajos } from '../ui/Atajos';
 import { PreguntasDetalle } from '../ui/PreguntasDetalle';
 import { comoDetalles, usePreguntas } from '../lib/preguntas';
 import { DondeComida, etiquetaDonde, etiquetaPlato } from '../ui/DondeComida';
-import { IconoCamara, IconoGaleria, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
+import { IconoCalendario, IconoCamara, IconoGaleria, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
+import { IconoCategoria } from '../ui/IconosPatty';
 import { OndaVoz } from '../ui/OndaVoz';
 import { Mascota } from '../mascota/Mascota';
 
@@ -129,7 +130,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
           <div className="chips">
             {categorias.map((c) => (
               <button key={c.id} className={`chip ${categoria?.id === c.id ? 'activa' : ''}`} onClick={() => setCategoria(categoria?.id === c.id ? null : c)}>
-                {c.icono} {t(c.nombre)}
+                <IconoCategoria clave={c.clave} emoji={c.icono} tamano={18} /> {t(c.nombre)}
               </button>
             ))}
           </div>
@@ -137,7 +138,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
             <div className="tarjeta">
               <p>{t('¿En qué categoría va «{que}»?', { que: pidiendoCategoria })}</p>
               <div className="chips">
-                {categorias.map((c) => <button key={c.id} className="chip" onClick={() => crear(pidiendoCategoria, c)}>{c.icono} {t(c.nombre)}</button>)}
+                {categorias.map((c) => <button key={c.id} className="chip" onClick={() => crear(pidiendoCategoria, c)}><IconoCategoria clave={c.clave} emoji={c.icono} tamano={18} /> {t(c.nombre)}</button>)}
               </div>
             </div>
           ) : (
@@ -237,7 +238,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
 
   return (
     <div className="valor">
-      <button className="volver" onClick={alVolver}>‹ {elegido.categoria.icono} {t(elegido.nombre)}{elegido.concepto_id ? '' : ' ' + t('(nuevo)')}</button>
+      <button className="volver" onClick={alVolver}>‹ <IconoCategoria clave={elegido.categoria.clave} emoji={elegido.categoria.icono} tamano={18} /> {t(elegido.nombre)}{elegido.concepto_id ? '' : ' ' + t('(nuevo)')}</button>
       {preguntar ? <PreguntaCantidad elegido={elegido} alElegir={decidir} /> : null}
       {preguntar ? null : tv === 'intensidad' ? (
         <fieldset className="escala">
@@ -611,7 +612,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
                   {diaDe(p.inicio) !== fecha ? <span className="dia-propuesta">{nombreDia(diaDe(p.inicio), persona.zona_horaria)}</span> : null}
                   {horaEn(p.inicio, persona.zona_horaria)}
                 </span>
-                <span className="icono">{cat?.icono}</span>
+                <span className="icono"><IconoCategoria clave={cat?.clave} emoji={cat?.icono} /></span>
                 <span>
                   {t(p.concepto_nombre)}
                   {p.nuevo ? <span className="etiqueta">{t('nuevo')}</span> : null}
@@ -632,7 +633,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
               {remedios.map((tr, i) => (
                 <li key={i} className={`remedio-propuesto entra${quitarRemedio.has(i) ? ' tachado' : ''}`} style={{ ['--n' as string]: propuesta.length + i }}
                   onClick={() => setQuitarRemedio((q) => { const n = new Set(q); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
-                  <span className="icono">⏰</span>
+                  <span className="icono"><IconoCalendario tamano={22} /></span>
                   <span>
                     <strong>{t(tr.concepto_nombre)}</strong>
                     {tr.dosis !== null || tr.unidad ? ` ${dosisTexto(tr.dosis, tr.unidad, idioma())}` : ''} · {frecuenciaTexto(tr, idioma())}
@@ -649,7 +650,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
           <div className="nota-ia">
             {dudas.map((d, i) => (
               <div key={d.pregunta} className="duda">
-                <p>🤔 {d.pregunta}{d.varias && d.opciones.length ? <span className="suave chico"> · {t('podés elegir varias')}</span> : null}</p>
+                <p className="duda-pregunta"><Mascota cara="espera" tamano={26} /> {d.pregunta}{d.varias && d.opciones.length ? <span className="suave chico"> · {t('podés elegir varias')}</span> : null}</p>
                 {d.opciones.length ? (
                   <div className="chips envolver opciones-duda">
                     {d.opciones.map((o) => (

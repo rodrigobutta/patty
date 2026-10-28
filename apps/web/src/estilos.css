@@ -1464,3 +1464,6 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .tour-puntos i.activo { background: var(--acento); width: 18px; border-radius: 4px; }
 @keyframes tour-entra { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .tour-globo { animation: none; } .tour-foco { transition: none; } }
+
+/* La pregunta de Patty al revisar lo contado: el búho al lado, alineado con el texto. */
+.duda-pregunta .mascota { vertical-align: middle; margin-right: 4px; }
