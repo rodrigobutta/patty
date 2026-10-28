@@ -19,8 +19,10 @@ const HASTA_HORA = 22;
 export async function seguirMalestares(db: Db, ahora = new Date()): Promise<number> {
   // Los viejos se cierran solos.
   await db.execute(
-    sql`UPDATE registros SET datos = datos || '{"abierto": false, "sin_cierre": true}'::jsonb
-        WHERE datos->>'abierto' = 'true' AND (borrado IS NOT NULL OR inicio < ${new Date(ahora.getTime() - MAXIMO_MS).toISOString()})`,
+    sql`UPDATE registros r SET datos = r.datos || '{"abierto": false, "sin_cierre": true}'::jsonb
+        FROM conceptos c JOIN categorias k ON k.id = c.categoria_id
+        WHERE c.id = r.concepto_id AND k.clave = 'sintoma' AND r.datos->>'abierto' = 'true'
+          AND (r.borrado IS NOT NULL OR r.inicio < ${new Date(ahora.getTime() - MAXIMO_MS).toISOString()})`,
   );
   if (!hayEnvio()) return 0;
   const abiertos = await filas<{ id: number; persona_id: number; zona_horaria: string; concepto: string; inicio: string; ultimo: string; preguntas: number }>(
@@ -28,8 +30,8 @@ export async function seguirMalestares(db: Db, ahora = new Date()): Promise<numb
     sql`SELECT r.id, r.persona_id, p.zona_horaria, c.nombre AS concepto, r.inicio,
                greatest(r.inicio, coalesce((r.datos->>'chequeado')::timestamptz, r.inicio), coalesce((r.datos->>'preguntado')::timestamptz, r.inicio)) AS ultimo,
                coalesce((r.datos->>'preguntas')::int, 0) AS preguntas
-        FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN personas p ON p.id = r.persona_id
-        WHERE r.datos->>'abierto' = 'true' AND r.borrado IS NULL ORDER BY r.inicio`,
+        FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id JOIN personas p ON p.id = r.persona_id
+        WHERE r.datos->>'abierto' = 'true' AND r.borrado IS NULL AND k.clave = 'sintoma' ORDER BY r.inicio`,
   );
   let n = 0;
   const yaAvisada = new Set<number>();

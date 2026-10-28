@@ -16,7 +16,7 @@ import { vincularToma } from './tratamientos.js';
 const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char(r.fecha, 'YYYY-MM-DD') AS fecha,
   r.valor, r.intensidad, r.unidad, r.nota, r.origen, r.datos->>'donde' AS donde, r.datos->>'lugar' AS lugar,
   r.datos->>'porcion' AS porcion, coalesce(r.datos->'tipos', '[]'::jsonb) AS tipos, coalesce(r.datos->'detalles', '[]'::jsonb) AS detalles,
-  (r.datos->>'abierto' = 'true') AS abierto, r.datos->'evolucion' AS evolucion,
+  (r.datos->>'abierto' = 'true') AS abierto, r.datos->'evolucion' AS evolucion, r.datos->>'fin_sugerido' AS fin_sugerido,
   (SELECT c.nombre FROM conceptos c WHERE c.id = r.concepto_id) AS concepto,
   (SELECT c.categoria_id FROM conceptos c WHERE c.id = r.concepto_id) AS categoria_id`;
 
@@ -133,6 +133,13 @@ export async function guardarRegistro(
     .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(datos ? { datos } : {}) })
     .returning({ id: registros.id });
   await tx.execute(sql`UPDATE conceptos SET usos = usos + 1, ultimo_uso = now() WHERE id = ${c.id}`);
+  // Una actividad que dura (caminar, fútbol) anotada recién, sin cuánto duró, queda en curso: Patty sugiere cerrarla
+  // cuando ve (por la ubicación) que terminó. Ver patrones/actividades.ts.
+  if (c.tipo_valor === 'duracion' && !d.fin && (d.valor === undefined || d.valor === null)) {
+    await tx.execute(sql`UPDATE registros r SET datos = coalesce(r.datos, '{}'::jsonb) || '{"abierto": true}'::jsonb
+                         FROM categorias k WHERE r.id = ${r.id} AND k.id = ${c.categoria_id} AND k.clave = 'actividad'
+                           AND r.inicio > now() - interval '2 hours'`);
+  }
   // Un malestar recién anotado (de las últimas horas, sin fin) queda abierto: Patty pregunta cada tanto si sigue.
   if (c.tipo_valor === 'intensidad' && !d.fin) {
     await tx.execute(sql`UPDATE registros r SET datos = coalesce(r.datos, '{}'::jsonb) || '{"abierto": true}'::jsonb
@@ -223,16 +230,23 @@ export const rutasRegistros = new Hono<Env>()
     );
   })
   .post('/:id/seguir', async (c) => {
-    // { estado: 'paso' | 'igual' | 'mejor' | 'peor' }: cómo sigue un malestar abierto. "paso" lo cierra (queda la duración).
+    // { estado: 'paso' | 'igual' | 'mejor' | 'peor', fin? }: cómo sigue un malestar (o una actividad) en curso. "paso"
+    // lo cierra (queda la duración), a ahora o a `fin` si se dice (lo que sugirió Patty: "terminaste a las 18:42").
     const id = idParam(c);
-    const estado = texto((await cuerpo(c)).estado);
+    const pedido = await cuerpo(c);
+    const estado = texto(pedido.estado);
+    const finPedido = typeof pedido.fin === 'string' && !Number.isNaN(Date.parse(pedido.fin)) ? new Date(pedido.fin).toISOString() : null;
     if (!['paso', 'igual', 'mejor', 'peor'].includes(estado)) throw new ErrorApi('Estado inválido.');
     const r = await c.var.db.transaction(async (tx) => {
       await propio(tx, c.var.usuario, id);
       const paso = { t: new Date().toISOString(), estado };
       await tx.execute(
         sql`UPDATE registros SET
-              fin = CASE WHEN ${estado}::text = 'paso' THEN greatest(now(), inicio + interval '1 minute') ELSE fin END,
+              fin = CASE WHEN ${estado}::text = 'paso' THEN greatest(least(coalesce(${finPedido}::timestamptz, now()), now()), inicio + interval '1 minute') ELSE fin END,
+              -- Una actividad que se cierra queda con sus minutos.
+              valor = CASE WHEN ${estado}::text = 'paso' AND valor IS NULL AND unidad = 'min'
+                           THEN round(extract(epoch FROM greatest(least(coalesce(${finPedido}::timestamptz, now()), now()), inicio + interval '1 minute') - inicio) / 60)
+                           ELSE valor END,
               datos = coalesce(datos, '{}'::jsonb)
                 || jsonb_build_object('abierto', ${estado}::text <> 'paso', 'chequeado', now())
                 || jsonb_build_object('evolucion', coalesce(datos->'evolucion', '[]'::jsonb) || ${JSON.stringify([paso])}::jsonb)

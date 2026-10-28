@@ -14,7 +14,9 @@ import { useMinuto } from '../lib/reloj';
 type Estado = 'paso' | 'igual' | 'mejor' | 'peor';
 
 export function MalestaresAbiertos({ persona, vuelta, alCambiar }: { persona: Persona; vuelta: number; alCambiar(): void }) {
-  const { festejar, avisar } = useEstado();
+  const { festejar, avisar, categorias } = useEstado();
+  /** Las actividades en curso (caminar, fútbol) van con "Terminé" y "Sigo" en vez de cómo sigue el malestar. */
+  const actividad = categorias.find((c) => c.clave === 'actividad')?.id;
   const [lista, setLista] = useState<Registro[]>([]);
   const [abierto, setAbierto] = useState<number | null>(null);
   // Las duraciones corren solas (un tic por minuto) y la lista se vuelve a traer cada tanto.
@@ -24,19 +26,24 @@ export function MalestaresAbiertos({ persona, vuelta, alCambiar }: { persona: Pe
     api<Registro[]>('GET', `/api/registros/abiertos?persona=${persona.id}`).then(setLista).catch(() => {});
   }, [persona.id, vuelta, minutoDe10]);
   if (!lista.length) return null;
-  const responder = async (r: Registro, estado: Estado) => {
+  const responder = async (r: Registro, estado: Estado, fin?: string) => {
     setAbierto(null);
     try {
-      await api('POST', `/api/registros/${r.id}/seguir`, { estado });
+      await api('POST', `/api/registros/${r.id}/seguir`, { estado, ...(fin ? { fin } : {}) });
       medir('malestar_sigue', { estado });
       const que = t(r.concepto).toLowerCase();
+      const esActividad = r.categoria_id === actividad;
       festejar(
-        estado === 'paso'
+        esActividad
+          ? estado === 'paso'
+            ? t('¡Bien ahí! {que}: {cuanto} 💪', { que: t(r.concepto), cuanto: duracion(((fin ? Date.parse(fin) : Date.now()) - Date.parse(r.inicio)) / 60000) })
+            : t('¡Dale! Te pregunto después 💪')
+          : estado === 'paso'
           ? t('¡Qué bueno! Se te pasó {que} (duró {cuanto}) 💜', { que, cuanto: duracion((Date.now() - Date.parse(r.inicio)) / 60000) })
           : estado === 'mejor'
             ? t('¡Bien que vaya mejorando! 💜')
             : t('Anotado. Te pregunto más tarde 💜'),
-        estado === 'paso' || estado === 'mejor' ? 'feliz' : 'espera',
+        esActividad || estado === 'paso' || estado === 'mejor' ? 'feliz' : 'espera',
       );
       if (estado === 'paso') setLista((l) => l.filter((x) => x.id !== r.id));
       alCambiar();
@@ -49,17 +56,29 @@ export function MalestaresAbiertos({ persona, vuelta, alCambiar }: { persona: Pe
       <span className="suave chico">{t('En curso')}</span>
       {lista.map((r) => (
         <span key={r.id} className="badge-malestar-envoltura">
-          <button className={`badge-malestar${abierto === r.id ? ' activo' : ''}`} onClick={() => setAbierto(abierto === r.id ? null : r.id)} aria-expanded={abierto === r.id}>
+          <button className={`badge-malestar${r.categoria_id === actividad ? ' actividad' : ''}${abierto === r.id ? ' activo' : ''}`} onClick={() => setAbierto(abierto === r.id ? null : r.id)} aria-expanded={abierto === r.id}>
             <span className="pulso" aria-hidden />
             {t(r.concepto)} · {duracion((ahora - Date.parse(r.inicio)) / 60000)}
           </button>
           {abierto === r.id ? (
             <span className="menu-malestar" role="menu">
               <span className="suave chico">{t('desde las {hora}', { hora: horaEn(r.inicio, persona.zona_horaria) })}</span>
-              <button className="chip activa" onClick={() => void responder(r, 'paso')}>{t('✓ Ya se me pasó')}</button>
-              <button className="chip" onClick={() => void responder(r, 'mejor')}>{t('Mejor')}</button>
-              <button className="chip" onClick={() => void responder(r, 'igual')}>{t('Igual')}</button>
-              <button className="chip" onClick={() => void responder(r, 'peor')}>{t('Peor')}</button>
+              {r.categoria_id === actividad ? (
+                <>
+                  {r.fin_sugerido ? (
+                    <button className="chip activa" onClick={() => void responder(r, 'paso', r.fin_sugerido!)}>{t('✓ Terminé a las {hora}', { hora: horaEn(r.fin_sugerido, persona.zona_horaria) })}</button>
+                  ) : null}
+                  <button className={`chip${r.fin_sugerido ? '' : ' activa'}`} onClick={() => void responder(r, 'paso')}>{t('✓ Terminé recién')}</button>
+                  <button className="chip" onClick={() => void responder(r, 'igual')}>{t('Sigo')}</button>
+                </>
+              ) : (
+                <>
+                  <button className="chip activa" onClick={() => void responder(r, 'paso')}>{t('✓ Ya se me pasó')}</button>
+                  <button className="chip" onClick={() => void responder(r, 'mejor')}>{t('Mejor')}</button>
+                  <button className="chip" onClick={() => void responder(r, 'igual')}>{t('Igual')}</button>
+                  <button className="chip" onClick={() => void responder(r, 'peor')}>{t('Peor')}</button>
+                </>
+              )}
             </span>
           ) : null}
         </span>

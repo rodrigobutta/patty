@@ -551,6 +551,8 @@ export interface Registro {
   /** Un malestar que sigue (Patty pregunta si pasó) y cómo fue yendo. */
   abierto?: boolean;
   evolucion?: Array<{ t: string; estado: 'paso' | 'igual' | 'mejor' | 'peor' }> | null;
+  /** Una actividad en curso: cuándo parece que terminó, por la ubicación (Patty sugiere cerrarla ahí). */
+  fin_sugerido?: string | null;
 }
 
 /** Dónde fue una comida o bebida: casera, afuera (restaurante, casa de alguien) o pedida. */
