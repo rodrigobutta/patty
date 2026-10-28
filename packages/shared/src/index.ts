@@ -330,8 +330,9 @@ export const ATAJOS: Array<{ nombre: string; emoji: string; categoria: string; c
 ];
 
 /**
- * "Enfermo/a" va aparte de muy bien … muy mal (no es un ánimo): se anota como una molestia, con los síntomas de estar
- * enfermo (fiebre, vómitos…) y, si se toma, la temperatura. Esos síntomas aparecen solo ahí.
+ * Lo del cuerpo va todo en "Con dolor o malestar" (¿Algo puntual?): qué duele, qué malestar, "me siento enfermo/a" en
+ * general y la temperatura. Las caritas (muy bien … muy mal) son solo el ánimo, y con mal o muy mal se pregunta lo del
+ * ánimo (COSAS_DEL_ANIMO), nunca lo del cuerpo.
  */
 export const ENFERMO = 'Me siento enfermo/a';
 export const TEMPERATURA_CORPORAL = 'Temperatura corporal';
@@ -351,7 +352,7 @@ export const SINTOMAS_ENFERMO = [
   'Cansancio',
 ];
 /** Con "mal" o "muy mal": lo que suele pasar con el ánimo (lo del cuerpo va con "enfermo/a"). */
-export const COSAS_DEL_ANIMO = ['Ansiedad', 'Tristeza', 'Estrés', 'Cansancio', 'Preocupación', 'Enojo', 'Desgano', 'Soledad', 'Dolor de cabeza', 'Dolor de espalda'];
+export const COSAS_DEL_ANIMO = ['Ansiedad', 'Tristeza', 'Estrés', 'Cansancio', 'Preocupación', 'Enojo', 'Desgano', 'Soledad', 'Angustia', 'Irritabilidad'];
 
 /** Lo que más seguido se pregunta cuando alguien se siente mal (se suman los síntomas que ya anotó). */
 export const SINTOMAS_COMUNES = [
@@ -415,7 +416,9 @@ export const MALESTARES: Array<{ nombre: string; emoji: string }> = [
   { nombre: 'Tos', emoji: '😷' },
   { nombre: 'Congestión', emoji: '👃' },
   { nombre: 'Náuseas', emoji: '🤢' },
+  { nombre: 'Vómitos', emoji: '🤮' },
   { nombre: 'Diarrea', emoji: '🚽' },
+  { nombre: 'Escalofríos', emoji: '🥶' },
   { nombre: 'Acidez', emoji: '🔥' },
   { nombre: 'Mareo', emoji: '💫' },
   { nombre: 'Alergia', emoji: '🌼' },

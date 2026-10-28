@@ -4,7 +4,7 @@
 // así Patty puede buscar qué lo causa.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CUANTO, DOLORES, ESTADOS_PUNTUALES, MALESTARES, type Persona } from 'shared';
+import { CUANTO, DOLORES, ENFERMO, ESTADOS_PUNTUALES, MALESTARES, TEMPERATURA_CORPORAL, type Persona } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
@@ -79,6 +79,24 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
     if (e !== 'dolor' && e !== 'otro' && e !== 'gente' && elegido !== e) setPreguntando(e);
     if (e === 'gente' && elegido !== 'gente') void traerGente(persona.id).then(setGente).catch(() => {});
   };
+  // La temperatura (con el número), solo acá, con lo del cuerpo.
+  const [grados, setGrados] = useState('');
+  const anotarTemperatura = async () => {
+    const n = Number(grados.replace(',', '.'));
+    if (!sintoma || !(n >= 34 && n <= 43)) return setError(t('Poné la temperatura, por ejemplo 37,8.'));
+    setError('');
+    try {
+      const inicio = new Date().toISOString();
+      await api('POST', '/api/registros', { persona_id: persona.id, concepto_nombre: TEMPERATURA_CORPORAL, categoria_id: sintoma.id, inicio, valor: n, unidad: '°C' });
+      festejar(n >= 37.5 ? t('Anotado: {n} °C. ¡Cuidate mucho! 💜', { n: String(n).replace('.', ',') }) : t('Anotado: {n} °C', { n: String(n).replace('.', ',') }));
+      setGrados('');
+      setElegido(null);
+      setDolor(null);
+      alGuardar();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
   const elegirDolor = (d: string) => {
     setDolor(dolor === d ? null : d);
     if (d !== 'otro' && dolor !== d) setPreguntando(d);
@@ -117,11 +135,27 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
         <div className="que-duele" ref={panel}>
           <p className="rotulo suave chico">{t('¿Qué te duele?')}</p>
           <div className="chips envolver">{DOLORES.map(chipDolor)}</div>
-          <p className="rotulo suave chico">{t('¿O es otra cosa?')}</p>
+          <p className="rotulo suave chico">{t('¿Algún malestar?')}</p>
           <div className="chips envolver">
             {MALESTARES.map(chipDolor)}
             <button className={`chip${dolor === 'otro' ? ' activa' : ''}`} onClick={() => elegirDolor('otro')}>{t('✏️ Otro')}</button>
           </div>
+          <p className="rotulo suave chico">{t('¿Estás enfermo/a?')}</p>
+          <div className="chips envolver">
+            <button className={`chip${dolor === ENFERMO ? ' activa' : ''}`} onClick={() => elegirDolor(ENFERMO)}>
+              <span aria-hidden>🤒</span> {t('Me siento enfermo/a')}
+            </button>
+            <button className={`chip${dolor === 'temperatura' ? ' activa' : ''}`} onClick={() => setDolor(dolor === 'temperatura' ? null : 'temperatura')}>
+              <span aria-hidden>🌡️</span> {t('Me tomé la fiebre')}
+            </button>
+          </div>
+          {dolor === 'temperatura' ? (
+            <form className="otro-puntual" onSubmit={(e) => { e.preventDefault(); void anotarTemperatura(); }}>
+              <input inputMode="decimal" value={grados} onChange={(e) => setGrados(e.target.value)} placeholder="37,8" autoFocus aria-label={t('Temperatura corporal')} />
+              <span className="suave">°C</span>
+              <button className="btn primario" disabled={!grados.trim()}>{t('Anotar')}</button>
+            </form>
+          ) : null}
         </div>
       ) : null}
       {elegido === 'gente' ? (

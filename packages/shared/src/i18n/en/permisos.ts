@@ -729,4 +729,13 @@ export const PERMISOS: Record<string, string> = {
   "Problema de panza": "Stomach trouble",
   "Recuperación": "Recovery",
   "Dormir mejor": "Sleep better",
+  "Anotado: {n} °C": "Logged: {n} °C",
+  "Anotado: {n} °C. ¡Cuidate mucho! 💜": "Logged: {n} °C. Take good care! 💜",
+  "Me tomé la fiebre": "I took my temperature",
+  "Poné la temperatura, por ejemplo 37,8.": "Enter the temperature, for example 37.8.",
+  "¿Algún malestar?": "Any discomfort?",
+  "¿Estás enfermo/a?": "Are you sick?",
+  "Lo del cuerpo (dolores, fiebre…) va en «Con dolor o malestar».": "Physical things (pain, fever…) go in “In pain or unwell”.",
+  "Angustia": "Distress",
+  "Irritabilidad": "Irritability",
 };
