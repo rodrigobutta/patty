@@ -770,4 +770,7 @@ export const PERMISOS: Record<string, string> = {
   "se vuelve a pedir en cada aviso": "asked again at every reminder",
   "se vuelve a pedir en cada aviso (la fiebre, cómo te sentís)": "asked again at every reminder (fever, how you feel)",
   "alcanza con una vez al día (el almuerzo)": "once a day is enough (lunch)",
+  "Anotar {que}": "Log {que}",
+  "falta": "missing",
+  "si pasa": "if it happens",
 };

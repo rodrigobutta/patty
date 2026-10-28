@@ -12,6 +12,14 @@ import { pedirSentir } from '../lib/sentir';
 import { EVENTO_SEGUIMIENTOS, traerSeguimientos } from '../lib/seguimientos';
 import { EVENTO_CONTAR } from './PuntosDelDia';
 
+/** La hora (HH:MM) de lo último anotado hoy que cuenta para ese ítem. */
+function ultimaHora(clave: string, anotado: Array<{ concepto: string; categoria: string; hora: number }>): string | null {
+  const l = anotado.filter((a) => itemsHechos([clave], [a]).has(clave)).map((a) => a.hora);
+  if (!l.length) return null;
+  const h = Math.max(...l);
+  return `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
+}
+
 export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: { persona: Persona; registros: Registro[]; categorias: Categoria[]; alAnotar(): void }) {
   const { festejar, avisar } = useEstado();
   const [activos, setActivos] = useState<Seguimiento[]>([]);
@@ -72,25 +80,30 @@ export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: 
               <strong>{s.emoji} {t(s.nombre)}</strong>
               <span className="suave chico">{s.dias ? t('día {n} de {total}', { n: Math.min(dia, s.dias), total: s.dias }) : t('día {n}', { n: dia })}{pendientes ? ` · ${t('faltan {n}', { n: pendientes })}` : ` · ${t('¡todo al día!')}`}</span>
             </div>
-            <div className="seguimiento-items">
+            <ul className="seguimiento-lista">
               {s.items.map((clave) => {
                 const it = ITEMS_SEGUIMIENTO.find((i) => i.clave === clave);
                 if (!it) return null;
                 const hecho = hechos.has(clave);
+                // La última vez que se anotó hoy (para mostrar la hora en lo hecho).
+                const ultima = hecho ? ultimaHora(clave, anotado) : null;
                 return (
-                  <button
-                    key={clave}
-                    className={`item-seguimiento${hecho ? ' hecho' : ''}${it.opcional ? ' opcional' : ''}`}
-                    onClick={() => void anotar(clave)}
-                    title={it.frecuencia === 'cada_vez' ? t('Se vuelve a pedir en cada aviso') : t('Una vez al día')}
-                  >
-                    <span aria-hidden>{hecho ? '✓' : it.emoji}</span>
-                    {t(it.nombre)}
-                    <span className={`frecuencia ${it.frecuencia}`} aria-label={it.frecuencia === 'cada_vez' ? t('en cada aviso') : t('una vez al día')}>{it.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
-                  </button>
+                  <li key={clave} className={`fila-seguimiento${hecho ? ' hecho' : ''}${it.opcional ? ' opcional' : ''}`}>
+                    <span className="emoji-item" aria-hidden>{it.emoji}</span>
+                    <span className="nombre-item">
+                      {t(it.nombre)}{' '}
+                      <span className={`frecuencia ${it.frecuencia}`} title={it.frecuencia === 'cada_vez' ? t('Se vuelve a pedir en cada aviso') : t('Una vez al día')}>
+                        {it.frecuencia === 'cada_vez' ? '↻' : '1×'}
+                      </span>
+                    </span>
+                    <span className="estado-item suave chico">{hecho ? `✓ ${ultima ?? ''}` : it.opcional ? t('si pasa') : t('falta')}</span>
+                    <button className={`btn chico${hecho || it.opcional ? '' : ' primario'}`} onClick={() => void anotar(clave)} aria-label={t('Anotar {que}', { que: t(it.nombre) })}>
+                      {hecho ? '＋' : t('Anotar')}
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
             {midiendo && s.items.includes(midiendo) ? (
               <div className="fila medir-seguimiento">
                 <input inputMode="decimal" autoFocus value={valor} onChange={(e) => setValor(e.target.value)} placeholder="37,5" aria-label={t('Temperatura corporal')} />
