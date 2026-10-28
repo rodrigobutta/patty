@@ -25,18 +25,44 @@
             android:src="@mipmap/icono_feliz_frente"
             android:contentDescription="@string/app_name" />
 
-        <TextView
-            android:id="@+id/widget_texto"
+        <!-- La línea del día (o la pregunta) y, encima, el aviso de "Anotado" que aparece y se va solo
+             (animateLayoutChanges hace el fundido). -->
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="10dp"
-            android:text="@string/widget_pregunta"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:textColor="@color/widget_texto" />
+            android:animateLayoutChanges="true">
+
+            <TextView
+                android:id="@+id/widget_texto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:text="@string/widget_pregunta"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textColor="@color/widget_texto" />
+
+            <TextView
+                android:id="@+id/widget_aviso"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:background="@drawable/widget_aviso"
+                android:textColor="#ffffff"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+        </FrameLayout>
     </LinearLayout>
 
     <LinearLayout

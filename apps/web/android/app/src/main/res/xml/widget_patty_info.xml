@@ -7,7 +7,7 @@
     android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
-    android:updatePeriodMillis="0"
+    android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_patty"
     android:previewLayout="@layout/widget_patty"
     android:description="@string/widget_descripcion"

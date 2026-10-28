@@ -114,6 +114,8 @@ public class MascotaPlugin extends Plugin {
         else e.putString("api", api).putString("token", call.getString("token"));
         e.apply();
         WidgetPatty.actualizar(getContext());
+        // La línea del día, con lo que se acaba de anotar en la app.
+        new Thread(() -> WidgetPatty.pedirLinea(getContext())).start();
         call.resolve();
     }
 
@@ -127,6 +129,8 @@ public class MascotaPlugin extends Plugin {
         else e.putInt("persona_id", persona).putInt("categoria_id", categoria);
         e.apply();
         WidgetPatty.actualizar(getContext());
+        // La línea del día, con lo que se acaba de anotar en la app.
+        new Thread(() -> WidgetPatty.pedirLinea(getContext())).start();
         call.resolve();
     }
 

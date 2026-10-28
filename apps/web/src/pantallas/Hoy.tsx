@@ -269,9 +269,11 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   // El widget de la pantalla de inicio: anota el ánimo de esta persona; sus botones abren el Día en contar, la cámara
   // o "¿cómo te sentís?" con la carita elegida (si el widget no pudo anotarla solo).
   const catAnimo = categorias.find((c) => c.clave === 'animo')?.id;
+  // Al cambiar lo anotado se vuelve a pedir la línea del día que muestra el widget.
+  const cuantosAnotados = registros?.length ?? 0;
   useEffect(() => {
     if (!persona.supervisada) configurarWidget(persona.id, catAnimo);
-  }, [persona.id, persona.supervisada, catAnimo]);
+  }, [persona.id, persona.supervisada, catAnimo, cuantosAnotados]);
   const atenderWidget = useCallback(
     (d: Record<string, string>) => {
       tomarWidgetPendiente();

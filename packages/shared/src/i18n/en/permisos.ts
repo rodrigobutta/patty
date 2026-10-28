@@ -884,4 +884,9 @@ export const PERMISOS: Record<string, string> = {
   "Para las llamadas: {abrir} Después {permisos} → Registro de llamadas (o Teléfono) → «Permitir».": "For calls: {abrir} Then {permisos} → Call logs (or Phone) → “Allow”.",
   "✅ Llamadas (medidas mientras pasan, desde que diste el permiso)": "✅ Calls (measured as they happen, since you allowed it)",
   "En la misma pantalla de Patty: «Uso de batería» → prendé «Permitir actividad en segundo plano» y «Permitir inicio automático».": "On the same Patty screen: “Battery usage” → turn on “Allow background activity” and “Allow auto-launch”.",
+  "🤕 {que} desde las {hora}": "🤕 {que} since {hora}",
+  "{emoji} Te falta: {lista}": "{emoji} Still to log: {lista}",
+  "{emoji} {texto}: {n} de {meta}": "{emoji} {texto}: {n} of {meta}",
+  "Hoy anotaste 1 cosa": "1 thing logged today",
+  "Hoy anotaste {n} cosas": "{n} things logged today",
 };
