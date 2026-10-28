@@ -46,6 +46,7 @@ import { Sentir } from './Sentir';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
 const HORAS_SIN_PREGUNTAR = 3;
+const CLAVE_SENTIDO = 'sentido-recien';
 /** Desde esta hora, si no se anotó nada a mano, el Día propone contar el día entero. */
 const HORA_CONTAR_DIA = 18;
 
@@ -332,13 +333,33 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   // Si contó cómo se siente hace menos de 3 horas (con las caritas o con algo de la lista: sueño, frío, con gente…), el
   // bloque se pliega en un botón chico (vuelve cada tanto, tocando el botón o la mascota).
   const clavesSentir = new Set(['animo', 'sintoma', 'gente']);
-  const ultimoSentir =
-    momento === 'ahora'
-      ? registros?.filter((r) => r.origen === 'manual' && clavesSentir.has(categorias.find((c) => c.id === r.categoria_id)?.clave ?? '')).at(-1)
-      : undefined;
-  // Lo recién contestado cuenta ya, sin esperar a que vuelva la lista del servidor (si no, el globito volvía un rato).
-  const [sentidoRecien, setSentidoRecien] = useState(0);
-  const contestadoHacePoco = Date.now() - sentidoRecien < HORAS_SIN_PREGUNTAR * 3600000 || Boolean(ultimoSentir && Date.now() - new Date(ultimoSentir.inicio).getTime() < HORAS_SIN_PREGUNTAR * 3600000);
+  // El más reciente (por hora, no por el orden de la lista), contado a mano o contándolo; también a la hora de la
+  // encuesta: si recién dijo cómo se siente, no se le vuelve a preguntar por el día en seguida.
+  const ultimoSentir = Math.max(
+    0,
+    ...(registros ?? [])
+      .filter((r) => ['manual', 'ia', 'noche'].includes(r.origen) && clavesSentir.has(categorias.find((c) => c.id === r.categoria_id)?.clave ?? ''))
+      .map((r) => Date.parse(r.inicio)),
+  );
+  // Lo recién contestado cuenta ya, sin esperar a que vuelva la lista del servidor, y se recuerda aunque se cambie de
+  // pantalla o se vuelva a abrir la app (si no, el globito volvía a preguntar a los pocos minutos).
+  const [sentidoRecien, setSentidoRecienEstado] = useState(() => {
+    try {
+      return Number(localStorage.getItem(CLAVE_SENTIDO)) || 0;
+    } catch {
+      return 0;
+    }
+  });
+  const setSentidoRecien = (n: number) => {
+    setSentidoRecienEstado(n);
+    try {
+      localStorage.setItem(CLAVE_SENTIDO, String(n));
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
+  const ahora = Date.now();
+  const contestadoHacePoco = ahora - Math.max(sentidoRecien, ultimoSentir < ahora + 3600000 ? ultimoSentir : 0) < HORAS_SIN_PREGUNTAR * 3600000;
 
   const tiposConDatos = new Set(automaticos.map((a) => a.tipo_fuente));
   // Con permiso de salud y sin nada del reloj hoy: se le pide a Health Connect / Salud al abrir el Día (si pasaron 5
