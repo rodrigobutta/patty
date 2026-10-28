@@ -132,6 +132,12 @@ export async function guardarRegistro(
     .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(datos ? { datos } : {}) })
     .returning({ id: registros.id });
   await tx.execute(sql`UPDATE conceptos SET usos = usos + 1, ultimo_uso = now() WHERE id = ${c.id}`);
+  // Un malestar recién anotado (de las últimas horas, sin fin) queda abierto: Patty pregunta cada tanto si sigue.
+  if (c.tipo_valor === 'intensidad' && !d.fin) {
+    await tx.execute(sql`UPDATE registros r SET datos = coalesce(r.datos, '{}'::jsonb) || '{"abierto": true}'::jsonb
+                         FROM categorias k WHERE r.id = ${r.id} AND k.id = ${c.categoria_id} AND k.clave = 'sintoma'
+                           AND r.inicio > now() - interval '6 hours'`);
+  }
   const hecho = (await una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${r.id}`))!;
   // Un remedio con tratamiento: cuenta como la toma programada más cercana.
   if (!opciones.sinVincular) await vincularToma(tx, hecho);
@@ -203,6 +209,37 @@ export const rutasRegistros = new Hono<Env>()
     );
     const por = new Map(hay.map((x) => [x.fecha, Math.round(x.animo * 10) / 10]));
     return c.json(Array.from({ length: 14 }, (_, i) => sumarDias(desde, i)).map((fecha) => ({ fecha, animo: por.get(fecha) ?? null })));
+  })
+  .get('/abiertos', async (c) => {
+    // ?persona=1: los malestares que siguen abiertos (Patty pregunta si siguen), del más viejo al más nuevo.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    return c.json(
+      await filas<Registro>(
+        c.var.db,
+        sql`SELECT ${COLUMNAS}, r.datos->'evolucion' AS evolucion FROM registros r
+            WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.datos->>'abierto' = 'true' ORDER BY r.inicio`,
+      ),
+    );
+  })
+  .post('/:id/seguir', async (c) => {
+    // { estado: 'paso' | 'igual' | 'mejor' | 'peor' }: cómo sigue un malestar abierto. "paso" lo cierra (queda la duración).
+    const id = idParam(c);
+    const estado = texto((await cuerpo(c)).estado);
+    if (!['paso', 'igual', 'mejor', 'peor'].includes(estado)) throw new ErrorApi('Estado inválido.');
+    const r = await c.var.db.transaction(async (tx) => {
+      await propio(tx, c.var.usuario, id);
+      const paso = { t: new Date().toISOString(), estado };
+      await tx.execute(
+        sql`UPDATE registros SET
+              fin = CASE WHEN ${estado}::text = 'paso' THEN greatest(now(), inicio + interval '1 minute') ELSE fin END,
+              datos = coalesce(datos, '{}'::jsonb)
+                || jsonb_build_object('abierto', ${estado}::text <> 'paso', 'chequeado', now())
+                || jsonb_build_object('evolucion', coalesce(datos->'evolucion', '[]'::jsonb) || ${JSON.stringify([paso])}::jsonb)
+            WHERE id = ${id}`,
+      );
+      return una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${id}`);
+    });
+    return c.json(r);
   })
   .get('/lugares-comida', async (c) => {
     // ?persona=1: los lugares donde se comió antes (para sugerirlos), los más usados y recientes primero.

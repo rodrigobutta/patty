@@ -14,6 +14,7 @@ import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
 import { analizarPersona } from './analizar.js';
 import { guardarFueraDeLoNormal } from './fueraDeLoNormal.js';
 import { avisarSeguimientos } from './seguimientos.js';
+import { seguirMalestares } from './malestares.js';
 import { DIAS_MINIMOS } from './motor.js';
 
 const HORA_ANALISIS = 4;
@@ -266,6 +267,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await resumirSemanas(db);
       await revisarFueraDeLoNormal(db);
       await avisarSeguimientos(db);
+      await seguirMalestares(db);
       await contextosPendientes(db);
     } catch (e) {
       console.error('Error con los patrones de noche:', e);

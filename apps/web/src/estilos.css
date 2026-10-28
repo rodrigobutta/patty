@@ -1323,3 +1323,5 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .fila-activo { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .editor-seguimiento { display: grid; gap: 8px; }
 .emoji-input { width: 56px; text-align: center; font-size: 20px; }
+.malestares-abiertos { display: grid; gap: 12px; border-color: color-mix(in srgb, var(--rojo) 30%, var(--borde)); }
+.malestar-abierto p { margin: 0 0 6px; }
