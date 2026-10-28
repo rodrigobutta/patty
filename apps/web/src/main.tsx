@@ -4,6 +4,10 @@ import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
 import { EstadoProvider } from './estado';
 import './estilos.css';
+import { escucharErrores } from './lib/errores';
+
+// Lo que falle sin esperarlo queda anotado en el admin (Salud).
+escucharErrores();
 
 // App instalable: al publicar una versión nueva se actualiza sola (se busca al abrir, al volver y cada 30 minutos).
 registerSW({

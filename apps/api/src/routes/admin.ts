@@ -2,7 +2,12 @@
 // usuarios con su actividad, el detalle de cada uno y lo último que se anotó en toda la app.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { gzipSync } from 'node:zlib';
 import { exigirRol } from '../auth/sesion.js';
+import { VERSION } from '../lib/version.js';
+
+/** Cuándo arrancó este servidor (para ver en Salud si se reinició). */
+const ARRANCO = new Date().toISOString();
 import { filas, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
@@ -43,6 +48,46 @@ export const rutasAdmin = new Hono<Env>()
   .use('*', async (c, next) => {
     exigirRol(c.var.usuario, 'admin');
     await next();
+  })
+  .get('/salud', async (c) => {
+    // Cómo anda todo: cada proceso que corre solo, los errores de las últimas 48 horas, cuántos por origen y el tamaño
+    // de las tablas más grandes.
+    const db = c.var.db;
+    const procesos = await filas(db, sql`SELECT * FROM procesos ORDER BY nombre`);
+    const errores = await filas(
+      db,
+      sql`SELECT e.id, e.origen, e.mensaje, e.detalle, e.donde, e.version, e.creado, u.nombre AS usuario
+          FROM errores e LEFT JOIN usuarios u ON u.id = e.usuario_id WHERE e.creado > now() - interval '48 hours' ORDER BY e.creado DESC LIMIT 150`,
+    );
+    const porOrigen = await filas(
+      db,
+      sql`SELECT origen, count(*) FILTER (WHERE creado > now() - interval '24 hours')::int AS dia, count(*) FILTER (WHERE creado > now() - interval '7 days')::int AS semana
+          FROM errores GROUP BY origen`,
+    );
+    const tablas = await filas(
+      db,
+      sql`SELECT relname AS tabla, n_live_tup::int AS filas, pg_total_relation_size(relid)::bigint AS bytes
+          FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 12`,
+    );
+    const base = await una<{ bytes: number }>(db, sql`SELECT pg_database_size(current_database())::bigint AS bytes`);
+    return c.json({ procesos, errores, porOrigen, tablas, base: Number(base?.bytes ?? 0), version: VERSION, arranco: ARRANCO });
+  })
+  .get('/respaldo', async (c) => {
+    // Un respaldo de toda la base como JSON comprimido (una lista de filas por tabla), para bajarlo y guardarlo aparte.
+    const db = c.var.db;
+    const tablas = await filas<{ tabla: string }>(db, sql`SELECT table_name AS tabla FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY 1`);
+    const datos: Record<string, unknown[]> = {};
+    for (const { tabla } of tablas) {
+      if (tabla === 'sesiones') continue; // las sesiones no se respaldan (son llaves de entrada)
+      datos[tabla] = await filas(db, sql`SELECT * FROM ${sql.identifier(tabla)}`);
+    }
+    const cuerpoGz = gzipSync(Buffer.from(JSON.stringify({ version: VERSION, fecha: new Date().toISOString(), tablas: datos })));
+    return new Response(cuerpoGz, {
+      headers: {
+        'Content-Type': 'application/gzip',
+        'Content-Disposition': `attachment; filename="patty-respaldo-${new Date().toISOString().slice(0, 10)}.json.gz"`,
+      },
+    });
   })
   .get('/resumen', async (c) => {
     const db = c.var.db;

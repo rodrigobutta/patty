@@ -12,6 +12,7 @@ import { armarContexto, pendientes } from '../ia/contexto.js';
 import { resumirNoche } from '../ia/resumirNoche.js';
 import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
 import { analizarPersona } from './analizar.js';
+import { correr, registrarError } from '../lib/salud.js';
 import { guardarFueraDeLoNormal } from './fueraDeLoNormal.js';
 import { avisarSeguimientos } from './seguimientos.js';
 import { seguirMalestares } from './malestares.js';
@@ -75,6 +76,7 @@ export async function analizarDeNoche(db: Db, ahora = new Date()): Promise<numbe
       n++;
     } catch (e) {
       console.error(`Patrones de noche: falló el análisis de la persona ${p.id}:`, e instanceof Error ? e.message : e);
+      void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Patrones de noche: falló el análisis de la persona ${p.id}` });
     }
   }
   return n;
@@ -98,6 +100,7 @@ export async function comentarDeManana(db: Db, ahora = new Date()): Promise<numb
       if (await comentarDia(db, p, esIdioma(p.idioma) ? p.idioma : 'es', ahora)) n++;
     } catch (e) {
       console.error(`Comentarios de la mañana: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+      void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Comentarios de la mañana: falló la persona ${p.id}` });
     }
   }
   return n;
@@ -122,6 +125,7 @@ export async function resumirNochesDeHoy(db: Db, ahora = new Date()): Promise<nu
       if (await resumirNoche(db, p, hoy, esIdioma(p.idioma) ? p.idioma : 'es')) n++;
     } catch (e) {
       console.error(`Resumen de la noche: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+      void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Resumen de la noche: falló la persona ${p.id}` });
     }
   }
   return n;
@@ -162,6 +166,7 @@ export async function resumirSemanas(db: Db, ahora = new Date()): Promise<number
       }
     } catch (e) {
       console.error(`Resumen de la semana: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+      void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Resumen de la semana: falló la persona ${p.id}` });
     }
   }
   return n;
@@ -199,6 +204,7 @@ export async function revisarFueraDeLoNormal(db: Db, ahora = new Date()): Promis
       }
     } catch (e) {
       console.error(`Fuera de lo normal: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+      void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Fuera de lo normal: falló la persona ${p.id}` });
     }
   }
   return n;
@@ -213,6 +219,7 @@ export async function contextosPendientes(db: Db): Promise<number> {
       n++;
     } catch (e) {
       console.error(`¿Qué pasó antes? del registro ${x.id}:`, e instanceof Error ? e.message : e);
+      void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `¿Qué pasó antes? del registro ${x.id}` });
     }
   }
   return n;
@@ -262,19 +269,18 @@ export function arrancarPatronesDeNoche(db: Db): void {
     if (corriendo) return;
     corriendo = true;
     try {
-      await analizarDeNoche(db);
-      await avisarHallazgosNuevos(db);
-      await comentarDeManana(db);
-      await resumirNochesDeHoy(db);
-      await resumirSemanas(db);
-      await revisarFueraDeLoNormal(db);
-      await avisarSeguimientos(db);
-      await seguirMalestares(db);
-      await sugerirFinDeActividades(db);
-      await sugerirPaseos(db);
-      await contextosPendientes(db);
-    } catch (e) {
-      console.error('Error con los patrones de noche:', e);
+      // Cada proceso por separado: si uno falla, los demás corren igual, y queda anotado en el admin (Salud).
+      await correr(db, 'Patrones de la noche', () => analizarDeNoche(db));
+      await correr(db, 'Avisos de hallazgos', () => avisarHallazgosNuevos(db));
+      await correr(db, 'Comentarios del día', () => comentarDeManana(db));
+      await correr(db, 'Resumen de la noche', () => resumirNochesDeHoy(db));
+      await correr(db, 'Resumen de la semana', () => resumirSemanas(db));
+      await correr(db, 'Algo distinto estos días', () => revisarFueraDeLoNormal(db));
+      await correr(db, 'Avisos de seguimientos', () => avisarSeguimientos(db));
+      await correr(db, 'Malestares en curso', () => seguirMalestares(db));
+      await correr(db, 'Actividades en curso', () => sugerirFinDeActividades(db));
+      await correr(db, 'Paseos detectados', () => sugerirPaseos(db));
+      await correr(db, '¿Qué pasó antes?', () => contextosPendientes(db));
     } finally {
       corriendo = false;
     }

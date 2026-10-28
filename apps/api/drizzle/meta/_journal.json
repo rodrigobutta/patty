@@ -260,6 +260,13 @@
       "when": 1793197346482,
       "tag": "0036_paseos_detectados",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793202975715,
+      "tag": "0037_salud",
+      "breakpoints": true
     }
   ]
 }

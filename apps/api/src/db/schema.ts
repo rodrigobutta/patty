@@ -835,3 +835,34 @@ export const paseosDetectados = pgTable(
   },
   (t) => [uniqueIndex('paseos_detectados_idx').on(t.persona_id, t.inicio)],
 );
+
+/** Los errores del servidor, de la app y de los procesos que corren solos, para verlos en el admin (Salud). */
+export const errores = pgTable(
+  'errores',
+  {
+    id: idGrande(),
+    origen: text('origen', { enum: ['servidor', 'app', 'proceso'] }).notNull(),
+    mensaje: text('mensaje').notNull(),
+    detalle: text('detalle'),
+    /** La ruta del pedido, la pantalla de la app o el nombre del proceso. */
+    donde: text('donde'),
+    usuario_id: integer('usuario_id').references(() => usuarios.id, { onDelete: 'set null' }),
+    version: text('version'),
+    creado: creado(),
+  },
+  (t) => [index('errores_creado_idx').on(t.creado)],
+);
+
+/** El estado de cada proceso que corre solo (patrones/noche.ts): cuándo corrió, cuánto tardó, si falló y por qué. */
+export const procesos = pgTable('procesos', {
+  nombre: text('nombre').primaryKey(),
+  ultimo_inicio: instante('ultimo_inicio'),
+  ultima_duracion_ms: integer('ultima_duracion_ms'),
+  ultimo_ok: boolean('ultimo_ok'),
+  ultimo_error: text('ultimo_error'),
+  /** La última vez que hizo algo (procesó al menos una cosa). */
+  ultimo_trabajo: instante('ultimo_trabajo'),
+  corridas: integer('corridas').notNull().default(0),
+  fallas: integer('fallas').notNull().default(0),
+  procesados: integer('procesados').notNull().default(0),
+});

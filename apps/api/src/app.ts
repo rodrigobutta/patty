@@ -6,6 +6,8 @@ import { Hono } from 'hono';
 import { esIdioma, idiomaDe, traducir, type Idioma } from 'shared';
 import { config } from './config.js';
 import { obtenerDb } from './db/client.js';
+import { registrarError } from './lib/salud.js';
+import { rutasErrores } from './routes/errores.js';
 import { tokenDePedido, usuarioDeToken } from './auth/sesion.js';
 import { codigoPg, ErrorApi } from './lib/errores.js';
 import type { Env } from './lib/http.js';
@@ -98,6 +100,13 @@ export function crearApp(): Hono<Env> {
     if (codigo === '23505') return c.json({ error: traducir(idioma, 'Ya existe.') }, 409);
     if (codigo === '23503') return c.json({ error: traducir(idioma, 'Hace referencia a algo que no existe.') }, 400);
     console.error(e);
+    void registrarError(c.var.db ?? obtenerDb(), {
+      origen: 'servidor',
+      mensaje: e instanceof Error ? e.message : String(e),
+      detalle: e instanceof Error ? e.stack ?? null : null,
+      donde: `${c.req.method} ${new URL(c.req.url).pathname}`,
+      usuario_id: c.var.usuario?.id ?? null,
+    });
     return c.json({ error: traducir(idioma, 'Error inesperado del servidor.') }, 500);
   });
 
@@ -112,6 +121,7 @@ export function crearApp(): Hono<Env> {
   // Sin usuario: sesión, entrar, primer usuario. La ingesta usa el token de cada fuente.
   api.route('/', rutasSesion);
   api.route('/ingesta', rutasIngesta);
+  api.route('/', rutasErrores);
   // Todo lo demás necesita una sesión.
   api.use('*', async (c, next) => {
     const u = await usuarioDeToken(c.var.db, c.var.token);

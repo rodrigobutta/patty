@@ -4,6 +4,7 @@
 // si no se marcó, a la media hora. En Android con push, el teléfono no programa nada y los manda todos el servidor, que
 // sabe qué se marcó: así junta en un solo aviso las tomas olvidadas. Corre cada minuto.
 import { sql } from 'drizzle-orm';
+import { correr } from '../lib/salud.js';
 import { apodoDe, COMO_ME_SENTI, dosisTexto, ESTADOS, esIdioma, ITEMS_PUNTOS, traducir, type Idioma, type Toma } from 'shared';
 import { puntosDe } from '../routes/puntos.js';
 import { filas, una, type Db } from '../db/client.js';
@@ -446,20 +447,20 @@ export function arrancarRecordatorios(db: Db): void {
   }
   let vueltas = 0;
   const revisar = async () => {
-    try {
-      await revisarTomas(db);
-      await revisarDiasSinAnotar(db);
-      await revisarTeExtrano(db);
-      await revisarPermisos(db);
-      await revisarPuntos(db);
-      await revisarEncuesta(db);
-      // Una vez por día, lo viejo se borra.
-      if (vueltas++ % 1440 === 0) {
+    // Cada uno por separado, anotado en el admin (Salud).
+    await correr(db, 'Avisos de remedios', async () => void (await revisarTomas(db)));
+    await correr(db, 'Avisos si no anotó', async () => void (await revisarDiasSinAnotar(db)));
+    await correr(db, 'Te extraño', async () => void (await revisarTeExtrano(db)));
+    await correr(db, 'Permisos que faltan', async () => void (await revisarPermisos(db)));
+    await correr(db, 'Puntos', async () => void (await revisarPuntos(db)));
+    await correr(db, 'Encuesta de la noche', async () => void (await revisarEncuesta(db)));
+    // Una vez por día, lo viejo se borra.
+    if (vueltas++ % 1440 === 0) {
+      await correr(db, 'Limpieza', async () => {
         await db.execute(sql`DELETE FROM avisos_enviados WHERE creado < now() - interval '30 days'`);
         await db.execute(sql`DELETE FROM avisos_historial WHERE creado < now() - interval '90 days'`);
-      }
-    } catch (e) {
-      console.error('Error revisando recordatorios:', e);
+        await db.execute(sql`DELETE FROM errores WHERE creado < now() - interval '60 days'`);
+      });
     }
   };
   setInterval(revisar, 60000).unref();
