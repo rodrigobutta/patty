@@ -722,3 +722,33 @@ export const fueraDeLoNormal = pgTable(
   },
   (t) => [uniqueIndex('fuera_de_lo_normal_idx').on(t.persona_id, t.clave, t.fecha)],
 );
+
+/**
+ * Los objetivos suaves de una semana (lunes a domingo) que propone el resumen del domingo ("caminar 3 días", "dormir
+ * 7 horas o más 4 noches"). La persona los acepta o no; Patty cuenta solo cuántos días se cumplieron y el resumen
+ * siguiente lo comenta. Un día cumple según `tipo`: concepto (se anotó ese concepto, o "Caminata", etc.), sin_concepto
+ * (no se anotó), y las mediciones del día con un mínimo o máximo (sueno_min en horas, pasos_min, pantalla_max en minutos).
+ */
+export const objetivos = pgTable(
+  'objetivos',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    /** El lunes de la semana del objetivo. */
+    semana: date('semana', { mode: 'string' }).notNull(),
+    texto: text('texto').notNull(),
+    emoji: text('emoji').notNull().default('🎯'),
+    tipo: text('tipo', { enum: ['concepto', 'sin_concepto', 'sueno_min', 'pasos_min', 'pantalla_max'] }).notNull(),
+    concepto: text('concepto'),
+    valor: doublePrecision('valor'),
+    /** Cuántos días de los 7. */
+    meta_dias: smallint('meta_dias').notNull(),
+    estado: text('estado', { enum: ['propuesto', 'aceptado', 'descartado'] }).notNull().default('propuesto'),
+    /** Al cerrar la semana: cuántos días se cumplió. */
+    logrados: smallint('logrados'),
+    creado: creado(),
+  },
+  (t) => [index('objetivos_persona_idx').on(t.persona_id, t.semana)],
+);

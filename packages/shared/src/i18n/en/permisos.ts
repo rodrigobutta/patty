@@ -541,4 +541,12 @@ export const PERMISOS: Record<string, string> = {
   'Estos últimos días tu ánimo viene más bajo que de costumbre. Si querés, contame qué está pasando: a veces ayuda verlo anotado.': "Your mood has been lower than usual these last days. If you want, tell me what's going on: sometimes it helps to see it written down.",
   'Hace 3 noches que dormís menos de lo habitual: {menos} menos por noche (solés dormir {habitual}).': "For 3 nights you've slept less than usual: {menos} less a night (you usually sleep {habitual}).",
   '(y {n} más)': '(and {n} more)',
+  'Lo intento': "I'll try",
+  'No, gracias': 'No, thanks',
+  'empieza el lunes': 'starts Monday',
+  '{n} de {meta} días': '{n} of {meta} days',
+  '¡Vamos! 🎯': "Let's go! 🎯",
+  '¡logrado!': 'done!',
+  '🎯 Tus objetivos de la semana': '🎯 Your goals this week',
+  '🦉 Para esta semana te propongo:': '🦉 For this week I suggest:',
 };

@@ -26,6 +26,7 @@ import { TarjetaSemana } from './Semanas';
 import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
 import { AnimoSemana } from './AnimoSemana';
+import { ObjetivosSemana } from './ObjetivosSemana';
 import { WidgetsDelDia } from './WidgetsDelDia';
 import { IconoFranja } from '../ui/IconosWidget';
 import { esNativa } from '../lib/nativo';
@@ -422,6 +423,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         />
       ) : null}
       {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
+      {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
       {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
       {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (

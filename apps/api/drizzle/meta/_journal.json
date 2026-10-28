@@ -225,6 +225,13 @@
       "when": 1793154914783,
       "tag": "0031_fuera_de_lo_normal",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793155118770,
+      "tag": "0032_objetivos",
+      "breakpoints": true
     }
   ]
 }

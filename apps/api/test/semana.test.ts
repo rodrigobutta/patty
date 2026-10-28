@@ -23,7 +23,7 @@ describe('resumen de la semana', () => {
     const pedidos: any[] = [];
     const crear = async (p: any) => {
       pedidos.push(p);
-      return { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ titulo: 'Una semana tranquila', texto: 'Anotaste 2 días.', destacados: [{ emoji: '☕', texto: 'Café' }], sugerencias: ['Probá caminar'] }) }] };
+      return { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ titulo: 'Una semana tranquila', texto: 'Anotaste 2 días.', destacados: [{ emoji: '☕', texto: 'Café' }], sugerencias: ['Probá caminar'], objetivos: [{ texto: 'Café 2 días', emoji: '☕', tipo: 'concepto', concepto: 'café', valor: null, meta_dias: 2 }, { texto: 'Mal armado', emoji: '😴', tipo: 'sueno_min', concepto: null, valor: null, meta_dias: 9 }] }) }] };
     };
     usarClientePrueba({ messages: { create: crear }, beta: { messages: { create: crear } } } as unknown as Anthropic);
     const enviados: Aviso[] = [];
@@ -40,6 +40,22 @@ describe('resumen de la semana', () => {
     expect(enviados[0]).toMatchObject({ titulo: '🦉 Tu semana', cuerpo: 'Una semana tranquila', datos: { tipo: 'semana' } });
     const l = (await ana.get(`/api/semanas?persona=${personaId}`)).body;
     expect(l[0]).toMatchObject({ semana: '2026-10-19', titulo: 'Una semana tranquila', numeros: { dias_anotados: 2, molestias: 1 } });
+
+    // Propuso un objetivo para la semana que viene (el mal armado no entra); aceptado, cuenta los días con café.
+    const { objetivosDe, progreso } = await import('../src/lib/objetivos.js');
+    const [o] = await objetivosDe(db, personaId, '2026-10-26');
+    expect(o).toMatchObject({ texto: 'Café 2 días', tipo: 'concepto', meta_dias: 2, estado: 'propuesto' });
+    expect(await objetivosDe(db, personaId, '2026-10-26')).toHaveLength(1);
+    expect((await ana.put(`/api/objetivos/${o.id}`, { estado: 'aceptado' })).status).toBe(200);
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Café', categoria_id: categorias.bebida, inicio: '2026-10-27T12:00:00Z' });
+    const x = await progreso(db, { ...o, estado: 'aceptado' }, '2026-10-28');
+    expect(x.cumplidos).toBe(1);
+    expect(x.dias.map((d) => d.cumple)).toEqual([false, true, null, null, null, null, null]);
+    // El domingo siguiente, el resumen lo cierra con los días logrados y se lo cuenta a la IA.
+    await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Café', categoria_id: categorias.bebida, inicio: '2026-10-29T12:00:00Z' });
+    expect(await resumirSemanas(db, new Date('2026-11-01T23:05:00Z'))).toBe(1);
+    expect(pedidos[1].messages[0].content).toContain('- Café 2 días: 2 de 2 días');
+    expect((await objetivosDe(db, personaId, '2026-10-26', ['aceptado']))[0].logrados).toBe(2);
   });
 });
 
