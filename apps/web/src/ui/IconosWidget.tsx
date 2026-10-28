@@ -68,6 +68,19 @@ export function IconoLugar() {
   );
 }
 
+export function IconoReuniones() {
+  return (
+    <svg {...props}>
+      <rect x="7" y="10" width="34" height="31" rx="5" fill="#fff" stroke={TRAZO} strokeWidth="2.5" />
+      <path d="M7 15 a5 5 0 0 1 5-5 h24 a5 5 0 0 1 5 5 v4 H7 z" fill="#8f78d6" stroke={TRAZO} strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M16 6 v7 M32 6 v7" stroke={TRAZO} strokeWidth="2.5" strokeLinecap="round" />
+      <rect x="13" y="24" width="10" height="5" rx="1.5" fill="#c9bcf2" />
+      <rect x="25" y="24" width="10" height="5" rx="1.5" fill="#c9bcf2" />
+      <rect x="13" y="32" width="10" height="5" rx="1.5" fill="#c9bcf2" />
+    </svg>
+  );
+}
+
 export function IconoCelular() {
   return (
     <svg {...props}>

@@ -59,6 +59,7 @@ export async function numerosDeSemana(db: Db, personaId: number, lunes: string):
     viajes: r1(await med('Viajes', 'sum')),
     km: r1(await med('Km recorridos', 'sum')),
     pantalla_min: r1(await med('Tiempo de pantalla', 'avg')),
+    reuniones_h: r1(await med('Horas de reuniones', 'sum')),
     animo: r1(animo?.v),
     molestias: molestias?.n ?? 0,
   };
@@ -107,7 +108,7 @@ export async function resumirSemana(db: Db, p: { id: number; nombre: string }, l
     sistema:
       `Sos Patty, una app amiga que acompaña a una persona que anota su día. Es domingo a la noche: armale el resumen de su ` +
       `semana en ${lengua}. Un título corto y simpático (máximo 50 letras); un texto de 3 a 5 oraciones que cuente cómo fue ` +
-      `la semana comparada con la anterior (sueño, movimiento, ánimo, molestias, lo que se repitió), juntando varios datos; ` +
+      `la semana comparada con la anterior (sueño, movimiento, reuniones de trabajo, ánimo, molestias, lo que se repitió), juntando varios datos; ` +
       `de 2 a 4 destacados (emoji + una frase corta, lo bueno primero); y 1 o 2 sugerencias concretas y amables para probar ` +
       `la semana que viene, basadas en lo que se ve. Sin diagnósticos ni consejos médicos, sin culpa, sin inventar datos. ` +
       `Si se había propuesto objetivos para esta semana, comentá cómo le fue (celebrá lo logrado, sin culpa por lo que no). ` +
@@ -118,7 +119,7 @@ export async function resumirSemana(db: Db, p: { id: number; nombre: string }, l
       `como mucho valor minutos de pantalla. Solo uses sueño, pasos o pantalla si hay números de eso.`,
     texto:
       `Persona: ${p.nombre}. Semana del ${lunes} al ${hasta}.\n\nNúmeros (por día; minutos donde dice _min):\n` +
-      ['dias_anotados', 'sueno_horas', 'sueno_calidad', 'pasos', 'caminatas_min', 'viajes', 'km', 'pantalla_min', 'animo', 'molestias'].map(fila).join('\n') +
+      ['dias_anotados', 'sueno_horas', 'sueno_calidad', 'pasos', 'caminatas_min', 'viajes', 'km', 'pantalla_min', 'reuniones_h', 'animo', 'molestias'].map(fila).join('\n') +
       `\n\nLo más anotado (veces · intensidad promedio si tiene):\n${top.map((x) => `${x.categoria}: ${x.que} · ${x.veces}${x.intensidad !== null ? ` · ${Math.round(x.intensidad)}/10` : ''}`).join('\n') || '(nada)'}` +
       (logros.length ? `\n\nObjetivos que se propuso para esta semana (días cumplidos):\n${logros.join('\n')}` : '') +
       (comentarios.length ? `\n\nLo que ya le comentaste en la semana (no lo repitas igual):\n${comentarios.map((c) => `- ${c.texto}`).join('\n')}` : ''),

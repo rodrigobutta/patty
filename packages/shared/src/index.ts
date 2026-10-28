@@ -49,6 +49,7 @@ export const CATEGORIAS_INICIALES: CategoriaBase[] = [
   { clave: 'ciclo', nombre: 'Ciclo menstrual', icono: '🩸', rol: 'ambos', tipo_valor: 'intensidad', unidad: null, orden: 14 },
   { clave: 'gente', nombre: 'Con gente', icono: '👥', rol: 'causa', tipo_valor: 'evento', unidad: null, orden: 15 },
   { clave: 'viaje', nombre: 'Viajes', icono: '🚗', rol: 'causa', tipo_valor: 'duracion', unidad: 'min', orden: 16 },
+  { clave: 'trabajo', nombre: 'Trabajo y reuniones', icono: '💼', rol: 'causa', tipo_valor: 'medida', unidad: null, orden: 17 },
 ];
 
 /** Conceptos que conviene que existan desde el principio (los que van a llenar los relojes y el clima). */

@@ -34,8 +34,16 @@ import java.util.Set;
  * - Tiempo de uso por app entre dos instantes (permiso "Acceso a datos de uso", se da en Ajustes).
  * - Llamadas entre dos instantes: cuántas entrantes, salientes y perdidas, y los segundos hablados. No se leen números
  *   ni nombres.
+ * - Las reuniones del calendario del teléfono (todas las cuentas sincronizadas: Google, Outlook, Exchange…): cuándo
+ *   empiezan y terminan y cuánta gente hay. Nunca títulos, lugares ni invitados.
  */
-@CapacitorPlugin(name = "Telefono", permissions = { @Permission(alias = "llamadas", strings = { Manifest.permission.READ_CALL_LOG }) })
+@CapacitorPlugin(
+    name = "Telefono",
+    permissions = {
+        @Permission(alias = "llamadas", strings = { Manifest.permission.READ_CALL_LOG }),
+        @Permission(alias = "calendario", strings = { Manifest.permission.READ_CALENDAR }),
+    }
+)
 public class TelefonoPlugin extends Plugin {
 
     // ---- Tiempo de uso ----
@@ -53,6 +61,7 @@ public class TelefonoPlugin extends Plugin {
         JSObject r = new JSObject();
         r.put("uso", tienePermisoUso() ? "granted" : "denied");
         r.put("llamadas", getPermissionState("llamadas") == PermissionState.GRANTED ? "granted" : "denied");
+        r.put("calendario", getPermissionState("calendario") == PermissionState.GRANTED ? "granted" : "denied");
         call.resolve(r);
     }
 
@@ -156,6 +165,77 @@ public class TelefonoPlugin extends Plugin {
     @PermissionCallback
     private void alPedirLlamadas(PluginCall call) {
         permisos(call);
+    }
+
+    // ---- Calendario ----
+
+    @PluginMethod
+    public void pedirPermisoCalendario(PluginCall call) {
+        if (getPermissionState("calendario") == PermissionState.GRANTED) permisos(call);
+        else requestPermissionForAlias("calendario", call, "alPedirCalendario");
+    }
+
+    @PermissionCallback
+    private void alPedirCalendario(PluginCall call) {
+        permisos(call);
+    }
+
+    /**
+     * Los eventos del calendario entre `desde` y `hasta` (las repeticiones ya abiertas): inicio, fin, si es de todo el
+     * día, si figura como ocupado, si lo rechazó y cuántos invitados tiene, y el tipo de cuenta. Sin títulos ni nombres.
+     */
+    @PluginMethod
+    public void eventos(PluginCall call) {
+        if (getPermissionState("calendario") != PermissionState.GRANTED) {
+            call.reject("Falta el permiso para leer el calendario.", "SIN_PERMISO");
+            return;
+        }
+        long desde = call.getLong("desde", 0L);
+        long hasta = call.getLong("hasta", System.currentTimeMillis());
+        Uri.Builder b = android.provider.CalendarContract.Instances.CONTENT_URI.buildUpon();
+        android.content.ContentUris.appendId(b, desde);
+        android.content.ContentUris.appendId(b, hasta);
+        String[] columnas = {
+            android.provider.CalendarContract.Instances.EVENT_ID,
+            android.provider.CalendarContract.Instances.BEGIN,
+            android.provider.CalendarContract.Instances.END,
+            android.provider.CalendarContract.Instances.ALL_DAY,
+            android.provider.CalendarContract.Instances.AVAILABILITY,
+            android.provider.CalendarContract.Instances.SELF_ATTENDEE_STATUS,
+            android.provider.CalendarContract.Instances.ACCOUNT_TYPE,
+            android.provider.CalendarContract.Instances.VISIBLE,
+        };
+        JSArray lista = new JSArray();
+        try (Cursor c = getContext().getContentResolver().query(b.build(), columnas, null, null, android.provider.CalendarContract.Instances.BEGIN)) {
+            while (c != null && c.moveToNext()) {
+                if (c.getInt(7) == 0) continue; // calendarios ocultos
+                long evento = c.getLong(0);
+                JSObject e = new JSObject();
+                e.put("inicio", c.getLong(1));
+                e.put("fin", c.getLong(2));
+                e.put("todoElDia", c.getInt(3) == 1);
+                e.put("libre", c.getInt(4) == android.provider.CalendarContract.Events.AVAILABILITY_FREE);
+                e.put("rechazado", c.getInt(5) == android.provider.CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED);
+                e.put("cuenta", c.getString(6));
+                e.put("invitados", invitados(evento));
+                lista.put(e);
+            }
+        } catch (SecurityException ex) {
+            call.reject("Falta el permiso para leer el calendario.", "SIN_PERMISO");
+            return;
+        }
+        JSObject r = new JSObject();
+        r.put("eventos", lista);
+        call.resolve(r);
+    }
+
+    /** Cuántas personas hay invitadas a un evento (sin sus datos). */
+    private int invitados(long evento) {
+        try (Cursor c = android.provider.CalendarContract.Attendees.query(getContext().getContentResolver(), evento, new String[] { android.provider.CalendarContract.Attendees._ID })) {
+            return c == null ? 0 : c.getCount();
+        } catch (Exception ex) {
+            return 0;
+        }
     }
 
     /** Cuántas llamadas hubo entre `desde` y `hasta` y cuántos segundos se habló. */

@@ -58,7 +58,8 @@ export async function armarContexto(db: Db, registroId: number, zona: string, id
         FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id
         WHERE m.persona_id = ${r.persona_id} AND m.fecha BETWEEN ${sumarDias(r.fecha, -2)} AND ${r.fecha}
           AND c.nombre IN ('Horas de sueño', 'Calidad del sueño', 'Pasos', 'Caminata', 'Tiempo de pantalla', 'Temperatura máxima',
-                           'Temperatura mínima', 'Lluvia del día', 'Cambio de presión', 'Humedad media', 'Viajes')
+                           'Temperatura mínima', 'Lluvia del día', 'Cambio de presión', 'Humedad media', 'Viajes',
+                           'Reuniones', 'Horas de reuniones', 'Reuniones seguidas')
         GROUP BY m.fecha, c.nombre ORDER BY m.fecha`,
   );
   const items: Contexto['items'] = anotado.map((a) => ({

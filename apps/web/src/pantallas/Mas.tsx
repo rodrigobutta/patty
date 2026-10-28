@@ -20,7 +20,7 @@ import { Cuenta } from './Cuenta';
 import { alPedirIrAMas, tomarSeccionPedida, verSeccionPedida } from '../lib/navegar';
 import { IconoAvanzado, IconoAvisos, IconoClima, IconoCuenta, IconoPermisos, IconoReloj, IconoTelefono, IconoFamilia, IconoGente, IconoLugares, IconoRemedios, IconoSalud } from '../ui/IconosMas';
 import { DatosSalud } from './DatosSalud';
-import { DatosTelefono } from './DatosTelefono';
+import { DatosCalendario, DatosTelefono } from './DatosTelefono';
 import { Lugares } from './Lugares';
 import { Perfil } from './Perfil';
 import { alPedirGuia, Permisos, tomarGuia, type Paso } from './Permisos';
@@ -207,6 +207,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   </>);
   if (seccion === 'telefono') return pantalla(t('Uso del teléfono'), <>
       {persona && hayDatosDelTelefono() ? <DatosTelefono persona={persona} /> : null}
+      {persona && hayDatosDelTelefono() ? <DatosCalendario persona={persona} /> : null}
   </>);
   if (seccion === 'reloj') return pantalla(t('Reloj y salud'), <>
       {persona && esNativa() ? <DatosSalud persona={persona} /> : null}

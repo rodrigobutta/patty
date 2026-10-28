@@ -9,10 +9,10 @@ import { GraficoSueno, ResumenNoche } from './GraficoSueno';
 import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
 import { locale, t } from '../lib/idioma';
-import { IconoCelular, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
+import { IconoCelular, IconoReuniones, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
 import { WidgetApagado, type Fuente } from './FuenteApagada';
 
-type Lugar = 'clima' | 'ubicacion' | 'pasos' | 'telefono' | 'sueno';
+type Lugar = 'clima' | 'ubicacion' | 'pasos' | 'telefono' | 'reuniones' | 'sueno';
 
 interface Widget {
   lugar: Lugar;
@@ -93,6 +93,24 @@ function widgetPasos(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget
   };
 }
 
+/** Lo del calendario (llega con lo del teléfono): va en su propio widget. */
+const REUNIONES = new Set(['Reuniones', 'Horas de reuniones', 'Reuniones seguidas', 'Reuniones fuera de horario', 'Primera reunión', 'Última reunión']);
+
+function widgetReuniones(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
+  const n = dato(todos, 'telefono', 'Reuniones');
+  if (!n) return null;
+  const horas = dato(todos, 'telefono', 'Horas de reuniones');
+  const cuantas = Math.round(n.suma ?? 0);
+  return {
+    lugar: 'reuniones',
+    icono: <IconoReuniones />,
+    linea: cuantas === 0 ? t('Sin reuniones') : cuantas === 1 ? t('1 reunión') : t('{n} reuniones', { n: cuantas }),
+    sub: horas && cuantas ? duracion((horas.suma ?? 0) * 60) : undefined,
+    grupos: grupos.filter((g) => g.tipo === 'telefono').map((g) => ({ ...g, lineas: g.lineas.filter((l) => REUNIONES.has(l.concepto)) })),
+    nombre: t('Reuniones'),
+  };
+}
+
 function widgetTelefono(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
   const pantalla = dato(todos, 'telefono', 'Tiempo de pantalla');
   const llamadas = dato(todos, 'telefono', 'Llamadas');
@@ -103,7 +121,7 @@ function widgetTelefono(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Wid
     icono: <IconoCelular />,
     linea: pantalla ? duracion(pantalla.suma) : '—',
     sub: llamadas ? (n === 1 ? t('1 llamada') : t('{n} llamadas', { n })) : undefined,
-    grupos: grupos.filter((g) => g.tipo === 'telefono'),
+    grupos: grupos.filter((g) => g.tipo === 'telefono').map((g) => ({ ...g, lineas: g.lineas.filter((l) => !REUNIONES.has(l.concepto)) })),
     nombre: t('Uso del teléfono'),
   };
 }
@@ -156,6 +174,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
     widgetUbicacion(automaticos, grupos),
     widgetPasos(automaticos, grupos),
     widgetTelefono(automaticos, grupos),
+    widgetReuniones(automaticos, grupos),
     widgetSueno(automaticos, grupos, registros),
   ].map((w) => {
     // Lo del reloj se reparte por categoría: actividad (pasos, km, calorías, ejercicio) al de los pasos; el sueño y la
@@ -170,7 +189,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
         .map((g) => ({ ...g, lineas: g.lineas.filter((l) => (w.lugar === 'pasos' ? deActividad(l.categoria_id) : !deActividad(l.categoria_id))) })),
     };
   });
-  const orden: Lugar[] = ['clima', 'ubicacion', 'pasos', 'telefono', 'sueno'];
+  const orden: Lugar[] = ['clima', 'ubicacion', 'pasos', 'telefono', 'reuniones', 'sueno'];
   const celdas = orden.map((l) => ({ l, w: widgets.find((w) => w?.lugar === l) ?? null, apagada: apagadas.find((f) => LUGAR_DE[f] === l) }));
   if (!antes && !celdas.some((c) => c.w || c.apagada)) return null;
   return (

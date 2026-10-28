@@ -123,6 +123,7 @@
     <!-- Datos del teléfono para Patty: tiempo de uso por app y registro de llamadas (solo cantidades y duraciones). -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
     <!-- La encuesta de la noche llega a la hora justa (Android lo da al instalar, sin pedir nada). -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <!-- Dictar: grabar desde la web (el permiso de micrófono lo pide la app al primer uso). -->

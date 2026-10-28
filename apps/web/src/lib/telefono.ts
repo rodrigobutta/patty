@@ -5,9 +5,10 @@ import { registerPlugin } from '@capacitor/core';
 import { useEffect } from 'react';
 import { ingesta } from './fuenteApp';
 import { plataforma } from './nativo';
+import { calendarioActivado, reunionesDelDia, type EventoCalendario } from './calendario';
 
 type Estado = 'granted' | 'denied';
-interface Permisos { uso: Estado; llamadas: Estado }
+interface Permisos { uso: Estado; llamadas: Estado; calendario?: Estado }
 interface Periodo { desde: number; hasta: number }
 export interface UsoDeApps { minutos: number; apps: Array<{ paquete: string; nombre: string; minutos: number }> }
 export interface Llamadas { entrantes: number; salientes: number; perdidas: number; segundos: number }
@@ -18,6 +19,8 @@ interface PluginTelefono {
   pedirPermisoLlamadas(): Promise<Permisos>;
   uso(p: Periodo): Promise<UsoDeApps>;
   llamadas(p: Periodo): Promise<Llamadas>;
+  pedirPermisoCalendario(): Promise<Permisos>;
+  eventos(p: Periodo): Promise<{ eventos: EventoCalendario[] }>;
 }
 
 export const Telefono = registerPlugin<PluginTelefono>('Telefono');
@@ -72,10 +75,31 @@ export function medicionesDelDia(desde: Date, hasta: Date, uso: UsoDeApps | null
 /** Lee los últimos días del teléfono y los manda. Devuelve cuántas mediciones mandó. */
 export async function sincronizar(personaId: number): Promise<number> {
   const p = await Telefono.permisos();
-  if (p.uso !== 'granted' && p.llamadas !== 'granted') return 0;
+  // Las reuniones van si se prendió el calendario y está el permiso (la app de una versión vieja no lo tiene).
+  const conCalendario = calendarioActivado() && p.calendario === 'granted';
+  const conTelefono = datosActivados() && (p.uso === 'granted' || p.llamadas === 'granted');
+  if (!conTelefono && !conCalendario) return 0;
   const lista: Medicion[] = [];
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
+  if (conCalendario) {
+    const desde = new Date(hoy);
+    desde.setDate(hoy.getDate() - (DIAS - 1));
+    const hasta = new Date(hoy);
+    hasta.setDate(hoy.getDate() + 1);
+    const eventos = (await Telefono.eventos({ desde: desde.getTime(), hasta: hasta.getTime() }).catch(() => ({ eventos: [] }))).eventos;
+    for (let i = DIAS - 1; i >= 0; i--) {
+      const d = new Date(hoy);
+      d.setDate(hoy.getDate() - i);
+      const f = new Date(d);
+      f.setDate(d.getDate() + 1);
+      lista.push(...reunionesDelDia(d, f, eventos));
+    }
+  }
+  if (!conTelefono) {
+    if (lista.length) await ingesta(personaId, '', { mediciones: lista });
+    return lista.length;
+  }
   for (let i = DIAS - 1; i >= 0; i--) {
     const desde = new Date(hoy);
     desde.setDate(hoy.getDate() - i);
@@ -102,7 +126,7 @@ export function useDatosDelTelefono(personaId: number | undefined): void {
   useEffect(() => {
     if (!hayDatosDelTelefono() || !personaId) return;
     const quizas = () => {
-      if (document.visibilityState !== 'visible' || !datosActivados()) return;
+      if (document.visibilityState !== 'visible' || (!datosActivados() && !calendarioActivado())) return;
       const ultima = Number(localStorage.getItem(ULTIMA) ?? 0);
       if (Date.now() - ultima > CADA_MS) void sincronizar(personaId).catch(() => {});
     };
