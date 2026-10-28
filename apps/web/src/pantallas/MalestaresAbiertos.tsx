@@ -79,7 +79,6 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
 
   return (
     <div className="tarjeta linea-malestares malestares-abiertos">
-      <p className="rotulo-campo">{t('⏱️ Lo que dura')}</p>
       <div className="gantt">
         {lista.map((r) => {
           const esActividad = r.categoria_id === actividad;
