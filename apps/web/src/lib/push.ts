@@ -103,7 +103,7 @@ export function usePush(listo: boolean, servidorManda: boolean): void {
         Mascota.addListener('avisoTocado', (datos) => {
           irAlDia();
           // Lo del widget queda guardado por si el Día todavía no está (la app recién se abre): lo levanta al montarse.
-          if (datos.tipo === 'widget') guardarWidgetPendiente(datos);
+          if (datos.tipo === 'widget' || TIPOS_DEL_DIA.includes(datos.tipo)) guardarWidgetPendiente(datos);
           window.dispatchEvent(new CustomEvent(EVENTO_ABRIR, { detail: datos }));
         }),
       );
@@ -137,6 +137,8 @@ export function configurarWidget(personaId: number | null, categoriaAnimo: numbe
 }
 
 const WIDGET_PENDIENTE = 'widget-pendiente';
+/** Los avisos que llevan a una tarjeta del Día (si el Día todavía no está, lo levanta al montarse). */
+export const TIPOS_DEL_DIA = ['paseo', 'malestar', 'actividad', 'seguimiento', 'fuera'];
 function guardarWidgetPendiente(d: Record<string, string>) {
   try {
     sessionStorage.setItem(WIDGET_PENDIENTE, JSON.stringify(d));
@@ -162,5 +164,15 @@ export async function agregarWidget(): Promise<boolean> {
     return (await Mascota.agregarWidget()).pedido;
   } catch {
     return false;
+  }
+}
+
+/** Lo pendiente del widget o de un aviso, sin sacarlo (para ver si le toca a quien mira). */
+export function verPendiente(): Record<string, string> | null {
+  try {
+    const d = sessionStorage.getItem(WIDGET_PENDIENTE);
+    return d ? (JSON.parse(d) as Record<string, string>) : null;
+  } catch {
+    return null;
   }
 }

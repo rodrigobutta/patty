@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { IconoAnimo, IconoCategoria } from '../ui/IconosPatty';
 import { alPedirIrAlDia, fechaPedidaParaVer, olvidarFechaPedida } from '../lib/avisos';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
-import { alTocarAvisoPush, configurarWidget, tomarWidgetPendiente } from '../lib/push';
+import { alTocarAvisoPush, configurarWidget, TIPOS_DEL_DIA, tomarWidgetPendiente, verPendiente } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { useAlPedirSentir, type Momento } from '../lib/sentir';
@@ -231,6 +231,41 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     }),
     [persona.zona_horaria],
   );
+  // Un aviso de algo del Día (un paseo, un malestar, una actividad, un seguimiento): se vuelve a traer todo y se va a
+  // esa tarjeta, resaltada un momento.
+  const irATarjeta = useCallback(
+    (tipo: string) => {
+      setFecha(hoyEn(persona.zona_horaria));
+      void traer();
+      const sel = { paseo: '.paseo-pendiente', malestar: '.malestares-abiertos', actividad: '.malestares-abiertos', seguimiento: '.seguimiento-dia', fuera: '.fuera-de-lo-normal' }[tipo];
+      if (!sel) return;
+      let intentos = 0;
+      const buscar = () => {
+        const el = document.querySelector(sel);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('resaltada');
+          window.setTimeout(() => el.classList.remove('resaltada'), 2200);
+        } else if (intentos++ < 10) window.setTimeout(buscar, 400);
+      };
+      window.setTimeout(buscar, 500);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [persona.zona_horaria],
+  );
+  useEffect(() => {
+    const d = verPendiente();
+    if (d && TIPOS_DEL_DIA.includes(d.tipo)) {
+      tomarWidgetPendiente();
+      irATarjeta(d.tipo);
+    }
+    return alTocarAvisoPush((x) => {
+      if (TIPOS_DEL_DIA.includes(x.tipo)) {
+        tomarWidgetPendiente();
+        irATarjeta(x.tipo);
+      }
+    });
+  }, [irATarjeta]);
   // El widget de la pantalla de inicio: anota el ánimo de esta persona; sus botones abren el Día en contar, la cámara
   // o "¿cómo te sentís?" con la carita elegida (si el widget no pudo anotarla solo).
   const catAnimo = categorias.find((c) => c.clave === 'animo')?.id;
@@ -250,8 +285,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     [persona.zona_horaria],
   );
   useEffect(() => {
-    const d = tomarWidgetPendiente();
-    if (d) atenderWidget(d);
+    const d = verPendiente();
+    if (d?.tipo === 'widget') atenderWidget(d);
     return alTocarAvisoPush((x) => x.tipo === 'widget' && atenderWidget(x));
   }, [atenderWidget]);
   const [vuelta, setVuelta] = useState(0);
