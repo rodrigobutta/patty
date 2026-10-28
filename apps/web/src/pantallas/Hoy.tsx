@@ -28,6 +28,7 @@ import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
 import { AnimoSemana } from './AnimoSemana';
 import { ObjetivosSemana } from './ObjetivosSemana';
+import { useCadaTanto } from '../lib/reloj';
 import { SeguimientoDelDia } from './SeguimientoDelDia';
 import { LineaMalestares, MalestaresAbiertos } from './MalestaresAbiertos';
 import { EVENTO_SUBIDO, SinSenal } from './SinSenal';
@@ -201,6 +202,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       setError((e as Error).message);
     }
   }, [persona.id, fecha]);
+  // Con la pantalla abierta, el día de hoy se vuelve a traer cada 5 minutos (lo que llega solo, lo anotado en otro
+  // teléfono o por la familia), salvo con una hoja abierta.
+  const refrescar = useCallback(() => {
+    if (fecha === hoyEn(persona.zona_horaria) && !document.querySelector('.hoja')) void traer();
+  }, [fecha, persona.zona_horaria, traer]);
+  useCadaTanto(refrescar, 5 * 60000);
   // Lo anotado sin señal se acaba de subir: se trae el día de nuevo.
   useEffect(() => {
     const f = () => void traer();

@@ -9,6 +9,7 @@ import { medir } from '../lib/analytics';
 import { duracion } from '../lib/automatico';
 import { horaEn, instanteDelDia } from '../lib/fechas';
 import { t } from '../lib/idioma';
+import { useMinuto } from '../lib/reloj';
 
 type Estado = 'paso' | 'igual' | 'mejor' | 'peor';
 
@@ -16,9 +17,12 @@ export function MalestaresAbiertos({ persona, vuelta, alCambiar }: { persona: Pe
   const { festejar, avisar } = useEstado();
   const [lista, setLista] = useState<Registro[]>([]);
   const [abierto, setAbierto] = useState<number | null>(null);
+  // Las duraciones corren solas (un tic por minuto) y la lista se vuelve a traer cada tanto.
+  const ahora = useMinuto();
+  const minutoDe10 = Math.floor(ahora / 600000);
   useEffect(() => {
     api<Registro[]>('GET', `/api/registros/abiertos?persona=${persona.id}`).then(setLista).catch(() => {});
-  }, [persona.id, vuelta]);
+  }, [persona.id, vuelta, minutoDe10]);
   if (!lista.length) return null;
   const responder = async (r: Registro, estado: Estado) => {
     setAbierto(null);
@@ -47,7 +51,7 @@ export function MalestaresAbiertos({ persona, vuelta, alCambiar }: { persona: Pe
         <span key={r.id} className="badge-malestar-envoltura">
           <button className={`badge-malestar${abierto === r.id ? ' activo' : ''}`} onClick={() => setAbierto(abierto === r.id ? null : r.id)} aria-expanded={abierto === r.id}>
             <span className="pulso" aria-hidden />
-            {t(r.concepto)} · {duracion((Date.now() - Date.parse(r.inicio)) / 60000)}
+            {t(r.concepto)} · {duracion((ahora - Date.parse(r.inicio)) / 60000)}
           </button>
           {abierto === r.id ? (
             <span className="menu-malestar" role="menu">
@@ -70,11 +74,13 @@ const COLOR: Record<Estado, string> = { paso: 'var(--verde)', mejor: 'var(--verd
 export function LineaMalestares({ persona, fecha, hoy, registros, categorias }: { persona: Persona; fecha: string; hoy: string; registros: Registro[]; categorias: Categoria[] }) {
   const sintoma = categorias.find((c) => c.clave === 'sintoma')?.id;
   const lista = registros.filter((r) => r.categoria_id === sintoma && r.intensidad !== null && (r.fin || r.abierto || r.evolucion?.length));
+  // La barra de lo que sigue crece sola, minuto a minuto.
+  const minuto = useMinuto();
   if (!lista.length) return null;
   // El día de Patty va de 5 a 5.
   const a = Date.parse(instanteDelDia(fecha, '05:00', persona.zona_horaria));
   const b = a + 24 * 3600000;
-  const ahora = Date.now();
+  const ahora = minuto;
   const x = (ms: number) => `${Math.max(0, Math.min(100, ((ms - a) / (b - a)) * 100))}%`;
   const marcas = [8, 12, 16, 20, 24].map((h) => ({ h, ms: a + (h - 5) * 3600000 }));
   return (

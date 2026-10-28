@@ -9,6 +9,7 @@ import { medir } from '../lib/analytics';
 import { horaEn } from '../lib/fechas';
 import { t } from '../lib/idioma';
 import { pedirSentir } from '../lib/sentir';
+import { useMinuto } from '../lib/reloj';
 import { EVENTO_SEGUIMIENTOS, traerSeguimientos } from '../lib/seguimientos';
 import { EVENTO_CONTAR } from './PuntosDelDia';
 
@@ -25,6 +26,8 @@ export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: 
   const [activos, setActivos] = useState<Seguimiento[]>([]);
   const [midiendo, setMidiendo] = useState<string | null>(null);
   const [valor, setValor] = useState('');
+  // A la hora de cada aviso, lo de "cada vez" vuelve a faltar: se mira la hora cada minuto.
+  const ahora = useMinuto();
   useEffect(() => {
     const traer = () => void traerSeguimientos(persona.id).then((r) => setActivos(r.activos)).catch(() => {});
     traer();
@@ -70,9 +73,9 @@ export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: 
     <>
       {activos.map((s) => {
         // Lo de "cada vez" cuenta desde el último horario que pasó; lo de una vez al día, todo el día.
-        const [hh, mm] = horaEn(new Date().toISOString(), persona.zona_horaria).split(':').map(Number);
+        const [hh, mm] = horaEn(new Date(ahora).toISOString(), persona.zona_horaria).split(':').map(Number);
         const hechos = itemsHechos(s.items, anotado, inicioDeVentana(s.horarios, hh + mm / 60));
-        const dia = Math.floor((Date.now() - Date.parse(s.desde)) / 86400000) + 1;
+        const dia = Math.floor((ahora - Date.parse(s.desde)) / 86400000) + 1;
         const pendientes = s.items.filter((c) => !hechos.has(c) && !ITEMS_SEGUIMIENTO.find((i) => i.clave === c)?.opcional).length;
         return (
           <div key={s.id} className="tarjeta seguimiento-dia">
