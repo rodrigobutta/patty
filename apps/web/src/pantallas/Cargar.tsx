@@ -268,6 +268,8 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
 interface Duda {
   pregunta: string;
   opciones: string[];
+  /** Si se puede elegir más de una (con quién, qué comió): se tocan varias y se contesta con el botón. */
+  varias?: boolean;
 }
 
 function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInicial, sinFoto = false, pista, contado }: {
@@ -294,7 +296,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   const [propuesta, setPropuesta] = useState<Propuesta[] | null>(null);
   const [dudas, setDudas] = useState<Duda[]>([]);
   /** Las respuestas tocadas (índice de la duda → opción), para contestar con toques en vez de hablar o escribir. */
-  const [elegidas, setElegidas] = useState<Record<number, string>>({});
+  const [elegidas, setElegidas] = useState<Record<number, string[]>>({});
   const [quitar, setQuitar] = useState<Set<number>>(new Set());
   const [remedios, setRemedios] = useState<TratamientoPropuesto[]>([]);
   const [quitarRemedio, setQuitarRemedio] = useState<Set<number>>(new Set());
@@ -343,7 +345,13 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       setTexto(contado);
       setPropuesta(r.registros);
       setRemedios(r.tratamientos ?? []);
-      setDudas((r.dudas ?? []).map((d) => (typeof d === 'string' ? { pregunta: d, opciones: [] } : { pregunta: d.pregunta, opciones: d.opciones ?? [] })));
+      setDudas(
+        (r.dudas ?? []).map((d) =>
+          typeof d === 'string'
+            ? { pregunta: d, opciones: [] }
+            : { pregunta: d.pregunta, opciones: d.opciones ?? [], varias: Boolean(d.varias) || /^¿?\s*(con quién|con quiénes|who)/i.test(d.pregunta) },
+        ),
+      );
       setElegidas({});
       setQuitar(new Set());
       setQuitarRemedio(new Set());
@@ -363,16 +371,25 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   };
 
   /** Contestar con las opciones tocadas ("¿Jugaste al tenis hoy? Sí. ¿Cuánto tiempo? 1 hora"). */
-  const contarElegidas = (e: Record<number, string>) =>
-    contar(Object.entries(e).map(([i, o]) => `${dudas[Number(i)].pregunta} ${o}`).join('. '));
-  /** Si es la única pregunta con opciones, contesta al toque; si hay varias, se juntan y se contesta con el botón. */
+  const contarElegidas = (e: Record<number, string[]>) =>
+    contar(
+      Object.entries(e)
+        .filter(([, os]) => os.length)
+        .map(([i, os]) => `${dudas[Number(i)].pregunta} ${os.length > 1 ? `${os.slice(0, -1).join(', ')} ${t('y')} ${os.at(-1)}` : os[0]}`)
+        .join('. '),
+    );
+  /**
+   * Si es la única pregunta con opciones y de una sola respuesta, contesta al toque. Si no (varias preguntas, o una que
+   * admite varias respuestas, como con quién), se tocan y se contesta con el botón.
+   */
   const tocarOpcion = (i: number, o: string) => {
     const conOpciones = dudas.filter((d) => d.opciones.length).length;
-    if (conOpciones <= 1) return contarElegidas({ [i]: o });
+    if (conOpciones <= 1 && !dudas[i].varias) return contarElegidas({ [i]: [o] });
     setElegidas((x) => {
-      const n = { ...x };
-      if (n[i] === o) delete n[i];
-      else n[i] = o;
+      const ya = x[i] ?? [];
+      const sigue = ya.includes(o) ? ya.filter((y) => y !== o) : dudas[i].varias ? [...ya, o] : [o];
+      const n = { ...x, [i]: sigue };
+      if (!sigue.length) delete n[i];
       return n;
     });
   };
@@ -607,11 +624,11 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
           <div className="nota-ia">
             {dudas.map((d, i) => (
               <div key={d.pregunta} className="duda">
-                <p>🤔 {d.pregunta}</p>
+                <p>🤔 {d.pregunta}{d.varias && d.opciones.length ? <span className="suave chico"> · {t('podés elegir varias')}</span> : null}</p>
                 {d.opciones.length ? (
                   <div className="chips envolver opciones-duda">
                     {d.opciones.map((o) => (
-                      <button key={o} className={`chip${elegidas[i] === o ? ' activa' : ''}`} disabled={ocupado} onClick={() => tocarOpcion(i, o)}>{o}</button>
+                      <button key={o} className={`chip${elegidas[i]?.includes(o) ? ' activa' : ''}`} disabled={ocupado} onClick={() => tocarOpcion(i, o)}>{o}</button>
                     ))}
                   </div>
                 ) : null}

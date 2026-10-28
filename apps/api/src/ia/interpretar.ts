@@ -71,8 +71,9 @@ const ESQUEMA = {
             items: { type: 'string' },
             description: 'De 2 a 5 respuestas posibles, muy cortas (1 a 4 palabras), para contestar con un toque ("Sí", "No"; "30 min", "1 hora", "2 horas"; "Casera", "Afuera"). Vacío si la respuesta es libre (un nombre, por ejemplo).',
           },
+          varias: { type: 'boolean', description: 'true si se puede elegir más de una opción a la vez (con quién estuvo, qué comió, qué le dolió); false si es una sola (sí o no, cuánto tiempo).' },
         },
-        required: ['pregunta', 'opciones'],
+        required: ['pregunta', 'opciones', 'varias'],
         additionalProperties: false,
       },
     },
@@ -109,7 +110,7 @@ interface Respuesta {
     dias: number | null;
     motivo: string | null;
   }>;
-  dudas: Array<{ pregunta: string; opciones: string[] } | string>;
+  dudas: Array<{ pregunta: string; opciones: string[]; varias?: boolean } | string>;
 }
 
 /** El día de la semana de una fecha AAAA-MM-DD, en castellano (para que entienda "el sábado"). */
@@ -245,7 +246,9 @@ export async function interpretarTexto(
   return {
     // Cada duda con sus respuestas posibles, para contestar con un toque (también acepta texto suelto, por las dudas).
     dudas: (r.dudas ?? []).map((d) =>
-      typeof d === 'string' ? { pregunta: d, opciones: [] } : { pregunta: d.pregunta, opciones: (d.opciones ?? []).filter((o) => o.trim()).slice(0, 5) },
+      typeof d === 'string'
+        ? { pregunta: d, opciones: [], varias: false }
+        : { pregunta: d.pregunta, opciones: (d.opciones ?? []).filter((o) => o.trim()).slice(0, 5), varias: Boolean(d.varias) },
     ),
     tratamientos: (r.tratamientos ?? [])
       .filter((x) => x.remedio.trim() && /^\d{4}-\d{2}-\d{2}$/.test(x.primera_fecha) && /^\d{1,2}:\d{2}$/.test(x.primera_hora))

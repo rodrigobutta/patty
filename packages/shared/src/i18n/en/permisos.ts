@@ -625,4 +625,5 @@ export const PERMISOS: Record<string, string> = {
   "🎙️ Hablale": "🎙️ Talk to it",
   "👆 Un toque": "👆 One tap",
   "📷 Sacale una foto": "📷 Snap a photo",
+  'podés elegir varias': 'you can pick several',
 };
