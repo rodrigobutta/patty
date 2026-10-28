@@ -534,6 +534,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                     const unir = (l: string[]) => (l.length > 1 ? `${l.slice(0, -1).join(', ')}${y}${l.at(-1)}` : l[0]);
                     const gente = genteId !== undefined && r.categoria_id !== genteId ? registros.filter((o) => o.categoria_id === genteId && o.inicio === r.inicio).map((o) => o.concepto) : [];
                     const extra = [
+                      ...(r.detalles ?? []).map((d) => unir(d.respuestas)),
                       etiquetaDonde(r.donde, r.lugar) ?? '',
                       gente.length ? t('con {lista}', { lista: unir(gente) }) : '',
                       r.nota ?? '',

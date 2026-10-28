@@ -7,6 +7,8 @@ import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { horaEn, instanteDelDia } from '../lib/fechas';
 import { DondeComida, PlatoComida } from '../ui/DondeComida';
+import { PreguntasDetalle } from '../ui/PreguntasDetalle';
+import { comoDetalles, usePreguntas } from '../lib/preguntas';
 import { genteGuardada, traerGente, type Alguien } from '../lib/gente';
 
 import { QuePasoAntes } from './QuePasoAntes';
@@ -38,6 +40,11 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
   const esPlato = cat?.clave === 'comida';
   const [porcion, setPorcion] = useState<Porcion | null>(r.porcion ?? null);
   const [tipos, setTipos] = useState<TipoComida[]>(r.tipos ?? []);
+  /** Las preguntas configuradas de esta cosa, con lo que ya se había contestado. */
+  const preguntasCosa = usePreguntas(persona.id, r.concepto);
+  const [respuestas, setRespuestas] = useState<Record<number, string[]> | null>(null);
+  const elegidasDetalle =
+    respuestas ?? Object.fromEntries(preguntasCosa.map((q) => [q.id, (r.detalles ?? []).find((d) => d.pregunta === q.pregunta)?.respuestas ?? []]));
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   // Con quién estuvo: la gente anotada junto con esto (a la misma hora), para sumar o sacar personas de tu gente.
@@ -74,6 +81,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
         nota: propio ? nota.trim() || null : x.nota,
         ...(propio && esComida ? { donde, lugar: lugar.trim() || null } : {}),
         ...(propio && esPlato ? { porcion, tipos } : {}),
+        ...(propio && respuestas ? { detalles: comoDetalles(preguntasCosa, respuestas) } : {}),
       });
     try {
       await cambio(r, true);
@@ -139,6 +147,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
         ) : null}
         <label>{cat?.tipo_valor === 'hora' ? t('Hora') : t('Cuándo')}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
         {esComida ? <DondeComida personaId={persona.id} donde={donde} lugar={lugar} alCambiar={(d, l) => { setDonde(d); setLugar(l); }} /> : null}
+        <PreguntasDetalle preguntas={preguntasCosa} elegidas={elegidasDetalle} alCambiar={setRespuestas} />
         {esPlato ? <PlatoComida porcion={porcion} tipos={tipos} alCambiar={(p, x) => { setPorcion(p); setTipos(x); }} /> : null}
         {conGente ? (
           <div className="con-quien">

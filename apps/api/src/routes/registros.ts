@@ -1,7 +1,7 @@
 // Lo que se anota de cada persona. Un registro es "este concepto, a esta hora, con este valor".
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { comidaEn, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
+import { comidaEn, conDetalle, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { registros } from '../db/schema.js';
 import { interpretarTexto } from '../ia/interpretar.js';
@@ -15,7 +15,7 @@ import { vincularToma } from './tratamientos.js';
 
 const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char(r.fecha, 'YYYY-MM-DD') AS fecha,
   r.valor, r.intensidad, r.unidad, r.nota, r.origen, r.datos->>'donde' AS donde, r.datos->>'lugar' AS lugar,
-  r.datos->>'porcion' AS porcion, coalesce(r.datos->'tipos', '[]'::jsonb) AS tipos,
+  r.datos->>'porcion' AS porcion, coalesce(r.datos->'tipos', '[]'::jsonb) AS tipos, coalesce(r.datos->'detalles', '[]'::jsonb) AS detalles,
   (SELECT c.nombre FROM conceptos c WHERE c.id = r.concepto_id) AS concepto,
   (SELECT c.categoria_id FROM conceptos c WHERE c.id = r.concepto_id) AS categoria_id`;
 
@@ -96,6 +96,24 @@ async function datosPlato(tx: Tx, u: Usuario, d: NuevoRegistro, c: Concepto): Pr
   return { porcion, tipos, plato_concepto_ids: ids };
 }
 
+/**
+ * Lo contestado a las preguntas configuradas ("¿Con qué?" → azúcar): en `datos.detalles`, con un concepto por respuesta
+ * ("Café · Azúcar", en la misma categoría) en detalle_concepto_ids, que la vista serie_diaria suma a los patrones.
+ */
+async function datosDetalles(tx: Tx, u: Usuario, d: NuevoRegistro, c: Concepto): Promise<Record<string, unknown> | null | undefined> {
+  if (!('detalles' in d)) return undefined;
+  const detalles = (Array.isArray(d.detalles) ? d.detalles : [])
+    .map((x) => ({ pregunta: texto(x?.pregunta).slice(0, 120), respuestas: (Array.isArray(x?.respuestas) ? x.respuestas : []).map((r) => texto(r).slice(0, 40)).filter(Boolean).slice(0, 8) }))
+    .filter((x) => x.pregunta && x.respuestas.length)
+    .slice(0, 5);
+  if (!detalles.length) return null;
+  const ids: number[] = [];
+  for (const r of new Set(detalles.flatMap((x) => x.respuestas))) {
+    ids.push((await obtenerOCrearConcepto(tx, { nombre: conDetalle(c.nombre, r), categoriaId: c.categoria_id, tipoValor: 'evento', unidad: null, usuarioId: u.id })).concepto.id);
+  }
+  return { detalles, detalle_concepto_ids: ids };
+}
+
 export async function guardarRegistro(
   tx: Tx,
   u: Usuario,
@@ -107,7 +125,8 @@ export async function guardarRegistro(
   const c = await conceptoDe(tx, d, u);
   const comida = await datosComida(tx, u, d, c);
   const plato = await datosPlato(tx, u, d, c);
-  const datos = comida || plato ? { ...comida, ...plato } : null;
+  const detalles = await datosDetalles(tx, u, d, c);
+  const datos = comida || plato || detalles ? { ...comida, ...plato, ...detalles } : null;
   const [r] = await tx
     .insert(registros)
     .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(datos ? { datos } : {}) })
@@ -236,10 +255,14 @@ export const rutasRegistros = new Hono<Env>()
       const concepto = await conceptoDe(tx, { ...d, concepto_id: d.concepto_id ?? (d.concepto_nombre ? undefined : actual.concepto_id) }, c.var.usuario);
       const comida = await datosComida(tx, c.var.usuario, d, concepto);
       const plato = await datosPlato(tx, c.var.usuario, d, concepto);
+      const detalles = await datosDetalles(tx, c.var.usuario, d, concepto);
       await tx.update(registros).set({ concepto_id: concepto.id, ...valores(d, concepto, actual.persona) }).where(sql`id = ${id}`);
       // Dónde se comió: se reemplaza (o se saca) solo si vino en el pedido.
       if (comida !== undefined) {
         await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'donde' - 'donde_concepto_id' - 'lugar' - 'lugar_concepto_id') || ${JSON.stringify(comida ?? {})}::jsonb WHERE id = ${id}`);
+      }
+      if (detalles !== undefined) {
+        await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'detalles' - 'detalle_concepto_ids') || ${JSON.stringify(detalles ?? {})}::jsonb WHERE id = ${id}`);
       }
       if (plato !== undefined) {
         await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'porcion' - 'tipos' - 'plato_concepto_ids') || ${JSON.stringify(plato ?? {})}::jsonb WHERE id = ${id}`);

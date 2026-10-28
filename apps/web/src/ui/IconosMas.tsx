@@ -135,3 +135,21 @@ export const IconoReloj = () => (
     <path d="M10 16 h3 l1.5-3 l2.5 6 l1.5-3 h3.5" stroke={A} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </Base>
 );
+
+/** Preguntas de Patty: un globito con un signo de pregunta. */
+export const IconoPreguntas = () => (
+  <Base>
+    <path d="M5 7 a3 3 0 0 1 3-3 h16 a3 3 0 0 1 3 3 v12 a3 3 0 0 1-3 3 h-9 l-6 5 v-5 h-1 a3 3 0 0 1-3-3 z" fill={V} {...T} />
+    <path d="M13 10.5 a3 3 0 1 1 4.5 2.6 c-1 .6-1.5 1.2-1.5 2.4" stroke={A} strokeWidth="2.4" strokeLinecap="round" />
+    <circle cx="16" cy="18.5" r="1.3" fill={A} />
+  </Base>
+);
+
+/** Seguimientos: un portapapeles con tildes. */
+export const IconoSeguimientos = () => (
+  <Base>
+    <rect x="6" y="5" width="20" height="24" rx="3" fill={V} {...T} />
+    <rect x="11" y="3" width="10" height="5" rx="1.5" fill={A} {...T} />
+    <path d="M10 14 l2 2 l3-3.5 M10 21 l2 2 l3-3.5 M18 14.5 h4 M18 21.5 h4" stroke={A} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </Base>
+);

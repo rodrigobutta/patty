@@ -467,6 +467,24 @@ describe('dónde se comió', () => {
     expect((await ana.get(`/api/registros/lugares-comida?persona=${personaId}`)).body.map((x: any) => x.lugar)).toEqual(['Sushi Club']);
   });
 
+  it('preguntas configuradas: se guardan, y lo contestado entra a la serie como "Café · Azúcar"', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const q = await ana.post('/api/preguntas-concepto', { persona_id: personaId, concepto: 'Café', pregunta: '¿Con qué?', opciones: ['Azúcar', 'Leche', 'Solo'], varias: true });
+    expect(q.status).toBe(201);
+    expect((await ana.post('/api/preguntas-concepto', { persona_id: personaId, concepto: 'Té', pregunta: '¿?', opciones: ['Uno'] })).status).toBe(400);
+    expect((await ana.get(`/api/preguntas-concepto?persona=${personaId}`)).body).toMatchObject([{ concepto: 'Café', opciones: ['Azúcar', 'Leche', 'Solo'], varias: true, activa: true }]);
+    const r = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Café', categoria_id: categorias.bebida, inicio: '2026-10-21T12:00:00.000Z', detalles: [{ pregunta: '¿Con qué?', respuestas: ['Azúcar', 'Leche'] }] })).body;
+    expect(r.detalles).toEqual([{ pregunta: '¿Con qué?', respuestas: ['Azúcar', 'Leche'] }]);
+    const db = (await import('../src/db/client.js')).obtenerDb();
+    const { sql } = await import('drizzle-orm');
+    const serie = async () =>
+      [...(await db.execute(sql`SELECT k.nombre FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id WHERE s.persona_id = ${personaId} AND s.fecha = '2026-10-21'`))].map((x: any) => x.nombre).sort();
+    expect(await serie()).toEqual(['Café', 'Café · Azúcar', 'Café · Leche']);
+    await ana.put(`/api/registros/${r.id}`, { inicio: r.inicio, detalles: [{ pregunta: '¿Con qué?', respuestas: ['Solo'] }] });
+    expect(await serie()).toEqual(['Café', 'Café · Solo']);
+    expect((await ana.del(`/api/preguntas-concepto/${q.body.id}`)).status).toBe(200);
+  });
+
   it('cómo era el plato: porción y tipos entran a la serie diaria, junto con dónde', async () => {
     const { ana, personaId, categorias } = await conAdmin();
     const r = (await ana.post('/api/registros', { persona_id: personaId, concepto_nombre: 'Milanesa con papas fritas', categoria_id: categorias.comida, inicio: '2026-10-21T23:00:00.000Z', donde: 'casa', porcion: 'grande', tipos: ['frito', 'proteina', 'nada'] })).body;

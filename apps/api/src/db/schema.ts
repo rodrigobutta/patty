@@ -752,3 +752,27 @@ export const objetivos = pgTable(
   },
   (t) => [index('objetivos_persona_idx').on(t.persona_id, t.semana)],
 );
+
+/**
+ * Preguntas que la persona configura para una cosa que anota ("Café" → "¿Con qué?": azúcar, edulcorante, leche):
+ * Patty las hace al anotarla (contándolo, con el toque rápido o un atajo) y la respuesta queda en el registro como
+ * detalle, que entra a los patrones como un concepto más ("Café · Azúcar"). `concepto_norm` es el nombre normalizado,
+ * así sirve aunque el concepto todavía no exista.
+ */
+export const preguntasConcepto = pgTable(
+  'preguntas_concepto',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    concepto: text('concepto').notNull(),
+    concepto_norm: text('concepto_norm').notNull(),
+    pregunta: text('pregunta').notNull(),
+    opciones: text('opciones').array().notNull().default(sql`'{}'::text[]`),
+    varias: boolean('varias').notNull().default(false),
+    activa: boolean('activa').notNull().default(true),
+    creado: creado(),
+  },
+  (t) => [index('preguntas_concepto_idx').on(t.persona_id, t.concepto_norm)],
+);

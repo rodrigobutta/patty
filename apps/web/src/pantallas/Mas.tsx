@@ -1,5 +1,6 @@
 // Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
 // lo avanzado (tokens para que otros dispositivos manden datos).
+import { PreguntasPatty } from './PreguntasPatty';
 import { medir } from '../lib/analytics';
 import { agregarWidget } from '../lib/push';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -18,6 +19,7 @@ import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { idioma, idiomaElegido, locale, ponerIdioma, t } from '../lib/idioma';
 import { Cuenta } from './Cuenta';
 import { alPedirIrAMas, tomarSeccionPedida, verSeccionPedida } from '../lib/navegar';
+import { IconoPreguntas } from '../ui/IconosMas';
 import { IconoAvanzado, IconoAvisos, IconoClima, IconoCuenta, IconoPermisos, IconoReloj, IconoTelefono, IconoFamilia, IconoGente, IconoLugares, IconoRemedios, IconoSalud } from '../ui/IconosMas';
 import { DatosSalud } from './DatosSalud';
 import { DatosCalendario, DatosTelefono } from './DatosTelefono';
@@ -32,7 +34,7 @@ import { COMMIT, VERSION, versionNativa } from '../lib/version';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
-type Seccion = 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
+type Seccion = 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
@@ -162,6 +164,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     reloj: () => <IconoReloj />,
     lugares: () => <IconoLugares />,
     remedios: () => <IconoRemedios />,
+    preguntas: () => <IconoPreguntas />,
     avisos: () => <IconoAvisos />,
     supervision: () => <IconoFamilia />,
     personas: () => <IconoGente />,
@@ -214,6 +217,9 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   </>);
   if (seccion === 'lugares') return pantalla(t('📍 Lugares'), <>
       {persona ? <Lugares persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
+  </>);
+  if (seccion === 'preguntas') return pantalla(t('Preguntas de Patty'), <>
+      {persona ? <PreguntasPatty persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
   </>);
   if (seccion === 'remedios') return pantalla(t('💊 Remedios'), <>
       {persona ? (
@@ -380,6 +386,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'reloj', icono: <IconoReloj />, titulo: t('Reloj y salud'), sub: t('Sueño, pasos y pulso'), ver: esNativa() && Boolean(persona) },
     { clave: 'lugares', icono: <IconoLugares />, titulo: t('Lugares'), sub: t('Casa, trabajo y los lugares a los que vas'), ver: Boolean(persona) },
     { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
+    { clave: 'preguntas', icono: <IconoPreguntas />, titulo: t('Preguntas de Patty'), sub: t('El detalle de lo que anotás: café con azúcar…'), ver: Boolean(persona) },
     { clave: 'avisos', icono: <IconoAvisos />, titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
     { clave: 'supervision', icono: <IconoFamilia />, titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
     { clave: 'personas', icono: <IconoGente />, titulo: t('Tu gente y personas'), sub: t('Con quién estás y de quién se anota') },

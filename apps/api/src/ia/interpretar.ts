@@ -9,6 +9,7 @@ import { diaDePatty, fechaLocal, localAInstante, minutosDelDia } from '../lib/fe
 import { pedirJson } from './cliente.js';
 import { lineaDelDia } from '../ubicacion/linea.js';
 import { nombresDeGente } from '../routes/gente.js';
+import { preguntasDe } from '../routes/preguntasConcepto.js';
 
 const nulo = (tipo: 'string' | 'number' | 'integer', descripcion: string) => ({ anyOf: [{ type: tipo }, { type: 'null' }], description: descripcion });
 
@@ -34,8 +35,18 @@ const ESQUEMA = {
           lugar: nulo('string', 'Solo comidas y bebidas de afuera o delivery: el restaurante, bar, casa de alguien o de dónde se pidió'),
           porcion: { anyOf: [{ type: 'string', enum: PORCIONES.map((x) => x.clave) }, { type: 'null' }], description: 'Solo comidas: el tamaño del plato, si se ve o se dijo' },
           tipos: { type: 'array', items: { type: 'string', enum: TIPOS_COMIDA.map((x) => x.clave) }, description: 'Solo comidas: cómo es (vacío si no aplica o no se sabe)' },
+          detalles: {
+            type: 'array',
+            description: 'Respuestas a las preguntas que la persona configuró para esta cosa (vacío si no tiene o no se sabe todavía)',
+            items: {
+              type: 'object',
+              properties: { pregunta: { type: 'string' }, respuestas: { type: 'array', items: { type: 'string' } } },
+              required: ['pregunta', 'respuestas'],
+              additionalProperties: false,
+            },
+          },
         },
-        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar', 'porcion', 'tipos'],
+        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar', 'porcion', 'tipos', 'detalles'],
         additionalProperties: false,
       },
     },
@@ -98,6 +109,7 @@ interface Respuesta {
     lugar?: string | null;
     porcion?: string | null;
     tipos?: string[];
+    detalles?: Array<{ pregunta: string; respuestas: string[] }>;
   }>;
   tratamientos: Array<{
     remedio: string;
@@ -145,6 +157,7 @@ export async function interpretarTexto(
   const diaVisto = referencia ?? diaHoy;
   const donde = await lineaDelDia(tx, p, diaVisto, diaHoy, idioma).catch(() => []);
   const gente = await nombresDeGente(tx, p.id);
+  const preguntas = await preguntasDe(tx, p.id);
   // Los lugares donde ya comió, para preguntar "¿de dónde?" con opciones conocidas.
   const lugaresComida = (
     await filas<{ lugar: string; donde: string }>(
@@ -235,6 +248,14 @@ export async function interpretarTexto(
     ...conocidos.map((c) => `- ${porCat.get(c.categoria_id)}: ${c.nombre}`),
     ...(donde.length ? [`Dónde estuvo el ${diaVisto} (según la ubicación del teléfono):`, ...donde.map((x) => `- ${x}`)] : []),
     ...(gente.length ? [`Su gente: ${gente.join(', ')}`] : []),
+    ...(preguntas.length
+      ? [
+          'Preguntas que la persona quiere que le hagas cuando anota estas cosas (si no dijo la respuesta, preguntala en dudas con esas ' +
+            'opciones exactas y "varias" como dice; si ya se sabe, por el texto o una aclaración, ponela en detalles de ese registro, con ' +
+            'la pregunta tal cual y las respuestas elegidas entre las opciones):',
+          ...preguntas.map((q) => `- ${q.concepto}: ${q.pregunta} Opciones: ${q.opciones.join(', ')}${q.varias ? ' (puede elegir varias)' : ' (una sola)'}`),
+        ]
+      : []),
     ...(lugaresComida.length ? ['Lugares donde ya comió (los más frecuentes primero):', ...lugaresComida.map((l) => `- ${l}`)] : []),
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     '',
@@ -294,6 +315,9 @@ export async function interpretarTexto(
           nota: x.nota,
           donde: x.donde ?? null,
           lugar: x.lugar ?? null,
+          ...(x.detalles?.length
+            ? { detalles: x.detalles.map((d) => ({ pregunta: d.pregunta, respuestas: d.respuestas.filter((r) => r.trim()) })).filter((d) => d.respuestas.length) }
+            : {}),
           ...(x.categoria === 'comida' ? { porcion: esPorcion(x.porcion) ? x.porcion : null, tipos: [...new Set((x.tipos ?? []).filter(esTipoComida))] } : {}),
         };
       }),

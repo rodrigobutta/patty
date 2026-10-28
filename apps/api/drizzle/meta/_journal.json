@@ -232,6 +232,20 @@
       "when": 1793155118770,
       "tag": "0032_objetivos",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793188773348,
+      "tag": "0033_preguntas_concepto",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793188773849,
+      "tag": "0034_serie_con_detalles",
+      "breakpoints": true
     }
   ]
 }

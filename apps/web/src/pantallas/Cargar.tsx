@@ -16,6 +16,8 @@ import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
 import { Atajos } from '../ui/Atajos';
+import { PreguntasDetalle } from '../ui/PreguntasDetalle';
+import { comoDetalles, usePreguntas } from '../lib/preguntas';
 import { DondeComida, etiquetaDonde, etiquetaPlato } from '../ui/DondeComida';
 import { IconoCamara, IconoGaleria, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { OndaVoz } from '../ui/OndaVoz';
@@ -187,6 +189,9 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [elegido, setElegido] = useState(inicial);
+  /** Las preguntas que la persona configuró para esta cosa ("¿Con qué?"), y lo tocado. */
+  const preguntasCosa = usePreguntas(persona.id, inicial.nombre);
+  const [respuestas, setRespuestas] = useState<Record<number, string[]>>({});
   /** Lo que se contestó a "¿lleva cantidad?" en esta carga (se guarda en el concepto al anotar). */
   const [decision, setDecision] = useState<{ unidad: string | null } | null>(null);
   const preguntar = !elegido.cantidad_decidida && !decision && elegido.categoria.clave in UNIDADES_SUGERIDAS;
@@ -213,6 +218,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
         unidad: elegido.unidad,
         nota: nota || null,
         ...(esComida ? { donde, lugar: lugar.trim() || null } : {}),
+        ...(preguntasCosa.length ? { detalles: comoDetalles(preguntasCosa, respuestas) } : {}),
       });
       // Lo que se contestó queda para las próximas veces (si es nuevo, recién ahora tiene id).
       if (decision) {
@@ -252,6 +258,7 @@ function Valor({ persona, fecha, elegido: inicial, alVolver, alGuardar }: { pers
       ) : null}
       {preguntar ? null : (
         <>
+          <PreguntasDetalle preguntas={preguntasCosa} elegidas={respuestas} alCambiar={setRespuestas} />
           <label>{tv === 'hora' ? t('Hora') : t('Cuándo')}<input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></label>
           {esComida ? <DondeComida personaId={persona.id} donde={donde} lugar={lugar} alCambiar={(d, l) => { setDonde(d); setLugar(l); }} /> : null}
           <label>{t('Nota (opcional)')}<input value={nota} onChange={(e) => setNota(e.target.value)} placeholder={t('detalle, lugar, con quién…')} /></label>

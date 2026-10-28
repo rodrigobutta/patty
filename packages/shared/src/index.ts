@@ -428,6 +428,8 @@ export interface Registro {
   /** Solo comidas: el tamaño y cómo es el plato (frito, harinas, verdura…). */
   porcion?: Porcion | null;
   tipos?: TipoComida[];
+  /** Lo contestado a las preguntas configuradas de esa cosa. */
+  detalles?: Detalle[];
 }
 
 /** Dónde fue una comida o bebida: casera, afuera (restaurante, casa de alguien) o pedida. */
@@ -482,7 +484,34 @@ export interface NuevoRegistro {
   lugar?: string | null;
   porcion?: Porcion | null;
   tipos?: TipoComida[];
+  /** Lo que se contestó a las preguntas configuradas de esa cosa ("¿Con qué?": azúcar). */
+  detalles?: Detalle[];
 }
+
+/** Una respuesta a una pregunta configurada ("¿Con qué?" → azúcar, leche). */
+export interface Detalle { pregunta: string; respuestas: string[] }
+
+/** Una pregunta que la persona configuró para una cosa que anota. */
+export interface PreguntaConcepto {
+  id: number;
+  persona_id: number;
+  concepto: string;
+  pregunta: string;
+  opciones: string[];
+  varias: boolean;
+  activa: boolean;
+}
+
+/** Preguntas para sumar con un toque (en Más → Preguntas de Patty). */
+export const PREGUNTAS_SUGERIDAS: Array<Omit<PreguntaConcepto, 'id' | 'persona_id' | 'activa'>> = [
+  { concepto: 'Café', pregunta: '¿Con qué?', opciones: ['Azúcar', 'Edulcorante', 'Leche', 'Solo'], varias: true },
+  { concepto: 'Mate', pregunta: '¿Cómo?', opciones: ['Amargo', 'Con azúcar', 'Con edulcorante'], varias: false },
+  { concepto: 'Té', pregunta: '¿Con qué?', opciones: ['Azúcar', 'Edulcorante', 'Miel', 'Leche', 'Solo'], varias: true },
+  { concepto: 'Caca', pregunta: '¿Cómo fue?', opciones: ['Normal', 'Dura', 'Blanda', 'Líquida'], varias: false },
+  { concepto: 'Cerveza', pregunta: '¿Cuántas?', opciones: ['1', '2', '3', 'Más'], varias: false },
+];
+/** El concepto con el que una respuesta entra a los patrones: "Café · Azúcar". */
+export const conDetalle = (concepto: string, respuesta: string) => `${concepto} · ${respuesta}`;
 
 /** Un lugar con nombre de una persona (Casa, Supermercado, Farmacia). Cada uno es un concepto de «Lugares y salidas». */
 export interface Lugar {
