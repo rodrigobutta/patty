@@ -1,0 +1,41 @@
+<!doctype html><meta charset="utf-8">
+<!-- Un plato dibujado (milanesa con papas fritas y ensalada), para la demo de "mandale una foto": no es una foto de nadie. -->
+<style>html,body{margin:0;width:900px;height:900px;overflow:hidden}</style>
+<svg width="900" height="900" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="madera" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c58b57"/><stop offset="1" stop-color="#9a6438"/></linearGradient>
+    <radialGradient id="plato" cx=".5" cy=".45" r=".55"><stop offset=".8" stop-color="#fdfcf9"/><stop offset="1" stop-color="#e7e2da"/></radialGradient>
+    <radialGradient id="mila" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#e7b04f"/><stop offset=".7" stop-color="#c98a2c"/><stop offset="1" stop-color="#a86a1c"/></radialGradient>
+    <filter id="sombra"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-opacity=".35"/></filter>
+    <pattern id="miga" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="5" cy="6" r="2.2" fill="#b77a24" opacity=".6"/><circle cx="15" cy="16" r="1.8" fill="#f1c56d" opacity=".7"/><circle cx="17" cy="4" r="1.3" fill="#9b6018" opacity=".5"/></pattern>
+  </defs>
+  <rect width="900" height="900" fill="url(#madera)"/>
+  <g opacity=".18" stroke="#6b3f1d" stroke-width="3" fill="none">
+    <path d="M0 120 Q450 90 900 140"/><path d="M0 330 Q450 300 900 350"/><path d="M0 560 Q450 530 900 580"/><path d="M0 780 Q450 750 900 800"/>
+  </g>
+  <rect x="690" y="40" width="40" height="300" rx="14" fill="#d9d9de" transform="rotate(12 710 190)" filter="url(#sombra)"/>
+  <circle cx="450" cy="470" r="360" fill="url(#plato)" filter="url(#sombra)"/>
+  <circle cx="450" cy="470" r="285" fill="none" stroke="#ece7df" stroke-width="6"/>
+  <!-- milanesa -->
+  <path d="M270 360 C 300 270, 460 250, 540 300 C 610 345, 600 470, 520 520 C 440 570, 300 560, 260 490 C 235 445, 245 400, 270 360 Z" fill="url(#mila)"/>
+  <path d="M270 360 C 300 270, 460 250, 540 300 C 610 345, 600 470, 520 520 C 440 570, 300 560, 260 490 C 235 445, 245 400, 270 360 Z" fill="url(#miga)"/>
+  <path d="M520 330 l40 -20 l10 30 Z" fill="#f5e663" opacity=".9"/>
+  <!-- papas fritas -->
+  <g stroke="#c98f1e" stroke-width="2">
+    <rect x="560" y="520" width="26" height="150" rx="6" fill="#f7cf4a" transform="rotate(-25 573 595)"/>
+    <rect x="600" y="500" width="26" height="160" rx="6" fill="#f3c33a" transform="rotate(-8 613 580)"/>
+    <rect x="530" y="560" width="26" height="140" rx="6" fill="#f9d65c" transform="rotate(-40 543 630)"/>
+    <rect x="640" y="520" width="26" height="140" rx="6" fill="#f2c13a" transform="rotate(10 653 590)"/>
+    <rect x="590" y="580" width="26" height="130" rx="6" fill="#f8d250" transform="rotate(-60 603 645)"/>
+  </g>
+  <!-- ensalada -->
+  <g>
+    <ellipse cx="350" cy="650" rx="120" ry="70" fill="#4f9d3a"/>
+    <ellipse cx="300" cy="630" rx="60" ry="38" fill="#6cbd4b" transform="rotate(-20 300 630)"/>
+    <ellipse cx="390" cy="670" rx="65" ry="35" fill="#5aae42" transform="rotate(15 390 670)"/>
+    <ellipse cx="340" cy="690" rx="50" ry="28" fill="#7cc85a"/>
+    <circle cx="300" cy="660" r="28" fill="#e2483d"/><circle cx="300" cy="660" r="20" fill="#f0695b"/>
+    <circle cx="395" cy="635" r="26" fill="#e2483d"/><circle cx="395" cy="635" r="18" fill="#f0695b"/>
+    <path d="M330 610 q20 -10 40 0" stroke="#fbf6e9" stroke-width="7" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

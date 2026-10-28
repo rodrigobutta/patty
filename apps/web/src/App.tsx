@@ -17,6 +17,8 @@ import { useSeguirUbicacion } from './lib/ubicacion';
 import { Admin } from './pantallas/Admin';
 import { Bienvenida, bienvenidaVista } from './pantallas/Bienvenida';
 import { Entrar } from './pantallas/Entrar';
+import { Presentacion } from './pantallas/Presentacion';
+import { esNativa } from './lib/nativo';
 import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
@@ -53,6 +55,13 @@ export function App() {
     window.scrollTo({ top: 0 });
   }, [pestana]);
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
+  // La presentación: en la web, a quien no entró todavía (y con #presentacion, siempre). En la app del teléfono, nunca.
+  const [presentacion, setPresentacion] = useState(() => !esNativa() && location.hash !== '#entrar');
+  const verPresentacion = presentacion && (fase === 'entrar' || location.hash === '#presentacion');
+  const salirDePresentacion = () => {
+    if (location.hash === '#presentacion') history.replaceState(null, '', location.pathname);
+    setPresentacion(false);
+  };
   /** El paso opcional de datos de la persona (una vez, después de la bienvenida). */
   const [perfilListo, setPerfilListo] = useState(false);
   /** Y el de permisos (avisos, ubicación, teléfono, salud), una vez por teléfono. */
@@ -123,6 +132,7 @@ export function App() {
 
   if (fase === 'arrancando') return <div className="centro suave">{t('Abriendo Patty…')}</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>{t('Reintentar')}</button></div>;
+  if (verPresentacion) return <Presentacion alEntrar={salirDePresentacion} conSesion={fase === 'listo'} />;
   if (fase === 'entrar' || fase === 'configurar') return <Entrar configurar={fase === 'configurar'} />;
   if (bienvenida) return <Bienvenida alTerminar={() => setBienvenida(false)} />;
   if (!persona) return <NuevaPersona primera />;

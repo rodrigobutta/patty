@@ -43,7 +43,8 @@ export async function armarContexto(db: Db, registroId: number, zona: string, id
     new Intl.DateTimeFormat('es-AR', { timeZone: zona, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
   const anotado = await filas<{ cuando: string; que: string; icono: string; valor: number | null; unidad: string | null; intensidad: number | null; nota: string | null }>(
     db,
-    sql`SELECT r.inicio AS cuando, c.nombre AS que, k.icono, r.valor::float AS valor, r.unidad, r.intensidad, r.nota
+    // Lo de tipo hora (Me levanté) guarda la hora como valor: ya se ve en cuándo, no se repite.
+    sql`SELECT r.inicio AS cuando, c.nombre AS que, k.icono, CASE WHEN c.tipo_valor = 'hora' THEN NULL ELSE r.valor::float END AS valor, r.unidad, r.intensidad, r.nota
         FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
         WHERE r.persona_id = ${r.persona_id} AND r.borrado IS NULL AND r.id <> ${registroId}
           AND r.inicio < ${r.inicio} AND r.inicio > ${r.inicio}::timestamptz - make_interval(hours => ${HORAS})
