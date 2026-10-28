@@ -42,21 +42,42 @@ const TIPOS: Record<string, string> = {
   '.json': 'application/json',
   '.webmanifest': 'application/manifest+json',
   '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.jpg': 'image/jpeg',
+  '.webm': 'video/webm',
+  '.mp4': 'video/mp4',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
 };
 
-async function archivo(ruta: string): Promise<Response | null> {
+async function archivo(ruta: string, rango?: string): Promise<Response | null> {
   try {
     if (!(await stat(ruta)).isFile()) return null;
   } catch {
     return null;
   }
   const ext = path.extname(ruta);
-  // index.html y el service worker no se guardan en caché: así las versiones nuevas llegan enseguida.
-  const cache = ext === '.html' || path.basename(ruta) === 'sw.js' ? 'no-cache' : 'public, max-age=31536000, immutable';
-  return new Response(await readFile(ruta), { headers: { 'Content-Type': TIPOS[ext] ?? 'application/octet-stream', 'Cache-Control': cache } });
+  // index.html y el service worker no se guardan en caché: así las versiones nuevas llegan enseguida. Lo de la
+  // presentación (capturas y videos, sin hash en el nombre) se guarda un día.
+  const cache =
+    ext === '.html' || path.basename(ruta) === 'sw.js'
+      ? 'no-cache'
+      : ruta.includes(`${path.sep}presentacion${path.sep}`)
+        ? 'public, max-age=86400'
+        : 'public, max-age=31536000, immutable';
+  const datos = await readFile(ruta);
+  const headers: Record<string, string> = { 'Content-Type': TIPOS[ext] ?? 'application/octet-stream', 'Cache-Control': cache, 'Accept-Ranges': 'bytes' };
+  // Los videos se piden de a pedazos (Safari no los reproduce si no).
+  const m = rango?.match(/^bytes=(\d*)-(\d*)$/);
+  if (m && (m[1] || m[2])) {
+    const total = datos.length;
+    const desde = m[1] ? Number(m[1]) : Math.max(0, total - Number(m[2]));
+    const hasta = m[1] && m[2] ? Math.min(Number(m[2]), total - 1) : total - 1;
+    if (desde >= total || desde > hasta) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${total}` } });
+    return new Response(datos.subarray(desde, hasta + 1), { status: 206, headers: { ...headers, 'Content-Range': `bytes ${desde}-${hasta}/${total}` } });
+  }
+  return new Response(datos, { headers });
 }
 
 /** El idioma de un pedido: el que manda la app (X-Idioma) o el del navegador. */
@@ -132,7 +153,7 @@ export function crearApp(): Hono<Env> {
     const base = config.staticDir;
     const pedido = path.normalize(path.join(base, decodeURIComponent(new URL(c.req.url).pathname)));
     if (!pedido.startsWith(base)) return c.json({ error: traducir(idiomaDelPedido(c.req.header('X-Idioma'), c.req.header('Accept-Language')), 'No encontrado.') }, 404);
-    return (await archivo(pedido)) ?? (await archivo(path.join(base, 'index.html'))) ?? c.text('Patty: falta compilar la web (STATIC_DIR).', 404);
+    return (await archivo(pedido, c.req.header('Range'))) ?? (await archivo(path.join(base, 'index.html'))) ?? c.text('Patty: falta compilar la web (STATIC_DIR).', 404);
   });
   return app;
 }
