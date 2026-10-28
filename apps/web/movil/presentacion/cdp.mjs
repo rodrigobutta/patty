@@ -5,13 +5,13 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import path from 'node:path';
 
-export const CHROME = path.join(homedir(), 'Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing');
+export const CHROME = process.env.CHROME_PATH ?? path.join(homedir(), 'Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing');
 export const FFMPEG = path.join(homedir(), 'Library/Caches/ms-playwright/ffmpeg-1011/ffmpeg-mac');
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function abrirChrome(puerto = 9444) {
   const dir = mkdtempSync(path.join(tmpdir(), 'patty-chrome-'));
-  const proc = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${puerto}`, `--user-data-dir=${dir}`, '--no-first-run', '--hide-scrollbars', '--force-color-profile=srgb', '--lang=es-AR', 'about:blank'], { stdio: 'ignore' });
+  const proc = spawn(CHROME, ['--headless=new', '--no-sandbox', `--remote-debugging-port=${puerto}`, `--user-data-dir=${dir}`, '--no-first-run', '--hide-scrollbars', '--force-color-profile=srgb', '--lang=es-AR', 'about:blank'], { stdio: 'ignore' });
   for (let i = 0; i < 50; i++) {
     try {
       await fetch(`http://127.0.0.1:${puerto}/json/version`);
@@ -64,7 +64,7 @@ export async function prepararPagina(c, { base, token, ahora, escala = 3, oscuro
       class F extends D { constructor(...a) { if (a.length === 0) super(D.now() + off); else super(...a); } static now() { return D.now() + off; } }
       F.parse = D.parse; F.UTC = D.UTC; window.Date = F;
       try {
-        const fijos = { 'bienvenida-vista': 'si', idioma: 'es', 'permisos-ofrecidos': 'si', 'version-cerrada': '99', 'semana-vista': '', ...${JSON.stringify(guardados)} };
+        const fijos = { 'bienvenida-vista': 'si', 'tour-visto': 'si', idioma: 'es', 'permisos-ofrecidos': 'si', 'version-cerrada': '99', 'semana-vista': '', ...${JSON.stringify(guardados)} };
         for (const [k, v] of Object.entries(fijos)) if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
       } catch {}
     })();`,

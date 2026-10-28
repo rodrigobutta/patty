@@ -1,7 +1,7 @@
 {
   "name": "web",
   "private": true,
-  "version": "1.43.0",
+  "version": "1.43.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,8 @@
     "movil:dev:ios": "node movil/dev.mjs ios",
     "movil:abrir:android": "cap open android",
     "movil:abrir:ios": "cap open ios",
-    "movil:iconos": "pnpm --filter api exec tsx ../web/movil/iconos.ts"
+    "movil:iconos": "pnpm --filter api exec tsx ../web/movil/iconos.ts",
+    "e2e": "node e2e/correr.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

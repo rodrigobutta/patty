@@ -10,7 +10,7 @@ import { aplicarMigraciones } from '../src/db/migrar.js';
 import { inicializar } from '../src/inicializar.js';
 import { diaDePatty, localAInstante, sumarDias } from '../src/lib/fechas.js';
 
-if (!/patty_demo/.test(process.env.DATABASE_URL ?? '')) throw new Error('Solo sobre la base patty_demo.');
+if (!/patty_(demo|e2e)/.test(process.env.DATABASE_URL ?? '')) throw new Error('Solo sobre una base de demo o de pruebas (patty_demo, patty_e2e).');
 const ZONA = 'America/Argentina/Buenos_Aires';
 const DIAS = 42;
 

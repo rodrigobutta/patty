@@ -1,0 +1,44 @@
+# Las pruebas de cada cambio: las de la API (con Postgres), las de la web y las de punta a punta (la app de verdad en
+# Chrome sin ventana). En Railway se puede activar "Wait for CI" para que no publique si algo falla.
+name: Pruebas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: patty
+          POSTGRES_PASSWORD: patty
+          POSTGRES_DB: patty_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U patty" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://patty:patty@localhost:5432/patty_test
+      E2E_DB: postgres://patty:patty@localhost:5432/patty_e2e
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter shared build
+      - name: Base para las de punta a punta
+        run: PGPASSWORD=patty psql -h localhost -U patty -d patty_test -c 'CREATE DATABASE patty_e2e'
+      - name: API
+        run: pnpm --filter api exec tsc --noEmit -p . && pnpm --filter api test
+      - name: Web
+        run: pnpm --filter web exec tsc --noEmit -p tsconfig.app.json && pnpm --filter web test
+      - name: De punta a punta
+        run: pnpm --filter web e2e
