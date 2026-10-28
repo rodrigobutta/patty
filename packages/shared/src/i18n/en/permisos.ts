@@ -753,4 +753,7 @@ export const PERMISOS: Record<string, string> = {
   "Ya se me pasó": "It's gone",
   "¡Qué bueno! Anotado que se te pasó 💜": "Great! Logged that it's gone 💜",
   "🦉 ¿Seguís con {que}?": "🦉 Still have {que}?",
+  "En curso": "Ongoing",
+  "🤕 Malestares del día": "🤕 Today's discomforts",
+  "Se pasó": "Gone",
 };

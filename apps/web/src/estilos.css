@@ -1325,3 +1325,22 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .emoji-input { width: 56px; text-align: center; font-size: 20px; }
 .malestares-abiertos { display: grid; gap: 12px; border-color: color-mix(in srgb, var(--rojo) 30%, var(--borde)); }
 .malestar-abierto p { margin: 0 0 6px; }
+/* Malestares en curso: badges arriba del Día, con su menú. */
+.malestares-abiertos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+.badge-malestar-envoltura { position: relative; display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.badge-malestar { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--rojo) 40%, var(--borde)); background: color-mix(in srgb, var(--rojo) 10%, var(--panel)); color: var(--texto); font: inherit; font-size: 14px; cursor: pointer; }
+.badge-malestar.activo { border-color: var(--rojo); }
+.badge-malestar .pulso { width: 8px; height: 8px; border-radius: 50%; background: var(--rojo); animation: pulso-malestar 1.6s ease-in-out infinite; }
+@keyframes pulso-malestar { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
+.menu-malestar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; padding: 6px 0 2px; }
+@media (prefers-reduced-motion: reduce) { .badge-malestar .pulso { animation: none; } }
+/* La línea de malestares del día (tipo Gantt). */
+.gantt { display: grid; gap: 6px; }
+.gantt-fila { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; align-items: center; }
+.gantt-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-pista { position: relative; height: 16px; border-radius: 8px; background: var(--acento-suave); }
+.gantt-barra { position: absolute; top: 3px; bottom: 3px; min-width: 6px; border-radius: 6px; background: color-mix(in srgb, var(--rojo) 70%, transparent); }
+.gantt-barra.sigue { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--rojo) 70%, transparent) 0 6px, color-mix(in srgb, var(--rojo) 40%, transparent) 6px 12px); }
+.gantt-punto { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid var(--panel); }
+.gantt-horas .gantt-pista { background: none; height: 14px; }
+.gantt-horas .gantt-pista span { position: absolute; transform: translateX(-50%); }

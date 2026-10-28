@@ -526,6 +526,9 @@ export interface Registro {
   tipos?: TipoComida[];
   /** Lo contestado a las preguntas configuradas de esa cosa. */
   detalles?: Detalle[];
+  /** Un malestar que sigue (Patty pregunta si pasó) y cómo fue yendo. */
+  abierto?: boolean;
+  evolucion?: Array<{ t: string; estado: 'paso' | 'igual' | 'mejor' | 'peor' }> | null;
 }
 
 /** Dónde fue una comida o bebida: casera, afuera (restaurante, casa de alguien) o pedida. */

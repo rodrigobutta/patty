@@ -29,7 +29,7 @@ import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } 
 import { AnimoSemana } from './AnimoSemana';
 import { ObjetivosSemana } from './ObjetivosSemana';
 import { SeguimientoDelDia } from './SeguimientoDelDia';
-import { MalestaresAbiertos } from './MalestaresAbiertos';
+import { LineaMalestares, MalestaresAbiertos } from './MalestaresAbiertos';
 import { EVENTO_SUBIDO, SinSenal } from './SinSenal';
 import type { ContadoPendiente } from '../lib/cola';
 import { WidgetsDelDia } from './WidgetsDelDia';
@@ -459,10 +459,11 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         />
       ) : null}
       {fecha === hoy ? <SinSenal persona={persona} alRevisar={(c) => { setRevisando(c); setCargando('contar'); }} /> : null}
+      {/* Los malestares que siguen, como badges arriba de todo (tocándolos se cuenta cómo van). */}
+      {fecha === hoy && !persona.supervisada ? <MalestaresAbiertos persona={persona} vuelta={vuelta} alCambiar={() => void traer()} /> : null}
       {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
       {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
       {fecha === hoy && registros ? <SeguimientoDelDia persona={persona} registros={registros} categorias={categorias} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
-      {fecha === hoy && !persona.supervisada ? <MalestaresAbiertos persona={persona} vuelta={vuelta} alCambiar={() => void traer()} /> : null}
       {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
       {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
@@ -503,6 +504,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           </p>
         </div>
       ) : (
+        <>
+        <LineaMalestares persona={persona} fecha={fecha} hoy={hoy} registros={registros} categorias={categorias} />
         <ul className="lista linea">
           {registros
             .filter((r) => !esParteDeTele(r) || !registros.some((o) => o.concepto === TELE && o.inicio === r.inicio))
@@ -551,6 +554,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             );
           })}
         </ul>
+        </>
       )}
       {/* Lo que llegó solo (clima, ubicación, teléfono, sueño y salud): widgets chicos, distintos de lo anotado. */}
       <WidgetsDelDia

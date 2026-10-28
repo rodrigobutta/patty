@@ -16,6 +16,7 @@ import { vincularToma } from './tratamientos.js';
 const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char(r.fecha, 'YYYY-MM-DD') AS fecha,
   r.valor, r.intensidad, r.unidad, r.nota, r.origen, r.datos->>'donde' AS donde, r.datos->>'lugar' AS lugar,
   r.datos->>'porcion' AS porcion, coalesce(r.datos->'tipos', '[]'::jsonb) AS tipos, coalesce(r.datos->'detalles', '[]'::jsonb) AS detalles,
+  (r.datos->>'abierto' = 'true') AS abierto, r.datos->'evolucion' AS evolucion,
   (SELECT c.nombre FROM conceptos c WHERE c.id = r.concepto_id) AS concepto,
   (SELECT c.categoria_id FROM conceptos c WHERE c.id = r.concepto_id) AS categoria_id`;
 
@@ -216,7 +217,7 @@ export const rutasRegistros = new Hono<Env>()
     return c.json(
       await filas<Registro>(
         c.var.db,
-        sql`SELECT ${COLUMNAS}, r.datos->'evolucion' AS evolucion FROM registros r
+        sql`SELECT ${COLUMNAS} FROM registros r
             WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.datos->>'abierto' = 'true' ORDER BY r.inicio`,
       ),
     );
