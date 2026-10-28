@@ -29,6 +29,7 @@ Lo que ya está listo y lo que falta hacer desde la consola de Google Play.
    por correo. Con eso ya se instala desde Play, sin esperar la revisión completa.
 4. **Ficha de la tienda:** completar con los textos de abajo, el ícono, el gráfico y las capturas.
    - Categoría: Salud y bienestar.
+   - Correo de contacto: rbutta@gmail.com
 5. **Contenido de la app:**
    - completar el contenido de la app (política de privacidad, anuncios: no, acceso a la app);
    - completar la seguridad de los datos (ver abajo) y las declaraciones de permisos (ver abajo);
