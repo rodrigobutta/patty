@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSubirSinSenal } from './pantallas/SinSenal';
 import { api } from './api';
 import { useEstado } from './estado';
 import { useClimaDeLasUltimasHoras } from './lib/clima';
@@ -43,6 +44,8 @@ const PESTANAS: Array<{ id: Pestana; nombre: string }> = [
 
 export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso, sesion, avisar, festejar, recargar } = useEstado();
+  // Lo anotado sin señal se sube solo cuando vuelve la conexión.
+  useSubirSinSenal();
   // patty.today/#admin abre la administración directo (para mirarla en la compu).
   const [pestana, setPestana] = useState<Pestana>(() => (location.hash === '#admin' ? 'admin' : 'hoy'));
   // Cada pestaña arranca arriba de todo (si no, queda el scroll de la anterior).

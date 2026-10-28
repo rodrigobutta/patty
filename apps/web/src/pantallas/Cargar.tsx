@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde, type Porcion, type TipoComida } from 'shared';
-import { api } from '../api';
+import { api, type ErrorApi } from '../api';
+import { guardarContado, sacarContado, type ContadoPendiente } from '../lib/cola';
 import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { anotarClima } from '../lib/clima';
@@ -59,7 +60,7 @@ interface Propuesta {
   tipos?: TipoComida[];
 }
 
-export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto, pista }: {
+export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto, pista, contado }: {
   persona: Persona;
   fecha: string;
   /** `fechaGuardada`: si lo anotado quedó todo en otro día (contado en texto: "ayer a la noche…"), cuál. */
@@ -72,6 +73,8 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
   foto?: Foto;
   /** Qué se eligió anotar (desde los puntos: "la merienda de hoy"): se muestra arriba y se le pasa a la IA. */
   pista?: { texto: string; titulo: string };
+  /** Algo contado sin señal: se manda a ordenar apenas se abre, con la hora en que se contó. */
+  contado?: ContadoPendiente;
 }) {
   const { categorias, sesion, festejar } = useEstado();
   const [modo, setModo] = useState<'rapido' | 'texto' | 'tele'>(contar || foto ? 'texto' : 'rapido');
@@ -107,7 +110,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
       </div>
 
       {modo === 'texto' ? (
-        <TextoLibre persona={persona} fecha={fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto} fotoInicial={foto} sinFoto={contar && !foto} pista={pista} />
+        <TextoLibre persona={persona} fecha={contado?.fecha ?? fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto && !contado} fotoInicial={foto} sinFoto={contar && !foto} pista={pista} contado={contado} />
       ) : modo === 'tele' ? (
         <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
       ) : elegido ? (
@@ -267,7 +270,7 @@ interface Duda {
   opciones: string[];
 }
 
-function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInicial, sinFoto = false, pista }: {
+function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInicial, sinFoto = false, pista, contado }: {
   persona: Persona;
   /** El día que se estaba mirando: si no se dice cuándo pasó, es ese. */
   fecha: string;
@@ -277,6 +280,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   /** Abierto para hablar: sin el botón de la foto (la cámara tiene su propio botón en el Día). */
   sinFoto?: boolean;
   pista?: { texto: string; titulo: string };
+  contado?: ContadoPendiente;
 }) {
   const { categorias, festejar, sesion } = useEstado();
   const vozServidor = Boolean(sesion?.voz);
@@ -332,7 +336,9 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: Array<Duda | string> }>(
         'POST',
         foto ? '/api/registros/foto' : '/api/registros/interpretar',
-        foto ? { persona_id: persona.id, texto: contado, fecha, imagen: foto.datos, tipo: foto.tipo, pista: pista?.texto } : { persona_id: persona.id, texto: contado, fecha, pista: pista?.texto },
+        foto
+          ? { persona_id: persona.id, texto: contado, fecha, imagen: foto.datos, tipo: foto.tipo, pista: pista?.texto }
+          : { persona_id: persona.id, texto: contado, fecha, pista: pista?.texto, momento: sinSenal?.momento },
       );
       setTexto(contado);
       setPropuesta(r.registros);
@@ -343,6 +349,13 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       setQuitarRemedio(new Set());
       setRespuesta('');
     } catch (e) {
+      // Sin señal: lo contado se guarda tal cual, con su hora, y se ordena cuando vuelva la conexión.
+      if ((e as ErrorApi).status === 0 && !foto && contado.trim()) {
+        guardarContado({ persona_id: persona.id, texto: contado, fecha, momento: new Date().toISOString() });
+        festejar(t('Sin señal: guardé lo que contaste. Cuando vuelva la conexión lo ordeno y te aviso para revisarlo.'), 'espera');
+        alGuardar();
+        return;
+      }
       setError((e as Error).message);
     } finally {
       setEstado('quieto');
@@ -427,6 +440,15 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     setOnda(escucha.current?.onda);
   };
 
+  // Algo contado sin señal: se ordena apenas se abre, como si se acabara de contar (con la hora de entonces).
+  const sinSenal = contado;
+  const contadoPedido = useRef(false);
+  useEffect(() => {
+    if (!sinSenal || contadoPedido.current) return;
+    contadoPedido.current = true;
+    void interpretar(sinSenal.texto);
+  });
+
   // Desde el botón de la cámara del Día: la foto ya viene sacada y Patty la mira apenas se abre.
   const fotoPedida = useRef(false);
   useEffect(() => {
@@ -473,6 +495,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
               ? t('¡Anotado!')
               : t('¡Anotadas {n} cosas!', { n: lista.length })) + recordar,
       );
+      if (sinSenal) sacarContado(sinSenal.id);
       alGuardar(otroDia);
     } catch (e) {
       setError((e as Error).message);

@@ -61,6 +61,14 @@ export default defineConfig(({ mode }) => {
           skipWaiting: true,
           clientsClaim: true,
           cleanupOutdatedCaches: true,
+          // Sin señal, la app abre con lo último que se vio (los pedidos de datos van a la red y, si no hay, a lo guardado).
+          runtimeCaching: [
+            {
+              urlPattern: ({ url, request }) => request.method === 'GET' && url.pathname.startsWith('/api/'),
+              handler: 'NetworkFirst',
+              options: { cacheName: 'patty-api', expiration: { maxEntries: 400, maxAgeSeconds: 14 * 86400 }, cacheableResponse: { statuses: [200] } },
+            },
+          ],
         },
       }),
     ],

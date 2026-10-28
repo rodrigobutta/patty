@@ -129,6 +129,8 @@ export async function interpretarTexto(
   idioma: Idioma = 'es',
   /** Qué eligió anotar antes de contarlo ("la merienda", desde los puntos): para no preguntarlo. */
   pista = '',
+  /** Cuándo se contó, si fue antes (sin señal): "hoy", "ayer" y las horas se cuentan desde ahí. */
+  momento?: Date,
 ) {
   if (!texto && !imagen) throw new ErrorApi('Escribí qué pasó.');
   if (texto.length > 4000) throw new ErrorApi('El texto es muy largo (máximo 4000 letras).');
@@ -138,7 +140,7 @@ export async function interpretarTexto(
     sql`SELECT id, categoria_id, nombre, nombre_norm FROM conceptos WHERE unido_a IS NULL ORDER BY usos DESC, id LIMIT 300`,
   );
   // Dónde estuvo ese día (lugares con nombre y paradas largas), para proponer el lugar de una comida de afuera.
-  const diaHoy = diaDePatty(new Date(), p.zona_horaria);
+  const diaHoy = diaDePatty(momento ?? new Date(), p.zona_horaria);
   const diaVisto = referencia ?? diaHoy;
   const donde = await lineaDelDia(tx, p, diaVisto, diaHoy, idioma).catch(() => []);
   const gente = await nombresDeGente(tx, p.id);
@@ -156,7 +158,7 @@ export async function interpretarTexto(
     sql`SELECT c.nombre AS remedio, t.cada_horas, t.horarios FROM tratamientos t JOIN conceptos c ON c.id = t.concepto_id
         WHERE t.persona_id = ${p.id} AND t.borrado IS NULL AND t.terminado IS NULL AND (t.fin IS NULL OR t.fin > now())`,
   );
-  const ahora = new Date();
+  const ahora = momento ?? new Date();
   const hoy = fechaLocal(ahora, p.zona_horaria);
   const hora = minutosDelDia(ahora, p.zona_horaria);
   const porCat = new Map(cats.map((c) => [c.id, c.clave]));

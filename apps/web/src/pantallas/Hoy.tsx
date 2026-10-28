@@ -27,6 +27,8 @@ import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
 import { AnimoSemana } from './AnimoSemana';
 import { ObjetivosSemana } from './ObjetivosSemana';
+import { EVENTO_SUBIDO, SinSenal } from './SinSenal';
+import type { ContadoPendiente } from '../lib/cola';
 import { WidgetsDelDia } from './WidgetsDelDia';
 import { IconoFranja } from '../ui/IconosWidget';
 import { esNativa } from '../lib/nativo';
@@ -124,6 +126,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const [activando, setActivando] = useState<Fuente | null>(null);
   /** La hoja de anotar abierta: normal, o directo en "Contarlo" (el botón grande de hablarle). */
   const [cargando, setCargando] = useState<false | 'normal' | 'contar' | 'foto'>(false);
+  /** Algo contado sin señal que se está revisando (se abre Cargar con eso). */
+  const [revisando, setRevisando] = useState<ContadoPendiente | undefined>(undefined);
   // La cámara del Día: primero cámara o galería; con la foto ya sacada se abre la carga (si se cancela, nada).
   const [eligiendoFoto, setEligiendoFoto] = useState(false);
   const [fotoInicial, setFotoInicial] = useState<Foto | null>(null);
@@ -194,6 +198,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       setError((e as Error).message);
     }
   }, [persona.id, fecha]);
+  // Lo anotado sin señal se acaba de subir: se trae el día de nuevo.
+  useEffect(() => {
+    const f = () => void traer();
+    window.addEventListener(EVENTO_SUBIDO, f);
+    return () => window.removeEventListener(EVENTO_SUBIDO, f);
+  }, [traer]);
   useEffect(() => {
     // Lo último que se trajo de ese día se muestra enseguida (al volver de otra pestaña) mientras se actualiza.
     const ya = YA_TRAIDO.get(`${persona.id}|${fecha}`);
@@ -422,6 +432,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           alTocar={() => setSintiendo({ momento, estado: null })}
         />
       ) : null}
+      {fecha === hoy ? <SinSenal persona={persona} alRevisar={(c) => { setRevisando(c); setCargando('contar'); }} /> : null}
       {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
       {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
       {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
@@ -601,7 +612,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />
-          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} pista={cargando === 'contar' ? pista : undefined} foto={cargando === 'foto' ? fotoInicial ?? undefined : undefined} alCerrar={() => { setCargando(false); setPista(undefined); }} alGuardar={(otroDia) => { setCargando(false); setPista(undefined); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
+          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} pista={cargando === 'contar' ? pista : undefined} contado={cargando === 'contar' ? revisando : undefined} foto={cargando === 'foto' ? fotoInicial ?? undefined : undefined} alCerrar={() => { setCargando(false); setPista(undefined); setRevisando(undefined); }} alGuardar={(otroDia) => { setCargando(false); setPista(undefined); setRevisando(undefined); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
         </>
       ) : null}
     </section>

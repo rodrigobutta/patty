@@ -282,5 +282,8 @@ export const rutasRegistros = new Hono<Env>()
     // "Desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos, sin guardar.
     const d = await cuerpo(c);
     const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
-    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined, undefined, c.var.idioma, texto(d.pista).slice(0, 200)));
+    // momento: cuándo se contó, si fue sin señal y se ordena ahora (hasta una semana atrás).
+    const m = typeof d.momento === 'string' ? new Date(d.momento) : null;
+    const momento = m && !Number.isNaN(m.getTime()) && m.getTime() <= Date.now() && Date.now() - m.getTime() < 7 * 86400000 ? m : undefined;
+    return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined, undefined, c.var.idioma, texto(d.pista).slice(0, 200), momento));
   });
