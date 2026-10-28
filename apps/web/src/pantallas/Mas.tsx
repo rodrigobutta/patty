@@ -1,5 +1,6 @@
 // Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
 // lo avanzado (tokens para que otros dispositivos manden datos).
+import { BorrarCuenta } from '../ui/BorrarCuenta';
 import { UsoIaMio } from '../ui/UsoIaMio';
 import { PreguntasPatty } from './PreguntasPatty';
 import { medir } from '../lib/analytics';
@@ -353,6 +354,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         </div>
       </div>
 
+      <BorrarCuenta />
   </>);
   if (seccion === 'avanzado') return pantalla(t('⚙️ Otros dispositivos'), <>
       {usuario?.rol !== 'lector' ? (

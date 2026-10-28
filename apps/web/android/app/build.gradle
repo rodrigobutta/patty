@@ -1,3 +1,4 @@
+def firmaRelease = new File(System.getProperty('user.home'), 'patty-release/keystore.properties')
 apply plugin: 'com.android.application'
 
 // La versión sale del package.json de la web (la misma que se ve en Más): 1.4.2 → versionCode 10402.
@@ -20,10 +21,26 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // La llave de subida a Play Store vive fuera del repositorio (no se sube nunca): ~/patty-release/keystore.properties
+    // con storeFile, storePassword, keyAlias y keyPassword. Sin ella, el release sale sin firmar.
+    signingConfigs {
+        release {
+            if (firmaRelease.exists()) {
+                def p = new Properties()
+                firmaRelease.withInputStream { p.load(it) }
+                storeFile file(p['storeFile'])
+                storePassword p['storePassword']
+                keyAlias p['keyAlias']
+                keyPassword p['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Firmada con la llave de subida a Play Store (fuera del repo: ~/patty-release/keystore.properties).
+            if (firmaRelease.exists()) signingConfig signingConfigs.release
         }
     }
 }

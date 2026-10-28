@@ -93,6 +93,30 @@ export const rutasSesion = new Hono<Env>()
     });
     return conSesion(c, id);
   })
+  .delete('/cuenta', async (c) => {
+    // { usuario }: borrar la cuenta para siempre (lo pide Play Store). Se escribe el nombre de usuario para confirmar.
+    // Se borran las personas de las que es la única dueña, con todo lo anotado; de las compartidas, solo su acceso.
+    const u = await usuarioDeToken(c.var.db, c.var.token);
+    if (!u) throw new ErrorApi('Tenés que entrar con tu usuario.', 401);
+    const d = await cuerpo(c);
+    if (texto(d.usuario).toLowerCase() !== u.usuario.toLowerCase()) throw new ErrorApi('Escribí tu nombre de usuario para confirmar.');
+    await c.var.db.transaction(async (tx) => {
+      if (u.rol === 'admin') {
+        const otros = await una<{ admins: number; usuarios: number }>(
+          tx,
+          sql`SELECT count(*) FILTER (WHERE rol = 'admin' AND id <> ${u.id})::int AS admins, count(*) FILTER (WHERE id <> ${u.id})::int AS usuarios FROM usuarios WHERE activo`,
+        );
+        if (otros && otros.usuarios > 0 && otros.admins === 0) throw new ErrorApi('Sos el único administrador: primero hacé administrador a otra persona.');
+      }
+      await tx.execute(
+        sql`DELETE FROM personas p WHERE EXISTS (SELECT 1 FROM persona_usuarios pu WHERE pu.persona_id = p.id AND pu.usuario_id = ${u.id} AND pu.rol = 'dueno')
+              AND NOT EXISTS (SELECT 1 FROM persona_usuarios pu WHERE pu.persona_id = p.id AND pu.usuario_id <> ${u.id} AND pu.rol = 'dueno')`,
+      );
+      await tx.execute(sql`DELETE FROM usuarios WHERE id = ${u.id}`);
+    });
+    c.header('Set-Cookie', cookieSesion('', 0, esHttps(c)));
+    return c.json({ ok: true });
+  })
   .post('/salir', async (c) => {
     await cerrarSesion(c.var.db, c.var.token);
     c.header('Set-Cookie', cookieSesion('', 0, esHttps(c)));
