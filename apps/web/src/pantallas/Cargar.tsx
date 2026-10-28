@@ -15,6 +15,7 @@ import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
 import { Tele } from './Tele';
+import { Atajos } from '../ui/Atajos';
 import { DondeComida, etiquetaDonde, etiquetaPlato } from '../ui/DondeComida';
 import { IconoCamara, IconoGaleria, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { OndaVoz } from '../ui/OndaVoz';
@@ -119,6 +120,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
         <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { medir('anotar', { metodo: 'rapido' }); festejar(t('¡Anotado! {que}', { que: t(elegido.nombre) })); alGuardar(); }} />
       ) : (
         <>
+          <Atajos persona={persona} alAnotar={() => alGuardar()} />
           <div className="chips">
             {categorias.map((c) => (
               <button key={c.id} className={`chip ${categoria?.id === c.id ? 'activa' : ''}`} onClick={() => setCategoria(categoria?.id === c.id ? null : c)}>

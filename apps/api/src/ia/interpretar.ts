@@ -200,6 +200,9 @@ export async function interpretarTexto(
     'grupo sin nombres, "Amigos", "Familia", "Compañeros de trabajo". ' +
     'Si se sabe dónde estuvo a la hora de esa comida (ver "Dónde estuvo"), y no fue delivery, proponé ese lugar como ' +
     'primera opción: con su nombre si lo tiene, o la calle si es un lugar sin nombre (para el delivery no sirve). ' +
+    'Si cuenta que fue al baño, en la categoría bano: "Pis" o "Caca" (si dice cómo fue, en la nota). Lavarse los dientes, ' +
+    'el enjuague bucal o bañarse van en higiene: "Me lavé los dientes", "Enjuague bucal", "Me bañé". Si vomitó, "Vómitos" ' +
+    'en sintoma. ' +
     'Si cuenta que le vino o que está menstruando ("me vino", "estoy indispuesta", "me bajó"), va en la categoría ciclo, ' +
     'concepto "Menstruación", con intensidad según el flujo (manchado 2, poco 4, normal 6, mucho 9; si no dice, 6). Los ' +
     'cólicos y otras molestias del ciclo van como sintoma. ' +

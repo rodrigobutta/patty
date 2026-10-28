@@ -50,6 +50,7 @@ export const CATEGORIAS_INICIALES: CategoriaBase[] = [
   { clave: 'gente', nombre: 'Con gente', icono: '👥', rol: 'causa', tipo_valor: 'evento', unidad: null, orden: 15 },
   { clave: 'viaje', nombre: 'Viajes', icono: '🚗', rol: 'causa', tipo_valor: 'duracion', unidad: 'min', orden: 16 },
   { clave: 'trabajo', nombre: 'Trabajo y reuniones', icono: '💼', rol: 'causa', tipo_valor: 'medida', unidad: null, orden: 17 },
+  { clave: 'higiene', nombre: 'Higiene', icono: '🪥', rol: 'causa', tipo_valor: 'evento', unidad: null, orden: 18 },
 ];
 
 /** Conceptos que conviene que existan desde el principio (los que van a llenar los relojes y el clima). */
@@ -224,6 +225,16 @@ export const ESTADOS: EstadoAnimo[] = [
 export function estadoDe(intensidad: number): EstadoAnimo {
   return ESTADOS.reduce((a, b) => (Math.abs(b.intensidad - intensidad) < Math.abs(a.intensidad - intensidad) ? b : a));
 }
+
+/** Lo de todos los días que se anota con un solo toque (en Anotar, arriba de todo). */
+export const ATAJOS: Array<{ nombre: string; emoji: string; categoria: string; corto: string }> = [
+  { nombre: 'Pis', emoji: '🚽', categoria: 'bano', corto: 'Pis' },
+  { nombre: 'Caca', emoji: '💩', categoria: 'bano', corto: 'Caca' },
+  { nombre: 'Me lavé los dientes', emoji: '🪥', categoria: 'higiene', corto: 'Dientes' },
+  { nombre: 'Enjuague bucal', emoji: '🫧', categoria: 'higiene', corto: 'Enjuague' },
+  { nombre: 'Me bañé', emoji: '🚿', categoria: 'higiene', corto: 'Ducha' },
+  { nombre: 'Vaso de agua', emoji: '💧', categoria: 'bebida', corto: 'Agua' },
+];
 
 /**
  * "Enfermo/a" va aparte de muy bien … muy mal (no es un ánimo): se anota como una molestia, con los síntomas de estar
