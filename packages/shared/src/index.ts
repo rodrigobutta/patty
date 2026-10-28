@@ -56,6 +56,13 @@ export const CATEGORIAS_INICIALES: CategoriaBase[] = [
 /** Conceptos que conviene que existan desde el principio (los que van a llenar los relojes y el clima). */
 export const CONCEPTOS_INICIALES: Array<{ categoria: string; nombre: string; tipo_valor: TipoValor; unidad: string | null }> = [
   { categoria: 'sueno', nombre: 'Me levanté', tipo_valor: 'hora', unidad: null },
+  { categoria: 'sintoma', nombre: 'Temperatura corporal', tipo_valor: 'medida', unidad: '°C' },
+  { categoria: 'sintoma', nombre: 'Vómitos', tipo_valor: 'evento', unidad: null },
+  { categoria: 'bano', nombre: 'Pis', tipo_valor: 'evento', unidad: null },
+  { categoria: 'bano', nombre: 'Caca', tipo_valor: 'evento', unidad: null },
+  { categoria: 'higiene', nombre: 'Me lavé los dientes', tipo_valor: 'evento', unidad: null },
+  { categoria: 'higiene', nombre: 'Enjuague bucal', tipo_valor: 'evento', unidad: null },
+  { categoria: 'higiene', nombre: 'Me bañé', tipo_valor: 'evento', unidad: null },
   { categoria: 'sueno', nombre: 'Me acosté', tipo_valor: 'hora', unidad: null },
   { categoria: 'sueno', nombre: 'Siesta', tipo_valor: 'duracion', unidad: 'min' },
   { categoria: 'clima', nombre: 'Temperatura', tipo_valor: 'medida', unidad: '°C' },
@@ -224,6 +231,92 @@ export const ESTADOS: EstadoAnimo[] = [
 /** El estado más cercano a una intensidad anotada (por si se cargó a mano otro número). */
 export function estadoDe(intensidad: number): EstadoAnimo {
   return ESTADOS.reduce((a, b) => (Math.abs(b.intensidad - intensidad) < Math.abs(a.intensidad - intensidad) ? b : a));
+}
+
+/**
+ * Seguimientos: plantillas de cosas a registrar más de cerca por un tiempo (enfermo, problema de panza, recuperación),
+ * que activa la persona o alguien de su familia. Mientras dura, el Día muestra qué falta de hoy y Patty pregunta a las
+ * horas elegidas. Cada cosa (ítem) se da por hecha si hoy hay algo anotado que coincide.
+ */
+export type TipoItemSeguimiento = 'sentir' | 'comida' | 'concepto' | 'medida';
+export interface ItemSeguimiento {
+  clave: string;
+  nombre: string;
+  emoji: string;
+  tipo: TipoItemSeguimiento;
+  /** concepto y medida: qué se anota y en qué categoría. */
+  concepto?: string;
+  categoria?: string;
+  unidad?: string;
+  /** comida: la parte del día (horas locales) en la que cuenta. */
+  desde?: number;
+  hasta?: number;
+  /** Solo si pasa (vómitos): se anota con un toque, pero no hace falta para dar el día por completo. */
+  opcional?: boolean;
+}
+export const ITEMS_SEGUIMIENTO: ItemSeguimiento[] = [
+  { clave: 'sentir', nombre: 'Cómo me siento', emoji: '🙂', tipo: 'sentir' },
+  { clave: 'desayuno', nombre: 'Desayuno', emoji: '☕', tipo: 'comida', desde: 5, hasta: 11 },
+  { clave: 'almuerzo', nombre: 'Almuerzo', emoji: '🍝', tipo: 'comida', desde: 11, hasta: 16 },
+  { clave: 'merienda', nombre: 'Merienda', emoji: '🧉', tipo: 'comida', desde: 16, hasta: 19 },
+  { clave: 'cena', nombre: 'Cena', emoji: '🍽️', tipo: 'comida', desde: 19, hasta: 29 },
+  { clave: 'temperatura', nombre: 'Temperatura corporal', emoji: '🌡️', tipo: 'medida', concepto: 'Temperatura corporal', categoria: 'sintoma', unidad: '°C' },
+  { clave: 'agua', nombre: 'Vaso de agua', emoji: '💧', tipo: 'concepto', concepto: 'Vaso de agua', categoria: 'bebida' },
+  { clave: 'pis', nombre: 'Pis', emoji: '🚽', tipo: 'concepto', concepto: 'Pis', categoria: 'bano' },
+  { clave: 'caca', nombre: 'Caca', emoji: '💩', tipo: 'concepto', concepto: 'Caca', categoria: 'bano' },
+  { clave: 'vomitos', nombre: 'Vómitos', emoji: '🤮', tipo: 'concepto', concepto: 'Vómitos', categoria: 'sintoma', opcional: true },
+  { clave: 'diarrea', nombre: 'Diarrea', emoji: '💦', tipo: 'concepto', concepto: 'Diarrea', categoria: 'sintoma', opcional: true },
+  { clave: 'dolor_panza', nombre: 'Dolor de panza', emoji: '🫃', tipo: 'concepto', concepto: 'Dolor de panza', categoria: 'sintoma', opcional: true },
+  { clave: 'dolor_cabeza', nombre: 'Dolor de cabeza', emoji: '🤕', tipo: 'concepto', concepto: 'Dolor de cabeza', categoria: 'sintoma', opcional: true },
+  { clave: 'dientes', nombre: 'Me lavé los dientes', emoji: '🪥', tipo: 'concepto', concepto: 'Me lavé los dientes', categoria: 'higiene' },
+  { clave: 'ducha', nombre: 'Me bañé', emoji: '🚿', tipo: 'concepto', concepto: 'Me bañé', categoria: 'higiene' },
+  { clave: 'caminata', nombre: 'Caminata', emoji: '🚶', tipo: 'concepto', concepto: 'Caminata', categoria: 'actividad' },
+  { clave: 'me_levante', nombre: 'Me levanté', emoji: '🌅', tipo: 'concepto', concepto: 'Me levanté', categoria: 'sueno' },
+  { clave: 'me_acoste', nombre: 'Me acosté', emoji: '🌙', tipo: 'concepto', concepto: 'Me acosté', categoria: 'sueno' },
+];
+export interface PlantillaSeguimiento {
+  id?: number;
+  nombre: string;
+  emoji: string;
+  /** Las claves de ITEMS_SEGUIMIENTO. */
+  items: string[];
+  /** A qué horas pregunta (HH:MM). */
+  horarios: string[];
+  dias: number;
+}
+export const PLANTILLAS_SEGUIMIENTO: PlantillaSeguimiento[] = [
+  { nombre: 'Estoy enfermo/a', emoji: '🤒', items: ['sentir', 'temperatura', 'desayuno', 'almuerzo', 'merienda', 'cena', 'agua', 'pis', 'caca', 'vomitos', 'diarrea'], horarios: ['09:00', '14:00', '20:30'], dias: 5 },
+  { nombre: 'Problema de panza', emoji: '🫃', items: ['sentir', 'desayuno', 'almuerzo', 'merienda', 'cena', 'agua', 'caca', 'dolor_panza', 'diarrea', 'vomitos'], horarios: ['13:30', '21:00'], dias: 7 },
+  { nombre: 'Recuperación', emoji: '🩹', items: ['sentir', 'temperatura', 'desayuno', 'almuerzo', 'cena', 'agua', 'pis', 'caca', 'caminata', 'ducha'], horarios: ['10:00', '20:00'], dias: 14 },
+  { nombre: 'Dormir mejor', emoji: '😴', items: ['me_acoste', 'me_levante', 'sentir', 'caminata'], horarios: ['09:30', '22:30'], dias: 14 },
+];
+export interface Seguimiento extends PlantillaSeguimiento {
+  id: number;
+  persona_id: number;
+  desde: string;
+  hasta: string;
+  activado_por: string | null;
+}
+
+/** Lo anotado de un día, lo justo para ver qué ítems de un seguimiento ya están (hora local, 0 a 24). */
+export interface AnotadoSeguimiento { concepto: string; categoria: string; hora: number }
+
+/** Los ítems de un seguimiento que ya están hechos hoy (por clave). */
+export function itemsHechos(claves: string[], anotado: AnotadoSeguimiento[]): Set<string> {
+  const hechos = new Set<string>();
+  const norm = (x: string) => normalizar(x);
+  for (const clave of claves) {
+    const it = ITEMS_SEGUIMIENTO.find((i) => i.clave === clave);
+    if (!it) continue;
+    const ok =
+      it.tipo === 'sentir'
+        ? anotado.some((a) => a.concepto === COMO_ME_SIENTO || a.concepto === COMO_ME_SENTI || a.concepto === ENFERMO)
+        : it.tipo === 'comida'
+          ? anotado.some((a) => a.categoria === 'comida' && (a.hora < 5 ? a.hora + 24 : a.hora) >= (it.desde ?? 0) && (a.hora < 5 ? a.hora + 24 : a.hora) < (it.hasta ?? 29))
+          : anotado.some((a) => norm(a.concepto) === norm(it.concepto ?? it.nombre));
+    if (ok) hechos.add(clave);
+  }
+  return hechos;
 }
 
 /** Lo de todos los días que se anota con un solo toque (en Anotar, arriba de todo). */

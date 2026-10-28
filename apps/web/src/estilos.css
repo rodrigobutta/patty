@@ -1311,3 +1311,18 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .preguntas-detalle { display: grid; gap: 8px; margin: 4px 0 10px; }
 .atajo-preguntas { margin-top: 10px; }
 .preguntas-lista li { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .preguntas-lista li.apagada { opacity: 0.55; }
+/* Seguimiento activo en el Día. */
+.seguimiento-dia { border-color: color-mix(in srgb, var(--acento) 45%, var(--borde)); display: grid; gap: 10px; }
+.seguimiento-cabeza { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.seguimiento-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.item-seguimiento { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--borde); background: var(--panel); color: var(--texto); font: inherit; font-size: 14px; cursor: pointer; }
+.item-seguimiento.hecho { background: var(--acento-suave); border-color: transparent; color: var(--acento); font-weight: 600; }
+.item-seguimiento.opcional:not(.hecho) { border-style: dashed; color: var(--suave); }
+.medir-seguimiento input { width: 90px; }
+.seguimiento-dia > p { margin: 0; }
+.plantilla-seguimiento h3 { margin-bottom: 4px; }
+.plantilla-seguimiento p { margin: 0 0 6px; }
+.fila.envolver { flex-wrap: wrap; }
+.fila-activo { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.editor-seguimiento { display: grid; gap: 8px; }
+.emoji-input { width: 56px; text-align: center; font-size: 20px; }

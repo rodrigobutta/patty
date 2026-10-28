@@ -776,3 +776,41 @@ export const preguntasConcepto = pgTable(
   },
   (t) => [index('preguntas_concepto_idx').on(t.persona_id, t.concepto_norm)],
 );
+
+/** Plantillas de seguimiento propias de una persona (las de siempre están en shared: PLANTILLAS_SEGUIMIENTO). */
+export const plantillasSeguimiento = pgTable('plantillas_seguimiento', {
+  id: id(),
+  persona_id: integer('persona_id')
+    .notNull()
+    .references(() => personas.id, { onDelete: 'cascade' }),
+  nombre: text('nombre').notNull(),
+  emoji: text('emoji').notNull().default('🩺'),
+  items: text('items').array().notNull(),
+  horarios: text('horarios').array().notNull(),
+  dias: smallint('dias').notNull().default(5),
+  creado: creado(),
+});
+
+/**
+ * Un seguimiento activado (una copia de la plantilla, así cambiarla después no lo toca): de `desde` a `hasta`. Lo puede
+ * activar la persona o alguien de su familia (activado_por). Ver patrones/seguimientos.ts para los avisos.
+ */
+export const seguimientos = pgTable(
+  'seguimientos',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    nombre: text('nombre').notNull(),
+    emoji: text('emoji').notNull().default('🩺'),
+    items: text('items').array().notNull(),
+    horarios: text('horarios').array().notNull(),
+    dias: smallint('dias').notNull(),
+    desde: instante('desde').notNull(),
+    hasta: instante('hasta').notNull(),
+    activado_por: integer('activado_por').references(() => usuarios.id, { onDelete: 'set null' }),
+    creado: creado(),
+  },
+  (t) => [index('seguimientos_persona_idx').on(t.persona_id, t.hasta)],
+);

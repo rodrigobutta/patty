@@ -24,6 +24,7 @@ import { rutasComentarios } from './routes/comentarios.js';
 import { rutasFueraDeLoNormal } from './routes/fueraDeLoNormal.js';
 import { rutasObjetivos } from './routes/objetivos.js';
 import { rutasPreguntasConcepto } from './routes/preguntasConcepto.js';
+import { rutasSeguimientos } from './routes/seguimientos.js';
 import { rutasSueno } from './routes/sueno.js';
 import { rutasActividad } from './routes/actividad.js';
 import { rutasSemanas } from './routes/semanas.js';
@@ -142,6 +143,7 @@ export function crearApp(): Hono<Env> {
   api.route('/fuera-de-lo-normal', rutasFueraDeLoNormal);
   api.route('/objetivos', rutasObjetivos);
   api.route('/preguntas-concepto', rutasPreguntasConcepto);
+  api.route('/seguimientos', rutasSeguimientos);
   api.route('/sueno', rutasSueno);
   api.route('/actividad', rutasActividad);
   api.route('/semanas', rutasSemanas);

@@ -246,6 +246,13 @@
       "when": 1793188773849,
       "tag": "0034_serie_con_detalles",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793189127769,
+      "tag": "0035_seguimientos",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,7 @@ import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
 import { AnimoSemana } from './AnimoSemana';
 import { ObjetivosSemana } from './ObjetivosSemana';
+import { SeguimientoDelDia } from './SeguimientoDelDia';
 import { EVENTO_SUBIDO, SinSenal } from './SinSenal';
 import type { ContadoPendiente } from '../lib/cola';
 import { WidgetsDelDia } from './WidgetsDelDia';
@@ -459,6 +460,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {fecha === hoy ? <SinSenal persona={persona} alRevisar={(c) => { setRevisando(c); setCargando('contar'); }} /> : null}
       {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
       {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
+      {fecha === hoy && registros ? <SeguimientoDelDia persona={persona} registros={registros} categorias={categorias} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
       {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
       {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
