@@ -102,6 +102,8 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
                   </span>
                 </span>
                 <span className="gantt-pista">
+                  {marcas.map((m) => <span key={m.h} className="gantt-tick" style={{ left: x(m.ms) }} aria-hidden />)}
+                  {fecha === hoy ? <span className="gantt-ahora" style={{ left: x(ahora) }} aria-hidden /> : null}
                   {ini < a ? <span className="gantt-antes" aria-hidden>◂</span> : null}
                   <span className={`gantt-barra${sigue ? ' sigue' : ''}${esActividad ? ' actividad' : ''}`} style={{ left: x(ini), width: `calc(${x(fin)} - ${x(ini)})` }} />
                   {(r.evolucion ?? []).map((e) => (
@@ -140,7 +142,9 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
         <div className="gantt-fila gantt-horas">
           <span />
           <span className="gantt-pista">
-            {marcas.map((m) => <span key={m.h} className="suave chico" style={{ left: x(m.ms) }}>{m.h % 24}h</span>)}
+            {/* La hora que cae justo donde dice "ahora" no se escribe (se pisarían). */}
+            {marcas.filter((m) => fecha !== hoy || Math.abs(m.ms - ahora) > 80 * 60000).map((m) => <span key={m.h} className="suave chico" style={{ left: x(m.ms) }}>{m.h % 24}h</span>)}
+            {fecha === hoy ? <span className="gantt-ahora-rotulo" style={{ left: x(ahora) }}>{t('ahora')}</span> : null}
           </span>
         </div>
       </div>
