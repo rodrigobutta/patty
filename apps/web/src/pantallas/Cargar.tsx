@@ -17,6 +17,7 @@ import { Tele } from './Tele';
 import { DondeComida, etiquetaDonde, etiquetaPlato } from '../ui/DondeComida';
 import { IconoCamara, IconoGaleria, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { OndaVoz } from '../ui/OndaVoz';
+import { Mascota } from '../mascota/Mascota';
 
 interface Elegido {
   concepto_id?: number;
@@ -384,7 +385,11 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
    */
   const tocarOpcion = (i: number, o: string) => {
     const conOpciones = dudas.filter((d) => d.opciones.length).length;
-    if (conOpciones <= 1 && !dudas[i].varias) return contarElegidas({ [i]: [o] });
+    if (conOpciones <= 1 && !dudas[i].varias) {
+      // Se marca la tocada al instante (y el bloqueo de abajo muestra que Patty está ordenando).
+      setElegidas({ [i]: [o] });
+      return contarElegidas({ [i]: [o] });
+    }
     setElegidas((x) => {
       const ya = x[i] ?? [];
       const sigue = ya.includes(o) ? ya.filter((y) => y !== o) : dudas[i].varias ? [...ya, o] : [o];
@@ -673,6 +678,19 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       {entrada(false)}
       {error ? <p className="neg">{error}</p> : null}
       {eligiendoFoto ? <ElegirFoto alElegir={(o) => void fotoDe(o)} alCancelar={() => setEligiendoFoto(false)} /> : null}
+      {/* Mientras Patty ordena una respuesta (o guarda), todo queda bloqueado, cerrar incluido: se ve que está trabajando. */}
+      {propuesta && (estado === 'ordenando' || estado === 'guardando')
+        ? createPortal(
+            <div className="bloqueo-ordenando" role="status" aria-live="polite" onClick={(e) => e.stopPropagation()}>
+              <div className="bloqueo-tarjeta">
+                <Mascota cara="espera" tamano={64} className="pensando" />
+                <p>{estado === 'guardando' ? t('Guardando…') : t('Patty está ordenando tu respuesta…')}</p>
+                <span className="puntitos" aria-hidden><i /><i /><i /></span>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

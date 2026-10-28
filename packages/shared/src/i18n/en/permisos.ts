@@ -626,4 +626,5 @@ export const PERMISOS: Record<string, string> = {
   "👆 Un toque": "👆 One tap",
   "📷 Sacale una foto": "📷 Snap a photo",
   'podés elegir varias': 'you can pick several',
+  'Patty está ordenando tu respuesta…': 'Patty is sorting out your answer…',
 };
