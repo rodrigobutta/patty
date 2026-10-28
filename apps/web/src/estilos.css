@@ -1361,3 +1361,18 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .fila-seguimiento.hecho .nombre-item { color: var(--suave); }
 .fila-seguimiento.hecho .estado-item { color: var(--verde); font-weight: 600; }
 .fila-seguimiento .btn.chico { min-width: 64px; }
+/* Plantillas de seguimiento: plegadas con un resumen, el detalle en dos grupos. */
+.plantilla-seguimiento { display: grid; gap: 10px; }
+.cabeza-plantilla { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.emoji-plantilla { font-size: 26px; text-align: center; }
+.cabeza-plantilla strong { display: block; font-size: 17px; }
+.resumen-plantilla { display: block; margin-top: 2px; }
+.detalle-plantilla { display: grid; gap: 10px; padding: 10px 0 2px; border-top: 1px solid var(--borde); }
+.grupo-plantilla { display: grid; gap: 6px; }
+.rotulo-grupo { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--suave); }
+.chip.estatico { cursor: default; }
+.acciones-plantilla { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.acciones-plantilla select { min-width: 0; }
+.enlaces-plantilla { gap: 16px; }
+.leyenda-frecuencia { margin-top: -4px; }
+.detalle-plantilla .chip { font-size: 13px; padding: 5px 10px; }

@@ -20,6 +20,8 @@ export function Seguimientos({ persona, puedeEscribir }: { persona: Persona; pue
   const [propias, setPropias] = useState<Propia[]>([]);
   const [editando, setEditando] = useState<(PlantillaSeguimiento & { id?: number }) | null>(null);
   const [dias, setDias] = useState<Record<string, number>>({});
+  /** La plantilla abierta (con el detalle de qué sigue). */
+  const [detalle, setDetalle] = useState<string | null>(null);
   const traer = () =>
     void traerSeguimientos(persona.id)
       .then((r) => {
@@ -58,39 +60,64 @@ export function Seguimientos({ persona, puedeEscribir }: { persona: Persona; pue
 
   if (editando) return <Editor plantilla={editando} alGuardar={guardar} alCancelar={() => setEditando(null)} />;
 
-  const tarjeta = (p: PlantillaSeguimiento, clave: string, propia?: Propia) => (
-    <div key={clave} className="tarjeta plantilla-seguimiento">
-      <h3>{p.emoji} {t(p.nombre)}</h3>
-      <p className="suave chico">
-        {p.items
-          .map((c) => ITEMS_SEGUIMIENTO.find((i) => i.clave === c))
-          .filter(Boolean)
-          .map((i, k) => (
-            <span key={i!.clave} className="item-plantilla">
-              {k ? ' · ' : ''}{i!.emoji} {t(i!.nombre)} <span className={`frecuencia ${i!.frecuencia}`}>{i!.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
-            </span>
-          ))}
-      </p>
-      <p className="suave chico">
-        {p.horarios.length ? t('Pregunta a las {horas}', { horas: p.horarios.join(', ') }) : t('Sin avisos: solo la lista en el Día')}
-        {' · '}<span className="frecuencia cada_vez">↻</span> {t('en cada aviso')} · <span className="frecuencia dia">1×</span> {t('una vez al día')}
-      </p>
-      {puedeEscribir ? (
-        <div className="fila envolver">
-          <select value={dias[clave] ?? p.dias} onChange={(e) => setDias({ ...dias, [clave]: Number(e.target.value) })} aria-label={t('Por cuántos días')}>
-            {[...new Set([...DIAS, p.dias])].sort((a, b) => (a || 999) - (b || 999)).map((n) => <option key={n} value={n}>{nombreDias(n)}</option>)}
-          </select>
-          <button className="btn primario" onClick={() => activar(p, clave)}>{t('Activar')}</button>
-          <button className="btn" onClick={() => setEditando(propia ?? { ...p, nombre: p.nombre })}>{propia ? t('Editar') : t('Armar una a partir de esta')}</button>
-          {propia ? <button className="btn-icono" aria-label={t('Borrar')} onClick={() => void hacer(() => api('DELETE', `/api/seguimientos/plantillas/${propia.id}`))}>✕</button> : null}
+  /** Las cosas de una plantilla en dos grupos: las que se piden en cada aviso y las de una vez al día. */
+  const grupos = (p: PlantillaSeguimiento) => {
+    const its = p.items.map((c) => ITEMS_SEGUIMIENTO.find((i) => i.clave === c)).filter((i): i is NonNullable<typeof i> => Boolean(i));
+    return (['cada_vez', 'dia'] as const)
+      .map((f) => ({ f, lista: its.filter((i) => i.frecuencia === f) }))
+      .filter((g) => g.lista.length)
+      .map((g) => (
+        <div key={g.f} className="grupo-plantilla">
+          <span className="rotulo-grupo chico">
+            <span className={`frecuencia ${g.f}`}>{g.f === 'cada_vez' ? '↻' : '1×'}</span> {g.f === 'cada_vez' ? t('En cada aviso') : t('Una vez al día')}
+          </span>
+          <div className="chips envolver">
+            {g.lista.map((i) => <span key={i.clave} className="chip chico estatico">{i.emoji} {t(i.nombre)}{i.opcional ? ` · ${t('si pasa')}` : ''}</span>)}
+          </div>
         </div>
-      ) : null}
-    </div>
-  );
+      ));
+  };
+  const tarjeta = (p: PlantillaSeguimiento, clave: string, propia?: Propia) => {
+    const abierta = detalle === clave;
+    return (
+      <div key={clave} className={`tarjeta plantilla-seguimiento${abierta ? ' abierta' : ''}`}>
+        <button className="cabeza-plantilla" onClick={() => setDetalle(abierta ? null : clave)} aria-expanded={abierta}>
+          <span className="emoji-plantilla" aria-hidden>{p.emoji}</span>
+          <span>
+            <strong>{t(p.nombre)}</strong>
+            <span className="suave chico resumen-plantilla">
+              {t('{n} cosas', { n: p.items.length })}
+              {' · '}
+              {p.horarios.length ? t('avisa {n} veces: {horas}', { n: p.horarios.length, horas: p.horarios.join(', ') }) : t('sin avisos')}
+            </span>
+          </span>
+          <span className="suave" aria-hidden>{abierta ? '▴' : '▾'}</span>
+        </button>
+        {abierta ? <div className="detalle-plantilla">{grupos(p)}</div> : null}
+        {puedeEscribir ? (
+          <div className="acciones-plantilla">
+            <select value={dias[clave] ?? p.dias} onChange={(e) => setDias({ ...dias, [clave]: Number(e.target.value) })} aria-label={t('Por cuántos días')}>
+              {[...new Set([...DIAS, p.dias])].sort((a, b) => (a || 999) - (b || 999)).map((n) => <option key={n} value={n}>{nombreDias(n)}</option>)}
+            </select>
+            <button className="btn primario" onClick={() => activar(p, clave)}>{t('Activar')}</button>
+          </div>
+        ) : null}
+        {puedeEscribir ? (
+          <div className="fila enlaces-plantilla">
+            <button className="enlace chico" onClick={() => setEditando(propia ?? { ...p, nombre: p.nombre })}>{propia ? t('Editar') : t('Armar una a partir de esta')}</button>
+            {propia ? <button className="enlace chico" onClick={() => void hacer(() => api('DELETE', `/api/seguimientos/plantillas/${propia.id}`))}>{t('Borrar')}</button> : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <>
       <p className="suave chico">{t('Para cuando hace falta registrar más de cerca por un tiempo: Patty muestra en el Día qué falta de hoy y pregunta a las horas que elijas. Lo puede activar la persona o alguien de su familia.')}</p>
+      <p className="suave chico leyenda-frecuencia">
+        <span className="frecuencia cada_vez">↻</span> {t('se vuelve a pedir en cada aviso')} · <span className="frecuencia dia">1×</span> {t('alcanza con una vez al día')}
+      </p>
       {activos.length ? (
         <div className="tarjeta">
           <h3>{t('Activos')}</h3>

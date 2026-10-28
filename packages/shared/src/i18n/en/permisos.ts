@@ -773,4 +773,9 @@ export const PERMISOS: Record<string, string> = {
   "Anotar {que}": "Log {que}",
   "falta": "missing",
   "si pasa": "if it happens",
+  "En cada aviso": "Every reminder",
+  "alcanza con una vez al día": "once a day is enough",
+  "avisa {n} veces: {horas}": "reminds {n} times: {horas}",
+  "sin avisos": "no reminders",
+  "{n} cosas": "{n} items",
 };
