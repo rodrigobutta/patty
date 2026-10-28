@@ -56,6 +56,9 @@ export const usuarios = pgTable(
     cuenta_de_noche: boolean('cuenta_de_noche'),
     clave: text('clave').notNull(),
     rol: text('rol', { enum: ['admin', 'editor', 'lector'] }).notNull().default('editor'),
+    /** El plan de uso de la IA (shared: PLANES) y, si se cambió a mano, sus límites propios. */
+    plan: text('plan').notNull().default('gratis'),
+    limites: jsonb('limites').$type<Record<string, number>>(),
     activo: boolean('activo').notNull().default(true),
     /** El idioma en que usa la app (para los avisos que manda el servidor). */
     idioma: text('idioma').notNull().default('es'),
@@ -866,3 +869,19 @@ export const procesos = pgTable('procesos', {
   fallas: integer('fallas').notNull().default(0),
   procesados: integer('procesados').notNull().default(0),
 });
+
+/** Cada uso de la IA (para los límites por día y para ver cuánto gasta cada uno): quién, para qué y cuántos tokens. */
+export const usoIa = pgTable(
+  'uso_ia',
+  {
+    id: idGrande(),
+    usuario_id: integer('usuario_id').references(() => usuarios.id, { onDelete: 'set null' }),
+    /** contar, foto, voz, preguntar, analisis (los que tienen límite) o lo que hace Patty sola (el nombre del proceso). */
+    tipo: text('tipo').notNull(),
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    entrada: integer('entrada').notNull().default(0),
+    salida: integer('salida').notNull().default(0),
+    creado: creado(),
+  },
+  (t) => [index('uso_ia_usuario_idx').on(t.usuario_id, t.fecha, t.tipo)],
+);

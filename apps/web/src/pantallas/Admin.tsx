@@ -2,6 +2,7 @@
 // usuarios (con su último acceso y lo que anotan; se crean, desactivan y se les cambia el rol o la clave) y lo último
 // que se anotó en toda la app. Se entra desde Más, o con patty.today/#admin en la compu.
 import { AdminSalud } from './AdminSalud';
+import { AdminUsoIa } from './AdminUsoIa';
 import { useCallback, useEffect, useState } from 'react';
 import { conUnidad } from 'shared';
 import { api } from '../api';
@@ -182,7 +183,7 @@ function Barritas({ datos, alto = 60 }: { datos: number[]; alto?: number }) {
 }
 
 export function Admin({ alVolver }: { alVolver(): void }) {
-  const [vista, setVista] = useState<'resumen' | 'uso' | 'usuarios' | 'actividad' | 'avisos' | 'salud'>('resumen');
+  const [vista, setVista] = useState<'resumen' | 'uso' | 'usuarios' | 'actividad' | 'avisos' | 'salud' | 'ia'>('resumen');
   const [elegido, setElegido] = useState<number | null>(null);
   return (
     <section className="admin">
@@ -197,8 +198,9 @@ export function Admin({ alVolver }: { alVolver(): void }) {
         <button className={vista === 'actividad' ? 'activa' : ''} onClick={() => { setVista('actividad'); setElegido(null); }}>{t('Actividad')}</button>
         <button className={vista === 'avisos' ? 'activa' : ''} onClick={() => { setVista('avisos'); setElegido(null); }}>{t('📣 Avisos')}</button>
         <button className={vista === 'salud' ? 'activa' : ''} onClick={() => { setVista('salud'); setElegido(null); }}>{t('🩺 Salud')}</button>
+        <button className={vista === 'ia' ? 'activa' : ''} onClick={() => { setVista('ia'); setElegido(null); }}>{t('🤖 IA y planes')}</button>
       </div>
-      {vista === 'salud' ? <AdminSalud /> : vista === 'avisos' ? <VistaAvisos /> : vista === 'uso' ? <VistaUso alElegir={(id) => { setElegido(id); setVista('usuarios'); }} /> : vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
+      {vista === 'ia' ? <AdminUsoIa /> : vista === 'salud' ? <AdminSalud /> : vista === 'avisos' ? <VistaAvisos /> : vista === 'uso' ? <VistaUso alElegir={(id) => { setElegido(id); setVista('usuarios'); }} /> : vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
     </section>
   );
 }

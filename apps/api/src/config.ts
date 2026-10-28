@@ -54,6 +54,13 @@ export const config = {
   get googleClientId() {
     return env('GOOGLE_CLIENT_ID');
   },
+  /**
+   * Para estimar en el admin cuánto cuesta la IA de cada uno: dólares por millón de tokens de entrada y de salida.
+   * Configurables (IA_PRECIO_ENTRADA, IA_PRECIO_SALIDA) porque dependen del modelo y del acuerdo con Anthropic.
+   */
+  get iaPrecios() {
+    return { entrada: Number(env('IA_PRECIO_ENTRADA') ?? 5), salida: Number(env('IA_PRECIO_SALIDA') ?? 25) };
+  },
   /** El ID de medición de Google Analytics (G-…), para la página de presentación. Sin él, no se mide nada. */
   get analytics() {
     return env('GA_MEASUREMENT_ID');

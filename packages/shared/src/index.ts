@@ -341,6 +341,25 @@ export function itemsHechos(claves: string[], anotado: AnotadoSeguimiento[], ven
   return hechos;
 }
 
+/**
+ * Lo que usa la IA a pedido de la persona, con un límite por día según el plan (configurable por usuario en el admin):
+ * contar algo (texto), mandar una foto, dictar (pasar audio a texto), preguntarle a Patty y buscar patrones a mano.
+ * Lo que Patty hace sola (resúmenes, comentarios) no cuenta.
+ */
+export const USOS_IA = ['contar', 'foto', 'voz', 'preguntar', 'analisis'] as const;
+export type UsoIa = (typeof USOS_IA)[number];
+export const NOMBRES_USO_IA: Record<UsoIa, string> = { contar: 'Contarle a Patty', foto: 'Fotos', voz: 'Dictados', preguntar: 'Preguntas a Patty', analisis: 'Buscar patrones' };
+export type Limites = Record<UsoIa, number>;
+export const PLANES: Record<string, { nombre: string; limites: Limites }> = {
+  gratis: { nombre: 'Gratis', limites: { contar: 40, foto: 15, voz: 40, preguntar: 15, analisis: 3 } },
+  plus: { nombre: 'Plus', limites: { contar: 150, foto: 60, voz: 150, preguntar: 60, analisis: 10 } },
+  sin_limite: { nombre: 'Sin límite', limites: { contar: 100000, foto: 100000, voz: 100000, preguntar: 100000, analisis: 100000 } },
+};
+/** Los límites de un usuario: los de su plan, con lo que tenga cambiado a mano. */
+export function limitesDe(plan: string | null | undefined, propios?: Partial<Limites> | null): Limites {
+  return { ...(PLANES[plan ?? 'gratis'] ?? PLANES.gratis).limites, ...(propios ?? {}) };
+}
+
 /** Lo de todos los días que se anota con un solo toque (en Anotar, arriba de todo). */
 export const ATAJOS: Array<{ nombre: string; emoji: string; categoria: string; corto: string }> = [
   { nombre: 'Pis', emoji: '🚽', categoria: 'bano', corto: 'Pis' },

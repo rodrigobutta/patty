@@ -1,6 +1,7 @@
 // Pasar a texto lo que se dicta: el teléfono graba y manda el audio, y acá se transcribe con OpenAI. Así anda en
 // cualquier teléfono, sin depender de que tenga instalado un reconocedor de voz (ni de Google ni de nadie).
 //   POST /api/voz   el audio crudo en el cuerpo (Content-Type audio/webm, audio/mp4…)  →  { texto }
+import { anotarUso, controlarLimite } from '../lib/usoIa.js';
 import { Hono } from 'hono';
 import { config } from '../config.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -23,6 +24,9 @@ export const rutasVoz = new Hono<Env>().post('/', async (c) => {
   const audio = await c.req.arrayBuffer();
   if (!audio.byteLength) throw new ErrorApi('No llegó audio.');
   if (audio.byteLength > MAXIMO_BYTES) throw new ErrorApi('El audio es muy largo: probá de a partes.', 413);
+  await controlarLimite(c.var.db, c.var.usuario, 'voz');
+  // Pasar audio a texto es de OpenAI (no del cliente de la IA): se anota acá (en segundos de audio, aproximados).
+  void anotarUso(Math.round(audio.byteLength / 16000), 0, 'voz');
 
   const datos = new FormData();
   datos.append('file', new Blob([audio], { type: tipo }), `dictado.${extension}`);

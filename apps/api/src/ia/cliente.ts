@@ -2,6 +2,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config.js';
 import { ErrorApi } from '../lib/errores.js';
+import { anotarUso } from '../lib/usoIa.js';
 
 export const MODELO_IA = 'claude-opus-5-5';
 
@@ -74,6 +75,8 @@ export async function pedirJson<T>(opciones: {
     }
     throw e;
   }
+  // Cuánto se usó (para los límites y para ver en el admin cuánto gasta cada uno).
+  await anotarUso(resp.usage?.input_tokens ?? 0, resp.usage?.output_tokens ?? 0);
   if (resp.stop_reason === 'refusal') throw new ErrorApi('La IA no quiso responder este pedido.', 502);
   if (resp.stop_reason === 'max_tokens') throw new ErrorApi('La respuesta de la IA quedó cortada. Probá con menos datos.', 502);
   const t = resp.content.find((b): b is Anthropic.TextBlock => b.type === 'text')?.text ?? '';

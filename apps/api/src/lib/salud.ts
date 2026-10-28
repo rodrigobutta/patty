@@ -6,6 +6,7 @@ import { filas, type Db } from '../db/client.js';
 import { hayEnvio } from '../push/firebase.js';
 import { avisarUnaVez } from '../push/recordatorios.js';
 import { VERSION } from './version.js';
+import { conUso } from './usoIa.js';
 
 export interface ErrorNuevo {
   origen: 'servidor' | 'app' | 'proceso';
@@ -58,7 +59,8 @@ export async function correr(db: Db, nombre: string, f: () => Promise<number | v
   let error: string | null = null;
   let n = 0;
   try {
-    n = (await f()) ?? 0;
+    // Lo que el proceso le pida a la IA queda anotado con su nombre (no es de nadie en particular).
+    n = (await conUso({ usuarioId: null, tipo: nombre }, f)) ?? 0;
   } catch (e) {
     ok = false;
     error = e instanceof Error ? e.message : String(e);

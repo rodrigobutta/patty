@@ -1,4 +1,5 @@
 // Análisis de patrones de una persona y los hallazgos que se van acumulando.
+import { controlarLimite } from '../lib/usoIa.js';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { Hallazgo, Progreso } from 'shared';
@@ -20,6 +21,7 @@ export const rutasPatrones = new Hono<Env>()
     const desde = esFecha(d.desde) ? d.desde : sumarDias(hasta, -179);
     if (desde > hasta || desde < sumarDias(hasta, -730)) throw new ErrorApi('El período tiene que ser de hasta dos años.');
 
+    if (d.ia !== false) await controlarLimite(db, c.var.usuario, 'analisis');
     const res = await analizarPersona(db, p, { desde, hasta, idioma: c.var.idioma, ia: d.ia !== false, origen: 'manual' });
     return c.json(res);
   })

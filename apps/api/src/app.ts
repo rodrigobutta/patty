@@ -7,6 +7,7 @@ import { esIdioma, idiomaDe, traducir, type Idioma } from 'shared';
 import { config } from './config.js';
 import { obtenerDb } from './db/client.js';
 import { registrarError } from './lib/salud.js';
+import { conUso } from './lib/usoIa.js';
 import { rutasErrores } from './routes/errores.js';
 import { tokenDePedido, usuarioDeToken } from './auth/sesion.js';
 import { codigoPg, ErrorApi } from './lib/errores.js';
@@ -131,7 +132,8 @@ export function crearApp(): Hono<Env> {
     if (c.req.header('X-Idioma') && (u as { idioma?: string }).idioma !== c.var.idioma) {
       await c.var.db.execute(sql`UPDATE usuarios SET idioma = ${c.var.idioma} WHERE id = ${u.id}`);
     }
-    await next();
+    // Los pedidos a la IA de acá en adelante quedan anotados a nombre de este usuario.
+    await conUso({ usuarioId: u.id, tipo: 'otro' }, () => next());
   });
   api.route('/admin', rutasAdmin);
   api.route('/usuarios', rutasUsuarios);

@@ -1438,3 +1438,14 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .tarjeta:not(.comentario-patty) { animation: tarjeta-entra 0.28s ease-out both; }
 @keyframes tarjeta-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .tarjeta { animation: none; } }
+.uso-ia-usuario { display: grid; gap: 8px; }
+.usos-hoy { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip.propio { border-style: dashed; }
+.limites-propios { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.limites-propios .fila { grid-column: 1 / -1; }
+.uso-ia-mio { display: grid; gap: 6px; }
+.uso-fila { display: grid; grid-template-columns: 9.5em 1fr 4em; gap: 8px; align-items: center; }
+.uso-barra { height: 8px; border-radius: 4px; background: var(--acento-suave); overflow: hidden; }
+.uso-barra span { display: block; height: 100%; background: var(--acento); }
+.uso-barra span.lleno { background: var(--rojo); }
+.uso-fila > span:last-child { text-align: right; }

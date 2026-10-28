@@ -1,5 +1,7 @@
 // Entrar, salir, primer usuario y Google. Al entrar se devuelve también el token, para la app con Capacitor
 // (que no puede usar la cookie de otro dominio); la web usa la cookie.
+import { limitesDe } from 'shared';
+import { usoDeHoy } from '../lib/usoIa.js';
 import { setTimeout as esperar } from 'node:timers/promises';
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
@@ -39,6 +41,13 @@ export const rutasSesion = new Hono<Env>()
       app: (await una<{ valor: VersionApp }>(c.var.db, sql`SELECT valor FROM ajustes WHERE clave = 'version_app'`))?.valor ?? null,
     };
     return c.json(s);
+  })
+  .get('/uso-ia', async (c) => {
+    // Lo mío: el plan, los límites de cada uso y cuánto usé hoy.
+    const u = await usuarioDeToken(c.var.db, c.var.token);
+    if (!u) throw new ErrorApi('Tenés que entrar con tu usuario.', 401);
+    const fila = await una<{ plan: string; limites: Record<string, number> | null }>(c.var.db, sql`SELECT plan, limites FROM usuarios WHERE id = ${u.id}`);
+    return c.json({ plan: fila?.plan ?? 'gratis', limites: limitesDe(fila?.plan, fila?.limites), hoy: await usoDeHoy(c.var.db, u.id), sinLimite: u.rol === 'admin' });
   })
   .post('/configurar', async (c) => {
     // El primer usuario es el administrador. El candado evita que dos pedidos simultáneos creen dos.

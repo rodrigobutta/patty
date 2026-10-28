@@ -1,4 +1,5 @@
 // Preguntas libres sobre los propios datos ("¿cuándo comí huevos?") y el tiempo de uso de la app que manda cada teléfono.
+import { controlarLimite } from '../lib/usoIa.js';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { filas } from '../db/client.js';
@@ -17,6 +18,7 @@ export const rutasPreguntar = new Hono<Env>()
     const db = c.var.db;
     const p = await persona(db, c.var.usuario, Number(d.persona_id), false);
     const pregunta = texto(d.pregunta);
+    await controlarLimite(db, c.var.usuario, 'preguntar');
     const r = await preguntarDatos(db, p, pregunta, c.var.idioma);
     await db.execute(
       sql`INSERT INTO preguntas (usuario_id, persona_id, pregunta, respuesta, fechas)

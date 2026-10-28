@@ -1,5 +1,6 @@
 // Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
 // lo avanzado (tokens para que otros dispositivos manden datos).
+import { UsoIaMio } from '../ui/UsoIaMio';
 import { PreguntasPatty } from './PreguntasPatty';
 import { medir } from '../lib/analytics';
 import { agregarWidget } from '../lib/push';
@@ -334,6 +335,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   </>, true);
   if (seccion === 'cuenta') return pantalla(t('👤 Tu cuenta'), <>
       <Cuenta />
+      <UsoIaMio />
       <div className="tarjeta">
         <h3>{t('🎨 Tema')}</h3>
         <div className="segmentos ancho">

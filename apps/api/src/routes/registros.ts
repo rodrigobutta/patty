@@ -1,4 +1,5 @@
 // Lo que se anota de cada persona. Un registro es "este concepto, a esta hora, con este valor".
+import { controlarLimite } from '../lib/usoIa.js';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { comidaEn, conDetalle, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
@@ -351,12 +352,14 @@ export const rutasRegistros = new Hono<Env>()
     const datos = texto(d.imagen).replace(/^data:[^;]+;base64,/, '');
     if (!datos || !/^[A-Za-z0-9+/=]+$/.test(datos)) throw new ErrorApi('Falta la foto.');
     if (datos.length > 7_000_000) throw new ErrorApi('La foto es muy grande.');
+    await controlarLimite(c.var.db, c.var.usuario, 'foto');
     return c.json(await interpretarTexto(c.var.db, p, texto(d.texto), esFecha(d.fecha) ? d.fecha : undefined, { tipo, datos }, c.var.idioma, texto(d.pista).slice(0, 200)));
   })
   .post('/interpretar', async (c) => {
     // "Desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos, sin guardar.
     const d = await cuerpo(c);
     const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
+    await controlarLimite(c.var.db, c.var.usuario, 'contar');
     // momento: cuándo se contó, si fue sin señal y se ordena ahora (hasta una semana atrás).
     const m = typeof d.momento === 'string' ? new Date(d.momento) : null;
     const momento = m && !Number.isNaN(m.getTime()) && m.getTime() <= Date.now() && Date.now() - m.getTime() < 7 * 86400000 ? m : undefined;

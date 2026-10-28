@@ -11,7 +11,8 @@ const ARRANCO = new Date().toISOString();
 import { filas, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
-import { compararVersiones, type VersionApp } from 'shared';
+import { compararVersiones, limitesDe, PLANES, USOS_IA, type VersionApp } from 'shared';
+import { config } from '../config.js';
 import type { Aviso } from '../push/firebase.js';
 import { mandarAviso } from '../push/mandar.js';
 import { hayEnvio } from '../push/firebase.js';
@@ -71,6 +72,54 @@ export const rutasAdmin = new Hono<Env>()
     );
     const base = await una<{ bytes: number }>(db, sql`SELECT pg_database_size(current_database())::bigint AS bytes`);
     return c.json({ procesos, errores, porOrigen, tablas, base: Number(base?.bytes ?? 0), version: VERSION, arranco: ARRANCO });
+  })
+  .get('/uso-ia', async (c) => {
+    // Cuánto usa la IA cada uno: lo de hoy por tipo (contra su límite), los tokens y el costo estimado de los últimos 30
+    // días, y lo que gasta Patty sola (resúmenes, comentarios).
+    const db = c.var.db;
+    const precios = config.iaPrecios;
+    const usuarios = await filas<{ id: number; nombre: string; usuario: string; rol: string; plan: string; limites: Record<string, number> | null }>(
+      db,
+      sql`SELECT id, nombre, usuario, rol, plan, limites FROM usuarios WHERE activo ORDER BY nombre`,
+    );
+    const hoy = await filas<{ usuario_id: number; tipo: string; n: number }>(
+      db,
+      sql`SELECT usuario_id, tipo, count(*)::int AS n FROM uso_ia WHERE fecha = (now() AT TIME ZONE 'America/Argentina/Buenos_Aires' - interval '5 hours')::date AND usuario_id IS NOT NULL GROUP BY usuario_id, tipo`,
+    );
+    const mes = await filas<{ usuario_id: number | null; entrada: number; salida: number; pedidos: number }>(
+      db,
+      sql`SELECT usuario_id, sum(entrada)::bigint AS entrada, sum(salida)::bigint AS salida, count(*)::int AS pedidos
+          FROM uso_ia WHERE fecha > current_date - 30 AND tipo <> 'voz' GROUP BY usuario_id`,
+    );
+    const costo = (e: number, s: number) => Math.round(((Number(e) * precios.entrada + Number(s) * precios.salida) / 1e6) * 100) / 100;
+    const sola = mes.find((m) => m.usuario_id === null);
+    return c.json({
+      precios,
+      usuarios: usuarios.map((u) => {
+        const m = mes.find((x) => x.usuario_id === u.id);
+        return {
+          ...u,
+          efectivos: limitesDe(u.plan, u.limites),
+          hoy: Object.fromEntries(hoy.filter((h) => h.usuario_id === u.id).map((h) => [h.tipo, h.n])),
+          pedidos_mes: m?.pedidos ?? 0,
+          tokens_mes: m ? Number(m.entrada) + Number(m.salida) : 0,
+          costo_mes: m ? costo(m.entrada, m.salida) : 0,
+        };
+      }),
+      patty_sola: sola ? { pedidos: sola.pedidos, costo_mes: costo(sola.entrada, sola.salida) } : { pedidos: 0, costo_mes: 0 },
+    });
+  })
+  .put('/usuarios/:id/plan', async (c) => {
+    // { plan, limites? }: el plan de uso de la IA de un usuario y, si se quiere, límites propios para algunos usos.
+    const id = idParam(c);
+    const d = await cuerpo(c);
+    const plan = texto(d.plan);
+    if (!PLANES[plan]) throw new ErrorApi('Plan inválido.');
+    const limites = d.limites && typeof d.limites === 'object'
+      ? Object.fromEntries(Object.entries(d.limites as Record<string, unknown>).filter(([k, v]) => (USOS_IA as readonly string[]).includes(k) && Number(v) >= 0).map(([k, v]) => [k, Math.round(Number(v))]))
+      : null;
+    await c.var.db.execute(sql`UPDATE usuarios SET plan = ${plan}, limites = ${limites && Object.keys(limites).length ? JSON.stringify(limites) : null}::jsonb WHERE id = ${id}`);
+    return c.json({ ok: true });
   })
   .get('/respaldo', async (c) => {
     // Un respaldo de toda la base como JSON comprimido (una lista de filas por tabla), para bajarlo y guardarlo aparte.
