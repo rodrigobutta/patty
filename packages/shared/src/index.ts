@@ -225,6 +225,30 @@ export function estadoDe(intensidad: number): EstadoAnimo {
   return ESTADOS.reduce((a, b) => (Math.abs(b.intensidad - intensidad) < Math.abs(a.intensidad - intensidad) ? b : a));
 }
 
+/**
+ * "Enfermo/a" va aparte de muy bien … muy mal (no es un ánimo): se anota como una molestia, con los síntomas de estar
+ * enfermo (fiebre, vómitos…) y, si se toma, la temperatura. Esos síntomas aparecen solo ahí.
+ */
+export const ENFERMO = 'Me siento enfermo/a';
+export const TEMPERATURA_CORPORAL = 'Temperatura corporal';
+export const SINTOMAS_ENFERMO = [
+  'Fiebre',
+  'Vómitos',
+  'Diarrea',
+  'Náuseas',
+  'Dolor de cabeza',
+  'Dolor de garganta',
+  'Tos',
+  'Congestión',
+  'Dolor de panza',
+  'Dolor de cuerpo',
+  'Escalofríos',
+  'Mareo',
+  'Cansancio',
+];
+/** Con "mal" o "muy mal": lo que suele pasar con el ánimo (lo del cuerpo va con "enfermo/a"). */
+export const COSAS_DEL_ANIMO = ['Ansiedad', 'Tristeza', 'Estrés', 'Cansancio', 'Preocupación', 'Enojo', 'Desgano', 'Soledad', 'Dolor de cabeza', 'Dolor de espalda'];
+
 /** Lo que más seguido se pregunta cuando alguien se siente mal (se suman los síntomas que ya anotó). */
 export const SINTOMAS_COMUNES = [
   'Dolor de cabeza',

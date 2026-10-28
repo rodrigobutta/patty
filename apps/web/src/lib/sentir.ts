@@ -1,6 +1,6 @@
 // Guardar "cómo me siento" (o "cómo me sentí en el día") y los síntomas que vengan con eso, todo junto.
 import { useEffect } from 'react';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, type Categoria, type EstadoAnimo, type Persona } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, ENFERMO, TEMPERATURA_CORPORAL, type Categoria, type EstadoAnimo, type Persona } from 'shared';
 import { api } from '../api';
 import { anotarClima } from './clima';
 import { hoyEn, instanteDelDia } from './fechas';
@@ -12,10 +12,13 @@ export async function guardarSentir(o: {
   persona: Persona;
   categorias: Categoria[];
   momento: Momento;
-  estado: EstadoAnimo;
+  /** null: enfermo/a (va como molestia, no como ánimo). */
+  estado: EstadoAnimo | null;
   fecha: string;
   sintomas?: Array<{ nombre: string; intensidad: number }>;
   nota?: string;
+  /** Si se tomó la fiebre, en °C. */
+  temperatura?: number | null;
 }): Promise<void> {
   const animo = o.categorias.find((c) => c.clave === 'animo');
   const sintoma = o.categorias.find((c) => c.clave === 'sintoma');
@@ -24,15 +27,18 @@ export async function guardarSentir(o: {
   const inicio = o.fecha === hoyEn(o.persona.zona_horaria) ? new Date().toISOString() : instanteDelDia(o.fecha, '22:00', o.persona.zona_horaria);
   await api('POST', '/api/registros/varios', {
     registros: [
-      {
-        persona_id: o.persona.id,
-        concepto_nombre: o.momento === 'dia' ? COMO_ME_SENTI : COMO_ME_SIENTO,
-        categoria_id: animo.id,
-        inicio,
-        intensidad: o.estado.intensidad,
-        nota: o.nota?.trim() || null,
-      },
+      o.estado
+        ? {
+            persona_id: o.persona.id,
+            concepto_nombre: o.momento === 'dia' ? COMO_ME_SENTI : COMO_ME_SIENTO,
+            categoria_id: animo.id,
+            inicio,
+            intensidad: o.estado.intensidad,
+            nota: o.nota?.trim() || null,
+          }
+        : { persona_id: o.persona.id, concepto_nombre: ENFERMO, categoria_id: sintoma.id, inicio, intensidad: 6, nota: o.nota?.trim() || null },
       ...(o.sintomas ?? []).map((s) => ({ persona_id: o.persona.id, concepto_nombre: s.nombre, categoria_id: sintoma.id, inicio, intensidad: s.intensidad })),
+      ...(o.temperatura ? [{ persona_id: o.persona.id, concepto_nombre: TEMPERATURA_CORPORAL, categoria_id: sintoma.id, inicio, valor: o.temperatura, unidad: '°C' }] : []),
     ],
   });
   void anotarClima(o.persona.id, [inicio]);
