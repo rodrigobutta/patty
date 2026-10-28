@@ -202,7 +202,7 @@ public class TelefonoPlugin extends Plugin {
             android.provider.CalendarContract.Instances.ALL_DAY,
             android.provider.CalendarContract.Instances.AVAILABILITY,
             android.provider.CalendarContract.Instances.SELF_ATTENDEE_STATUS,
-            android.provider.CalendarContract.Instances.ACCOUNT_TYPE,
+            android.provider.CalendarContract.Events.ACCOUNT_TYPE,
             android.provider.CalendarContract.Instances.VISIBLE,
         };
         JSArray lista = new JSArray();
