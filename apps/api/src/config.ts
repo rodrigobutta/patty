@@ -54,4 +54,8 @@ export const config = {
   get googleClientId() {
     return env('GOOGLE_CLIENT_ID');
   },
+  /** El ID de medición de Google Analytics (G-…), para la página de presentación. Sin él, no se mide nada. */
+  get analytics() {
+    return env('GA_MEASUREMENT_ID');
+  },
 };

@@ -32,6 +32,7 @@ export const rutasSesion = new Hono<Env>()
       configurar: !(await hayUsuarios(c.var.db)),
       usuario: await usuarioDeToken(c.var.db, c.var.token),
       google: config.googleClientId ?? null,
+      analytics: config.analytics ?? null,
       ia: iaDisponible(),
       voz: vozDisponible(),
       push: pushDisponible(),

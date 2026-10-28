@@ -3,6 +3,7 @@
 // del teléfono no se muestra: ahí se entra directo.
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useEstado } from '../estado';
+import { iniciarAnalytics, medir } from '../lib/analytics';
 import { t } from '../lib/idioma';
 import { Mascota } from '../mascota/Mascota';
 
@@ -14,10 +15,19 @@ function Telefono({ img, video, alt, chico = false }: { img: string; video?: str
   useEffect(() => {
     const el = v.current;
     if (!el) return;
-    const o = new IntersectionObserver(([e]) => (e.isIntersecting ? void el.play().catch(() => {}) : el.pause()), { threshold: 0.4 });
+    let visto = false;
+    const o = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return el.pause();
+        void el.play().catch(() => {});
+        if (!visto) medir('ver_video', { video: video ?? img });
+        visto = true;
+      },
+      { threshold: 0.4 },
+    );
     o.observe(el);
     return () => o.disconnect();
-  }, []);
+  }, [video, img]);
   return (
     <div className={`pres-telefono${chico ? ' chico' : ''}`}>
       <div className="pres-pantalla">
@@ -31,6 +41,23 @@ function Telefono({ img, video, alt, chico = false }: { img: string; video?: str
   );
 }
 
+/** Avisa (una vez) cuando una sección se ve: así se sabe hasta dónde baja la gente. */
+function useVista(nombre: string) {
+  const r = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = r.current;
+    if (!el) return;
+    const o = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      medir('ver_seccion', { seccion: nombre });
+      o.disconnect();
+    }, { threshold: 0.3 });
+    o.observe(el);
+    return () => o.disconnect();
+  }, [nombre]);
+  return r;
+}
+
 function Seccion({ id, titulo, bajada, children, invertida = false, telefono }: {
   id?: string;
   titulo: string;
@@ -39,8 +66,9 @@ function Seccion({ id, titulo, bajada, children, invertida = false, telefono }: 
   invertida?: boolean;
   telefono?: ReactNode;
 }) {
+  const r = useVista(id ?? titulo);
   return (
-    <section id={id} className={`pres-seccion${invertida ? ' invertida' : ''}`}>
+    <section ref={r} id={id} className={`pres-seccion${invertida ? ' invertida' : ''}`}>
       <div className="pres-texto">
         <h2>{titulo}</h2>
         <p className="pres-bajada">{bajada}</p>
@@ -58,12 +86,23 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
     document.title = t('Patty: contale tu día y descubrí qué se relaciona');
     window.scrollTo({ top: 0 });
   }, []);
-  const entrar = <button className="btn primario pres-cta" onClick={alEntrar}>{conSesion ? t('Volver a Patty') : t('Empezar')}</button>;
+  // Solo se mide a quien no entró (los que ya usan Patty no cuentan como visitas de la presentación).
+  useEffect(() => {
+    if (!conSesion) iniciarAnalytics(sesion?.analytics);
+  }, [conSesion, sesion?.analytics]);
+  const ir = (donde: string) => () => {
+    medir(conSesion ? 'volver_a_patty' : 'empezar', { desde: donde });
+    alEntrar();
+  };
+  const entrar = (donde: string) => <button className="btn primario pres-cta" onClick={ir(donde)}>{conSesion ? t('Volver a Patty') : t('Empezar')}</button>;
+  const finalRef = useVista('final');
+  const tiempoRef = useVista('tiempo');
+  const comoRef = useVista('como');
   return (
     <div className="presentacion">
       <header className="pres-barra">
         <span className="pres-marca"><Mascota cara="feliz" tamano={34} /> Patty</span>
-        <button className="btn chico" onClick={alEntrar}>{conSesion ? t('Volver a Patty') : t('Entrar')}</button>
+        <button className="btn chico" onClick={ir('barra')}>{conSesion ? t('Volver a Patty') : t('Entrar')}</button>
       </header>
 
       <section className="pres-portada">
@@ -74,8 +113,8 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
             {t('Lo que comés, cómo dormís, cómo te sentís, si algo te dolió. Lo contás en segundos, con la voz, una foto o un toque, y Patty te muestra qué cosas van juntas en tu vida.')}
           </p>
           <div className="pres-botones">
-            {entrar}
-            <a className="btn" href="#como">{t('Ver cómo funciona')}</a>
+            {entrar('portada')}
+            <a className="btn" href="#como" onClick={() => medir('ver_como_funciona')}>{t('Ver cómo funciona')}</a>
           </div>
         </div>
         <div className="pres-telefonos">
@@ -83,7 +122,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
         </div>
       </section>
 
-      <section id="como" className="pres-seccion pres-tres">
+      <section ref={comoRef} id="como" className="pres-seccion pres-tres">
         <div className="pres-texto centro">
           <h2>{t('Anotar es lo más fácil del mundo')}</h2>
           <p className="pres-bajada">{t('Nada de formularios. Contalo como se lo contarías a una amiga.')}</p>
@@ -105,6 +144,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
       </section>
 
       <Seccion
+        id="junta"
         titulo={t('Y mucho lo junta sola')}
         bajada={t('Conectás el reloj y el teléfono una vez, y Patty suma lo que pasa sin que tengas que anotarlo.')}
         telefono={
@@ -125,6 +165,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
 
       <Seccion
         invertida
+        id="descubre"
         titulo={t('Lo que descubre de vos')}
         bajada={t('Con unas semanas de datos, Patty busca qué cosas aparecen juntas y te lo cuenta en palabras simples.')}
         telefono={<Telefono img="patrones.webp" video="descubrir.webm" alt={t('Los patrones que encontró Patty')} />}
@@ -139,6 +180,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
       </Seccion>
 
       <Seccion
+        id="antes"
         titulo={t('¿Qué pasó antes?')}
         bajada={t('Cuando anotás un dolor o un mal momento, Patty mira las horas anteriores: qué comiste, cómo dormiste, el clima, cuánto te moviste. Así es más fácil darte cuenta.')}
         telefono={
@@ -151,6 +193,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
 
       <Seccion
         invertida
+        id="acompana"
         titulo={t('Te acompaña, sin exigirte')}
         bajada={t('Patty no es un formulario: es un búho que nota cosas y te las cuenta.')}
         telefono={
@@ -169,7 +212,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
         </ul>
       </Seccion>
 
-      <section className="pres-seccion pres-tiempo">
+      <section ref={tiempoRef} className="pres-seccion pres-tiempo">
         <div className="pres-texto centro">
           <h2>{t('Cuanto más le contás, más te conoce')}</h2>
         </div>
@@ -181,13 +224,13 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
         </ol>
       </section>
 
-      <section className="pres-final">
+      <section ref={finalRef} className="pres-final">
         <Mascota cara="feliz" tamano={80} className="saluda" />
         <h2>{t('Empezá hoy: contale cómo te sentís')}</h2>
         <p className="pres-bajada">{t('Patty no diagnostica nada: te muestra relaciones en tus datos, para que las veas vos y, si querés, las charles con un profesional.')}</p>
         <div className="pres-botones">
-          {entrar}
-          {android ? <a className="btn" href={android}>{t('Bajar la app de Android')}</a> : null}
+          {entrar('final')}
+          {android ? <a className="btn" href={android} onClick={() => medir('bajar_android')}>{t('Bajar la app de Android')}</a> : null}
         </div>
         <p className="suave chico"><a href="privacidad.html">{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
       </section>
