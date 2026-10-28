@@ -889,4 +889,5 @@ export const PERMISOS: Record<string, string> = {
   "{emoji} {texto}: {n} de {meta}": "{emoji} {texto}: {n} of {meta}",
   "Hoy anotaste 1 cosa": "1 thing logged today",
   "Hoy anotaste {n} cosas": "{n} things logged today",
+  "para {que}": "for {que}",
 };

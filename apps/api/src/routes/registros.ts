@@ -18,6 +18,10 @@ const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char
   r.valor, r.intensidad, r.unidad, r.nota, r.origen, r.datos->>'donde' AS donde, r.datos->>'lugar' AS lugar,
   r.datos->>'porcion' AS porcion, coalesce(r.datos->'tipos', '[]'::jsonb) AS tipos, coalesce(r.datos->'detalles', '[]'::jsonb) AS detalles,
   (r.datos->>'abierto' = 'true') AS abierto, r.datos->'evolucion' AS evolucion, r.datos->>'fin_sugerido' AS fin_sugerido,
+  (r.datos->>'para_registro_id')::bigint AS para_registro_id,
+  (SELECT c.nombre FROM registros m JOIN conceptos c ON c.id = m.concepto_id WHERE m.id = (r.datos->>'para_registro_id')::bigint AND m.borrado IS NULL) AS para,
+  (SELECT jsonb_agg(jsonb_build_object('t', x.inicio, 'concepto', c.nombre) ORDER BY x.inicio) FROM registros x JOIN conceptos c ON c.id = x.concepto_id
+    WHERE x.datos ? 'para_registro_id' AND x.datos->>'para_registro_id' = r.id::text AND x.persona_id = r.persona_id AND x.borrado IS NULL) AS remedios,
   (SELECT c.nombre FROM conceptos c WHERE c.id = r.concepto_id) AS concepto,
   (SELECT c.categoria_id FROM conceptos c WHERE c.id = r.concepto_id) AS categoria_id`;
 
@@ -116,6 +120,19 @@ async function datosDetalles(tx: Tx, u: Usuario, d: NuevoRegistro, c: Concepto):
   return { detalles, detalle_concepto_ids: ids };
 }
 
+/** Un remedio tomado para un malestar de la misma persona: `datos.para_registro_id` (lo une con ese malestar). */
+async function datosPara(tx: Tx, d: NuevoRegistro, personaId: number): Promise<Record<string, unknown> | null | undefined> {
+  if (!('para_registro_id' in d)) return undefined;
+  const id = Number(d.para_registro_id);
+  if (!id) return null;
+  const m = await una<{ id: number }>(
+    tx,
+    sql`SELECT r.id FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
+        WHERE r.id = ${id} AND r.persona_id = ${personaId} AND r.borrado IS NULL AND k.clave = 'sintoma'`,
+  );
+  return m ? { para_registro_id: Number(m.id) } : null;
+}
+
 export async function guardarRegistro(
   tx: Tx,
   u: Usuario,
@@ -128,7 +145,8 @@ export async function guardarRegistro(
   const comida = await datosComida(tx, u, d, c);
   const plato = await datosPlato(tx, u, d, c);
   const detalles = await datosDetalles(tx, u, d, c);
-  const datos = comida || plato || detalles ? { ...comida, ...plato, ...detalles } : null;
+  const para = await datosPara(tx, d, p.id);
+  const datos = comida || plato || detalles || para ? { ...comida, ...plato, ...detalles, ...para } : null;
   const [r] = await tx
     .insert(registros)
     .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(datos ? { datos } : {}) })
@@ -309,6 +327,7 @@ export const rutasRegistros = new Hono<Env>()
       const comida = await datosComida(tx, c.var.usuario, d, concepto);
       const plato = await datosPlato(tx, c.var.usuario, d, concepto);
       const detalles = await datosDetalles(tx, c.var.usuario, d, concepto);
+      const para = await datosPara(tx, d, actual.persona.id);
       await tx.update(registros).set({ concepto_id: concepto.id, ...valores(d, concepto, actual.persona) }).where(sql`id = ${id}`);
       // Dónde se comió: se reemplaza (o se saca) solo si vino en el pedido.
       if (comida !== undefined) {
@@ -319,6 +338,9 @@ export const rutasRegistros = new Hono<Env>()
       }
       if (plato !== undefined) {
         await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'porcion' - 'tipos' - 'plato_concepto_ids') || ${JSON.stringify(plato ?? {})}::jsonb WHERE id = ${id}`);
+      }
+      if (para !== undefined) {
+        await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'para_registro_id') || ${JSON.stringify(para ?? {})}::jsonb WHERE id = ${id}`);
       }
       return una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${id}`);
     });

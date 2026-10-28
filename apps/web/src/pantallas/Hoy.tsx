@@ -591,6 +591,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                     const gente = genteId !== undefined && r.categoria_id !== genteId ? registros.filter((o) => o.categoria_id === genteId && o.inicio === r.inicio).map((o) => o.concepto) : [];
                     const extra = [
                       ...(r.detalles ?? []).map((d) => unir(d.respuestas)),
+                      r.para ? t('para {que}', { que: t(r.para).toLowerCase() }) : '',
                       etiquetaDonde(r.donde, r.lugar) ?? '',
                       gente.length ? t('con {lista}', { lista: unir(gente) }) : '',
                       r.nota ?? '',

@@ -63,6 +63,9 @@ interface Propuesta {
   lugar?: string | null;
   porcion?: Porcion | null;
   tipos?: TipoComida[];
+  /** Un remedio: el malestar abierto para el que se tomó. */
+  para_registro_id?: number | null;
+  para?: string | null;
 }
 
 export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto, pista, contado }: {
@@ -615,6 +618,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
                   {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${!p.unidad || /^(unidad|unidades)$/i.test(p.unidad) ? p.valor : conUnidad(p.valor, p.unidad, 2, idioma())}` : ''}
                   {etiquetaDonde(p.donde, p.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(p.donde, p.lugar)}</span> : null}
                   {etiquetaPlato(p.porcion, p.tipos) ? <span className="etiqueta-donde">{etiquetaPlato(p.porcion, p.tipos)}</span> : null}
+                  {p.para_registro_id && p.para ? <span className="etiqueta-donde">{t('para {que}', { que: t(p.para).toLowerCase() })}</span> : null}
                   {p.nota ? <span className="suave chico"> — {p.nota}</span> : null}
                 </span>
               </li>

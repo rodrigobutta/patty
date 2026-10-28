@@ -274,6 +274,13 @@
       "when": 1793203689322,
       "tag": "0038_uso_ia",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793207070299,
+      "tag": "0039_remedio_para",
+      "breakpoints": true
     }
   ]
 }

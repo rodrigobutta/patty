@@ -35,6 +35,7 @@ const ESQUEMA = {
           lugar: nulo('string', 'Solo comidas y bebidas de afuera o delivery: el restaurante, bar, casa de alguien o de dónde se pidió'),
           porcion: { anyOf: [{ type: 'string', enum: PORCIONES.map((x) => x.clave) }, { type: 'null' }], description: 'Solo comidas: el tamaño del plato, si se ve o se dijo' },
           tipos: { type: 'array', items: { type: 'string', enum: TIPOS_COMIDA.map((x) => x.clave) }, description: 'Solo comidas: cómo es (vacío si no aplica o no se sabe)' },
+          para_malestar: nulo('string', 'Solo medicación: para cuál de los malestares abiertos la tomó, con su nombre exacto de esa lista (si se dijo o se aclaró)'),
           detalles: {
             type: 'array',
             description: 'Respuestas a las preguntas que la persona configuró para esta cosa (vacío si no tiene o no se sabe todavía)',
@@ -46,7 +47,7 @@ const ESQUEMA = {
             },
           },
         },
-        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar', 'porcion', 'tipos', 'detalles'],
+        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar', 'porcion', 'tipos', 'para_malestar', 'detalles'],
         additionalProperties: false,
       },
     },
@@ -110,6 +111,7 @@ interface Respuesta {
     porcion?: string | null;
     tipos?: string[];
     detalles?: Array<{ pregunta: string; respuestas: string[] }>;
+    para_malestar?: string | null;
   }>;
   tratamientos: Array<{
     remedio: string;
@@ -124,6 +126,8 @@ interface Respuesta {
   }>;
   dudas: Array<{ pregunta: string; opciones: string[]; varias?: boolean } | string>;
 }
+
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 /** El día de la semana de una fecha AAAA-MM-DD, en castellano (para que entienda "el sábado"). */
 const diaDeLaSemana = (fecha: string) =>
@@ -171,6 +175,12 @@ export async function interpretarTexto(
     tx,
     sql`SELECT c.nombre AS remedio, t.cada_horas, t.horarios FROM tratamientos t JOIN conceptos c ON c.id = t.concepto_id
         WHERE t.persona_id = ${p.id} AND t.borrado IS NULL AND t.terminado IS NULL AND (t.fin IS NULL OR t.fin > now())`,
+  );
+  // Los malestares que siguen abiertos: un remedio que se toma ahora seguramente es para alguno de ellos.
+  const malestares = await filas<{ id: number; concepto: string; inicio: string }>(
+    tx,
+    sql`SELECT r.id, c.nombre AS concepto, r.inicio FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
+        WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND k.clave = 'sintoma' AND r.datos->>'abierto' = 'true' ORDER BY r.inicio DESC`,
   );
   const ahora = momento ?? new Date();
   const hoy = fechaLocal(ahora, p.zona_horaria);
@@ -258,6 +268,17 @@ export async function interpretarTexto(
       : []),
     ...(lugaresComida.length ? ['Lugares donde ya comió (los más frecuentes primero):', ...lugaresComida.map((l) => `- ${l}`)] : []),
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
+    ...(malestares.length
+      ? [
+          'Malestares que tiene abiertos ahora (siguen sin pasarse):',
+          ...malestares.map((m) => `- ${m.concepto}, desde las ${hhmm(minutosDelDia(new Date(m.inicio), p.zona_horaria))}`),
+          'Si anota un remedio que tomó y no dice para qué, preguntá primero si fue para alguno de esos malestares ("¿Lo ' +
+            'tomaste para el dolor de cabeza?"), con esos malestares como primeras opciones (con el nombre exacto) y después otras ' +
+            'razones probables; "varias" en true si hay más de uno. Si ya se sabe para cuál (por el texto o una aclaración), ponelo ' +
+            'en para_malestar de ese registro de medicación, con el nombre exacto de la lista, y no lo preguntes. Si fue para otra ' +
+            'cosa, para_malestar va en null.',
+        ]
+      : []),
     '',
     ...(imagen ? ['La persona mandó una foto (arriba) para anotar.'] : []),
     ...(pista ? [`La persona eligió anotar esto: ${pista}. Es eso: no preguntes qué comida o momento fue.`] : []),
@@ -315,6 +336,9 @@ export async function interpretarTexto(
           nota: x.nota,
           donde: x.donde ?? null,
           lugar: x.lugar ?? null,
+          ...(x.categoria === 'medicacion' && x.para_malestar
+            ? { para_registro_id: malestares.find((m) => normalizar(m.concepto) === normalizar(x.para_malestar!))?.id ?? null, para: x.para_malestar }
+            : {}),
           ...(x.detalles?.length
             ? { detalles: x.detalles.map((d) => ({ pregunta: d.pregunta, respuestas: d.respuestas.filter((r) => r.trim()) })).filter((d) => d.respuestas.length) }
             : {}),

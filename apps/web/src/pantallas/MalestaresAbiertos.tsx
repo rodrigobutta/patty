@@ -109,6 +109,9 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
                   {(r.evolucion ?? []).map((e) => (
                     <span key={e.t} className="gantt-punto" style={{ left: x(Date.parse(e.t)), background: COLOR[e.estado] }} />
                   ))}
+                  {(r.remedios ?? []).map((m) => (
+                    <span key={`${m.t}${m.concepto}`} className="gantt-remedio" style={{ left: x(Date.parse(m.t)) }} title={t(m.concepto)} aria-hidden>💊</span>
+                  ))}
                 </span>
               </button>
               {abierta ? (
@@ -116,6 +119,7 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
                   <span className="suave chico">
                     {horaEn(r.inicio, persona.zona_horaria)}
                     {r.fin ? `–${horaEn(r.fin, persona.zona_horaria)}` : ` → ${t('ahora')}`}
+                    {(r.remedios ?? []).map((m) => ` · 💊 ${t(m.concepto)} ${horaEn(m.t, persona.zona_horaria)}`).join('')}
                   </span>
                   {sigue && esActividad ? (
                     <>

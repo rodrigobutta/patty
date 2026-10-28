@@ -570,6 +570,11 @@ export interface Registro {
   /** Un malestar que sigue (Patty pregunta si pasó) y cómo fue yendo. */
   abierto?: boolean;
   evolucion?: Array<{ t: string; estado: 'paso' | 'igual' | 'mejor' | 'peor' }> | null;
+  /** Un remedio: el malestar para el que se tomó (su registro y nombre). */
+  para_registro_id?: number | null;
+  para?: string | null;
+  /** Un malestar: los remedios que se tomaron para él (cuándo y cuál). */
+  remedios?: Array<{ t: string; concepto: string }> | null;
   /** Una actividad en curso: cuándo parece que terminó, por la ubicación (Patty sugiere cerrarla ahí). */
   fin_sugerido?: string | null;
 }
@@ -628,6 +633,8 @@ export interface NuevoRegistro {
   tipos?: TipoComida[];
   /** Lo que se contestó a las preguntas configuradas de esa cosa ("¿Con qué?": azúcar). */
   detalles?: Detalle[];
+  /** Solo remedios: el malestar (su registro) para el que se tomó. */
+  para_registro_id?: number | null;
 }
 
 /** Una respuesta a una pregunta configurada ("¿Con qué?" → azúcar, leche). */

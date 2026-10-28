@@ -1342,6 +1342,7 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .gantt-barra { position: absolute; top: 3px; bottom: 3px; min-width: 6px; border-radius: 6px; background: color-mix(in srgb, var(--rojo) 70%, transparent); }
 .gantt-barra.sigue { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--rojo) 70%, transparent) 0 6px, color-mix(in srgb, var(--rojo) 40%, transparent) 6px 12px); }
 .gantt-punto { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid var(--panel); }
+.gantt-remedio { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 13px; line-height: 1; filter: drop-shadow(0 0 1px var(--panel)); pointer-events: none; }
 .gantt-horas .gantt-pista { background: none; height: 14px; }
 .gantt-horas .gantt-pista span { position: absolute; transform: translateX(-50%); }
 

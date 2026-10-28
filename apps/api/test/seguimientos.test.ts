@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { cerrarDb, obtenerDb } from '../src/db/client.js';
 import { diaDePatty, localAInstante } from '../src/lib/fechas.js';
@@ -28,6 +29,8 @@ describe('seguimientos', () => {
     });
     await ana.post('/api/dispositivos', { token: 'tel', plataforma: 'android' });
     const db = obtenerDb();
+    // Como si se hubiera activado a la mañana (si no, la prueba depende de la hora en que corre).
+    await db.execute(sql`UPDATE seguimientos SET desde = ${localAInstante(hoy, '06:00', ZONA).toISOString()} WHERE persona_id = ${personaId}`);
     expect(await avisarSeguimientos(db, localAInstante(hoy, '13:59', ZONA))).toBe(0);
     expect(await avisarSeguimientos(db, localAInstante(hoy, '14:00', ZONA))).toBe(1);
     expect(await avisarSeguimientos(db, localAInstante(hoy, '14:00', ZONA))).toBe(0); // una vez
