@@ -28,6 +28,7 @@ import { NuevaPersona } from './pantallas/NuevaPersona';
 import { Avatar } from './ui/Avatar';
 import { CartelVersion } from './ui/CartelVersion';
 import { CartelActualizar } from './ui/CartelActualizar';
+import { Tour } from './ui/Tour';
 import { PuntosDelDia } from './pantallas/PuntosDelDia';
 import { Patrones } from './pantallas/Patrones';
 import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
@@ -192,6 +193,8 @@ export function App() {
       </header>
       <CartelVersion app={sesion?.app} />
       <CartelActualizar />
+      {/* El tour de la primera vez (en el Día, ya con lo anotado a la vista). */}
+      <Tour listo={pestana === 'hoy' && Boolean(persona)} />
       <main>
         {pestana === 'admin' && sesion?.usuario?.rol === 'admin' ? (
           <Admin alVolver={() => { setPestana('mas'); if (location.hash) history.replaceState(null, '', location.pathname); }} />

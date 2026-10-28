@@ -1,5 +1,6 @@
 // Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
 // lo avanzado (tokens para que otros dispositivos manden datos).
+import { verTour } from '../ui/Tour';
 import { BorrarCuenta } from '../ui/BorrarCuenta';
 import { UsoIaMio } from '../ui/UsoIaMio';
 import { PreguntasPatty } from './PreguntasPatty';
@@ -354,6 +355,11 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
         </div>
       </div>
 
+      <div className="tarjeta">
+        <h3>{t('🦉 El tour de Patty')}</h3>
+        <p className="suave chico">{t('Volvé a ver para qué sirve cada parte de la app.')}</p>
+        <button className="btn" onClick={() => { window.dispatchEvent(new CustomEvent('patty-ir-al-dia')); verTour(); }}>{t('Ver el tour')}</button>
+      </div>
       <BorrarCuenta />
   </>);
   if (seccion === 'avanzado') return pantalla(t('⚙️ Otros dispositivos'), <>

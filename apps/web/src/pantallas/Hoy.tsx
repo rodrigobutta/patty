@@ -502,22 +502,18 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         />
       ) : null}
       {fecha === hoy ? <SinSenal persona={persona} alRevisar={(c) => { setRevisando(c); setCargando('contar'); }} /> : null}
+      {/* El orden del Día, de lo más urgente a lo menos: lo que está en curso; lo que Patty pregunta (para contestar
+          con un toque); lo que Patty cuenta; las sugerencias; y abajo lo anotado y lo que llegó solo. */}
       {/* Lo que dura (malestares y actividades), arriba de todo: tocando cada barra se cuenta cómo va. */}
       {registros && !persona.supervisada ? (
         <LineaDelDia persona={persona} fecha={fecha} hoy={hoy} registros={registros} categorias={categorias} vuelta={vuelta} alCambiar={() => void traer()} alEditar={(r) => setEditando(r)} />
       ) : null}
-      {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
-      {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
       {fecha === hoy && registros ? <SeguimientoDelDia persona={persona} registros={registros} categorias={categorias} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
       {fecha === hoy && !persona.supervisada ? <PaseosPendientes persona={persona} vuelta={vuelta} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
-      {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
-      {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
-      {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
-        <RutinasDelDia persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
-      ) : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
         <PreguntaDespertar persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
       ) : null}
+      {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
       {/* A la noche, si todavía no se anotó nada a mano: contar el día entero de una vez (Patty lo desglosa por horas). */}
       {fecha === hoy && sesion?.ia && registros && sesion.usuario?.rol !== 'lector' && new Date().getHours() >= HORA_CONTAR_DIA &&
@@ -533,6 +529,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {registros && sesion?.usuario?.rol !== 'lector' ? <CompaniaSugerida persona={persona} fecha={fecha} registros={registros} categorias={categorias} alCambiar={() => void traer()} /> : null}
       <ParadasDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
       <ViajesDelDia persona={persona} fecha={fecha} vuelta={vuelta} alCambiar={() => void traer()} />
+      {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
+      {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
+      {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
+      {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
+        <RutinasDelDia persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
+      ) : null}
       {fecha === hoy ? <CicloDelDia persona={persona} registros={registros ?? []} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} /> : null}
       {registros === null ? (
         <ul className="lista esqueleto" aria-label={t('Cargando')}>

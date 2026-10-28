@@ -1451,3 +1451,15 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .uso-fila > span:last-child { text-align: right; }
 .btn.peligro { color: var(--rojo); border-color: color-mix(in srgb, var(--rojo) 45%, var(--borde)); }
 .borrar-cuenta { border-color: color-mix(in srgb, var(--rojo) 25%, var(--borde)); display: grid; gap: 8px; }
+/* El tour de la primera vez: un foco sobre una parte de la app (lo demás oscurecido) y el globo del búho. */
+.tour { position: fixed; inset: 0; z-index: 60; }
+.tour-foco { position: fixed; border-radius: 18px; box-shadow: 0 0 0 9999px rgb(15 8 35 / 0.62); transition: top 0.35s ease, left 0.35s ease, width 0.35s ease, height 0.35s ease; pointer-events: none; outline: 2px solid color-mix(in srgb, var(--acento) 70%, white); }
+.tour-globo { position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; padding: 14px 16px 12px; border-radius: 20px; background: var(--panel); box-shadow: 0 18px 40px rgb(10 5 30 / 0.35); animation: tour-entra 0.3s ease-out both; }
+.tour-globo p { margin: 8px 0 12px; line-height: 1.45; }
+.tour-cabeza { display: flex; align-items: center; gap: 10px; font-size: 17px; }
+.tour-pie { display: flex; align-items: center; gap: 12px; }
+.tour-puntos { display: inline-flex; gap: 5px; margin-right: auto; }
+.tour-puntos i { width: 7px; height: 7px; border-radius: 50%; background: var(--acento-suave); }
+.tour-puntos i.activo { background: var(--acento); width: 18px; border-radius: 4px; }
+@keyframes tour-entra { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tour-globo { animation: none; } .tour-foco { transition: none; } }
