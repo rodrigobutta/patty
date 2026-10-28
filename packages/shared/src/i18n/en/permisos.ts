@@ -767,4 +767,7 @@ export const PERMISOS: Record<string, string> = {
   "una vez al día": "once a day",
   "↻ se vuelve a pedir en cada aviso · 1× una vez al día": "↻ asked again at every reminder · 1× once a day",
   "{quien} activó un seguimiento hasta que lo desactiven: Patty te va a preguntar un poco más.": "{quien} turned on a follow-up until it's turned off: Patty will ask you a bit more.",
+  "se vuelve a pedir en cada aviso": "asked again at every reminder",
+  "se vuelve a pedir en cada aviso (la fiebre, cómo te sentís)": "asked again at every reminder (fever, how you feel)",
+  "alcanza con una vez al día (el almuerzo)": "once a day is enough (lunch)",
 };

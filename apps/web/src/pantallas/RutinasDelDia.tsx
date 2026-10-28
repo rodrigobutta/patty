@@ -2,11 +2,11 @@
 // con un toque, desde un rato antes de la hora de siempre. "Hoy no" lo saca hasta mañana (en este teléfono).
 import { medir } from '../lib/analytics';
 import { useEffect, useState } from 'react';
-import type { Categoria, Persona } from 'shared';
+import { conUnidad, type Categoria, type Persona } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { horaAhora, instanteDelDia } from '../lib/fechas';
-import { t } from '../lib/idioma';
+import { idioma, t } from '../lib/idioma';
 import { avisarAnotado } from '../mascota/cara';
 import { IconoCategoria } from '../ui/IconosPatty';
 
@@ -84,7 +84,7 @@ export function RutinasDelDia({ persona, hoy, categorias, alAnotar }: { persona:
             <li key={r.concepto_id}>
               <span className="icono"><IconoCategoria clave={cat?.clave} emoji={cat?.icono} tamano={28} /></span>
               <span className="que">
-                <strong>{t(r.nombre)}{r.valor !== null ? ` · ${r.valor}${r.unidad ? ' ' + r.unidad : ''}` : ''}</strong>
+                <strong>{t(r.nombre)}{r.valor !== null ? ` · ${!r.unidad || /^(unidad|unidades)$/i.test(r.unidad) ? r.valor : conUnidad(r.valor, r.unidad, 2, idioma())}` : ''}</strong>
                 <span className="suave chico">
                   {r.tipo === 'diaria'
                     ? t('Lo anotaste {n} de los últimos 3 días, a eso de las {hora}', { n: r.veces, hora: r.hora })

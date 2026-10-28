@@ -62,11 +62,18 @@ export function Seguimientos({ persona, puedeEscribir }: { persona: Persona; pue
     <div key={clave} className="tarjeta plantilla-seguimiento">
       <h3>{p.emoji} {t(p.nombre)}</h3>
       <p className="suave chico">
-        {p.items.map((c) => ITEMS_SEGUIMIENTO.find((i) => i.clave === c)).filter(Boolean).map((i) => `${i!.emoji} ${t(i!.nombre)} ${i!.frecuencia === 'cada_vez' ? '↻' : '1×'}`).join(' · ')}
+        {p.items
+          .map((c) => ITEMS_SEGUIMIENTO.find((i) => i.clave === c))
+          .filter(Boolean)
+          .map((i, k) => (
+            <span key={i!.clave} className="item-plantilla">
+              {k ? ' · ' : ''}{i!.emoji} {t(i!.nombre)} <span className={`frecuencia ${i!.frecuencia}`}>{i!.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
+            </span>
+          ))}
       </p>
       <p className="suave chico">
         {p.horarios.length ? t('Pregunta a las {horas}', { horas: p.horarios.join(', ') }) : t('Sin avisos: solo la lista en el Día')}
-        {' · '}{t('↻ en cada aviso · 1× una vez al día')}
+        {' · '}<span className="frecuencia cada_vez">↻</span> {t('en cada aviso')} · <span className="frecuencia dia">1×</span> {t('una vez al día')}
       </p>
       {puedeEscribir ? (
         <div className="fila envolver">
@@ -121,11 +128,13 @@ function Editor({ plantilla, alGuardar, alCancelar }: { plantilla: PlantillaSegu
       <div className="chips envolver">
         {ITEMS_SEGUIMIENTO.map((i) => (
           <button key={i.clave} type="button" className={`chip${p.items.includes(i.clave) ? ' activa' : ''}`} onClick={() => alternar(i.clave)}>
-            {i.emoji} {t(i.nombre)} <span className="suave chico">{i.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
+            {i.emoji} {t(i.nombre)} <span className={`frecuencia ${i.frecuencia}`}>{i.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
           </button>
         ))}
       </div>
-      <p className="suave chico">{t('↻ se vuelve a pedir en cada aviso (la fiebre, cómo te sentís) · 1× alcanza con una vez al día (el almuerzo)')}</p>
+      <p className="suave chico">
+        <span className="frecuencia cada_vez">↻</span> {t('se vuelve a pedir en cada aviso (la fiebre, cómo te sentís)')} · <span className="frecuencia dia">1×</span> {t('alcanza con una vez al día (el almuerzo)')}
+      </p>
       <p className="rotulo-campo">{t('A qué horas pregunta Patty')}</p>
       <div className="chips envolver">
         {p.horarios.map((h) => (

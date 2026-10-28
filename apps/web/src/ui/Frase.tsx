@@ -1,7 +1,7 @@
 // Lo anotado como una frase corta y natural ("3 porciones de pizza", "Me siento bien", "Con un poco de sueño"), con lo
 // que Patty entendió resaltado (la cantidad en un color, lo que fue en otro) en vez de varias etiquetas sueltas.
 import type { ReactNode } from 'react';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, COMO_VIAJE, conUnidad, CUANTO, ESTADOS_PUNTUALES, estadoDe, VIAJE_PESADO, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, COMO_VIAJE, conUnidad, CUANTO, plural, singular, ESTADOS_PUNTUALES, estadoDe, VIAJE_PESADO, type Registro } from 'shared';
 import { duracion } from '../lib/automatico';
 import { idioma, t } from '../lib/idioma';
 
@@ -30,10 +30,23 @@ function conCuanto(nombre: string, intensidad: number | null): string {
   return `${c === 'Poco' ? 'un poco de' : c === 'Bastante' ? 'bastante' : femenino ? 'mucha' : 'mucho'} ${n}`;
 }
 
-/** Una comida o bebida con su cantidad: "2 porciones de pizza", "tuco". */
+/** Si la unidad es "unidades" (o no hay), va implícita: "2 medialunas", no "2 unidades de medialunas". */
+const sinUnidad = (u: string | null) => !u || /^(unidad|unidades|unit|units)$/i.test(u.trim());
+
+/** "2 medialunas", "1 medialuna": el número con la cosa, en singular o plural según la cantidad (la primera palabra). */
+function cuantasDe(n: number, nombre: string): string {
+  const num = Number(n.toFixed(2));
+  if (idioma() === 'en') return `${num} ${nombre}`;
+  const [primera, ...resto] = nombre.split(' ');
+  const ajustada = num === 1 ? singular(primera) : /s$/i.test(primera) ? primera : plural(primera);
+  return [`${num} ${ajustada}`, ...resto].join(' ');
+}
+
+/** Una comida o bebida con su cantidad: "2 porciones de pizza", "2 medialunas", "tuco". */
 function unaComida(o: Registro): ReactNode {
   const n = enFrase(t(o.concepto));
   if (o.valor === null) return <C>{n}</C>;
+  if (sinUnidad(o.unidad)) return <C>{cuantasDe(o.valor, n)}</C>;
   return <><C>{conUnidad(o.valor, o.unidad, 2, idioma())}</C> {idioma() === 'en' ? 'of' : 'de'} <C>{n}</C></>;
 }
 
@@ -101,5 +114,10 @@ export function Frase({ r, tipo, categoria, juntos = [], sintomas = [] }: {
   // Con cantidad o duración: "3 porciones de pizza", "1 h de tele en C5N".
   const cant = tipo === 'duracion' || r.unidad === 'min' ? duracion(r.valor) : conUnidad(r.valor, r.unidad, 2, idioma());
   if (!r.unidad && tipo !== 'duracion' && categoria !== 'comida' && categoria !== 'bebida') return <><Q>{nombre}</Q> <C>{cant}</C></>;
+  // Unidades sueltas (o sin unidad): "2 medialunas".
+  if (tipo !== 'duracion' && r.unidad !== 'min' && sinUnidad(r.unidad)) {
+    const [num, ...cosa] = cuantasDe(r.valor, enFrase(nombre)).split(' ');
+    return <><C>{num}</C> <Q>{cosa.join(' ')}</Q></>;
+  }
   return <><C>{cant}</C> {en ? 'of' : 'de'} <Q>{enFrase(nombre)}</Q></>;
 }

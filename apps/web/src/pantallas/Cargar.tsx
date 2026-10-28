@@ -612,7 +612,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
                 <span>
                   {t(p.concepto_nombre)}
                   {p.nuevo ? <span className="etiqueta">{t('nuevo')}</span> : null}
-                  {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${conUnidad(p.valor, p.unidad, 2, idioma())}` : ''}
+                  {p.intensidad !== null ? ` · ${p.intensidad}/10` : p.valor !== null ? ` · ${!p.unidad || /^(unidad|unidades)$/i.test(p.unidad) ? p.valor : conUnidad(p.valor, p.unidad, 2, idioma())}` : ''}
                   {etiquetaDonde(p.donde, p.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(p.donde, p.lugar)}</span> : null}
                   {etiquetaPlato(p.porcion, p.tipos) ? <span className="etiqueta-donde">{etiquetaPlato(p.porcion, p.tipos)}</span> : null}
                   {p.nota ? <span className="suave chico"> — {p.nota}</span> : null}

@@ -1344,4 +1344,10 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .gantt-punto { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid var(--panel); }
 .gantt-horas .gantt-pista { background: none; height: 14px; }
 .gantt-horas .gantt-pista span { position: absolute; transform: translateX(-50%); }
-.item-seguimiento .frecuencia { font-size: 11px; opacity: 0.6; margin-left: 2px; }
+
+/* La marca de cada cosa de un seguimiento: ↻ se pide en cada aviso, 1× una vez al día. */
+.frecuencia { display: inline-grid; place-items: center; min-width: 22px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px; font-weight: 700; line-height: 1; }
+.item-seguimiento .frecuencia { margin-left: 2px; }
+.frecuencia.cada_vez { background: color-mix(in srgb, var(--ambar) 22%, transparent); color: var(--ambar); }
+.frecuencia.dia { background: color-mix(in srgb, var(--acento) 18%, transparent); color: var(--acento); }
+.item-seguimiento.hecho .frecuencia { background: var(--panel); }

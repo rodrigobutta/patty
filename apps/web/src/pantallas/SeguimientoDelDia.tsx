@@ -86,7 +86,7 @@ export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: 
                   >
                     <span aria-hidden>{hecho ? '✓' : it.emoji}</span>
                     {t(it.nombre)}
-                    <span className="frecuencia" aria-label={it.frecuencia === 'cada_vez' ? t('en cada aviso') : t('una vez al día')}>{it.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
+                    <span className={`frecuencia ${it.frecuencia}`} aria-label={it.frecuencia === 'cada_vez' ? t('en cada aviso') : t('una vez al día')}>{it.frecuencia === 'cada_vez' ? '↻' : '1×'}</span>
                   </button>
                 );
               })}
@@ -100,7 +100,7 @@ export function SeguimientoDelDia({ persona, registros, categorias, alAnotar }: 
               </div>
             ) : null}
             <p className="suave chico">
-              {t('↻ se vuelve a pedir en cada aviso · 1× una vez al día')}
+              <span className="frecuencia cada_vez">↻</span> {t('se vuelve a pedir en cada aviso')} · <span className="frecuencia dia">1×</span> {t('una vez al día')}
               {s.activado_por ? ` · ${t('Lo activó {quien}.', { quien: s.activado_por })}` : ''}
             </p>
           </div>
