@@ -62,7 +62,7 @@ export function App() {
   useEffect(() => {
     if (fase !== 'listo' || !sesion?.analytics || !usuarioId) return;
     iniciarAnalytics(sesion.analytics, true);
-    void usuarioAnalytics(usuarioId, { plataforma: plataforma(), idioma: idioma(), version: VERSION });
+    usuarioAnalytics(usuarioId, { plataforma: plataforma(), idioma: idioma(), version: VERSION });
   }, [fase, sesion?.analytics, usuarioId]);
   useEffect(() => {
     if (fase === 'listo' && usuarioId) paginaVista(`/${pestana === 'patrones' ? 'descubrir' : pestana}`, pestana);

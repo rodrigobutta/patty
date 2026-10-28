@@ -3,6 +3,8 @@
 // toque…), con un identificador anónimo por usuario. Nunca se manda nada de lo anotado (textos, nombres, valores).
 type Gtag = (...a: unknown[]) => void;
 let id: string | null = null;
+/** Lo que hay que esperar antes de mandar algo (el usuario anónimo, que se calcula aparte). */
+let preparado: Promise<void> = Promise.resolve();
 
 export function iniciarAnalytics(medicion: string | null | undefined, app = false): void {
   if (!medicion || !/^G-[A-Z0-9]+$/.test(medicion) || id) return;
@@ -25,7 +27,7 @@ export function iniciarAnalytics(medicion: string | null | undefined, app = fals
 /** Un evento ("empezar", "ver_video"), con datos opcionales. No hace nada si Analytics no está cargado. */
 export function medir(evento: string, datos: Record<string, string | number> = {}): void {
   if (!id) return;
-  (window as unknown as { gtag?: Gtag }).gtag?.('event', evento, datos);
+  void preparado.then(() => (window as unknown as { gtag?: Gtag }).gtag?.('event', evento, datos));
 }
 
 /** Una pantalla de la app ("/dia", "/descubrir/mapa"), como si fuera una página. */
@@ -34,16 +36,17 @@ export function paginaVista(ruta: string, titulo: string): void {
 }
 
 /** Quién usa la app, anónimo (un hash del id, para contar a la misma persona en varios teléfonos), y desde dónde. */
-export async function usuarioAnalytics(usuarioId: number, datos: Record<string, string>): Promise<void> {
+export function usuarioAnalytics(usuarioId: number, datos: Record<string, string>): void {
   if (!id) return;
-  let anonimo = String(usuarioId);
-  try {
-    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`patty|${usuarioId}`));
-    anonimo = [...new Uint8Array(h)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return; // sin cómo hacerlo anónimo, no se manda
-  }
-  const g = (window as unknown as { gtag?: Gtag }).gtag;
-  g?.('config', id, { user_id: anonimo, send_page_view: false });
-  g?.('set', 'user_properties', datos);
+  preparado = (async () => {
+    const g = (window as unknown as { gtag?: Gtag }).gtag;
+    try {
+      const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`patty|${usuarioId}`));
+      const anonimo = [...new Uint8Array(h)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
+      g?.('set', { user_id: anonimo });
+    } catch {
+      // sin cómo hacerlo anónimo, va sin usuario
+    }
+    g?.('set', 'user_properties', datos);
+  })();
 }
