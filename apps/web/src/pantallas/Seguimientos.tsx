@@ -71,9 +71,15 @@ export function Seguimientos({ persona, puedeEscribir }: { persona: Persona; pue
           <span className="rotulo-grupo chico">
             <span className={`frecuencia ${g.f}`}>{g.f === 'cada_vez' ? '↻' : '1×'}</span> {g.f === 'cada_vez' ? t('En cada aviso') : t('Una vez al día')}
           </span>
-          <div className="chips envolver">
-            {g.lista.map((i) => <span key={i.clave} className="chip chico estatico">{i.emoji} {t(i.nombre)}{i.opcional ? ` · ${t('si pasa')}` : ''}</span>)}
-          </div>
+          <ul className="lista-plantilla">
+            {g.lista.map((i) => (
+              <li key={i.clave}>
+                <span className="emoji-item" aria-hidden>{i.emoji}</span>
+                <span>{t(i.nombre)}</span>
+                {i.opcional ? <span className="suave chico">{t('si pasa')}</span> : null}
+              </li>
+            ))}
+          </ul>
         </div>
       ));
   };

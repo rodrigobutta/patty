@@ -1376,3 +1376,9 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .enlaces-plantilla { gap: 16px; }
 .leyenda-frecuencia { margin-top: -4px; }
 .detalle-plantilla .chip { font-size: 13px; padding: 5px 10px; }
+/* El detalle de una plantilla: una lista por grupo. */
+.lista-plantilla { list-style: none; margin: 0; padding: 0; display: grid; }
+.lista-plantilla li { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--borde); font-size: 15px; }
+.lista-plantilla li:first-child { border-top: 0; }
+.lista-plantilla .emoji-item { font-size: 18px; text-align: center; }
+.grupo-plantilla + .grupo-plantilla { margin-top: 4px; }
