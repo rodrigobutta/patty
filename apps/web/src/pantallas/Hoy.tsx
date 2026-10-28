@@ -3,7 +3,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { IconoAnimo, IconoCategoria } from '../ui/IconosPatty';
 import { alPedirIrAlDia, fechaPedidaParaVer, olvidarFechaPedida } from '../lib/avisos';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
-import { alTocarAvisoPush } from '../lib/push';
+import { alTocarAvisoPush, configurarWidget, tomarWidgetPendiente } from '../lib/push';
 import { useAlCambiarTomas } from '../lib/remedios';
 import { hayVoz } from '../lib/voz';
 import { useAlPedirSentir, type Momento } from '../lib/sentir';
@@ -220,6 +220,28 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     }),
     [persona.zona_horaria],
   );
+  // El widget de la pantalla de inicio: anota el ánimo de esta persona; sus botones abren el Día en contar, la cámara
+  // o "¿cómo te sentís?" con la carita elegida (si el widget no pudo anotarla solo).
+  const catAnimo = categorias.find((c) => c.clave === 'animo')?.id;
+  useEffect(() => {
+    if (!persona.supervisada) configurarWidget(persona.id, catAnimo);
+  }, [persona.id, persona.supervisada, catAnimo]);
+  const atenderWidget = useCallback(
+    (d: Record<string, string>) => {
+      tomarWidgetPendiente();
+      setFecha(hoyEn(persona.zona_horaria));
+      if (d.accion_widget === 'contar') setCargando('contar');
+      else if (d.accion_widget === 'foto') void fotoDe('camara');
+      else if (d.accion_widget === 'sentir') setSintiendo({ momento: 'ahora', estado: d.intensidad ? estadoDe(Number(d.intensidad)) : null });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [persona.zona_horaria],
+  );
+  useEffect(() => {
+    const d = tomarWidgetPendiente();
+    if (d) atenderWidget(d);
+    return alTocarAvisoPush((x) => x.tipo === 'widget' && atenderWidget(x));
+  }, [atenderWidget]);
   const [vuelta, setVuelta] = useState(0);
   // Desde la hoja de puntos (en la barra de arriba): "Contale a Patty".
   const [pista, setPista] = useState<(typeof PISTAS)[keyof typeof PISTAS]>(undefined);

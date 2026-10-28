@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="widget_descripcion">Tell Patty how you feel with one tap, or tell something by voice or with a photo.</string>
+    <string name="widget_pregunta">How are you feeling?</string>
+    <string name="widget_muy_bien">Very good</string>
+    <string name="widget_bien">Good</string>
+    <string name="widget_mal">Bad</string>
+    <string name="widget_muy_mal">Very bad</string>
+    <string name="widget_contar">🎙 Tell</string>
+    <string name="widget_foto">📷 Photo</string>
+    <string name="widget_anotado">✓ Logged: %1$s</string>
+    <string name="widget_anotando">Logging…</string>
+    <string name="widget_entrar">Sign in to Patty to use the widget</string>
+</resources>

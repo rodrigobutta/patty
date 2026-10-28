@@ -559,4 +559,8 @@ export const PERMISOS: Record<string, string> = {
   '{n} cosas esperando para subirse': '{n} things waiting to upload',
   '📶 Sin señal': '📶 No signal',
   'Sin señal: guardé lo que contaste. Cuando vuelva la conexión lo ordeno y te aviso para revisarlo.': "No signal: I saved what you told me. When the connection is back I'll sort it out and let you review it.",
+  'Agregar el widget': 'Add the widget',
+  'Anotá cómo te sentís con un toque, o contale algo a Patty con la voz o una foto, sin buscar la app.': 'Log how you feel with one tap, or tell Patty something by voice or with a photo, without looking for the app.',
+  'Tu teléfono no deja agregarlo desde acá: mantené apretada la pantalla de inicio, tocá "Widgets" y buscá Patty.': 'Your phone doesn\'t allow adding it from here: long-press the home screen, tap "Widgets" and look for Patty.',
+  '🦉 Widget en la pantalla de inicio': '🦉 Home screen widget',
 };

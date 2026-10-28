@@ -113,7 +113,32 @@ public class MascotaPlugin extends Plugin {
         if (api == null) e.clear();
         else e.putString("api", api).putString("token", call.getString("token"));
         e.apply();
+        WidgetPatty.actualizar(getContext());
         call.resolve();
+    }
+
+    /** Para el widget de la pantalla de inicio: a quién se le anota y la categoría del ánimo (WidgetPatty). */
+    @PluginMethod
+    public void guardarWidget(PluginCall call) {
+        Integer persona = call.getInt("persona_id");
+        Integer categoria = call.getInt("categoria_id");
+        SharedPreferences.Editor e = getContext().getSharedPreferences(WidgetPatty.PREFS, Context.MODE_PRIVATE).edit();
+        if (persona == null || categoria == null) e.remove("persona_id").remove("categoria_id");
+        else e.putInt("persona_id", persona).putInt("categoria_id", categoria);
+        e.apply();
+        WidgetPatty.actualizar(getContext());
+        call.resolve();
+    }
+
+    /** Pide al lanzador que agregue el widget a la pantalla de inicio (el sistema muestra su cartel para ubicarlo). */
+    @PluginMethod
+    public void agregarWidget(PluginCall call) {
+        android.appwidget.AppWidgetManager am = android.appwidget.AppWidgetManager.getInstance(getContext());
+        com.getcapacitor.JSObject r = new com.getcapacitor.JSObject();
+        boolean puede = android.os.Build.VERSION.SDK_INT >= 26 && am.isRequestPinAppWidgetSupported();
+        if (puede) am.requestPinAppWidget(new ComponentName(getContext(), WidgetPatty.class), null, null);
+        r.put("pedido", puede);
+        call.resolve(r);
     }
 
     /** La marca y el modelo del teléfono (para explicar los ajustes con los menús de esa marca). */
@@ -187,6 +212,8 @@ public class MascotaPlugin extends Plugin {
 
     static void ponerIcono(Context ctx) {
         String cara = caraDeHoy(ctx);
+        // El búho del widget tiene la misma cara.
+        WidgetPatty.actualizar(ctx);
         PackageManager pm = ctx.getPackageManager();
         for (String c : CARAS) {
             ComponentName alias = new ComponentName(ctx, ctx.getPackageName() + ".Icono" + Character.toUpperCase(c.charAt(0)) + c.substring(1));

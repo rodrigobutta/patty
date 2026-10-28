@@ -6,4 +6,16 @@
     <string name="custom_url_scheme">ar.patty.app</string>
     <!-- Lo que muestra Health Connect cuando se toca "Política de privacidad" al dar permisos. -->
     <string name="health_connect_privacy_policy_url">https://patty.today/privacidad.html</string>
+    <!-- Widget de la pantalla de inicio -->
+    <string name="widget_descripcion">Contale a Patty cómo te sentís con un toque, o contá algo con la voz o una foto.</string>
+    <string name="widget_pregunta">¿Cómo te sentís?</string>
+    <string name="widget_muy_bien">Muy bien</string>
+    <string name="widget_bien">Bien</string>
+    <string name="widget_mal">Mal</string>
+    <string name="widget_muy_mal">Muy mal</string>
+    <string name="widget_contar">🎙 Contar</string>
+    <string name="widget_foto">📷 Foto</string>
+    <string name="widget_anotado">✓ Anotado: %1$s</string>
+    <string name="widget_anotando">Anotando…</string>
+    <string name="widget_entrar">Entrá a Patty para usar el widget</string>
 </resources>

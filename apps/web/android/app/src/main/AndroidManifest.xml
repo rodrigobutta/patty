@@ -99,6 +99,13 @@
         <service android:name="com.capacitorjs.plugins.pushnotifications.MessagingService" tools:node="remove" />
         <!-- Los botones de los avisos que se contestan sin abrir la app (ver RespuestaReceiver). -->
         <receiver android:name=".RespuestaReceiver" android:exported="false" />
+        <!-- El widget de la pantalla de inicio (WidgetPatty). -->
+        <receiver android:name=".WidgetPatty" android:exported="false" android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_patty_info" />
+        </receiver>
         <service android:name=".AvisosPushService" android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

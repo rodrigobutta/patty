@@ -15,6 +15,8 @@ const Mascota = registerPlugin<{
   hayFirebase(): Promise<{ si: boolean }>;
   sacarAvisos(o: { prefijo: string }): Promise<void>;
   guardarSesion(o: { api: string | null; token: string | null }): Promise<void>;
+  guardarWidget(o: { persona_id?: number; categoria_id?: number }): Promise<void>;
+  agregarWidget(): Promise<{ pedido: boolean }>;
   addListener(evento: 'avisoTocado', f: (datos: Record<string, string>) => void): Promise<{ remove(): Promise<void> }>;
 }>('Mascota');
 
@@ -100,6 +102,8 @@ export function usePush(listo: boolean, servidorManda: boolean): void {
       quitar.push(
         Mascota.addListener('avisoTocado', (datos) => {
           irAlDia();
+          // Lo del widget queda guardado por si el Día todavía no está (la app recién se abre): lo levanta al montarse.
+          if (datos.tipo === 'widget') guardarWidgetPendiente(datos);
           window.dispatchEvent(new CustomEvent(EVENTO_ABRIR, { detail: datos }));
         }),
       );
@@ -124,4 +128,39 @@ export function usePush(listo: boolean, servidorManda: boolean): void {
       for (const q of quitar) void q.then((x) => x.remove());
     };
   }, [listo, servidorManda]);
+}
+
+/** El widget de la pantalla de inicio (Android) anota el ánimo de esta persona, con la categoría del ánimo. */
+export function configurarWidget(personaId: number | null, categoriaAnimo: number | undefined): void {
+  if (plataforma() !== 'android') return;
+  void Mascota.guardarWidget(personaId && categoriaAnimo ? { persona_id: personaId, categoria_id: categoriaAnimo } : {}).catch(() => {});
+}
+
+const WIDGET_PENDIENTE = 'widget-pendiente';
+function guardarWidgetPendiente(d: Record<string, string>) {
+  try {
+    sessionStorage.setItem(WIDGET_PENDIENTE, JSON.stringify(d));
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+/** Lo que se tocó en el widget y todavía no se atendió (se borra al leerlo). */
+export function tomarWidgetPendiente(): Record<string, string> | null {
+  try {
+    const d = sessionStorage.getItem(WIDGET_PENDIENTE);
+    sessionStorage.removeItem(WIDGET_PENDIENTE);
+    return d ? (JSON.parse(d) as Record<string, string>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Pide agregar el widget a la pantalla de inicio. false si el lanzador no deja (hay que agregarlo a mano). */
+export async function agregarWidget(): Promise<boolean> {
+  if (plataforma() !== 'android') return false;
+  try {
+    return (await Mascota.agregarWidget()).pedido;
+  } catch {
+    return false;
+  }
 }

@@ -1,5 +1,6 @@
 // Más: lo que Patty junta sola (clima, ubicación, teléfono, reloj), los avisos, las personas, la cuenta y, aparte,
 // lo avanzado (tokens para que otros dispositivos manden datos).
+import { agregarWidget } from '../lib/push';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
 import { api, API_BASE } from '../api';
@@ -8,7 +9,7 @@ import { avisarAnotado, olvidarDeNoche } from '../mascota/cara';
 import { anotarClima, climaActivado, horasRecientes, ponerClima, ubicacion } from '../lib/clima';
 import { esIOS, instalada, instalarApp } from '../lib/instalar';
 import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
-import { esNativa } from '../lib/nativo';
+import { esNativa, plataforma } from '../lib/nativo';
 import { ponerRecordatorios, recordatoriosActivos } from '../lib/remedios';
 import { hayDatosDelTelefono } from '../lib/telefono';
 import { perfilTexto } from 'shared';
@@ -221,6 +222,15 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
 
   </>, true);
   if (seccion === 'avisos') return pantalla(t('🔔 Avisos'), <>
+      {plataforma() === 'android' ? (
+        <div className="tarjeta">
+          <h3>{t('🦉 Widget en la pantalla de inicio')}</h3>
+          <p className="suave chico">{t('Anotá cómo te sentís con un toque, o contale algo a Patty con la voz o una foto, sin buscar la app.')}</p>
+          <button className="btn" onClick={() => void agregarWidget().then((ok) => !ok && avisar(t('Tu teléfono no deja agregarlo desde acá: mantené apretada la pantalla de inicio, tocá "Widgets" y buscá Patty.')))}>
+            {t('Agregar el widget')}
+          </button>
+        </div>
+      ) : null}
       <div className="tarjeta">
         <h3>{t('😢 Si no anoté nada')}</h3>
         <label className="opcion">
