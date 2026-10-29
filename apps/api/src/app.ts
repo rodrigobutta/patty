@@ -93,6 +93,9 @@ function idiomaDelPedido(x: string | undefined, accept: string | undefined): Idi
   return esIdioma(x) ? x : idiomaDe(accept);
 }
 
+/** El APK de la última versión (`gh release create vX.Y.Z patty.apk`). */
+export const APK_ANDROID = 'https://github.com/rodrigobutta/patty/releases/latest/download/patty.apk';
+
 export function crearApp(): Hono<Env> {
   const app = new Hono<Env>();
 
@@ -169,6 +172,9 @@ export function crearApp(): Hono<Env> {
     throw new ErrorApi('Ruta desconocida.', 404);
   });
   app.route('/api', api);
+
+  // La app de Android, directo (sin Play Store por ahora): el APK firmado de la última versión, en GitHub Releases.
+  app.get('/descargar/android', (c) => c.redirect(APK_ANDROID, 302));
 
   // La web: los archivos que existen, y si no, index.html (la app usa rutas con #).
   app.get('*', async (c) => {

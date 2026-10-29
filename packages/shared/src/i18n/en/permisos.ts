@@ -952,4 +952,13 @@ export const PERMISOS: Record<string, string> = {
   "Las reuniones de Google o Outlook, para ver si un día cargado te pega.": "Meetings from Google or Outlook, to see whether a busy day takes its toll.",
   "El clima de cada hora donde estás: calor, lluvia, humedad, cambios de presión.": "The weather every hour where you are: heat, rain, humidity, pressure changes.",
   "La fase de cada día, para ver cómo te va en cada una.": "The phase of each day, to see how you do in each one.",
+  "Android te va a preguntar si dejás instalar una app que no viene del Play Store: es normal, decile que sí.": "Android will ask whether to allow installing an app that isn't from the Play Store: that's normal, just say yes.",
+  "Avisame": "Let me know",
+  "Avisame cuando esté": "Let me know when it's ready",
+  "Bajala gratis para Android": "Get it free for Android",
+  "Bajar para Android": "Download for Android",
+  "Beta · gratis para Android": "Beta · free for Android",
+  "La app de iPhone viene pronto. Dejanos tus datos y te avisamos cuando esté.": "The iPhone app is coming soon. Leave your details and we'll let you know when it's ready.",
+  "¡Listo! Te vamos a escribir a {email} cuando esté la de iPhone. 💜": "Done! We'll write to {email} when the iPhone app is ready. 💜",
+  "¿Tenés iPhone?": "Have an iPhone?",
 };

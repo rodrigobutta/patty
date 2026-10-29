@@ -81,8 +81,8 @@ const CONEXIONES: Array<{ icono: ReactNode; titulo: string; detalle: string }> =
 ];
 
 /**
- * Mientras Patty está en beta se entra por invitación: quien quiere probarla deja su nombre, su mail y qué le
- * interesa, y le llega la invitación cuando haya lugar. El campo "web" está escondido: si viene lleno, es un bot.
+ * Para los de iPhone (Android ya se baja directo): dejan su nombre, su mail y qué les interesa, y les avisamos cuando
+ * esté. El campo "web" está escondido: si viene lleno, es un bot.
  */
 function FormBeta() {
   const [datos, setDatos] = useState({ nombre: '', email: '', motivo: '', web: '' });
@@ -103,12 +103,12 @@ function FormBeta() {
   };
   return (
     <div id="beta" className="pres-beta-caja">
-      <h2>{t('Patty está en beta')}</h2>
+      <h2>{t('¿Tenés iPhone?')}</h2>
       <p className="pres-bajada">
-        {t('Por ahora la estamos probando con un grupo chico, así que para bajar la app hace falta una invitación. Dejanos tus datos y te escribimos cuando haya lugar.')}
+        {t('La app de iPhone viene pronto. Dejanos tus datos y te avisamos cuando esté.')}
       </p>
       {estado === 'enviado' ? (
-        <p className="pres-beta-gracias">{t('¡Listo! Te vamos a escribir a {email} cuando tengamos tu invitación. 💜', { email: datos.email })}</p>
+        <p className="pres-beta-gracias">{t('¡Listo! Te vamos a escribir a {email} cuando esté la de iPhone. 💜', { email: datos.email })}</p>
       ) : (
         <form className="pres-form" onSubmit={(e) => void mandar(e)}>
           <label>{t('Nombre')}<input required maxLength={80} value={datos.nombre} onChange={(e) => setDatos({ ...datos, nombre: e.target.value })} autoComplete="name" /></label>
@@ -116,7 +116,7 @@ function FormBeta() {
           <label>{t('¿Por qué te interesa?')}<textarea maxLength={1000} rows={3} value={datos.motivo} onChange={(e) => setDatos({ ...datos, motivo: e.target.value })} placeholder={t('Ej: tengo migrañas seguido y quiero entender qué las dispara')} /></label>
           <input className="pres-trampa" tabIndex={-1} autoComplete="off" aria-hidden value={datos.web} onChange={(e) => setDatos({ ...datos, web: e.target.value })} name="web" />
           {error ? <p className="error chico">{error}</p> : null}
-          <button className="btn primario pres-cta" disabled={estado === 'mandando'}>{estado === 'mandando' ? t('Mandando…') : t('Pedir invitación')}</button>
+          <button className="btn primario pres-cta" disabled={estado === 'mandando'}>{estado === 'mandando' ? t('Mandando…') : t('Avisame')}</button>
         </form>
       )}
     </div>
@@ -163,7 +163,8 @@ function Seccion({ id, titulo, bajada, children, invertida = false, telefono }: 
 
 export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void; conSesion?: boolean }) {
   const { sesion } = useEstado();
-  const android = sesion?.app?.url;
+  // El APK firmado, directo de la web (sin Play Store por ahora): /descargar/android lleva a la última versión.
+  const android = sesion?.app?.url ?? '/descargar/android';
   useEffect(() => {
     document.title = t('Patty: contale tu día y descubrí qué se relaciona');
     window.scrollTo({ top: 0 });
@@ -176,12 +177,12 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
     medir(conSesion ? 'volver_a_patty' : 'empezar', { desde: donde });
     alEntrar();
   };
-  // Mientras está en beta, quien no tiene cuenta pide una invitación (el formulario de abajo de todo).
+  // Quien no tiene cuenta baja la app de Android directo de acá; los de iPhone dejan sus datos (abajo de todo).
   const entrar = (donde: string) =>
     conSesion ? (
       <button className="btn primario pres-cta" onClick={ir(donde)}>{t('Volver a Patty')}</button>
     ) : (
-      <a className="btn primario pres-cta" href="#beta" onClick={() => medir('pedir_invitacion', { desde: donde })}>{t('Pedir invitación')}</a>
+      <a className="btn primario pres-cta" href={android} onClick={() => medir('bajar_android', { desde: donde })}>{t('Bajar para Android')}</a>
     );
   const finalRef = useVista('final');
   const consultaRef = useVista('consultar');
@@ -198,7 +199,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
       <section className="pres-portada">
         <div className="pres-texto">
           <Mascota cara="feliz" tamano={96} className="saluda" />
-          <span className="pres-beta">{t('Beta · por invitación')}</span>
+          <span className="pres-beta">{t('Beta · gratis para Android')}</span>
           <h1>{t('Contale tu día. Patty encuentra lo que se relaciona.')}</h1>
           <p className="pres-bajada">
             {t('Lo que comés, cómo dormís, cómo te sentís, si algo te dolió. Lo contás en segundos, con la voz, una foto o un toque, y Patty te muestra qué cosas van juntas en tu vida.')}
@@ -207,6 +208,11 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
             {entrar('portada')}
             <a className="btn" href="#como" onClick={() => medir('ver_como_funciona')}>{t('Ver cómo funciona')}</a>
           </div>
+          {conSesion ? null : (
+            <p className="suave chico">
+              {t('¿Tenés iPhone?')} <a href="#beta" onClick={() => medir('pedir_iphone')}>{t('Avisame cuando esté')}</a>
+            </p>
+          )}
         </div>
         <div className="pres-telefonos">
           <Telefono img="portada.webp" alt={t('Lo que descubre Patty: dormir poco y el ánimo, la comida frita y el dolor de panza')} />
@@ -365,7 +371,12 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
             </div>
           </>
         ) : (
-          <FormBeta />
+          <>
+            <h2>{t('Bajala gratis para Android')}</h2>
+            <div className="pres-botones">{entrar('final')}</div>
+            <p className="suave chico">{t('Android te va a preguntar si dejás instalar una app que no viene del Play Store: es normal, decile que sí.')}</p>
+            <FormBeta />
+          </>
         )}
         <p className="suave chico"><a href="privacidad.html">{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
       </section>
