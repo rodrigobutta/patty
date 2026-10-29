@@ -1,15 +1,37 @@
 // El gráfico de la noche (en la hoja del widget de sueño): las etapas con su hora, en escalones — despierto arriba,
-// después REM, ligero y profundo abajo — como en las apps de salud.
+// después REM, ligero y profundo abajo — como en las apps de salud. Abajo, el botón para compartir la noche (el
+// gráfico, las horas, la nota y un pedacito de lo que dijo Patty).
 import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { api } from '../api';
+import { useEstado } from '../estado';
 import { horaEn } from '../lib/fechas';
 import { t } from '../lib/idioma';
+import { compartibleNoche, type TramoSueno as Tramo } from '../lib/tarjetasDelDia';
+import { BotonCompartir } from '../ui/HojaCompartir';
 
-interface Tramo {
-  inicio: string;
-  fin: string;
-  etapa: 'despierto' | 'ligero' | 'profundo' | 'rem' | 'dormido';
+type Resumen = { texto: string; calidad: number } | null;
+
+/** El resumen de la IA de esa noche, pedido una sola vez aunque lo usen el resumen y el botón de compartir. */
+const resumenes = new Map<string, Promise<Resumen>>();
+function traerResumen(personaId: number, fecha: string): Promise<Resumen> {
+  const clave = `${personaId}/${fecha}`;
+  let p = resumenes.get(clave);
+  if (!p) {
+    // Si todavía no hay resumen (o falló), no se guarda: la próxima vez se vuelve a pedir.
+    p = api<Resumen>('GET', `/api/sueno/resumen?persona=${personaId}&fecha=${fecha}`).then(
+      (r) => {
+        if (!r) resumenes.delete(clave);
+        return r;
+      },
+      (e) => {
+        resumenes.delete(clave);
+        throw e;
+      },
+    );
+    resumenes.set(clave, p);
+  }
+  return p;
 }
 
 const NIVELES: Array<{ etapa: Tramo['etapa']; nombre: string; color: string }> = [
@@ -26,6 +48,7 @@ const ALTO_BARRA = 18;
 const minutosTexto = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${Math.round(m)} min`);
 
 export function GraficoSueno({ persona, fecha }: { persona: Persona; fecha: string }) {
+  const { usuario } = useEstado();
   const [tramos, setTramos] = useState<Tramo[] | null>(null);
   useEffect(() => {
     api<Tramo[]>('GET', `/api/sueno/noche?persona=${persona.id}&fecha=${fecha}`).then(setTramos).catch(() => setTramos([]));
@@ -82,16 +105,23 @@ export function GraficoSueno({ persona, fecha }: { persona: Persona; fecha: stri
           ))}
         </div>
       )}
+      {usuario?.rol !== 'lector' ? (
+        <div className="fila-compartir centrada">
+          <BotonCompartir
+            armar={async () => compartibleNoche({ persona, tramos, niveles: NIVELES, resumen: await traerResumen(persona.id, fecha).catch(() => null) })}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
 
 /** "Cómo fue tu noche", según la IA (se arma solo a la mañana; si falta, al abrir esto). */
 export function ResumenNoche({ persona, fecha }: { persona: Persona; fecha: string }) {
-  const [r, setR] = useState<{ texto: string; calidad: number } | null | undefined>(undefined);
+  const [r, setR] = useState<Resumen | undefined>(undefined);
   useEffect(() => {
     setR(undefined);
-    api<{ texto: string; calidad: number } | null>('GET', `/api/sueno/resumen?persona=${persona.id}&fecha=${fecha}`).then(setR).catch(() => setR(null));
+    traerResumen(persona.id, fecha).then(setR).catch(() => setR(null));
   }, [persona.id, fecha]);
   if (r === null) return null;
   return (

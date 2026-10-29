@@ -1534,9 +1534,13 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 /* ---------- Compartir ---------- */
 .hoja-compartir { display: grid; gap: 10px; }
 .hoja-compartir .hoja-cabeza { margin-bottom: 0; }
+.opcion-compartir { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
+.opcion-compartir input { width: 18px; height: 18px; accent-color: var(--acento); }
 .vista-compartir { display: grid; place-items: center; min-height: 200px; }
 .vista-compartir img { max-height: 52dvh; max-width: 100%; aspect-ratio: 4 / 5; border-radius: 16px; box-shadow: 0 8px 24px rgb(20 10 60 / 0.25); }
 .fila-compartir { display: flex; justify-content: flex-end; margin-top: 8px; }
+.caminatas-dia li.con-icono { display: flex; }
+.compartir-caminata { margin-left: auto; }
 .rueda-progreso .btn { margin-top: 10px; }
 .fila-compartir.centrada { justify-content: center; margin: 4px 0 10px; }
 /* El detalle del ánimo de la semana: el sueño de fondo, los malestares y los días en lista. */

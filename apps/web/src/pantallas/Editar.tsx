@@ -10,6 +10,8 @@ import { DondeComida, PlatoComida } from '../ui/DondeComida';
 import { PreguntasDetalle } from '../ui/PreguntasDetalle';
 import { comoDetalles, usePreguntas } from '../lib/preguntas';
 import { genteGuardada, traerGente, type Alguien } from '../lib/gente';
+import { compartibleActividad } from '../lib/tarjetasDelDia';
+import { BotonCompartir } from '../ui/HojaCompartir';
 
 import { QuePasoAntes } from './QuePasoAntes';
 
@@ -23,8 +25,11 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
   /** Borrarlo (pregunta antes). */
   alBorrar(): Promise<void>;
 }) {
-  const { categorias, avisar } = useEstado();
+  const { categorias, avisar, usuario } = useEstado();
   const cat = categorias.find((c) => c.id === r.categoria_id);
+  // Una actividad o un viaje que ya terminó se puede compartir (con el mapita, si hay ubicación de ese rato).
+  const finCompartir = r.fin ?? (r.unidad === 'min' && r.valor ? new Date(Date.parse(r.inicio) + r.valor * 60000).toISOString() : null);
+  const compartible = (cat?.clave === 'actividad' || cat?.clave === 'viaje') && finCompartir && Date.parse(finCompartir) > Date.parse(r.inicio) && usuario?.rol !== 'lector';
   const esSentir = r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI;
   /** "Con sueño" y compañía: poco, bastante o mucho en vez de 0 a 10. */
   const esPuntual = ESTADOS_PUNTUALES.some((e) => e.nombre === r.concepto);
@@ -108,6 +113,11 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
         <h3>{cat?.icono} {t(r.concepto)}</h3>
         <button className="btn-icono" onClick={alCerrar} aria-label={t('Cerrar')}>✕</button>
       </div>
+      {compartible ? (
+        <div className="fila-compartir">
+          <BotonCompartir armar={() => compartibleActividad({ persona, concepto: r.concepto, inicio: r.inicio, fin: finCompartir!, esViaje: cat?.clave === 'viaje' })} />
+        </div>
+      ) : null}
       {/* Una molestia o un mal momento: qué pasó antes (lo arma Patty al rato de anotarlo). */}
       {cat?.clave === 'sintoma' || (esSentir && r.intensidad !== null && r.intensidad <= 4) ? <QuePasoAntes persona={persona} registroId={r.id} /> : null}
       <div className="valor">

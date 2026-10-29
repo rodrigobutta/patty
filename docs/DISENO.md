@@ -256,13 +256,21 @@ saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), crea
   progreso. La imagen (1080 x 1350, violeta, con el búho y patty.today) se dibuja en el teléfono, en un canvas
   (`lib/tarjetaCompartir.ts`), con los textos ya traducidos y sin el nombre de la persona; antes de mandarla se ve
   cómo queda (`ui/HojaCompartir.tsx`). Los que tienen rol `lector` no ven los botones.
+- También una actividad o un viaje anotados (botón en la hoja para cambiarlo, en el Día) y cada caminata del reloj (en
+  la hoja de los pasos): qué fue, la hora, la duración, los km y la velocidad promedio, con el dibujo de Patty y un
+  mapita del recorrido (`GET /api/ubicacion/camino?persona=&desde=&hasta=`: los puntos de ese rato sin los saltos del
+  GPS; con pocos puntos, el camino por las calles de OSRM, como en el Día). El mapa se dibuja en el canvas con los
+  cuadraditos de OpenStreetMap teñidos de violeta (`lib/mapaTarjeta.ts`, con el crédito); si no llegan en 5 s o el
+  teléfono no deja usarlos, va el recorrido solo sobre un fondo lila. Y la noche (botón abajo del gráfico del sueño):
+  las horas dormidas, de cuándo a cuándo, el gráfico de las etapas, la nota de la IA y la primera oración o dos de lo
+  que dijo (`lib/tarjetasDelDia.tsx`). En la vista previa se puede sacar el mapa o lo que dijo Patty antes de mandarla.
 - Cómo se comparte (`lib/compartir.ts`): en la app nativa, plugins Share y Filesystem (la imagen va a la caché y se
   pasa al menú del teléfono; si el APK es viejo y no los tiene, se avisa que hay que actualizar); en el navegador,
   `navigator.share` con archivos; si no, se descarga.
 - "Invitá a alguien" (en Más y en la hoja de compartir) manda un texto corto con `https://patty.today/?ref=<código>`.
   El código son los primeros 8 caracteres del user_id anónimo de Analytics de quien invita. La presentación mide
   `llegada_invitacion` y guarda el código; la bienvenida lo manda en `bienvenida_terminada`. También se miden
-  `compartir_ver`, `compartir` (qué y cómo) e `invitar`.
+  `compartir_ver`, `compartir` (qué y cómo, y si iba con el mapa o lo que dijo Patty) e `invitar`.
 
 ## Estructura
 
