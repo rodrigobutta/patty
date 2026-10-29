@@ -10,6 +10,7 @@ import { duracion } from '../lib/automatico';
 import { horaEn } from '../lib/fechas';
 import { t } from '../lib/idioma';
 import { avisarAnotado } from '../mascota/cara';
+import { Mapa } from '../ui/Mapa';
 
 export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: Persona; fecha: string; vuelta: number; alCambiar(): void }) {
   const { festejar, usuario } = useEstado();
@@ -37,12 +38,16 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
 
   return (
     <div className="tarjeta viajes">
-      <h3 className="con-icono"><IconoCategoria clave="viaje" tamano={26} /> {t('¿Cómo fueron tus viajes?')}</h3>
+      <h3 className="con-icono">
+        <IconoCategoria clave="viaje" tamano={26} /> {pendientes.length === 1 ? t('¿Cómo fue tu viaje?') : t('¿Cómo fueron tus {n} viajes?', { n: pendientes.length })}
+      </h3>
       <ul className="lista">
-        {pendientes.map((v) => {
+        {pendientes.map((v, i) => {
           const m = modo[v.inicio] ?? v.modo;
           return (
             <li key={v.inicio} className="viaje">
+              {pendientes.length > 1 ? <span className="suave chico">{t('Viaje {i} de {n}', { i: i + 1, n: pendientes.length })}</span> : null}
+              {v.camino.length > 1 ? <Mapa ruta={{ puntos: v.camino }} puntos={[]} alto={130} className="mapa-viaje" /> : null}
               <span className="que">
                 <strong>
                   {horaEn(v.inicio, persona.zona_horaria)} → {horaEn(v.fin, persona.zona_horaria)} · {String(v.km).replace('.', ',')} km · {duracion(v.minutos)}

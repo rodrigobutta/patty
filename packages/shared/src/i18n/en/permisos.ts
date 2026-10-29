@@ -892,4 +892,7 @@ export const PERMISOS: Record<string, string> = {
   "para {que}": "for {que}",
   "Terminé a las {hora}": "I finished at {hora}",
   "Terminé recién": "I just finished",
+  "¿Cómo fue tu viaje?": "How was your trip?",
+  "¿Cómo fueron tus {n} viajes?": "How were your {n} trips?",
+  "Viaje {i} de {n}": "Trip {i} of {n}",
 };

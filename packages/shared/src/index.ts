@@ -1431,6 +1431,8 @@ export interface ViajeDelDia {
   pesado: boolean;
   /** Si ya se contó cómo fue (hay un registro de viaje a esa hora). */
   contado: boolean;
+  /** Por dónde pasó, para el mapita. */
+  camino: Array<{ lat: number; lon: number }>;
 }
 
 /** Qué se adivina de un viaje por su velocidad y largo: en qué fue y si parece pesado (tráfico, mucho tiempo). */

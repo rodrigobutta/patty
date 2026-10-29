@@ -168,12 +168,33 @@ describe('viajes del día', () => {
       { lat: -34.68, lon: -58.4, instante: m(198) },
     ]);
     expect(v).toHaveLength(1);
-    expect((v[0].fin - v[0].inicio) / 60000).toBe(18);
+    // La salida: el primer tramo (2,2 km desde casa) a velocidad de ciudad, unos 4 minutos antes del primer punto.
+    expect((v[0].fin - v[0].inicio) / 60000).toBeCloseTo(22.4, 0);
+    expect(v[0].camino).toHaveLength(5);
     // Incluye el primer tramo (de casa al primer punto en camino): ~8,9 km.
     expect(Math.round(v[0].metros / 100) / 10).toBeCloseTo(8.9, 0);
     expect(adivinarViaje(6.7, 18).modo).toBe('auto');
     expect(adivinarViaje(8, 60)).toMatchObject({ modo: 'auto', pesado: true }); // 8 km/h: tráfico
     expect(adivinarViaje(2, 30).modo).toBe('caminando');
+  });
+
+  it('un punto del GPS que salta lejos no arma un viaje imposible; un tramo largo después de estar quieto no dura un minuto', async () => {
+    const { viajesDelDia } = await import('../src/ubicacion/resumen.js');
+    const m = (min: number) => Date.parse('2026-10-24T12:00:00Z') + min * 60000;
+    // Quieto, un punto a 20 km en un minuto y de vuelta: un salto, no un viaje.
+    expect(viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.6, lon: -58.4, instante: m(60) },
+      { lat: -34.78, lon: -58.4, instante: m(61) },
+      { lat: -34.6, lon: -58.4, instante: m(62) },
+    ])).toEqual([]);
+    // Dos horas quieto y el primer punto en camino ya a 7 km: salió unos 14 minutos antes, no un minuto.
+    const v = viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.663, lon: -58.4, instante: m(120) },
+    ]);
+    const kmh = v[0].metros / 1000 / ((v[0].fin - v[0].inicio) / 3600000);
+    expect(kmh).toBeLessThan(40);
   });
 });
 

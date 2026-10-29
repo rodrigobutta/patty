@@ -267,6 +267,7 @@ export const rutasUbicacion = new Hono<Env>()
         pista: traducir(c.var.idioma, g.pista),
         pesado: g.pesado,
         contado: [...contados].some((t) => Math.abs(t - v.inicio) < 60000),
+        camino: v.camino ?? [],
       };
     });
     return c.json(r);

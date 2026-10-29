@@ -83,6 +83,8 @@ export interface Viaje {
   inicio: number;
   fin: number;
   metros: number;
+  /** Por dónde pasó (los puntos del viaje, en orden): para el mapita. */
+  camino?: Coordenadas[];
 }
 
 /** Entre dos puntos de un mismo viaje no pasa más que esto (en movimiento, el teléfono guarda uno cada ~150 m). */
@@ -91,6 +93,28 @@ const CONTINUO_MIN = 20;
 const TRAMO_M = 60;
 /** Un viaje es de al menos esto (las vueltas cortas no cuentan). */
 const VIAJE_M = DISTANCIA_VIAJE_M;
+/** Más rápido que esto entre dos puntos no es un viaje: es el GPS que saltó (o una vuelta en avión, que no se cuenta). */
+const SALTO_KMH = 200;
+/** Si después de estar quieto el primer punto en camino ya está lejos, se supone que fue a esta velocidad (m/s). */
+const SALIDA_MS = 30 / 3.6;
+
+/**
+ * Saca los saltos del GPS: un punto que queda lejísimos del anterior y del siguiente en poco tiempo (ir y volver a
+ * más de 200 km/h). Sin eso, un solo punto mal puesto armaba un viaje de 400 km/h.
+ */
+export function sinSaltos(orden: Punto[]): Punto[] {
+  const kmh = (a: Punto, b: Punto) => distanciaMetros(a, b) / 1000 / Math.max((b.instante - a.instante) / 3600000, 1 / 3600);
+  const r: Punto[] = [];
+  for (let i = 0; i < orden.length; i++) {
+    const a = r.at(-1);
+    const b = orden[i];
+    const c = orden[i + 1];
+    if (a && kmh(a, b) > SALTO_KMH && (!c || kmh(b, c) > SALTO_KMH)) continue;
+    r.push(b);
+  }
+  return r;
+}
+
 /** Una vuelta que termina donde empezó, a paso de caminata, es un paseo (una caminata), no un viaje. */
 const VUELTA_M = 300;
 const CAMINANDO_KMH = 7;
@@ -103,9 +127,9 @@ const CAMINANDO_KMH = 7;
  * caminatas, no viajes: no se cuentan. La salida es aproximada (el primer punto ya es en camino).
  */
 export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Viaje[] {
-  const orden = [...puntosDia].sort((a, b) => a.instante - b.instante);
-  const r: Array<Viaje & { desde: Punto; hasta: Punto }> = [];
-  let actual: (Viaje & { desde: Punto; hasta: Punto }) | null = null;
+  const orden = sinSaltos([...puntosDia].sort((a, b) => a.instante - b.instante));
+  const r: Array<Viaje & { desde: Punto; hasta: Punto; camino: Coordenadas[] }> = [];
+  let actual: (Viaje & { desde: Punto; hasta: Punto; camino: Coordenadas[] }) | null = null;
   for (let i = 1; i < orden.length; i++) {
     const a = orden[i - 1];
     const b = orden[i];
@@ -117,16 +141,20 @@ export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
       actual!.fin = b.instante;
       actual!.metros += d;
       actual!.hasta = b;
+      actual!.camino.push({ lat: b.lat, lon: b.lon });
     } else {
-      // Si estuvo un rato quieto antes, el viaje empezó cerca del final de ese tramo (la hora de salida es aproximada).
-      actual = { inicio: largo ? b.instante : a.instante, fin: b.instante, metros: d, desde: largo ? b : a, hasta: b };
+      // Si estuvo un rato quieto antes, salió en algún momento de ese rato: lo que tarda en hacer ese tramo a velocidad de
+      // ciudad, antes de llegar al punto (la hora de salida es aproximada). Antes empezaba en el mismo punto y un tramo
+      // largo quedaba en un minuto: 400 km/h.
+      const inicio = largo ? Math.max(a.instante, b.instante - Math.round((d / SALIDA_MS) * 1000)) : a.instante;
+      actual = { inicio, fin: b.instante, metros: d, desde: a, hasta: b, camino: [{ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }] };
       r.push(actual);
     }
   }
   return r
     .filter((v) => v.metros >= VIAJE_M)
     .filter((v) => !esVuelta(v))
-    .map(({ inicio, fin, metros }) => ({ inicio, fin, metros }));
+    .map(({ inicio, fin, metros, camino }) => ({ inicio, fin, metros, camino }));
 }
 
 /** Una vuelta a pie: termina cerca de donde empezó, a paso de caminata. */
