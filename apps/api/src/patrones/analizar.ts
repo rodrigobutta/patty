@@ -9,12 +9,14 @@ import { iaDisponible } from '../ia/cliente.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { rasgosDelCalendario } from '../routes/ciclo.js';
 import { climaPorHoraParaPatrones } from '../routes/clima.js';
-import { buscarPatrones, describir, DIAS_MINIMOS, type ConceptoInfo, type FilaDiaria } from './motor.js';
+import { buscarPatrones, claveCausas, describir, DIAS_MINIMOS, type ConceptoInfo, type FilaDiaria } from './motor.js';
 
 const COLUMNAS = sql`h.id, h.persona_id, h.causa_id, h.efecto_id, ca.nombre AS causa, ef.nombre AS efecto, h.causa_modo, h.efecto_modo,
   ca.tipo_valor AS causa_tipo, ef.tipo_valor AS efecto_tipo,
   h.desfase_dias, h.soporte, h.dias_causa, h.dias_evaluados, h.prob_con, h.prob_sin, h.lift, h.p_valor, h.q_valor, h.puntaje,
-  h.explicacion, h.estado, h.detectado`;
+  h.explicacion, h.estado, h.detectado,
+  coalesce((SELECT jsonb_agg(jsonb_build_object('nombre', c.nombre, 'tipo', c.tipo_valor, 'modo', e->>'modo'))
+            FROM jsonb_array_elements(h.causas_extra) e JOIN conceptos c ON c.id = (e->>'id')::int), '[]'::jsonb) AS causas_extra`;
 
 export function listarHallazgos(tx: Tx, personaId: number, ids?: number[]): Promise<Hallazgo[]> {
   const filtro = ids ? sql`AND h.id IN ${ids}` : sql``;
@@ -88,21 +90,26 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
   const tipo = new Map(conceptos.map((x) => [x.id, x.tipo_valor]));
   // Lo que la persona ya opinó. Un par que marcó como obvio o sin sentido no vuelve como novedad con otro desfase u otro
   // modo (sí se actualiza el mismo hallazgo, que queda apartado); y la IA aprende de todas las opiniones.
-  const opinados = await filas<{ causa_id: number; efecto_id: number; causa: string; efecto: string; estado: 'confirmado' | 'obvio' | 'descartado'; clave: string }>(
+  const opinados = await filas<{ causa_id: number; efecto_id: number; causa: string; efecto: string; estado: 'confirmado' | 'obvio' | 'descartado'; clave: string; combo: string }>(
     db,
     sql`SELECT h.causa_id, h.efecto_id, ca.nombre AS causa, ef.nombre AS efecto, h.estado,
-               h.causa_id || '|' || h.causa_modo || '|' || h.efecto_id || '|' || h.efecto_modo || '|' || h.desfase_dias AS clave
+               h.causa_id || '|' || h.causa_modo || '|' || h.combo || '|' || h.efecto_id || '|' || h.efecto_modo || '|' || h.desfase_dias AS clave, h.combo
         FROM hallazgos h JOIN conceptos ca ON ca.id = h.causa_id JOIN conceptos ef ON ef.id = h.efecto_id
         WHERE h.persona_id = ${p.id} AND h.estado <> 'nuevo' ORDER BY h.actualizado DESC LIMIT 40`,
   );
-  const apartados = new Set(opinados.filter((o) => o.estado !== 'confirmado').map((o) => `${o.causa_id}|${o.efecto_id}`));
+  const apartados = new Set(opinados.filter((o) => o.estado !== 'confirmado').map((o) => `${o.causa_id}|${o.combo}|${o.efecto_id}`));
+  const combo = (x: (typeof r.candidatos)[number]) => (x.causas_extra.length ? claveCausas(x) : '');
   const mismos = new Set(opinados.map((o) => o.clave));
   r.candidatos = r.candidatos.filter(
-    (x) => !apartados.has(`${x.causa_id}|${x.efecto_id}`) || mismos.has(`${x.causa_id}|${x.causa_modo}|${x.efecto_id}|${x.efecto_modo}|${x.desfase_dias}`),
+    (x) =>
+      !apartados.has(`${x.causa_id}|${combo(x)}|${x.efecto_id}`) ||
+      mismos.has(`${x.causa_id}|${x.causa_modo}|${combo(x)}|${x.efecto_id}|${x.efecto_modo}|${x.desfase_dias}`),
   );
+  // Una combinación se nombra con todas sus causas: "Comida frita + Fase menstrual + Más temperatura máxima".
   const conNombres = r.candidatos.map((x) => ({
     ...x,
-    causa: nombreRasgo(nombre.get(x.causa_id)!, tipo.get(x.causa_id)!, x.causa_modo, idioma),
+    combo: combo(x),
+    causa: [{ id: x.causa_id, modo: x.causa_modo }, ...x.causas_extra].map((c) => nombreRasgo(nombre.get(c.id)!, tipo.get(c.id)!, c.modo, idioma)).join(' + '),
     efecto: nombreRasgo(nombre.get(x.efecto_id)!, tipo.get(x.efecto_id)!, x.efecto_modo, idioma),
   }));
 
@@ -126,12 +133,12 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
 
   const resultado = await db.transaction(async (tx) => {
     // Lo que ya estaba antes (en cualquier estado): lo que no, es nuevo y se puede avisar.
-    const clave = (h: { causa_id: number; causa_modo: string; efecto_id: number; efecto_modo: string; desfase_dias: number }) =>
-      `${h.causa_id}|${h.causa_modo}|${h.efecto_id}|${h.efecto_modo}|${h.desfase_dias}`;
+    const clave = (h: { causa_id: number; causa_modo: string; combo: string; efecto_id: number; efecto_modo: string; desfase_dias: number }) =>
+      `${h.causa_id}|${h.causa_modo}|${h.combo}|${h.efecto_id}|${h.efecto_modo}|${h.desfase_dias}`;
     const antes = new Set(
-      (await filas<{ causa_id: number; causa_modo: string; efecto_id: number; efecto_modo: string; desfase_dias: number }>(
+      (await filas<{ causa_id: number; causa_modo: string; combo: string; efecto_id: number; efecto_modo: string; desfase_dias: number }>(
         tx,
-        sql`SELECT causa_id, causa_modo, efecto_id, efecto_modo, desfase_dias FROM hallazgos WHERE persona_id = ${p.id}`,
+        sql`SELECT causa_id, causa_modo, combo, efecto_id, efecto_modo, desfase_dias FROM hallazgos WHERE persona_id = ${p.id}`,
       )).map(clave),
     );
     const [a] = await tx
@@ -148,7 +155,7 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
         .insert(hallazgos)
         .values({ persona_id: p.id, ...stats, explicacion: explicacion.get(i) ?? describir(x, causa, efecto, idioma), analisis_id: a.id })
         .onConflictDoUpdate({
-          target: [hallazgos.persona_id, hallazgos.causa_id, hallazgos.causa_modo, hallazgos.efecto_id, hallazgos.efecto_modo, hallazgos.desfase_dias],
+          target: [hallazgos.persona_id, hallazgos.causa_id, hallazgos.causa_modo, hallazgos.combo, hallazgos.efecto_id, hallazgos.efecto_modo, hallazgos.desfase_dias],
           set: {
             ...stats,
             explicacion: explicacion.get(i) ?? describir(x, causa, efecto, idioma),

@@ -701,10 +701,12 @@ export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'obvio' | 'descartado';
 export type Modo = 'presente' | 'alto' | 'bajo';
 
 /** "Tomate", "Menos energía", "Me acosté tarde": cómo se nombra un rasgo de un día (alto y bajo, respecto de lo habitual). */
-/** El ánimo dicho como se dice: "Menos cómo me sentí en el día" no se entiende; "Un día peor", sí. */
+/** El ánimo y el clima dichos como se dicen: "Menos cómo me sentí en el día" no se entiende; "Un día peor", sí. */
 const NOMBRES_ANIMO: Record<string, { alto: [string, string]; bajo: [string, string] }> = {
   'Cómo me sentí en el día': { alto: ['Un día mejor', 'A better day'], bajo: ['Un día peor', 'A worse day'] },
   'Cómo me siento': { alto: ['Mejor ánimo', 'Better mood'], bajo: ['Peor ánimo', 'Worse mood'] },
+  'Temperatura máxima': { alto: ['Día de calor', 'Hot day'], bajo: ['Día fresco', 'Cool day'] },
+  'Temperatura mínima': { alto: ['Noche templada', 'Warm night'], bajo: ['Noche fría', 'Cold night'] },
 };
 
 export function nombreRasgo(nombre: string, tipo: TipoValor, modo: Modo, idioma: Idioma = 'es'): string {
@@ -732,6 +734,8 @@ export interface Hallazgo {
   efecto_modo: Modo;
   causa_tipo: TipoValor;
   efecto_tipo: TipoValor;
+  /** Las otras causas de una combinación, que tienen que estar el mismo día (vacío: un patrón simple). */
+  causas_extra?: Array<{ nombre: string; tipo: TipoValor; modo: Modo }>;
   /** días entre la causa y el efecto (0 = el mismo día) */
   desfase_dias: number;
   /** días en que hubo causa y, desfase días después, efecto */

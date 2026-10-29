@@ -151,6 +151,47 @@ describe('buscarPatrones', () => {
   });
 });
 
+describe('patrones combinados', () => {
+  it('frito + período + calor → dolor de panza al día siguiente, cuando cada cosa sola casi no alcanza', () => {
+    const r = azar(11);
+    const filas: FilaDiaria[] = [];
+    const conceptos: ConceptoInfo[] = [
+      { id: 1, nombre: 'Comida frita', tipo_valor: 'evento', rol: 'causa' },
+      { id: 2, nombre: 'Fase menstrual', tipo_valor: 'evento', rol: 'causa' },
+      { id: 3, nombre: 'Temperatura máxima', tipo_valor: 'medida', rol: 'causa' },
+      { id: 4, nombre: 'Café', tipo_valor: 'evento', rol: 'causa' },
+      { id: 10, nombre: 'Dolor de panza', tipo_valor: 'intensidad', rol: 'efecto' },
+    ];
+    const dias = 120;
+    const juntos: boolean[] = [];
+    for (let i = 0; i < dias; i++) {
+      const dia = sumarDias(DESDE, i);
+      const h = (x: number) => Date.parse(`${dia}T${String(x).padStart(2, '0')}:00:00Z`);
+      const ev = (id: number, x: number) => filas.push({ fecha: dia, concepto_id: id, veces: 1, suma: null, promedio: null, intensidad: null, primera: h(x) });
+      const periodo = i % 28 < 7;
+      const calor = r() < 0.5;
+      const frito = r() < (periodo ? 0.6 : 0.3);
+      if (frito) ev(1, 13);
+      if (periodo) ev(2, 8);
+      if (r() < 0.6) ev(4, 8);
+      filas.push({ fecha: dia, concepto_id: 3, veces: 1, suma: null, promedio: calor ? 30 : 20 + Math.round(r() * 3), intensidad: null, primera: null });
+      juntos[i] = frito && periodo && calor;
+      const ayer = i > 0 && juntos[i - 1];
+      if (r() < (ayer ? 0.95 : 0.06)) ev(10, 11);
+    }
+    const res = buscarPatrones(filas, conceptos, DESDE, sumarDias(DESDE, dias - 1));
+    const combinados = res.candidatos.filter((x) => x.causas_extra.length > 0 && x.efecto_id === 10);
+    expect(combinados.length).toBeGreaterThan(0);
+    const mejor = combinados[0];
+    const ids = [mejor.causa_id, ...mejor.causas_extra.map((c) => c.id)].sort();
+    expect(ids).toEqual([1, 2, 3]);
+    expect(mejor.desfase_dias).toBe(1);
+    expect(mejor.prob_con).toBeGreaterThan(0.8);
+    // El café no entra en ninguna combinación.
+    expect(res.candidatos.some((x) => [x.causa_id, ...x.causas_extra.map((c) => c.id)].includes(4))).toBe(false);
+  });
+});
+
 describe('nombres de los rasgos', () => {
   it('presente, horas y medidas', async () => {
     const { nombreRasgo } = await import('shared');

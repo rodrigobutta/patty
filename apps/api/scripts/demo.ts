@@ -12,7 +12,7 @@ import { diaDePatty, localAInstante, sumarDias } from '../src/lib/fechas.js';
 
 if (!/patty_(demo|e2e)/.test(process.env.DATABASE_URL ?? '')) throw new Error('Solo sobre una base de demo o de pruebas (patty_demo, patty_e2e).');
 const ZONA = 'America/Argentina/Buenos_Aires';
-const DIAS = 42;
+const DIAS = 70;
 
 // Azar repetible (así los datos salen iguales cada vez).
 let semilla = 7;
@@ -69,7 +69,10 @@ const medClima: unknown[] = [];
 const caminatas: Array<{ fecha: string; caminatas: Array<{ inicio: string; fin: string; pasos: number }> }> = [];
 const etapas: Array<{ noche: string; etapas: Array<{ inicio: string; fin: string; etapa: string }> }> = [];
 
-const menstruacion = new Set([-40, -39, -38, -37, -12, -11, -10, -9].map((d) => sumarDias(hoy, d)));
+// Tres períodos de 5 días; el número es qué día del período es (0 a 4).
+const menstruacion = new Map([-69, -41, -13].flatMap((ini) => [0, 1, 2, 3, 4].map((j) => [sumarDias(hoy, ini + j), j] as const)));
+// Lo de ayer, para el patrón combinado: frito + período + calor → dolor de panza al día siguiente (cada cosa sola casi no).
+let ayer = { frito: false, periodo: false, calor: false };
 let pantallaAyer = 220;
 for (let k = -DIAS; k <= 0; k++) {
   const f = sumarDias(hoy, k);
@@ -125,11 +128,15 @@ for (let k = -DIAS; k <= 0; k++) {
     { concepto: 'Llamadas', categoria: 'comunicacion', valor: Math.round(entre(1, 6)), inicio: cuando(f, '00:00') },
   );
   pantallaAyer = pantalla;
-  const max = Math.round(entre(19, 28));
+  const periodo = menstruacion.has(f);
+    // En el período: calor los días 0, 1, 3 y 4, y frito los días 0, 1 y 2. Solo los días 0 y 1 se juntan las tres
+  // cosas (y al día siguiente duele la panza); las otras combinaciones también pasan, sin dolor. Fuera del período, al azar.
+  const jPeriodo = menstruacion.get(f);
+  const max = Math.round(periodo ? ([0, 1, 3, 4].includes(jPeriodo!) ? entre(27, 31) : entre(19, 24)) : azar() < 0.4 ? entre(27, 31) : entre(18, 26));
   const lluvia = azar() < 0.18 ? r1(entre(2, 18)) : 0;
   medClima.push(
     { concepto: 'Temperatura máxima', categoria: 'clima', unidad: '°C', valor: max, inicio: cuando(f, '00:00') },
-    { concepto: 'Temperatura mínima', categoria: 'clima', unidad: '°C', valor: max - Math.round(entre(7, 11)), inicio: cuando(f, '00:00') },
+    { concepto: 'Temperatura mínima', categoria: 'clima', unidad: '°C', valor: max - Math.round(entre(5, 15)), inicio: cuando(f, '00:00') },
     { concepto: 'Lluvia del día', categoria: 'clima', unidad: 'mm', valor: lluvia, inicio: cuando(f, '00:00') },
     { concepto: 'Horas de sol', categoria: 'clima', unidad: 'h', valor: lluvia ? r1(entre(1, 4)) : r1(entre(7, 10)), inicio: cuando(f, '00:00') },
   );
@@ -143,12 +150,15 @@ for (let k = -DIAS; k <= 0; k++) {
     anotar(f, hm(despertar + 0.1), 'Menstruación', 'ciclo', { intensidad: 6 });
     if (azar() < 0.7) anotar(f, '11:00', 'Cólicos', 'sintoma', { intensidad: Math.round(entre(4, 7)) });
   }
-  const frito = azar() < 0.25;
-  const almuerzo = frito ? 'Milanesa con papas fritas' : ['Ensalada de quinoa', 'Wok de verduras con pollo', 'Tarta de verdura', 'Pasta con tuco'][Math.floor(azar() * 4)];
+  // En el período se le antoja más lo frito.
+  const frito = periodo ? jPeriodo! <= 2 : azar() < 0.35;
+  const almuerzo = frito ? ['Milanesa con papas fritas', 'Empanadas fritas', 'Hamburguesa con papas fritas'][Math.floor(azar() * 3)] : ['Ensalada de quinoa', 'Wok de verduras con pollo', 'Tarta de verdura', 'Pasta con tuco'][Math.floor(azar() * 4)];
   anotar(f, '13:00', almuerzo, 'comida', finde
     ? { donde: 'casa', porcion: 'grande', tipos: frito ? ['frito', 'proteina'] : ['verdura'] }
     : { donde: 'afuera', lugar: frito ? 'La Parrilla de Juan' : 'Green Bowl', porcion: frito ? 'grande' : 'mediana', tipos: frito ? ['frito', 'proteina'] : ['verdura', 'proteina'] });
-  if (frito && azar() < 0.7) anotar(f, '16:30', 'Dolor de panza', 'sintoma', { intensidad: Math.round(entre(3, 6)) });
+  const panza = ayer.frito && ayer.periodo && ayer.calor ? 0.97 : ayer.frito ? 0.1 : 0.03;
+  if (azar() < panza) anotar(f, '11:00', 'Dolor de panza', 'sintoma', { intensidad: Math.round(entre(4, 7)) });
+  ayer = { frito, periodo, calor: max >= 27 };
   if (corta ? azar() < 0.85 : azar() < 0.03) {
     anotar(f, hm(entre(15, 18)), 'Dolor de cabeza', 'sintoma', { intensidad: Math.round(entre(4, 7)) });
     anotar(f, '18:30', 'Ibuprofeno', 'medicacion', { valor: 400, unidad: 'mg' });
@@ -224,14 +234,18 @@ await ex('Horas de sueño', 'Dolor de cabeza', 'Las noches que dormís menos de 
 await ex('Tiempo de pantalla', 'Horas de sueño', 'Los días con más de 5 horas de pantalla, esa noche dormís bastante menos. Puede valer la pena dejar el teléfono un rato antes.');
 await ex('Comida frita', 'Dolor de panza', 'Cuando la comida es frita, a la tarde aparece el dolor de panza más seguido que otros días.');
 // Quedan los que cuentan algo (y dos obvios ya marcados, para que se vea esa parte de Patrones); el resto se borra.
-const queda = (causa: string, modo: string, efecto: string, emodo: string) => sql`(ca.nombre = ${causa} AND h.causa_modo = ${modo} AND ef.nombre = ${efecto} AND h.efecto_modo = ${emodo})`;
+const queda = (causa: string, modo: string, efecto: string, emodo: string) => sql`(ca.nombre = ${causa} AND h.causa_modo = ${modo} AND ef.nombre = ${efecto} AND h.efecto_modo = ${emodo} AND jsonb_array_length(h.causas_extra) = 0)`;
 await db.execute(sql`DELETE FROM hallazgos h USING conceptos ca, conceptos ef WHERE h.causa_id = ca.id AND h.efecto_id = ef.id AND NOT (
   ${queda('Horas de sueño', 'bajo', 'Dolor de cabeza', 'presente')} OR ${queda('Comida frita', 'presente', 'Dolor de panza', 'presente')}
   OR ${queda('Caminata', 'presente', 'Cómo me siento', 'alto')} OR ${queda('Horas de sueño', 'bajo', 'Cómo me sentí en el día', 'bajo')}
-  OR ${queda('Me levanté', 'alto', 'Hora de despertar', 'alto')} OR ${queda('Menstruación', 'presente', 'Fase menstrual', 'presente')})`);
+  OR ${queda('Me levanté', 'alto', 'Hora de despertar', 'alto')} OR ${queda('Menstruación', 'presente', 'Fase menstrual', 'presente')}
+  OR (jsonb_array_length(h.causas_extra) > 0 AND ef.nombre = 'Dolor de panza'))`);
 await db.execute(sql`UPDATE hallazgos h SET estado = 'obvio' FROM conceptos ca WHERE h.causa_id = ca.id AND ca.nombre IN ('Me levanté', 'Menstruación')`);
 await ex('Horas de sueño', 'Cómo me sentí en el día', 'Los días después de dormir poco, a la noche contás que el día fue peor. Dormir bien es de lo que más mueve tu ánimo.');
 await ex('Caminata', 'Cómo me siento', 'Los días que caminás media hora o más, tu ánimo está más arriba.');
+// El combinado (lo más valioso que encuentra Patty), arriba de todo.
+await db.execute(sql`UPDATE hallazgos h SET puntaje = puntaje + 1000, explicacion = ${'Cuando se juntan las tres cosas, comida frita, estar en tu período y un día de calor, al día siguiente casi siempre te duele la panza. Con una sola de ellas, pasa muy de vez en cuando.'}
+  FROM conceptos ef WHERE h.efecto_id = ef.id AND h.persona_id = ${P} AND ef.nombre = 'Dolor de panza' AND jsonb_array_length(h.causas_extra) > 0`);
 
 const insertar = async (consulta: ReturnType<typeof sql>) => db.execute(consulta);
 await insertar(sql`INSERT INTO comentarios (persona_id, fecha, emoji, texto, estado, creado) VALUES

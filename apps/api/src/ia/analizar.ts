@@ -54,7 +54,10 @@ export function explicarHallazgos(datos: {
     'pasa los candidatos con sus números. Tu trabajo es explicarlos en castellano rioplatense, claro y sin tecnicismos, ' +
     'con prudencia: son correlaciones en pocos datos, no diagnósticos. Marcá como plausibilidad baja lo que probablemente ' +
     'sea azar o se explique por otra cosa (un confusor: por ejemplo, el fin de semana), y alta lo que tiene sentido y está ' +
-    'bien sostenido por los números. "Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.' +
+    'bien sostenido por los números. Algunos candidatos combinan causas con " + " (comida frita + fase menstrual + calor): ' +
+    'quiere decir que pasan juntas el mismo día, y que juntas explican el efecto mucho más que cada una sola; contalo así ' +
+    '("cuando se juntan…"), que es lo más valioso que puede encontrar Patty. ' +
+    '"Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.' +
     (datos.idioma === 'en'
       ? ' La persona usa la app en inglés: escribí el resumen, las explicaciones y las sugerencias en inglés (claro y simple).'
       : '');

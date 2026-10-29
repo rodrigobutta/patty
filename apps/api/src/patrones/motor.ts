@@ -11,6 +11,10 @@
 //   p_valor = test exacto de Fisher de una cola (que la causa sube la probabilidad del efecto)
 //   q_valor = corrección de Benjamini-Hochberg por la cantidad de pares probados (hay muchos: algunos salen por azar).
 // Con desfase 0 (mismo día) solo cuenta si la causa se anotó antes que el efecto.
+//
+// Además, combinaciones: dos o tres causas el mismo día ("comida frita + fase menstrual + calor → dolor de panza al día
+// siguiente"). Solo se combinan las causas que ya muestran algo de relación con ese efecto, y una combinación queda si
+// explica bastante más que cada una de sus partes sola (si no, alcanza con la simple).
 import { traducir, type Idioma, type Modo, type RolCategoria, type TipoValor } from 'shared';
 import { diasEntre } from '../lib/fechas.js';
 
@@ -40,9 +44,17 @@ export interface ConceptoInfo {
   rol: RolCategoria;
 }
 
+/** Una causa más de una combinación (la primera va en causa_id / causa_modo). */
+export interface CausaExtra {
+  id: number;
+  modo: Modo;
+}
+
 export interface Candidato {
   causa_id: number;
   causa_modo: Modo;
+  /** Las otras causas que tienen que estar el mismo día (vacío: un patrón simple). */
+  causas_extra: CausaExtra[];
   efecto_id: number;
   efecto_modo: Modo;
   desfase_dias: number;
@@ -55,6 +67,8 @@ export interface Candidato {
   p_valor: number;
   q_valor: number;
   puntaje: number;
+  /** En una combinación: cuántas veces más fuerte es que la mejor de sus partes sola. */
+  mejora?: number;
 }
 
 export interface Opciones {
@@ -70,6 +84,17 @@ export interface Opciones {
 }
 
 export const OPCIONES: Opciones = { desfaseMax: 3, soporteMin: 3, diasCausaMin: 3, liftMin: 1.3, pMax: 0.1, limite: 40 };
+
+/** Cuántas causas (las más relacionadas con cada efecto) se prueban de a dos y de a tres. */
+const PARA_COMBINAR = 16;
+/** El p que tiene que tener una combinación (se prueban cientos por efecto). */
+const P_COMBINADA = 0.001;
+/** Con menos veces que esto, una combinación de varias cosas es fácil que sea casualidad. */
+const SOPORTE_COMBINADA = 5;
+/** Cuántas combinaciones quedan como mucho en un análisis. */
+const COMBINADAS_MAX = 8;
+/** Una combinación tiene que superar a la mejor de sus partes por esto (en lift) para quedar. */
+const MEJORA_COMBINADA = 1.25;
 
 /** Con menos días que esto no se analiza: cualquier coincidencia parecería un patrón. */
 export const DIAS_MINIMOS = 14;
@@ -223,49 +248,118 @@ export function buscarPatrones(
   const efectos = rasgos.filter((r) => r.concepto.rol !== 'causa');
   const crudos: Array<Omit<Candidato, 'q_valor' | 'puntaje'>> = [];
   let pares = 0;
+  /** Por efecto y desfase, las causas que muestran algo de relación (para probar combinaciones). */
+  const relacionadas = new Map<string, Array<{ A: Rasgo; lift: number; probCon: number; p: number }>>();
+
+  /** La tabla de 2x2 de una causa (simple o combinada) con un efecto, y si sirve como candidato. */
+  const probar = (A: Pick<Rasgo, 'esta' | 'universo' | 'primera'>, B: Rasgo, k: number) => {
+    let n1 = 0, a = 0, n0 = 0, c = 0;
+    for (let d = 0; d + k < n; d++) {
+      if (!A.universo[d] || !B.universo[d + k]) continue;
+      let efecto = B.esta[d + k] === 1;
+      if (A.esta[d]) {
+        // Mismo día: el efecto tiene que venir después de la causa (si se sabe la hora de los dos).
+        if (k === 0 && efecto && A.primera[d] > B.primera[d]) efecto = false;
+        n1++;
+        if (efecto) a++;
+      } else {
+        n0++;
+        if (efecto) c++;
+      }
+    }
+    if (n1 < o.diasCausaMin || n0 < 3) return null;
+    const lift = (a + 0.5) / (n1 + 1) / ((c + 0.5) / (n0 + 1));
+    return { n1, a, n0, c, lift, probCon: a / n1, probSin: c / n0 };
+  };
+  const guardar = (A: Rasgo, extra: CausaExtra[], B: Rasgo, k: number, t: NonNullable<ReturnType<typeof probar>>, mejora?: number) => {
+    if (t.a < o.soporteMin || t.lift < o.liftMin) return false;
+    const p = fisherMayor(t.a, t.n1, t.a + t.c, t.n1 + t.n0);
+    // Las combinaciones se prueban muchas más veces: se les pide mucho más.
+    if (p > (extra.length ? P_COMBINADA : o.pMax)) return false;
+    crudos.push({
+      causa_id: A.concepto.id,
+      causa_modo: A.modo,
+      causas_extra: extra,
+      efecto_id: B.concepto.id,
+      efecto_modo: B.modo,
+      desfase_dias: k,
+      soporte: t.a,
+      dias_causa: t.n1,
+      dias_evaluados: t.n1 + t.n0,
+      prob_con: t.probCon,
+      prob_sin: t.probSin,
+      lift: t.lift,
+      p_valor: p,
+      ...(mejora ? { mejora } : {}),
+    });
+    return true;
+  };
 
   for (const A of causas) {
     for (const B of efectos) {
       if (A.concepto.id === B.concepto.id) continue;
       for (let k = 0; k <= o.desfaseMax; k++) {
-        let n1 = 0, a = 0, n0 = 0, c = 0;
-        for (let d = 0; d + k < n; d++) {
-          if (!A.universo[d] || !B.universo[d + k]) continue;
-          let efecto = B.esta[d + k] === 1;
-          if (A.esta[d]) {
-            // Mismo día: el efecto tiene que venir después de la causa (si se sabe la hora de los dos).
-            if (k === 0 && efecto && A.primera[d] > B.primera[d]) efecto = false;
-            n1++;
-            if (efecto) a++;
-          } else {
-            n0++;
-            if (efecto) c++;
-          }
-        }
-        if (n1 < o.diasCausaMin || n0 < 3) continue;
+        const t = probar(A, B, k);
+        if (!t) continue;
         pares++;
-        if (a < o.soporteMin) continue;
-        const probCon = a / n1;
-        const probSin = c / n0;
-        const lift = (a + 0.5) / (n1 + 1) / ((c + 0.5) / (n0 + 1));
-        if (lift < o.liftMin) continue;
-        const p = fisherMayor(a, n1, a + c, n1 + n0);
-        if (p > o.pMax) continue;
-        crudos.push({
-          causa_id: A.concepto.id,
-          causa_modo: A.modo,
-          efecto_id: B.concepto.id,
-          efecto_modo: B.modo,
-          desfase_dias: k,
-          soporte: a,
-          dias_causa: n1,
-          dias_evaluados: n1 + n0,
-          prob_con: probCon,
-          prob_sin: probSin,
-          lift,
-          p_valor: p,
-        });
+        // Se combinan causas solo para síntomas y ánimo: lo que la persona siente, que es lo que quiere entender.
+        if (t.a >= 2 && t.lift > 1.05 && (B.concepto.rol === 'efecto' || B.concepto.tipo_valor === 'intensidad')) {
+          const clave = `${efectos.indexOf(B)}|${k}`;
+          let l = relacionadas.get(clave);
+          if (!l) relacionadas.set(clave, (l = []));
+          l.push({ A, lift: t.lift, probCon: t.probCon, p: fisherMayor(t.a, t.n1, t.a + t.c, t.n1 + t.n0) });
+        }
+        guardar(A, [], B, k, t);
       }
+    }
+  }
+
+  // Combinaciones: de las causas más relacionadas con cada efecto, de a dos y de a tres (de conceptos distintos).
+  const juntar = (partes: Rasgo[]) => {
+    const esta = new Uint8Array(n);
+    const universo = new Uint8Array(n);
+    const primera = new Float64Array(n).fill(Number.NaN);
+    for (let d = 0; d < n; d++) {
+      universo[d] = partes.every((x) => x.universo[d]) ? 1 : 0;
+      esta[d] = partes.every((x) => x.esta[d]) ? 1 : 0;
+      // La combinación "pasó" cuando pasó la última de sus partes.
+      const horas = partes.map((x) => x.primera[d]).filter((h) => !Number.isNaN(h));
+      if (horas.length) primera[d] = Math.max(...horas);
+    }
+    return { esta, universo, primera };
+  };
+  for (const [clave, lista] of relacionadas) {
+    const [bi, ks] = clave.split('|');
+    const B = efectos[Number(bi)];
+    const k = Number(ks);
+    // Las más sostenidas por los números (no las de lift alto con dos días, que suelen ser casualidad).
+    const top = lista.sort((x, y) => x.p - y.p).slice(0, PARA_COMBINAR);
+    const grupos: Array<typeof top> = [];
+    for (let i = 0; i < top.length; i++) {
+      for (let j = i + 1; j < top.length; j++) {
+        grupos.push([top[i], top[j]]);
+        for (let m = j + 1; m < top.length; m++) grupos.push([top[i], top[j], top[m]]);
+      }
+    }
+    for (const g of grupos) {
+      if (new Set(g.map((x) => x.A.concepto.id)).size < g.length) continue;
+      // Dos partes que casi siempre van juntas (pasos y km caminados) son la misma cosa: no es una combinación.
+      if (g.some((x, i) => g.some((y, j) => j > i && parecidos(x.A, y.A)))) continue;
+      const t = probar(juntar(g.map((x) => x.A)), B, k);
+      if (!t) continue;
+      pares++;
+      // Tiene que decir bastante más que cada parte sola: si no, es la simple con un agregado de casualidad. Y eso se
+      // prueba también: entre los días con la mejor parte, los que además tienen las otras dan el efecto bastante más.
+      const mejor = g.reduce((x, y) => (y.lift > x.lift ? y : x));
+      const mejorProb = Math.max(...g.map((x) => x.probCon));
+      if (t.lift < mejor.lift * MEJORA_COMBINADA || t.probCon < mejorProb + 0.1) continue;
+      const solo = probar(mejor.A, B, k);
+      if (!solo) continue;
+      // Días con la mejor parte: t.n1 con todo (t.a con efecto) y el resto sin las otras partes.
+      const pAporte = fisherMayor(t.a, t.n1, solo.a, solo.n1);
+      if (pAporte > 0.05) continue;
+      const [primero, ...resto] = g.map((x) => x.A);
+      guardar(primero, resto.map((x) => ({ id: x.concepto.id, modo: x.modo })), B, k, t, t.lift / mejor.lift);
     }
   }
 
@@ -285,13 +379,83 @@ export function buscarPatrones(
   const espejo = (m: Modo): Modo => (m === 'alto' ? 'bajo' : m === 'bajo' ? 'alto' : m);
   const mejor = new Map<string, Candidato>();
   for (const x of todos) {
-    const [cm, em] = x.causa_modo === 'bajo' ? [espejo(x.causa_modo), espejo(x.efecto_modo)] : [x.causa_modo, x.efecto_modo];
-    const clave = `${x.causa_id}${cm}>${x.efecto_id}${em}`;
+    const [cm, em] = x.causa_modo === 'bajo' && !x.causas_extra.length ? [espejo(x.causa_modo), espejo(x.efecto_modo)] : [x.causa_modo, x.efecto_modo];
+    const clave = `${claveCausas(x)}|${cm}>${x.efecto_id}${em}`;
     const y = mejor.get(clave);
     if (!y || x.puntaje > y.puntaje) mejor.set(clave, x);
   }
-  const candidatos = [...mejor.values()].sort((a, b) => b.puntaje - a.puntaje).slice(0, o.limite);
+  // Una combinación sobra si una de sus partes sola (con cualquier desfase) ya explica lo mismo, o si es de tres y no
+  // supera a una de dos con las mismas partes.
+  const todosMejores = [...mejor.values()];
+  const elegidos = todosMejores.filter((x) => {
+    if (!x.causas_extra.length) return true;
+    const mias = partes(x);
+    return !todosMejores.some(
+      (y) =>
+        y !== x &&
+        y.efecto_id === x.efecto_id &&
+        y.efecto_modo === x.efecto_modo &&
+        y.causas_extra.length < x.causas_extra.length &&
+        partes(y).every((c) => mias.includes(c)) &&
+        // Una de sus partes sola que ya la explica igual, o una combinación más chica que casi la iguala.
+        y.lift >= x.lift / (y.causas_extra.length ? MEJORA_COMBINADA : 1),
+    );
+  });
+  // Combinaciones con los mismos números para el mismo efecto son la misma (cambia una parte por otra equivalente).
+  const vistos = new Set<string>();
+  const sinRepetir = elegidos
+    .sort((a, b) => b.puntaje - a.puntaje)
+    .filter((x) => {
+      if (!x.causas_extra.length) return true;
+      const k = `${x.efecto_id}|${x.efecto_modo}|${x.desfase_dias}|${x.soporte}|${x.dias_causa}|${x.lift.toFixed(4)}`;
+      if (vistos.has(k)) return false;
+      vistos.add(k);
+      return true;
+    });
+  // Las combinaciones se prueban de a cientos: solo quedan las muy firmes (p muy chico, ver `guardar`), y como mucho
+  // unas pocas, así no tapan a las simples.
+  // Primero las mejor sostenidas por los números, y como mucho una por efecto (si no, el mismo "dormir poco + …"
+  // aparece con cada cosa que va con dormir poco).
+  const porEfecto = new Set<string>();
+  const combinadas = sinRepetir
+    .filter((x) => x.causas_extra.length && x.soporte >= SOPORTE_COMBINADA)
+    .sort((a, b) => a.p_valor - b.p_valor)
+    .filter((x) => {
+      const k = `${x.efecto_id}|${x.efecto_modo}`;
+      if (porEfecto.has(k)) return false;
+      porEfecto.add(k);
+      return true;
+    })
+    .slice(0, COMBINADAS_MAX);
+  const simples = sinRepetir.filter((x) => !x.causas_extra.length).slice(0, o.limite - combinadas.length);
+  const candidatos = [...simples, ...combinadas].sort((a, b) => b.puntaje - a.puntaje);
   return { candidatos, pares_evaluados: pares, dias: n, dias_activos: diasActivos };
+}
+
+/**
+ * Si dos rasgos dicen casi lo mismo: están juntos en más del 75 % de los días en que está alguno, o uno está casi
+ * siempre dentro del otro ("Milanesa con papas fritas" y "Comida frita").
+ */
+function parecidos(a: Rasgo, b: Rasgo): boolean {
+  let juntos = 0;
+  let alguno = 0;
+  let enA = 0;
+  let enB = 0;
+  for (let d = 0; d < a.esta.length; d++) {
+    if (a.esta[d] || b.esta[d]) alguno++;
+    if (a.esta[d] && b.esta[d]) juntos++;
+    enA += a.esta[d];
+    enB += b.esta[d];
+  }
+  if (!alguno) return false;
+  return juntos / alguno > 0.75 || juntos / Math.max(1, Math.min(enA, enB)) > 0.9;
+}
+
+const partes = (x: Pick<Candidato, 'causa_id' | 'causa_modo' | 'causas_extra'>) => [`${x.causa_id}:${x.causa_modo}`, ...x.causas_extra.map((c) => `${c.id}:${c.modo}`)];
+
+/** Las causas de un hallazgo, en un orden fijo (así la misma combinación da siempre la misma clave). */
+export function claveCausas(x: Pick<Candidato, 'causa_id' | 'causa_modo' | 'causas_extra'>): string {
+  return partes(x).sort().join('+');
 }
 
 /** Texto simple de un hallazgo, para cuando no hay IA. `causa` y `efecto` ya vienen nombrados ("Energía baja"). */

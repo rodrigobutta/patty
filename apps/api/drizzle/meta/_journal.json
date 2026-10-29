@@ -281,6 +281,13 @@
       "when": 1793207070299,
       "tag": "0039_remedio_para",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793301334722,
+      "tag": "0040_patrones_combinados",
+      "breakpoints": true
     }
   ]
 }
