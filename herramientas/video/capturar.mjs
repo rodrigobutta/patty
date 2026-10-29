@@ -111,14 +111,23 @@ const TOMAS = {
     await ir(c, BASE + '/', 5000);
     await c.enviar('Page.setInterceptFileChooserDialog', { enabled: true });
     c.on('Page.fileChooserOpened', async (p) => {
-      await c.enviar('DOM.setFileInputFiles', { files: [path.join(aqui, '../../apps/web/movil/presentacion/plato.png')], backendNodeId: p.backendNodeId });
+      await c
+        .enviar('DOM.setFileInputFiles', { files: [path.join(aqui, '../../apps/web/movil/presentacion/plato.png')], backendNodeId: p.backendNodeId })
+        .catch((e) => console.log('foto:', e.message));
     });
+    // Toda la vuelta: tocar la cámara, la foto, lo que Patty reconoce y "¡Perfecto!" para guardarlo.
     const s = await grabar(c, archivo('foto.webm'), async () => {
       await espera(500);
       await tocar(c, '.camara-flotante');
       await espera(900);
+      await captura(c, archivo('foto-1.webp'));
       await tocar(c, '.grande-foto');
-      await espera(1800 + 2300);
+      await espera(1800 + 1600);
+      await captura(c, archivo('foto-2.webp'));
+      await espera(1200);
+      await tocar(c, '.btn.confirmar');
+      await espera(2400);
+      await captura(c, archivo('foto-3.webp'));
     }, ALTA);
     console.log(`foto.webm: ${s.toFixed(1)} s`);
   },

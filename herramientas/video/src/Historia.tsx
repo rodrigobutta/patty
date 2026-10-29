@@ -162,7 +162,7 @@ function EscenaVista({ escena, largo }: { escena: Escena; largo: number }) {
             {escena.pantallas.map((p, i) => (
               <Telefono key={i} pantalla={p} alto={altoTel} retraso={i * 8} largo={largo} zoom={escena.zoom} />
             ))}
-            {escena.globitos ? <Globitos lista={escena.globitos} largo={largo} /> : null}
+            {escena.globitos ? <Globitos lista={escena.globitos} largo={largo} desde={Math.round((escena.globitosDesde ?? 0) * FPS)} hasta={escena.globitosHasta ? Math.round(escena.globitosHasta * FPS) : undefined} /> : null}
           </div>
         )}
       </AbsoluteFill>
@@ -235,7 +235,7 @@ function Telefono({ pantalla, alto, retraso, largo, zoom }: { pantalla: Pantalla
       <div style={{ width: ancho, height: alto, clipPath: `inset(0 round ${radio}px)`, background: '#f4f1fb', position: 'relative' }}>
         <div style={{ width: '100%', height: '100%', transform: `scale(${escala})`, transformOrigin: `${(zoom?.x ?? 0.5) * 100}% ${(zoom?.y ?? 0.5) * 100}%` }}>
           {pantalla.video ? (
-            <OffthreadVideo src={staticFile(`tomas/${pantalla.video}`)} startFrom={Math.round((pantalla.desde ?? 0) * fps)} muted style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+            <OffthreadVideo src={staticFile(`tomas/${pantalla.video}`)} startFrom={Math.round((pantalla.desde ?? 0) * fps)} playbackRate={pantalla.velocidad ?? 1} muted style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
           ) : (
             <Img src={staticFile(`tomas/${pantalla.img}`)} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
           )}
@@ -246,7 +246,7 @@ function Telefono({ pantalla, alto, retraso, largo, zoom }: { pantalla: Pantalla
 }
 
 /** Globitos que aparecen de a uno (alrededor del teléfono, o en fila debajo del título). */
-function Globitos({ lista, largo, enFila = false }: { lista: string[]; largo: number; enFila?: boolean }) {
+function Globitos({ lista, largo, enFila = false, desde = 0, hasta }: { lista: string[]; largo: number; enFila?: boolean; desde?: number; hasta?: number }) {
   const f = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const vertical = height > width;
@@ -257,11 +257,13 @@ function Globitos({ lista, largo, enFila = false }: { lista: string[]; largo: nu
     { x: -0.16, top: 0.58 },
     { x: 0.18, top: 0.8 },
   ];
-  const tramo = (largo * 0.75) / lista.length;
+  // Con un final marcado, salen enseguida uno atrás del otro; si no, repartidos en la escena.
+  const tramo = hasta ? 9 : ((largo - desde) * 0.7) / lista.length;
+  const sale = hasta ? interpolate(f, [hasta - 6, hasta], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
   return (
     <div style={enFila ? { display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: 'center', marginTop: 20 } : { position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {lista.map((g, i) => {
-        const s = spring({ frame: f - 14 - i * tramo, fps, config: { damping: 10, stiffness: 160 } });
+        const s = spring({ frame: f - 14 - desde - i * tramo, fps, config: { damping: 10, stiffness: 160 } });
         const lugar = lugares[i % lugares.length];
         const meneo = Math.sin((f + i * 20) / 15) * 5;
         const estilo = enFila
@@ -272,7 +274,7 @@ function Globitos({ lista, largo, enFila = false }: { lista: string[]; largo: nu
             key={g}
             style={{
               ...estilo,
-              opacity: Math.min(1, s * 1.5),
+              opacity: Math.min(1, s * 1.5) * sale,
               display: 'flex',
               alignItems: 'center',
               gap: 14,

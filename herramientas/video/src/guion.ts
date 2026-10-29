@@ -3,7 +3,8 @@
 // tarda leerla en voz alta, más o menos. Las tomas de la app salen de `node capturar.mjs` (public/tomas).
 
 /** Una pantalla de la app: una captura, o un video (de public/tomas). */
-export type Pantalla = { img?: string; video?: string; desde?: number };
+/** `desde`: en qué segundo del video arranca; `velocidad`: más rápido que en la grabación (1.3: 30 % más rápido). */
+export type Pantalla = { img?: string; video?: string; desde?: number; velocidad?: number };
 
 /** Un acercamiento a una parte de la pantalla, a la mitad de la escena (x, y: el centro, de 0 a 1; escala). */
 export type Zoom = { x: number; y: number; escala: number };
@@ -20,6 +21,10 @@ export interface Escena {
   titulo: string;
   /** Los globitos que van apareciendo alrededor (lo que anota o lo que junta Patty). */
   globitos?: string[];
+  /** Desde qué segundo de la escena empiezan a aparecer los globitos (cuando la app ya muestra eso). */
+  globitosDesde?: number;
+  /** Hasta qué segundo se ven (si después la app muestra otra cosa, como el "¡Anotado!"). */
+  globitosHasta?: number;
   zoom?: Zoom;
 }
 
@@ -50,11 +55,13 @@ export const ESCENAS: Escena[] = [
   },
   {
     clave: 'foto',
-    texto: 'Le saca una foto al plato, y Patty sabe qué comió.',
-    pantallas: [{ video: 'foto.webm', desde: 1 }],
+    texto: 'O le saca una foto al plato: Patty reconoce qué es, la porción y si es frito… y con un toque, queda anotado.',
+    pantallas: [{ video: 'foto.webm', desde: 0.3, velocidad: 1.2 }],
     cara: 'feliz',
     titulo: 'Con una foto',
     globitos: ['Milanesa con papas fritas', 'Porción grande', 'Frito'],
+    globitosDesde: 2.7,
+    globitosHasta: 5.4,
   },
   {
     clave: 'solo',
