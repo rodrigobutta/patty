@@ -1,7 +1,7 @@
 {
   "name": "patty",
   "private": true,
-  "version": "1.49.2",
+  "version": "1.50.0",
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev:api": "pnpm --filter api dev",

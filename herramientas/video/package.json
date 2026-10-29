@@ -1,0 +1,21 @@
+{
+  "name": "patty-video",
+  "private": true,
+  "type": "module",
+  "description": "Los videos de la presentación (Remotion): la historia de Sofía con su relato. Fuera del workspace: no pesa en la app ni en el deploy.",
+  "scripts": {
+    "estudio": "remotion studio src/index.ts",
+    "voz": "node voz.mjs",
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.539",
+    "@remotion/google-fonts": "^4.0.539",
+    "@remotion/media-utils": "^4.0.539",
+    "@types/react": "^19.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.539",
+    "typescript": "^7.0.2"
+  }
+}

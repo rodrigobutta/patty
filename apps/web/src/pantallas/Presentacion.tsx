@@ -41,6 +41,31 @@ function Telefono({ img, video, alt, chico = false }: { img: string; video?: str
   );
 }
 
+/**
+ * El video con la historia de Sofía, con su relato (herramientas/video): horizontal en pantallas anchas y vertical en
+ * el teléfono. Arranca al tocarlo, con sonido.
+ */
+function VideoHistoria() {
+  const r = useVista('video');
+  const vertical = typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches;
+  const nombre = vertical ? 'historia-vertical' : 'historia';
+  return (
+    <section ref={r} className="pres-video">
+      <h2>{t('Mirá cómo le cambió el día a Sofía')}</h2>
+      <video
+        className={vertical ? 'vertical' : ''}
+        src={A(`${nombre}.mp4`)}
+        poster={A(`${nombre}.jpg`)}
+        controls
+        playsInline
+        preload="none"
+        onPlay={() => medir('ver_video', { video: nombre })}
+        onEnded={() => medir('video_completo', { video: nombre })}
+      />
+    </section>
+  );
+}
+
 /** Avisa (una vez) cuando una sección se ve: así se sabe hasta dónde baja la gente. */
 function useVista(nombre: string) {
   const r = useRef<HTMLElement>(null);
@@ -121,6 +146,8 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
           <Telefono img="dia.webp" alt={t('El Día en Patty: el búho, los objetivos de la semana y lo anotado')} />
         </div>
       </section>
+
+      <VideoHistoria />
 
       <section ref={comoRef} id="como" className="pres-seccion pres-tres">
         <div className="pres-texto centro">

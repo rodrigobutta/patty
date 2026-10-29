@@ -903,4 +903,5 @@ export const PERMISOS: Record<string, string> = {
   "{pista}, como siempre ({h} min)": "{pista}, as usual ({h} min)",
   "Viaje con tráfico": "Trip with traffic",
   "Minutos en tráfico": "Minutes in traffic",
+  "Mirá cómo le cambió el día a Sofía": "See how Sofía’s day changed",
 };
