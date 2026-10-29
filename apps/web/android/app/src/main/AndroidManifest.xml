@@ -99,6 +99,14 @@
         <service android:name="com.capacitorjs.plugins.pushnotifications.MessagingService" tools:node="remove" />
         <!-- Los botones de los avisos que se contestan sin abrir la app (ver RespuestaReceiver). -->
         <receiver android:name=".RespuestaReceiver" android:exported="false" />
+        <!-- Vuelve a levantar el seguimiento de la ubicación si se apagó (ver VigiaUbicacion). -->
+        <receiver android:name=".VigiaUbicacion" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="ar.patty.app.VIGILAR_UBICACION" />
+            </intent-filter>
+        </receiver>
         <!-- Las llamadas medidas mientras pasan, cuando no hay permiso para el registro (ver LlamadasReceiver). -->
         <receiver android:name=".LlamadasReceiver" android:exported="true" android:permission="android.permission.READ_PHONE_STATE">
             <intent-filter>
@@ -133,6 +141,7 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <!-- La encuesta de la noche llega a la hora justa (Android lo da al instalar, sin pedir nada). -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Dictar: grabar desde la web (el permiso de micrófono lo pide la app al primer uso). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
