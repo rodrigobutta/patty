@@ -17,6 +17,8 @@ const HISTORIAS = {
   sofia: { guion: 'src/guion.ts', salida: 'public/voz', genero: 'female' },
   sofia2: { guion: 'src/guion.ts', salida: 'public/voz/sofia2', genero: 'female' },
   martin: { guion: 'src/guion-martin.ts', salida: 'public/voz/martin', genero: 'male' },
+  // La corta para TikTok: otra voz de mujer, más rápida.
+  corta: { guion: 'src/guion-corta.ts', salida: 'public/voz/corta', genero: 'female', velocidad: 1.12 },
 };
 const nombreHistoria = HISTORIAS[argumentos[0]] ? argumentos[0] : 'sofia';
 const HISTORIA = HISTORIAS[nombreHistoria];
@@ -86,7 +88,7 @@ for (const e of escenas) {
     body: JSON.stringify({
       text: e.texto,
       model_id: MODELO,
-      voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.35, use_speaker_boost: true },
+      voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.35, use_speaker_boost: true, ...(HISTORIA.velocidad ? { speed: HISTORIA.velocidad } : {}) },
     }),
   });
   if (!r.ok) throw new Error(`Voz de "${e.clave}": ${r.status} ${await r.text()}`);

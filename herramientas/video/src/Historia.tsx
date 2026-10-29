@@ -20,7 +20,8 @@ import {
   Easing,
 } from 'remotion';
 import { svgMascota } from '../../../apps/web/src/mascota/dibujo';
-import { ESCENAS, FPS, TRANSICION, duraciones, type Escena, type Pantalla } from './guion';
+import { ESCENAS, FPS, TRANSICION, duraciones, type Escena, type Pantalla, type Ritmo } from './guion';
+import { ESCENAS_CORTA, RITMO_CORTA } from './guion-corta';
 import { ESCENAS_MARTIN } from './guion-martin';
 
 const { fontFamily } = loadFont('normal', { weights: ['600', '800', '900'] });
@@ -38,7 +39,9 @@ export const HISTORIAS = {
   /** La misma de Sofía con otra voz, para comparar. */
   sofia2: { escenas: ESCENAS, voz: 'voz/sofia2' },
   martin: { escenas: ESCENAS_MARTIN, voz: 'voz/martin' },
-} as const;
+  /** La corta para TikTok, con otra voz y más rápida. */
+  corta: { escenas: ESCENAS_CORTA, voz: 'voz/corta', ritmo: RITMO_CORTA },
+} as const satisfies Record<string, { escenas: Escena[]; voz: string; ritmo?: Ritmo }>;
 export type NombreHistoria = keyof typeof HISTORIAS;
 
 export type Props = {
@@ -50,9 +53,9 @@ export type Props = {
 };
 
 export function largoTotal(voz: Props['voz'], historia: NombreHistoria = 'sofia'): number {
-  const { escenas } = HISTORIAS[historia];
-  const total = duraciones(voz, escenas).reduce((a, b) => a + Math.round(b * FPS), 0);
-  return total - TRANSICION * (escenas.length - 1);
+  const h: { escenas: Escena[]; ritmo?: Ritmo } = HISTORIAS[historia];
+  const total = duraciones(voz, h.escenas, h.ritmo).reduce((a, b) => a + Math.round(b * FPS), 0);
+  return total - TRANSICION * (h.escenas.length - 1);
 }
 
 const TRANSICIONES = [
@@ -63,8 +66,8 @@ const TRANSICIONES = [
 ];
 
 export function Historia({ voz, musica, historia = 'sofia' }: Props) {
-  const { escenas: ESCENAS, voz: carpeta } = HISTORIAS[historia];
-  const durs = duraciones(voz, ESCENAS);
+  const { escenas: ESCENAS, voz: carpeta, ritmo }: { escenas: Escena[]; voz: string; ritmo?: Ritmo } = HISTORIAS[historia];
+  const durs = duraciones(voz, ESCENAS, ritmo);
   const total = largoTotal(voz, historia);
   const { fps } = useVideoConfig();
   const f = useCurrentFrame();

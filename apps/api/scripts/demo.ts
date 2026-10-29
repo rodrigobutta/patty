@@ -242,7 +242,7 @@ await db.execute(sql`DELETE FROM hallazgos h USING conceptos ca, conceptos ef WH
   OR ${queda('Me levanté', 'alto', 'Hora de despertar', 'alto')} OR ${queda('Menstruación', 'presente', 'Fase menstrual', 'presente')}
   OR ${queda('Tiempo de pantalla', 'alto', 'Horas de sueño', 'bajo')}
   OR (jsonb_array_length(h.causas_extra) > 0 AND ef.nombre = 'Dolor de panza'))`);
-await db.execute(sql`UPDATE hallazgos h SET estado = 'obvio' FROM conceptos ca WHERE h.causa_id = ca.id AND ca.nombre IN ('Me levanté', 'Menstruación')`);
+await db.execute(sql`UPDATE hallazgos h SET estado = 'obvio' FROM conceptos ca WHERE h.causa_id = ca.id AND h.combo = '' AND ca.nombre IN ('Me levanté', 'Menstruación')`);
 await ex('Horas de sueño', 'Cómo me sentí en el día', 'Los días después de dormir poco, a la noche contás que el día fue peor. Dormir bien es de lo que más mueve tu ánimo.');
 await ex('Caminata', 'Cómo me siento', 'Los días que caminás media hora o más, tu ánimo está más arriba.');
 // El combinado (lo más valioso que encuentra Patty), arriba de todo.

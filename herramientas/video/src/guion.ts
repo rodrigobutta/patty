@@ -97,9 +97,12 @@ export const FPS = 30;
 export const TRANSICION = 14;
 
 /** Cuántos segundos dura cada escena: lo que dura su voz (más un respiro), o lo que lleva leerla. */
-export function duraciones(voz: Record<string, number> | null, escenas: Escena[] = ESCENAS): number[] {
+/** El ritmo: lo mínimo que dura una escena y el respiro después de la voz (segundos). */
+export type Ritmo = { minimo: number; respiro: number };
+
+export function duraciones(voz: Record<string, number> | null, escenas: Escena[] = ESCENAS, ritmo: Ritmo = { minimo: 2.8, respiro: 0.35 }): number[] {
   return escenas.map((e) => {
     const s = voz?.[e.clave] ?? e.texto.split(/\s+/).length / 2.6;
-    return Math.max(2.8, s) + 0.35 + TRANSICION / FPS;
+    return Math.max(ritmo.minimo, s) + ritmo.respiro + TRANSICION / FPS;
   });
 }
