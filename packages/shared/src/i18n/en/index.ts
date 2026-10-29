@@ -8,6 +8,7 @@ import { DIA } from './dia.js';
 import { MAS } from './mas.js';
 import { PERMISOS } from './permisos.js';
 import { PATRONES } from './patrones.js';
+import { PATRONES_FINOS } from './patronesfinos.js';
 import { SERVIDOR } from './servidor.js';
 
-export const EN: Record<string, string> = { ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...COMIDA, ...COMUN };
+export const EN: Record<string, string> = { ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PATRONES_FINOS, ...COMIDA, ...COMUN };

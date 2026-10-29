@@ -26,6 +26,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import type { AjustesPatrones, Modo } from 'shared';
 
 const id = () => integer('id').primaryKey().generatedByDefaultAsIdentity();
 const idGrande = () => bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity();
@@ -98,6 +99,8 @@ export const personas = pgTable('personas', {
   peso_kg: doublePrecision('peso_kg'),
   condiciones: text('condiciones').array().notNull().default(sql`'{}'::text[]`),
   notas: text('notas'),
+  /** Qué patrones más finos se le buscan (umbrales, lo que protege, efectos a los 2 o 3 días); lo que falta, prendido. */
+  patrones: jsonb('patrones').$type<AjustesPatrones>().notNull().default({}),
   creado_por: integer('creado_por').references(() => usuarios.id, { onDelete: 'set null' }),
   creado: creado(),
 });
@@ -510,12 +513,16 @@ export const hallazgos = pgTable(
       .notNull()
       .references(() => conceptos.id),
     /** presente = ese día hubo; alto / bajo = ese día el valor estuvo por encima / debajo de lo habitual de la persona */
-    causa_modo: text('causa_modo', { enum: ['presente', 'alto', 'bajo', 'alto_semana', 'bajo_semana'] }).notNull().default('presente'),
+    causa_modo: text('causa_modo', { enum: ['presente', 'alto', 'bajo', 'alto_semana', 'bajo_semana', 'desde', 'hasta'] }).notNull().default('presente'),
     /** Las otras causas de una combinación ("comida frita + fase menstrual + calor"), además de causa_id. */
-    causas_extra: jsonb('causas_extra').$type<Array<{ id: number; modo: 'presente' | 'alto' | 'bajo' | 'alto_semana' | 'bajo_semana' }>>().notNull().default([]),
+    causas_extra: jsonb('causas_extra').$type<Array<{ id: number; modo: Modo }>>().notNull().default([]),
     /** Las causas de la combinación en orden fijo ("12:presente+40:alto"; vacío en un patrón simple), para no repetirla. */
     combo: text('combo').notNull().default(''),
-    efecto_modo: text('efecto_modo', { enum: ['presente', 'alto', 'bajo', 'alto_semana', 'bajo_semana'] }).notNull().default('presente'),
+    efecto_modo: text('efecto_modo', { enum: ['presente', 'alto', 'bajo', 'alto_semana', 'bajo_semana', 'desde', 'hasta'] }).notNull().default('presente'),
+    /** En un umbral (causa_modo desde / hasta): desde qué valor ("a partir de 3 cafés"). */
+    umbral: doublePrecision('umbral'),
+    /** Si la causa protege: con ella el efecto (un malestar) aparece menos. */
+    protege: boolean('protege').notNull().default(false),
     desfase_dias: smallint('desfase_dias').notNull(),
     soporte: integer('soporte').notNull(),
     dias_causa: integer('dias_causa').notNull(),

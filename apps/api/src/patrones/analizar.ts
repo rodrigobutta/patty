@@ -1,7 +1,7 @@
 // El análisis de patrones de una persona: junta sus datos de cada día, busca relaciones, las hace explicar por la IA (si
 // está) y las guarda. Lo corre la persona con "Buscar patrones" y el servidor solo, de madrugada (patrones/noche.ts).
 import { sql } from 'drizzle-orm';
-import { nombreRasgo, perfilTexto, traducir, type Hallazgo, type Idioma, type Persona, type ResultadoAnalisis } from 'shared';
+import { nombreRasgo, patronesFinos, perfilTexto, traducir, type AjustesPatrones, type Hallazgo, type Idioma, type Persona, type ResultadoAnalisis } from 'shared';
 import { filas, una, type Db, type Tx } from '../db/client.js';
 import { analisis, hallazgos } from '../db/schema.js';
 import { explicarHallazgos } from '../ia/analizar.js';
@@ -13,6 +13,7 @@ import { buscarPatrones, claveCausas, describir, DIAS_MINIMOS, type ConceptoInfo
 
 const COLUMNAS = sql`h.id, h.persona_id, h.causa_id, h.efecto_id, ca.nombre AS causa, ef.nombre AS efecto, h.causa_modo, h.efecto_modo,
   ca.tipo_valor AS causa_tipo, ef.tipo_valor AS efecto_tipo,
+  h.umbral, h.protege, ca.unidad AS causa_unidad,
   h.desfase_dias, h.soporte, h.dias_causa, h.dias_evaluados, h.prob_con, h.prob_sin, h.lift, h.p_valor, h.q_valor, h.puntaje,
   h.explicacion, h.estado, h.detectado,
   coalesce((SELECT jsonb_agg(jsonb_build_object('nombre', c.nombre, 'tipo', c.tipo_valor, 'modo', e->>'modo'))
@@ -20,10 +21,15 @@ const COLUMNAS = sql`h.id, h.persona_id, h.causa_id, h.efecto_id, ca.nombre AS c
 
 export function listarHallazgos(tx: Tx, personaId: number, ids?: number[]): Promise<Hallazgo[]> {
   const filtro = ids ? sql`AND h.id IN ${ids}` : sql``;
+  // Lo que la persona apagó en "Qué patrones buscar" no se muestra (aunque lo haya marcado antes): vuelve si lo prende.
   return filas<Hallazgo>(
     tx,
     sql`SELECT ${COLUMNAS} FROM hallazgos h JOIN conceptos ca ON ca.id = h.causa_id JOIN conceptos ef ON ef.id = h.efecto_id
+        JOIN personas pe ON pe.id = h.persona_id
         WHERE h.persona_id = ${personaId} ${filtro}
+          AND NOT (h.umbral IS NOT NULL AND coalesce(pe.patrones->>'umbrales', '') = 'false')
+          AND NOT (h.protege AND coalesce(pe.patrones->>'proteccion', '') = 'false')
+          AND NOT (h.desfase_dias >= 2 AND coalesce(pe.patrones->>'desfases_largos', '') = 'false')
         ORDER BY (h.estado = 'descartado'), h.puntaje DESC`,
   );
 }
@@ -79,15 +85,25 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
   // La estación y la fase del ciclo de cada día, que vienen solas.
   const calendario = await db.transaction((tx) => rasgosDelCalendario(tx, p, desde, hasta));
   datos.push(...calendario.filas);
-  const conceptos = await filas<ConceptoInfo>(
+  const conceptos = await filas<ConceptoInfo & { unidad?: string | null }>(
     db,
-    sql`SELECT c.id, c.nombre, c.tipo_valor, k.rol FROM conceptos c JOIN categorias k ON k.id = c.categoria_id
+    sql`SELECT c.id, c.nombre, c.tipo_valor, k.rol, k.clave AS categoria, coalesce(c.unidad, k.unidad) AS unidad
+        FROM conceptos c JOIN categorias k ON k.id = c.categoria_id
         WHERE c.id IN (SELECT DISTINCT concepto_id FROM serie_diaria WHERE persona_id = ${p.id})`,
   );
   for (const x of calendario.conceptos) if (!conceptos.some((k) => k.id === x.id)) conceptos.push(x);
-  const r = buscarPatrones(datos, conceptos, desde, hasta);
+  // Qué patrones más finos quiere que le busquen (Más → Qué patrones buscar).
+  const finos = patronesFinos(
+    (await una<{ patrones: AjustesPatrones }>(db, sql`SELECT patrones FROM personas WHERE id = ${p.id}`))?.patrones,
+  );
+  const r = buscarPatrones(datos, conceptos, desde, hasta, {
+    umbrales: finos.umbrales,
+    proteccion: finos.proteccion,
+    desfasesLargos: finos.desfases_largos,
+  });
   const nombre = new Map(conceptos.map((x) => [x.id, x.nombre]));
   const tipo = new Map(conceptos.map((x) => [x.id, x.tipo_valor]));
+  const unidad = new Map(conceptos.map((x) => [x.id, x.unidad ?? null]));
   // Lo que la persona ya opinó. Un par que marcó como obvio o sin sentido no vuelve como novedad con otro desfase u otro
   // modo (sí se actualiza el mismo hallazgo, que queda apartado); y la IA aprende de todas las opiniones.
   const opinados = await filas<{ causa_id: number; efecto_id: number; causa: string; efecto: string; estado: 'confirmado' | 'obvio' | 'descartado'; clave: string; combo: string }>(
@@ -106,10 +122,15 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
       mismos.has(`${x.causa_id}|${x.causa_modo}|${combo(x)}|${x.efecto_id}|${x.efecto_modo}|${x.desfase_dias}`),
   );
   // Una combinación se nombra con todas sus causas: "Comida frita + Fase menstrual + Más temperatura máxima".
+  // Un umbral lleva su valor: "Café: 3 o más".
   const conNombres = r.candidatos.map((x) => ({
     ...x,
+    umbral: x.umbral ?? null,
+    protege: x.protege ?? false,
     combo: combo(x),
-    causa: [{ id: x.causa_id, modo: x.causa_modo }, ...x.causas_extra].map((c) => nombreRasgo(nombre.get(c.id)!, tipo.get(c.id)!, c.modo, idioma)).join(' + '),
+    causa: [{ id: x.causa_id, modo: x.causa_modo }, ...x.causas_extra]
+      .map((c) => nombreRasgo(nombre.get(c.id)!, tipo.get(c.id)!, c.modo, idioma, { valor: x.umbral ?? null, unidad: unidad.get(c.id) }))
+      .join(' + '),
     efecto: nombreRasgo(nombre.get(x.efecto_id)!, tipo.get(x.efecto_id)!, x.efecto_modo, idioma),
   }));
 

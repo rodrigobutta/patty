@@ -22,7 +22,8 @@ import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { idioma, idiomaElegido, locale, ponerIdioma, t } from '../lib/idioma';
 import { Cuenta } from './Cuenta';
 import { alPedirIrAMas, tomarSeccionPedida, verSeccionPedida } from '../lib/navegar';
-import { IconoPreguntas, IconoSeguimientos } from '../ui/IconosMas';
+import { IconoPatrones, IconoPreguntas, IconoSeguimientos } from '../ui/IconosMas';
+import { QuePatronesBuscar } from './QuePatronesBuscar';
 import { Seguimientos } from './Seguimientos';
 import { IconoAvanzado, IconoAvisos, IconoClima, IconoCuenta, IconoPermisos, IconoReloj, IconoTelefono, IconoFamilia, IconoGente, IconoLugares, IconoRemedios, IconoSalud } from '../ui/IconosMas';
 import { DatosSalud } from './DatosSalud';
@@ -39,7 +40,7 @@ import { leerEstado, type EstadoTelefono } from '../lib/estadoTelefono';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
-type Seccion = 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
+type Seccion = 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
@@ -179,6 +180,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     remedios: () => <IconoRemedios />,
     preguntas: () => <IconoPreguntas />,
     seguimientos: () => <IconoSeguimientos />,
+    patrones: () => <IconoPatrones />,
     avisos: () => <IconoAvisos />,
     supervision: () => <IconoFamilia />,
     personas: () => <IconoGente />,
@@ -234,6 +236,9 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   </>);
   if (seccion === 'seguimientos') return pantalla(t('Seguimientos'), <>
       {persona ? <Seguimientos persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
+  </>);
+  if (seccion === 'patrones') return pantalla(t('Qué patrones buscar'), <>
+      {persona ? <QuePatronesBuscar key={persona.id} persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
   </>);
   if (seccion === 'preguntas') return pantalla(t('Preguntas de Patty'), <>
       {persona ? <PreguntasPatty persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
@@ -427,6 +432,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
     { clave: 'seguimientos', icono: <IconoSeguimientos />, titulo: t('Seguimientos'), sub: t('Más de cerca por unos días: enfermo, panza…'), ver: Boolean(persona) },
     { clave: 'preguntas', icono: <IconoPreguntas />, titulo: t('Preguntas de Patty'), sub: t('El detalle de lo que anotás: café con azúcar…'), ver: Boolean(persona) },
+    { clave: 'patrones', icono: <IconoPatrones />, titulo: t('Qué patrones buscar'), sub: t('Umbrales, lo que te protege, efectos a los días'), ver: Boolean(persona) },
     { clave: 'avisos', icono: <IconoAvisos />, titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
     { clave: 'supervision', icono: <IconoFamilia />, titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
     { clave: 'personas', icono: <IconoGente />, titulo: t('Tu gente y personas'), sub: t('Con quién estás y de quién se anota') },

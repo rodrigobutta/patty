@@ -15,6 +15,15 @@
 // Además, combinaciones: dos o tres causas el mismo día ("comida frita + fase menstrual + calor → dolor de panza al día
 // siguiente"). Solo se combinan las causas que ya muestran algo de relación con ese efecto, y una combinación queda si
 // explica bastante más que cada una de sus partes sola (si no, alcanza con la simple).
+//
+// Y tres búsquedas más finas, que la persona puede apagar en Más (`Opciones.umbrales`, `proteccion`, `desfasesLargos`):
+//   - Umbrales ("a partir de 3 cafés"): para lo que tiene cantidad o medida, prueba unos pocos cortes y se queda con el
+//     que mejor separa. Cada corte cuenta como una prueba más (para el q), al corte elegido se le pide un p dividido por
+//     la cantidad de cortes probados (Bonferroni), y la dosis tiene que importar: entre los días con la causa, los que
+//     llegan al corte dan el efecto bastante más que los que no.
+//   - Lo que protege ("los días que caminás, menos dolor de cabeza"): la otra cola del test, solo para malestares, y
+//     solo si con la causa se esperaba ver el malestar varias veces y casi no apareció.
+//   - Desfases de 2 y 3 días ("a los dos días"): se prueban con todo lo demás; apagados, solo el mismo día y el siguiente.
 import { traducir, type Idioma, type Modo, type RolCategoria, type TipoValor } from 'shared';
 import { diasEntre } from '../lib/fechas.js';
 
@@ -42,6 +51,8 @@ export interface ConceptoInfo {
   nombre: string;
   tipo_valor: TipoValor;
   rol: RolCategoria;
+  /** La clave de su categoría ("sintoma"): lo que protege se busca solo contra malestares. */
+  categoria?: string;
 }
 
 /** Una causa más de una combinación (la primera va en causa_id / causa_modo). */
@@ -69,6 +80,10 @@ export interface Candidato {
   puntaje: number;
   /** En una combinación: cuántas veces más fuerte es que la mejor de sus partes sola. */
   mejora?: number;
+  /** En un umbral (causa_modo desde / hasta): el valor de corte. */
+  umbral?: number | null;
+  /** La causa protege: con ella el efecto aparece menos (lift < 1). */
+  protege?: boolean;
 }
 
 export interface Opciones {
@@ -81,9 +96,25 @@ export interface Opciones {
   /** p de corte para quedarse con un candidato (antes de la corrección) */
   pMax: number;
   limite: number;
+  /** Buscar umbrales ("a partir de 3 cafés"). */
+  umbrales: boolean;
+  /** Buscar lo que protege (con la causa, un malestar aparece menos). */
+  proteccion: boolean;
+  /** Probar efectos de 2 y 3 días después (si no, solo el mismo día y el siguiente). */
+  desfasesLargos: boolean;
 }
 
-export const OPCIONES: Opciones = { desfaseMax: 3, soporteMin: 3, diasCausaMin: 3, liftMin: 1.3, pMax: 0.1, limite: 40 };
+export const OPCIONES: Opciones = {
+  desfaseMax: 3,
+  soporteMin: 3,
+  diasCausaMin: 3,
+  liftMin: 1.3,
+  pMax: 0.1,
+  limite: 40,
+  umbrales: true,
+  proteccion: true,
+  desfasesLargos: true,
+};
 
 /** Cuántas causas (las más relacionadas con cada efecto) se prueban de a dos y de a tres. */
 const PARA_COMBINAR = 16;
@@ -95,6 +126,13 @@ const SOPORTE_COMBINADA = 5;
 const COMBINADAS_MAX = 8;
 /** Una combinación tiene que superar a la mejor de sus partes por esto (en lift) para quedar. */
 const MEJORA_COMBINADA = 1.25;
+
+/** Cuántos cortes se prueban como mucho para cada umbral (más cortes, más casualidades). */
+const CORTES_MAX = 4;
+/** El p con que la dosis tiene que importar: los días que llegan al corte contra los que tienen la causa pero menos. */
+const P_DOSIS = 0.05;
+/** Para decir que algo protege hacen falta más días con la causa: que algo no pase dice menos que que pase. */
+const DIAS_PROTECCION = 5;
 
 /** Con menos días que esto no se analiza: cualquier coincidencia parecería un patrón. */
 export const DIAS_MINIMOS = 14;
@@ -110,6 +148,13 @@ interface Rasgo {
   primera: Float64Array;
   /** Solo puede ser causa (las tendencias de la semana). */
   soloCausa?: boolean;
+  /**
+   * Por índice de día, el valor (NaN si no hay): para buscar umbrales. Va en un solo rasgo de cada concepto con
+   * cantidad o medida (el `presente` de lo que se cuenta, el `alto` de lo que se mide).
+   */
+  valor?: Float64Array;
+  /** Cómo se buscan sus umbrales: `dosis` (0 los días sin la causa, "a partir de 3") o `medida` (por encima o debajo). */
+  escala?: 'dosis' | 'medida';
 }
 
 /** Las intensidades anotadas al menos en esta proporción de los días activos se tratan como un puntaje diario. */
@@ -143,6 +188,17 @@ function logFact(n: number): number {
 }
 
 const logComb = (n: number, k: number) => logFact(n) - logFact(k) - logFact(n - k);
+
+/**
+ * Test exacto de Fisher, la otra cola: probabilidad de ver `a` o menos coincidencias por azar (que la causa baje la
+ * probabilidad del efecto).
+ */
+export function fisherMenor(a: number, n1: number, k: number, n: number): number {
+  const den = logComb(n, k);
+  let p = 0;
+  for (let x = Math.max(0, k - (n - n1)); x <= Math.min(a, n1, k); x++) p += Math.exp(logComb(n1, x) + logComb(n - n1, k - x) - den);
+  return Math.min(1, p);
+}
 
 /**
  * Test exacto de Fisher, una cola: probabilidad de ver `a` o más coincidencias por azar, si de `n` días `n1` tienen la
@@ -207,7 +263,13 @@ function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, 
         else if (valores[j] < med) bajo[i] = 1;
       }
       const sinHora = new Float64Array(n).fill(Number.NaN);
-      rasgos.push({ concepto, modo: 'alto', esta: alto, universo, primera: sinHora });
+      // Los umbrales de lo que se mide (no de las horas ni de los puntajes, que son de otra escala).
+      let valor: Float64Array | undefined;
+      if (t === 'medida' && concepto.rol !== 'efecto') {
+        valor = new Float64Array(n).fill(Number.NaN);
+        for (const [j, f] of conValor.entries()) valor[diasEntre(desde, f.fecha)] = valores[j];
+      }
+      rasgos.push({ concepto, modo: 'alto', esta: alto, universo, primera: sinHora, ...(valor ? { valor, escala: 'medida' as const } : {}) });
       rasgos.push({ concepto, modo: 'bajo', esta: bajo, universo, primera: sinHora });
       // La semana: el promedio de los últimos 7 días (con al menos 4 con valor), por encima o por debajo de lo habitual.
       // Solo como causa ("una semana durmiendo menos → dolor de cabeza"): como efecto, una semana se parece demasiado a
@@ -239,12 +301,20 @@ function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, 
     } else {
       const esta = new Uint8Array(n);
       const primera = new Float64Array(n).fill(Number.NaN);
+      // Lo que se cuenta (cafés, vasos, minutos de caminata): cuánto hubo cada día, para los umbrales. Un evento cuenta
+      // las veces que se anotó; una cantidad, lo anotado (o las veces, si no se puso número).
+      const conDosis = concepto.rol !== 'efecto' && (t === 'cantidad' || t === 'evento' || t === 'duracion');
+      const valor = conDosis ? new Float64Array(n).fill(Number.NaN) : undefined;
       for (const f of lista) {
         const i = diasEntre(desde, f.fecha);
         esta[i] = 1;
         if (f.primera !== null) primera[i] = f.primera;
+        if (valor) {
+          const v = t === 'evento' ? f.veces : t === 'cantidad' ? (f.suma ?? f.veces) : f.suma;
+          if (v !== null && v > 0) valor[i] = v;
+        }
       }
-      rasgos.push({ concepto, modo: 'presente', esta, universo: activo, primera });
+      rasgos.push({ concepto, modo: 'presente', esta, universo: activo, primera, ...(valor ? { valor, escala: 'dosis' as const } : {}) });
     }
   }
   return rasgos;
@@ -267,6 +337,8 @@ export function buscarPatrones(
   opciones: Partial<Opciones> = {},
 ): Resultado {
   const o = { ...OPCIONES, ...opciones };
+  // Sin los desfases largos: el mismo día y el siguiente.
+  const desfaseMax = o.desfasesLargos ? o.desfaseMax : Math.min(o.desfaseMax, 1);
   const n = diasEntre(desde, hasta) + 1;
   const conceptos = new Map(conceptosLista.map((c) => [c.id, c]));
   const rasgos = armarRasgos(filas, conceptos, desde, n);
@@ -280,11 +352,16 @@ export function buscarPatrones(
   /** Por efecto y desfase, las causas que muestran algo de relación (para probar combinaciones). */
   const relacionadas = new Map<string, Array<{ A: Rasgo; lift: number; probCon: number; p: number }>>();
 
-  /** La tabla de 2x2 de una causa (simple o combinada) con un efecto, y si sirve como candidato. */
-  const probar = (A: Pick<Rasgo, 'esta' | 'universo' | 'primera'>, B: Rasgo, k: number) => {
+  /**
+   * La tabla de 2x2 de una causa (simple o combinada) con un efecto, y si sirve como candidato. `limpio`: sin los días
+   * en que el efecto ya estaba el día de la causa (para lo que protege: el día que duele la cabeza no se sale a caminar,
+   * y como un dolor sigue al otro, caminar parecería proteger del de mañana).
+   */
+  const probar = (A: Pick<Rasgo, 'esta' | 'universo' | 'primera'>, B: Rasgo, k: number, limpio = false) => {
     let n1 = 0, a = 0, n0 = 0, c = 0;
     for (let d = 0; d + k < n; d++) {
       if (!A.universo[d] || !B.universo[d + k]) continue;
+      if (limpio && B.esta[d]) continue;
       let efecto = B.esta[d + k] === 1;
       if (A.esta[d]) {
         // Mismo día: el efecto tiene que venir después de la causa (si se sabe la hora de los dos).
@@ -300,11 +377,19 @@ export function buscarPatrones(
     const lift = (a + 0.5) / (n1 + 1) / ((c + 0.5) / (n0 + 1));
     return { n1, a, n0, c, lift, probCon: a / n1, probSin: c / n0 };
   };
-  const guardar = (A: Rasgo, extra: CausaExtra[], B: Rasgo, k: number, t: NonNullable<ReturnType<typeof probar>>, mejora?: number) => {
+  const guardar = (
+    A: Pick<Rasgo, 'concepto' | 'modo'>,
+    extra: CausaExtra[],
+    B: Rasgo,
+    k: number,
+    t: NonNullable<ReturnType<typeof probar>>,
+    mas: { mejora?: number; umbral?: number; pTope?: number } = {},
+  ) => {
     if (t.a < o.soporteMin || t.lift < o.liftMin) return false;
     const p = fisherMayor(t.a, t.n1, t.a + t.c, t.n1 + t.n0);
-    // Las combinaciones se prueban muchas más veces: se les pide mucho más.
-    if (p > (extra.length ? P_COMBINADA : o.pMax)) return false;
+    // Las combinaciones se prueban muchas más veces: se les pide mucho más. Y a un umbral, según cuántos cortes se probaron.
+    if (p > (mas.pTope ?? (extra.length ? P_COMBINADA : o.pMax))) return false;
+    const { mejora, umbral } = mas;
     crudos.push({
       causa_id: A.concepto.id,
       causa_modo: A.modo,
@@ -320,14 +405,50 @@ export function buscarPatrones(
       lift: t.lift,
       p_valor: p,
       ...(mejora ? { mejora } : {}),
+      ...(umbral !== undefined ? { umbral } : {}),
     });
     return true;
   };
+  /**
+   * Lo que protege: con la causa, el malestar aparece bastante menos. Solo desde el día siguiente (el mismo día se mezcla
+   * con lo contrario: con dolor no se sale a caminar) y sin los días en que el malestar ya estaba (ver `probar`).
+   */
+  const protege = (A: Rasgo, B: Rasgo, k: number) => {
+    if (k < 1) return;
+    const t = probar(A, B, k, true);
+    if (!t) return;
+    pares++;
+    // Que no aparezca algo que de todos modos casi nunca aparece no dice nada: con la causa se esperaba verlo varias veces.
+    const esperado = (t.n1 * (t.a + t.c)) / (t.n1 + t.n0);
+    if (t.n1 < DIAS_PROTECCION || t.c < o.soporteMin || esperado < o.soporteMin || t.lift > 1 / o.liftMin) return;
+    const p = fisherMenor(t.a, t.n1, t.a + t.c, t.n1 + t.n0);
+    if (p > o.pMax) return;
+    crudos.push({
+      causa_id: A.concepto.id,
+      causa_modo: A.modo,
+      causas_extra: [],
+      efecto_id: B.concepto.id,
+      efecto_modo: B.modo,
+      desfase_dias: k,
+      soporte: t.a,
+      dias_causa: t.n1,
+      dias_evaluados: t.n1 + t.n0,
+      prob_con: t.probCon,
+      prob_sin: t.probSin,
+      lift: t.lift,
+      p_valor: p,
+      protege: true,
+    });
+  };
+  // Un malestar: algo de "Dolores y molestias" que se anota cuando pasa.
+  const malestar = (B: Rasgo) => B.modo === 'presente' && B.concepto.rol === 'efecto' && B.concepto.categoria === 'sintoma';
 
   for (const A of causas) {
     for (const B of efectos) {
       if (A.concepto.id === B.concepto.id) continue;
-      for (let k = 0; k <= o.desfaseMax; k++) {
+      for (let k = 0; k <= desfaseMax; k++) {
+        // Lo que protege, de lo que se hace o pasa (los rasgos alto / bajo ya lo dicen al revés: "menos pasos → dolor").
+        if (o.proteccion && A.modo === 'presente' && !A.soloCausa && malestar(B)) protege(A, B, k);
         const t = probar(A, B, k);
         if (!t) continue;
         pares++;
@@ -340,6 +461,38 @@ export function buscarPatrones(
           l.push({ A, lift: t.lift, probCon: t.probCon, p: fisherMayor(t.a, t.n1, t.a + t.c, t.n1 + t.n0) });
         }
         guardar(A, [], B, k, t);
+      }
+    }
+  }
+
+  // Umbrales: para lo que tiene cantidad o medida, unos pocos cortes. Cada corte es una prueba más (cuenta para el q), el
+  // elegido tiene que pasar un p dividido por la cantidad de cortes, y la dosis tiene que importar: entre los días con la
+  // causa, los que llegan al corte dan el efecto bastante más que los que se quedan cerca (si no, alcanza con el simple).
+  if (o.umbrales) {
+    for (const A of causas) {
+      if (!A.valor) continue;
+      const lista = cortesDe(A, n);
+      if (!lista.length) continue;
+      const pTope = o.pMax / lista.length;
+      for (const B of efectos) {
+        if (A.concepto.id === B.concepto.id) continue;
+        for (let k = 0; k <= desfaseMax; k++) {
+          for (const corte of lista) {
+            const t = probar(corte, B, k);
+            if (!t) continue;
+            pares++;
+            if (t.a < o.soporteMin || t.lift < o.liftMin) continue;
+            // Los días que tienen la causa pero no llegan al corte.
+            let nm = 0, am = 0;
+            for (let d = 0; d + k < n; d++) {
+              if (!corte.menos[d] || !B.universo[d + k]) continue;
+              nm++;
+              if (B.esta[d + k] && !(k === 0 && A.primera[d] > B.primera[d])) am++;
+            }
+            if (nm < 3 || fisherMayor(t.a, t.n1, t.a + am, t.n1 + nm) > P_DOSIS) continue;
+            guardar({ concepto: A.concepto, modo: corte.modo }, [], B, k, t, { umbral: corte.umbral, pTope });
+          }
+        }
       }
     }
   }
@@ -389,7 +542,7 @@ export function buscarPatrones(
       const pAporte = fisherMayor(t.a, t.n1, solo.a, solo.n1);
       if (pAporte > 0.05) continue;
       const [primero, ...resto] = g.map((x) => x.A);
-      guardar(primero, resto.map((x) => ({ id: x.concepto.id, modo: x.modo })), B, k, t, t.lift / mejor.lift);
+      guardar(primero, resto.map((x) => ({ id: x.concepto.id, modo: x.modo })), B, k, t, { mejora: t.lift / mejor.lift });
     }
   }
 
@@ -400,8 +553,11 @@ export function buscarPatrones(
   const todos: Candidato[] = crudos.map((x, i) => ({
     ...x,
     q_valor: q[i],
-    // Más arriba lo que es fuerte (lift), poco probable por azar (p) y visto muchas veces (soporte).
-    puntaje: Math.log2(x.lift) * -Math.log10(x.p_valor) * Math.sqrt(x.soporte),
+    // Más arriba lo que es fuerte (lift), poco probable por azar (p) y visto muchas veces (soporte). Lo que protege, al
+    // revés: cuánto baja, y cuántas veces se esperaba verlo con la causa.
+    puntaje: x.protege
+      ? Math.log2(1 / x.lift) * -Math.log10(x.p_valor) * Math.sqrt(x.dias_causa * x.prob_sin)
+      : Math.log2(x.lift) * -Math.log10(x.p_valor) * Math.sqrt(x.soporte),
   }));
 
   // De cada par causa → efecto queda el mejor desfase (si no, "tomate → dolor" aparecería con 1, 2 y 3 días).
@@ -411,19 +567,28 @@ export function buscarPatrones(
   const mejor = new Map<string, Candidato>();
   for (const x of todos) {
     const [cm, em] = (x.causa_modo === 'bajo' || x.causa_modo === 'bajo_semana') && !x.causas_extra.length ? [espejo(x.causa_modo), espejo(x.efecto_modo)] : [x.causa_modo, x.efecto_modo];
-    const clave = `${claveCausas(x)}|${cm}>${x.efecto_id}${em}`;
+    const clave = `${claveCausas(x)}|${cm}>${x.efecto_id}${em}${x.protege ? '|protege' : ''}`;
     const y = mejor.get(clave);
     if (!y || x.puntaje > y.puntaje) mejor.set(clave, x);
   }
   // Una combinación sobra si una de sus partes sola (con cualquier desfase) ya explica lo mismo, o si es de tres y no
   // supera a una de dos con las mismas partes.
-  const todosMejores = [...mejor.values()];
+  // Y el simple sobra si quedó un umbral de la misma causa con el mismo efecto: "café → dolor" dice menos que "a partir
+  // de 3 cafés → dolor" (que ya probó que la dosis importa).
+  const conUmbral = new Set(
+    [...mejor.values()]
+      .filter((x) => x.umbral != null)
+      .flatMap((x) => (x.causa_modo === 'hasta' ? ['bajo'] : ['presente', 'alto']).map((m) => `${x.causa_id}|${m}|${x.efecto_id}|${x.efecto_modo}`)),
+  );
+  const todosMejores = [...mejor.values()].filter(
+    (x) => x.protege || x.causas_extra.length || !conUmbral.has(`${x.causa_id}|${x.causa_modo}|${x.efecto_id}|${x.efecto_modo}`),
+  );
   const semanal = (m: Modo) => m === 'alto_semana' || m === 'bajo_semana';
   const elegidos = todosMejores.filter((x) => {
     // La tendencia de la semana sobra si el mismo rasgo del día ya lo explica casi igual (dormir poco anoche y dormir
     // poco esta semana suelen ir juntos): queda solo cuando la semana dice bastante más.
     if (semanal(x.causa_modo) && !x.causas_extra.length) {
-      const diaria = todosMejores.find((y) => !y.causas_extra.length && y.causa_id === x.causa_id && !semanal(y.causa_modo) && y.efecto_id === x.efecto_id && y.efecto_modo === x.efecto_modo);
+      const diaria = todosMejores.find((y) => !y.causas_extra.length && !y.protege && y.causa_id === x.causa_id && !semanal(y.causa_modo) && y.efecto_id === x.efecto_id && y.efecto_modo === x.efecto_modo);
       return !diaria || x.lift > diaria.lift * MEJORA_COMBINADA;
     }
     if (!x.causas_extra.length) return true;
@@ -470,6 +635,66 @@ export function buscarPatrones(
   return { candidatos, pares_evaluados: pares, dias: n, dias_activos: diasActivos };
 }
 
+/** Un corte de un umbral: los días que llegan (`esta`), los que cuentan, y los que tienen la causa pero no llegan. */
+interface Corte extends Pick<Rasgo, 'esta' | 'universo' | 'primera'> {
+  modo: 'desde' | 'hasta';
+  umbral: number;
+  menos: Uint8Array;
+}
+
+/** El valor en la posición `q` (0 a 1) de una lista ordenada. */
+const cuantil = (orden: number[], q: number) => orden[Math.min(orden.length - 1, Math.max(0, Math.round(q * (orden.length - 1))))];
+
+/**
+ * Los cortes que se prueban para un rasgo con valores. De lo que se cuenta, "a partir de" cada cantidad (sin la más chica,
+ * que es lo mismo que "hubo"), contra los días con menos; de lo que se mide, por encima de lo habitual ("desde 30 °C",
+ * contra los días altos que no llegan) y por debajo ("hasta 6 horas", contra los bajos que no bajan tanto).
+ */
+function cortesDe(A: Rasgo, n: number): Corte[] {
+  const v = A.valor!;
+  const res: Corte[] = [];
+  const armar = (modo: Corte['modo'], umbral: number, universo: Uint8Array, llega: (x: number) => boolean, cerca: (x: number) => boolean) => {
+    const esta = new Uint8Array(n);
+    const menos = new Uint8Array(n);
+    let enEsta = 0, enMenos = 0;
+    for (let d = 0; d < n; d++) {
+      if (!universo[d] || Number.isNaN(v[d])) continue;
+      if (llega(v[d])) {
+        esta[d] = 1;
+        enEsta++;
+      } else if (cerca(v[d])) {
+        menos[d] = 1;
+        enMenos++;
+      }
+    }
+    if (enEsta >= 3 && enMenos >= 3) res.push({ modo, umbral, esta, universo, primera: A.primera, menos });
+  };
+  const elegir = (l: number[], qs: number[]) => [...new Set(qs.map((q) => cuantil(l, q)))];
+  if (A.escala === 'dosis') {
+    // Los días con la causa pero sin saber cuánto no cuentan; los días sin la causa, sí (son 0).
+    const universo = new Uint8Array(n);
+    const valores: number[] = [];
+    for (let d = 0; d < n; d++) {
+      if (!A.universo[d] || (A.esta[d] && Number.isNaN(v[d]))) continue;
+      universo[d] = 1;
+      if (A.esta[d]) valores.push(v[d]);
+    }
+    const distintos = [...new Set(valores)].sort((a, b) => a - b);
+    const posibles = distintos.length - 1 > CORTES_MAX ? elegir(valores.sort((a, b) => a - b), [0.25, 0.5, 0.75, 0.9]).filter((x) => x > distintos[0]) : distintos.slice(1);
+    // Los días sin la causa (sin valor) quedan en el universo pero nunca en `esta` ni en `menos`: son el "sin".
+    for (const c of posibles) armar('desde', c, universo, (x) => x >= c, (x) => x < c);
+    return res;
+  }
+  const valores: number[] = [];
+  for (let d = 0; d < n; d++) if (A.universo[d] && !Number.isNaN(v[d])) valores.push(v[d]);
+  if (valores.length < 10) return res;
+  const orden = valores.sort((a, b) => a - b);
+  const med = mediana(orden);
+  for (const c of elegir(orden, [0.6, 0.7, 0.8, 0.9]).filter((x) => x > med)) armar('desde', c, A.universo, (x) => x >= c, (x) => x > med);
+  for (const c of elegir(orden, [0.4, 0.3, 0.2, 0.1]).filter((x) => x < med)) armar('hasta', c, A.universo, (x) => x <= c, (x) => x < med);
+  return res;
+}
+
 /**
  * Si dos rasgos dicen casi lo mismo: están juntos en más del 75 % de los días en que está alguno, o uno está casi
  * siempre dentro del otro ("Milanesa con papas fritas" y "Comida frita").
@@ -496,11 +721,32 @@ export function claveCausas(x: Pick<Candidato, 'causa_id' | 'causa_modo' | 'caus
   return partes(x).sort().join('+');
 }
 
+/** Cuándo llega el efecto, dicho como se dice: "al día siguiente", "a los dos días". */
+export function cuandoTexto(desfase: number, idioma: Idioma = 'es'): string {
+  const t = (texto: string, vars?: Record<string, string | number>) => traducir(idioma, texto, vars);
+  if (desfase === 0) return t('ese mismo día, más tarde');
+  if (desfase === 1) return t('al día siguiente');
+  if (desfase === 2) return t('a los dos días');
+  if (desfase === 3) return t('a los tres días');
+  return t('{n} días después', { n: desfase });
+}
+
 /** Texto simple de un hallazgo, para cuando no hay IA. `causa` y `efecto` ya vienen nombrados ("Energía baja"). */
 export function describir(x: Candidato, causa: string, efecto: string, idioma: Idioma = 'es'): string {
   const t = (texto: string, vars?: Record<string, string | number>) => traducir(idioma, texto, vars);
-  const cuando = x.desfase_dias === 0 ? t('ese mismo día, más tarde') : x.desfase_dias === 1 ? t('al día siguiente') : t('{n} días después', { n: x.desfase_dias });
+  const cuando = cuandoTexto(x.desfase_dias, idioma);
   const pct = (v: number) => `${Math.round(v * 100)}%`;
+  if (x.protege) {
+    return t('Los días con «{causa}», {cuando} hubo «{efecto}» solo el {con} de las veces ({soporte} de {dias}); el resto de los días, el {sin}. Parece que te protege.', {
+      causa,
+      cuando,
+      efecto,
+      con: pct(x.prob_con),
+      soporte: x.soporte,
+      dias: x.dias_causa,
+      sin: pct(x.prob_sin),
+    });
+  }
   return t('Los días con «{causa}», {cuando} hubo «{efecto}» el {con} de las veces ({soporte} de {dias}); el resto de los días, el {sin}.', {
     causa,
     cuando,

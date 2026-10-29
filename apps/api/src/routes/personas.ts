@@ -2,7 +2,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import type { Persona } from 'shared';
+import { PATRONES_FINOS, type AjustesPatrones, type Persona } from 'shared';
 import { exigirRol } from '../auth/sesion.js';
 import { filas } from '../db/client.js';
 import { fuentes, personas, personaUsuarios } from '../db/schema.js';
@@ -46,6 +46,19 @@ function datosPersona(d: Record<string, unknown>, nueva: boolean) {
     if (lista.length > 30 || lista.some((x) => x.length > 80)) throw new ErrorApi('Demasiadas condiciones o muy largas.');
     v.condiciones = [...new Set(lista)];
   }
+  if ('patrones' in d) {
+    // Qué patrones más finos buscar: solo las claves conocidas, y sí / no.
+    const x = d.patrones;
+    if (!x || typeof x !== 'object' || Array.isArray(x)) throw new ErrorApi('Ajustes de patrones inválidos.');
+    const a: AjustesPatrones = {};
+    for (const k of PATRONES_FINOS) {
+      const valor = (x as Record<string, unknown>)[k];
+      if (valor === undefined) continue;
+      if (typeof valor !== 'boolean') throw new ErrorApi('Ajustes de patrones inválidos.');
+      a[k] = valor;
+    }
+    v.patrones = a;
+  }
   return v;
 }
 
@@ -55,7 +68,7 @@ export const rutasPersonas = new Hono<Env>()
     return c.json(
       await filas<Persona>(
         c.var.db,
-        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.notas,
+        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.notas, p.patrones,
               EXISTS (SELECT 1 FROM persona_usuarios d WHERE d.persona_id = p.id AND d.usuario_id = ${u.id} AND d.rol = 'dueno') AS propia,
               EXISTS (SELECT 1 FROM accesos a WHERE a.persona_id = p.id AND a.usuario_id = ${u.id} AND a.por_supervision) AS supervisada
             FROM personas p

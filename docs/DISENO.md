@@ -173,6 +173,18 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
    - Con desfase 0 (el mismo día) solo cuenta si la causa se anotó antes que el efecto.
    - De cada par queda el mejor desfase, y de "acostarse tarde → menos energía" / "acostarse temprano → más energía"
      queda uno solo.
+   - **Patrones más finos** (cada uno se prende o apaga en Más → Qué patrones buscar; se guarda en
+     `personas.patrones`, vienen prendidos, y lo apagado tampoco se muestra en la lista):
+     - *Umbrales* ("Café: 3 o más → dolor de cabeza"): para lo que se cuenta (cantidad, evento, duración) y lo que se
+       mide, se prueban hasta 4 cortes (por encima y por debajo de lo habitual en las medidas). Cada corte suma al
+       total de pruebas del q, el elegido necesita p ≤ 0,1 / cortes probados, y la dosis tiene que importar: entre los
+       días con la causa, los que llegan al corte dan el efecto más que los que no (Fisher, p ≤ 0,05). Si queda el
+       umbral, el patrón simple de la misma causa y efecto sobra.
+     - *Lo que protege* ("Caminar → menos dolor de panza al día siguiente"): la otra cola de Fisher, solo contra
+       malestares (categoría `sintoma`) y desde el día siguiente (el mismo día se mezcla con lo contrario: con dolor no
+       se sale a caminar). Sin los días en que el malestar ya estaba el día de la causa, con al menos 5 días con la
+       causa y esperando ver el malestar 3 o más veces. Las medidas no lo necesitan: "menos pasos → dolor" ya lo dice.
+     - *Efectos a los dos o tres días*: los desfases 2 y 3 ("a los dos días"); apagados, solo 0 y 1.
 4. Con menos de 14 días anotados no se analiza.
 5. La **IA** (Claude, misma cuenta que Quincho) recibe los mejores 25 candidatos con sus números y devuelve, en JSON con
    esquema: una explicación clara de cada uno con su plausibilidad (marca los que pueden ser casualidad o tener otra

@@ -57,6 +57,10 @@ export function explicarHallazgos(datos: {
     'bien sostenido por los números. Algunos candidatos combinan causas con " + " (comida frita + fase menstrual + calor): ' +
     'quiere decir que pasan juntas el mismo día, y que juntas explican el efecto mucho más que cada una sola; contalo así ' +
     '("cuando se juntan…"), que es lo más valioso que puede encontrar Patty. ' +
+    'Los marcados PROTEGE son al revés: con la causa el efecto (un malestar) aparece menos; contalo como algo que parece ' +
+    'cuidarla ("los días que caminás, al día siguiente te duele menos la cabeza"), sin prometer nada. Una causa con ' +
+    '"N o más" / "N o menos" es un umbral: el efecto aparece a partir de esa cantidad ("a partir de 3 cafés"); decilo así. ' +
+    'Con 2 o 3 días de desfase decí "a los dos días" / "a los tres días". ' +
     '"Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.' +
     (datos.idioma === 'en'
       ? ' La persona usa la app en inglés: escribí el resumen, las explicaciones y las sugerencias en inglés (claro y simple).'
@@ -79,7 +83,7 @@ export function explicarHallazgos(datos: {
     'Candidatos:',
     ...datos.candidatos.map(
       (c, i) =>
-        `${i}. ${c.causa} → ${c.efecto}, ${c.desfase_dias} día(s) después: ` +
+        `${i}. ${c.protege ? 'PROTEGE: ' : ''}${c.causa} → ${c.efecto}, ${c.desfase_dias} día(s) después: ` +
         `${c.soporte} de ${c.dias_causa} días con la causa (${Math.round(c.prob_con * 100)}%) vs ${Math.round(c.prob_sin * 100)}% sin la causa; ` +
         `lift ${c.lift.toFixed(2)}, p ${c.p_valor.toPrecision(2)}, q ${c.q_valor.toPrecision(2)}`,
     ),

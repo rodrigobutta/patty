@@ -205,6 +205,8 @@ export interface Persona {
   propia?: boolean;
   /** Si la ve porque supervisa a su dueño. */
   supervisada?: boolean;
+  /** Qué patrones más finos se le buscan (ver `patronesFinos`). */
+  patrones?: AjustesPatrones;
 }
 
 export interface Categoria extends CategoriaBase {
@@ -700,9 +702,42 @@ export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'obvio' | 'descartado';
 /**
  * presente = ese día hubo; alto / bajo = ese día el valor estuvo por encima / debajo de lo habitual de la persona;
  * alto_semana / bajo_semana = la semana que termina ese día (el promedio de los últimos 7 días) estuvo por encima /
- * debajo de lo habitual ("una semana durmiendo menos").
+ * debajo de lo habitual ("una semana durmiendo menos");
+ * desde / hasta = un umbral: ese día el valor llegó a `umbral` o más ("a partir de 3 cafés") / quedó en `umbral` o
+ * menos ("con 6 horas o menos de sueño"). Solo como causa.
  */
-export type Modo = 'presente' | 'alto' | 'bajo' | 'alto_semana' | 'bajo_semana';
+export type Modo = 'presente' | 'alto' | 'bajo' | 'alto_semana' | 'bajo_semana' | 'desde' | 'hasta';
+
+/**
+ * Qué patrones más finos busca Patty para una persona (se elige en Más). Lo que no está es que sí: vienen prendidos.
+ * - umbrales: "a partir de 3 cafés…" (desde qué cantidad empieza a pasar algo)
+ * - proteccion: lo que hace que un malestar aparezca menos ("los días que caminás, menos dolor de cabeza")
+ * - desfases_largos: efectos que llegan a los dos o tres días (si no, solo el mismo día y el siguiente)
+ */
+export interface AjustesPatrones {
+  umbrales?: boolean;
+  proteccion?: boolean;
+  desfases_largos?: boolean;
+}
+export const PATRONES_FINOS = ['umbrales', 'proteccion', 'desfases_largos'] as const;
+export type PatronFino = (typeof PATRONES_FINOS)[number];
+/** Los ajustes completos (lo que no se eligió, prendido). */
+export function patronesFinos(a?: AjustesPatrones | null): Record<PatronFino, boolean> {
+  return { umbrales: a?.umbrales !== false, proteccion: a?.proteccion !== false, desfases_largos: a?.desfases_largos !== false };
+}
+
+/** Un umbral dicho para una persona: "3", "30 min", "1 h 30 min", "28 °C", "8.000 pasos". */
+export function valorUmbral(valor: number, tipo: TipoValor, unidad: string | null | undefined, idioma: Idioma = 'es'): string {
+  const loc = idioma === 'en' ? 'en-US' : 'es-AR';
+  if (tipo === 'duracion' && (!unidad || unidad === 'min')) {
+    const m = Math.round(valor);
+    if (m < 60) return `${m} min`;
+    return m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`;
+  }
+  const n = Math.abs(valor) >= 100 ? Math.round(valor) : Math.round(valor * 10) / 10;
+  const texto = n.toLocaleString(loc, { maximumFractionDigits: 1 });
+  return unidad ? `${texto} ${idioma === 'en' ? traducirDato(unidad, idioma) : unidad}` : texto;
+}
 
 /** "Tomate", "Menos energía", "Me acosté tarde": cómo se nombra un rasgo de un día (alto y bajo, respecto de lo habitual). */
 /** El ánimo y el clima dichos como se dicen: "Menos cómo me sentí en el día" no se entiende; "Un día peor", sí. */
@@ -713,7 +748,20 @@ const NOMBRES_ANIMO: Record<string, { alto: [string, string]; bajo: [string, str
   'Temperatura mínima': { alto: ['Noche templada', 'Warm night'], bajo: ['Noche fría', 'Cold night'] },
 };
 
-export function nombreRasgo(nombre: string, tipo: TipoValor, modo: Modo, idioma: Idioma = 'es'): string {
+export function nombreRasgo(
+  nombre: string,
+  tipo: TipoValor,
+  modo: Modo,
+  idioma: Idioma = 'es',
+  umbral?: { valor: number | null; unidad?: string | null },
+): string {
+  if (modo === 'desde' || modo === 'hasta') {
+    const n = idioma === 'en' ? traducirDato(nombre, idioma) : nombre;
+    if (umbral?.valor === null || umbral?.valor === undefined) return n;
+    const v = valorUmbral(umbral.valor, tipo, umbral.unidad, idioma);
+    if (idioma === 'en') return `${n}: ${v} or ${modo === 'desde' ? 'more' : 'less'}`;
+    return `${n}: ${v} o ${modo === 'desde' ? 'más' : 'menos'}`;
+  }
   if (modo === 'alto_semana' || modo === 'bajo_semana') {
     const base = nombreRasgo(nombre, tipo, modo === 'alto_semana' ? 'alto' : 'bajo', idioma);
     return idioma === 'en' ? `A week of ${base.charAt(0).toLowerCase()}${base.slice(1)}` : `Una semana con ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
@@ -744,6 +792,11 @@ export interface Hallazgo {
   efecto_tipo: TipoValor;
   /** Las otras causas de una combinación, que tienen que estar el mismo día (vacío: un patrón simple). */
   causas_extra?: Array<{ nombre: string; tipo: TipoValor; modo: Modo }>;
+  /** En un umbral (causa_modo desde / hasta): desde qué valor ("3" cafés) y en qué unidad se anota la causa. */
+  umbral?: number | null;
+  causa_unidad?: string | null;
+  /** Si la causa protege: con ella el efecto (un malestar) aparece menos (prob_con < prob_sin, lift < 1). */
+  protege?: boolean;
   /** días entre la causa y el efecto (0 = el mismo día) */
   desfase_dias: number;
   /** días en que hubo causa y, desfase días después, efecto */

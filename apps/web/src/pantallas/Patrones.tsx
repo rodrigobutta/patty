@@ -16,7 +16,11 @@ import { IconoBuscar, IconoCalendario, IconoMapa, IconoNumeros, IconoRelacion } 
 import { MapaDescubrir } from './MapaDescubrir';
 
 const Q_FIRME = 0.1;
-const cuando = (d: number) => (d === 0 ? t('el mismo día') : d === 1 ? t('al día siguiente') : t('{n} días después', { n: d }));
+const cuando = (d: number) =>
+  d === 0 ? t('el mismo día') : d === 1 ? t('al día siguiente') : d === 2 ? t('a los dos días') : d === 3 ? t('a los tres días') : t('{n} días después', { n: d });
+/** "Dolor de cabeza" → "menos dolor de cabeza": lo que protege se dice por lo que baja. */
+const menos = (efecto: string) => t('menos {efecto}', { efecto: efecto.charAt(0).toLocaleLowerCase(locale()) + efecto.slice(1) });
+const decimal = (n: number) => n.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 export function Patrones({ persona, progreso }: { persona: Persona; progreso: Progreso | null }) {
   const { sesion, usuario } = useEstado();
@@ -70,17 +74,25 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const firmes = hallazgos?.filter((h) => !apartados.includes(h) && (h.q_valor <= Q_FIRME || h.estado === 'confirmado')) ?? [];
   const posibles = hallazgos?.filter((h) => !apartados.includes(h) && !firmes.includes(h)) ?? [];
   const tarjeta = (h: Hallazgo) => (
-    <article key={h.id} className={`tarjeta hallazgo ${h.estado}`}>
+    <article key={h.id} className={`tarjeta hallazgo ${h.estado}${h.protege ? ' protege' : ''}`}>
+      {h.protege ? <p className="chico marca-protege">{t('🛡️ Parece que te protege')}</p> : null}
       <h3>
+        {/* Un umbral lleva su valor ("Café: 3 o más"); solo la primera causa puede serlo. */}
         {[{ nombre: h.causa, tipo: h.causa_tipo, modo: h.causa_modo }, ...(h.causas_extra ?? [])].map((c, i) => (
           <Fragment key={i}>
             {i ? <span className="mas-causa"> + </span> : null}
-            {nombreRasgo(c.nombre, c.tipo, c.modo, idioma())}
+            {nombreRasgo(c.nombre, c.tipo, c.modo, idioma(), i ? undefined : { valor: h.umbral ?? null, unidad: h.causa_unidad })}
           </Fragment>
         ))}{' '}
-        <span className="flecha">→</span> {nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma())}
+        <span className="flecha">→</span> {h.protege ? menos(nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma())) : nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma())}
       </h3>
-      <p className="suave chico">{cuando(h.desfase_dias)} · {t('{n} de {total} veces', { n: h.soporte, total: h.dias_causa })} · {t('×{n} más probable', { n: h.lift.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}{h.q_valor > 0.2 ? ` · ${t('puede ser casualidad')}` : ''}</p>
+      <p className="suave chico">
+        {cuando(h.desfase_dias)} · {t('{n} de {total} veces', { n: h.soporte, total: h.dias_causa })} ·{' '}
+        {h.protege && h.prob_sin > 0
+          ? t('{n}% menos seguido', { n: Math.round((1 - h.prob_con / h.prob_sin) * 100) })
+          : t('×{n} más probable', { n: decimal(h.lift) })}
+        {h.q_valor > 0.2 ? ` · ${t('puede ser casualidad')}` : ''}
+      </p>
       <div className="barras" aria-label={t('{con}% con, {sin}% sin', { con: Math.round(h.prob_con * 100), sin: Math.round(h.prob_sin * 100) })}>
         <div><span style={{ width: `${h.prob_con * 100}%` }} className="con" />{t('con {n}%', { n: Math.round(h.prob_con * 100) })}</div>
         <div><span style={{ width: `${h.prob_sin * 100}%` }} className="sin" />{t('sin {n}%', { n: Math.round(h.prob_sin * 100) })}</div>
