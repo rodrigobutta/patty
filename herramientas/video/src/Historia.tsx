@@ -155,14 +155,14 @@ function EscenaVista({ escena, largo }: { escena: Escena; largo: number }) {
         >
           <Buho cara={escena.cara} tamano={sinPantallas ? 280 : vertical ? 130 : 150} />
           <Titulo texto={escena.titulo} grande={sinPantallas} vertical={vertical} final={escena.clave === 'final'} />
-          {sinPantallas && escena.globitos ? <Globitos lista={escena.globitos} largo={largo} enFila /> : null}
+          {(sinPantallas || escena.globitosAlTitulo) && escena.globitos ? <Globitos lista={escena.globitos} largo={largo} enFila alIzquierda={!sinPantallas && !vertical} /> : null}
         </div>
         {sinPantallas ? null : (
           <div style={{ position: 'relative', display: 'flex', gap: 40 }}>
             {escena.pantallas.map((p, i) => (
               <Telefono key={i} pantalla={p} alto={altoTel} retraso={i * 8} largo={largo} zoom={escena.zoom} />
             ))}
-            {escena.globitos ? <Globitos lista={escena.globitos} largo={largo} desde={Math.round((escena.globitosDesde ?? 0) * FPS)} hasta={escena.globitosHasta ? Math.round(escena.globitosHasta * FPS) : undefined} /> : null}
+            {escena.globitos && !escena.globitosAlTitulo ? <Globitos lista={escena.globitos} largo={largo} desde={Math.round((escena.globitosDesde ?? 0) * FPS)} hasta={escena.globitosHasta ? Math.round(escena.globitosHasta * FPS) : undefined} /> : null}
           </div>
         )}
       </AbsoluteFill>
@@ -246,7 +246,7 @@ function Telefono({ pantalla, alto, retraso, largo, zoom }: { pantalla: Pantalla
 }
 
 /** Globitos que aparecen de a uno (alrededor del teléfono, o en fila debajo del título). */
-function Globitos({ lista, largo, enFila = false, desde = 0, hasta }: { lista: string[]; largo: number; enFila?: boolean; desde?: number; hasta?: number }) {
+function Globitos({ lista, largo, enFila = false, alIzquierda = false, desde = 0, hasta }: { lista: string[]; largo: number; enFila?: boolean; alIzquierda?: boolean; desde?: number; hasta?: number }) {
   const f = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const vertical = height > width;
@@ -261,7 +261,7 @@ function Globitos({ lista, largo, enFila = false, desde = 0, hasta }: { lista: s
   const tramo = hasta ? 9 : ((largo - desde) * 0.7) / lista.length;
   const sale = hasta ? interpolate(f, [hasta - 6, hasta], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
   return (
-    <div style={enFila ? { display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: 'center', marginTop: 20 } : { position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    <div style={enFila ? { display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: alIzquierda ? 'flex-start' : 'center', marginTop: 20 } : { position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {lista.map((g, i) => {
         const s = spring({ frame: f - 14 - desde - i * tramo, fps, config: { damping: 10, stiffness: 160 } });
         const lugar = lugares[i % lugares.length];

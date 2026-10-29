@@ -25,6 +25,8 @@ export interface Escena {
   globitosDesde?: number;
   /** Hasta qué segundo se ven (si después la app muestra otra cosa, como el "¡Anotado!"). */
   globitosHasta?: number;
+  /** Los globitos en fila debajo del título, en vez de alrededor del teléfono. */
+  globitosAlTitulo?: boolean;
   zoom?: Zoom;
 }
 
@@ -69,16 +71,17 @@ export const ESCENAS: Escena[] = [
     pantallas: [{ video: 'dia.webm', desde: 0.6 }, { img: 'mapa.webp' }],
     cara: 'manana',
     titulo: 'Y lo demás, solo',
-    globitos: ['7 h 30 min de sueño', '5.776 pasos', '23° y sol', '1 viaje'],
+    globitos: ['7 h 30 min de sueño', '5.980 pasos', '18° y lluvia', '1 viaje'],
   },
   {
     clave: 'patron',
-    texto: 'Y un día le avisa: “cuando comés frito, a la tarde te duele la panza”.',
+    texto: 'Y un día le avisa: “cuando comés frito, estás en tu período y hace calor, al otro día te duele la panza”.',
     pantallas: [{ img: 'patron.webp' }],
     cara: 'espera',
     titulo: '¡Lo descubrió!',
-    globitos: ['Comida frita', 'Dolor de panza a la tarde'],
-    zoom: { x: 0.5, y: 0.2, escala: 1.18 },
+    // Los globitos van debajo del título (no tapan la tarjeta, que dice lo mismo).
+    globitos: ['Comida frita', 'Período', 'Día de calor', '→ Panza al otro día'],
+    globitosAlTitulo: true,
   },
   {
     clave: 'final',
