@@ -126,8 +126,8 @@ export async function captura(c, archivo, { calidad = 82 } = {}) {
   writeFileSync(archivo, Buffer.from(r.data, 'base64'));
 }
 
-/** Graba lo que pasa mientras corre `hacer()` y lo guarda como WebM (VP8), a 25 cuadros por segundo. */
-export async function grabar(c, archivo, hacer, { ancho = 780 } = {}) {
+/** Graba lo que pasa mientras corre `hacer()` y lo guarda como WebM (VP8), a 25 cuadros por segundo (`ancho` en píxeles reales). */
+export async function grabar(c, archivo, hacer, { ancho = 780, bitrate = '1M' } = {}) {
   const cuadros = [];
   const alCuadro = async (p) => {
     cuadros.push({ t: p.metadata.timestamp, datos: Buffer.from(p.data, 'base64') });
@@ -149,7 +149,7 @@ export async function grabar(c, archivo, hacer, { ancho = 780 } = {}) {
     while (i + 1 < cuadros.length && cuadros[i + 1].t <= t) i++;
     if (cuadros[i]) salida.push(cuadros[i].datos);
   }
-  const ff = spawn(FFMPEG, ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', String(fps), '-i', 'pipe:0', '-an', '-c:v', 'vp8', '-qmin', '0', '-qmax', '40', '-crf', '10', '-b:v', '1M', '-deadline', 'good', '-cpu-used', '2', archivo], { stdio: ['pipe', 'ignore', 'pipe'] });
+  const ff = spawn(FFMPEG, ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', String(fps), '-i', 'pipe:0', '-an', '-c:v', 'vp8', '-qmin', '0', '-qmax', '40', '-crf', '10', '-b:v', bitrate, '-deadline', 'good', '-cpu-used', '2', archivo], { stdio: ['pipe', 'ignore', 'pipe'] });
   let error = '';
   ff.stderr.on('data', (d) => (error += d));
   for (const b of salida) if (!ff.stdin.write(b)) await new Promise((r) => ff.stdin.once('drain', r));

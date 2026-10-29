@@ -53,7 +53,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
                 <strong>
                   {horaEn(v.inicio, persona.zona_horaria)} → {horaEn(v.fin, persona.zona_horaria)} · {String(v.km).replace('.', ',')} km · {duracion(v.minutos)}
                 </strong>
-                <span className={`chico renglon-sub${v.pesado ? ' pista-pesada' : ' suave'}`}>{v.pista}{v.trafico ? '' : ` (${v.velocidad} km/h)`}</span>
+                <span className={`chico renglon-sub${v.pesado ? ' pista-pesada' : ' suave'}`}>{v.pista}{v.trafico || v.habitual_min !== null ? '' : ` (${v.velocidad} km/h)`}</span>
               </span>
               <span className="rotulo-campo">{t('¿En qué fuiste?')}</span>
               <span className="chips envolver">

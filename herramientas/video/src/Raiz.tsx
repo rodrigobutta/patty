@@ -12,9 +12,18 @@ async function leerVoz(): Promise<Props['voz']> {
   }
 }
 
+/** Si hay música de fondo (public/voz/musica.mp3, ver voz.mjs). */
+async function hayMusica(): Promise<boolean> {
+  try {
+    return (await fetch(staticFile('voz/musica.mp3'), { method: 'HEAD' })).ok;
+  } catch {
+    return false;
+  }
+}
+
 const calcular = async ({ props }: { props: Props }) => {
   const voz = props.voz ?? (await leerVoz());
-  return { durationInFrames: largoTotal(voz), props: { voz } };
+  return { durationInFrames: largoTotal(voz), props: { voz, musica: props.musica ?? (await hayMusica()) } };
 };
 
 export function Raiz() {

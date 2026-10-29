@@ -11,6 +11,6 @@ const remotion = (args) => execFileSync('npx', ['remotion', ...args, '--log=erro
 for (const [id, nombre] of [['Historia', 'historia'], ['HistoriaVertical', 'historia-vertical']]) {
   remotion(['render', 'src/index.ts', id, path.join(destino, `${nombre}.mp4`), '--codec=h264', '--crf=24']);
   // La portada: un momento con el teléfono a la vista (la escena de anotar).
-  remotion(['still', 'src/index.ts', id, path.join(destino, `${nombre}.jpg`), '--frame=330', '--image-format=jpeg', '--jpeg-quality=80']);
+  remotion(['still', 'src/index.ts', id, path.join(destino, `${nombre}.jpg`), '--frame=250', '--image-format=jpeg', '--jpeg-quality=80']);
   console.log(`✓ ${nombre}`);
 }
