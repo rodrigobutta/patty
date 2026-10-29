@@ -23,6 +23,17 @@ export interface Compartible {
   opcion?: { rotulo: string; sin: Tarjeta };
 }
 
+/** Lo que va escrito junto a la imagen, según qué se comparte. */
+const TEXTOS: Record<Compartible['que'], string> = {
+  patron: 'Lo descubrí con Patty 🦉',
+  racha: 'Mi racha en Patty 🦉',
+  semana: 'Mi semana con Patty 🦉',
+  nivel: 'Mi nivel en Patty 🦉',
+  actividad: 'Lo anoté con Patty 🦉',
+  viaje: 'Lo anoté con Patty 🦉',
+  sueno: 'Cómo dormí, con Patty 🦉',
+};
+
 export function HojaCompartir({ que, tarjeta, opcion, alCerrar }: Compartible & { alCerrar(): void }) {
   const { usuario } = useEstado();
   const [con, setCon] = useState(true);
@@ -63,7 +74,7 @@ export function HojaCompartir({ que, tarjeta, opcion, alCerrar }: Compartible & 
     setAviso('');
     try {
       const link = await linkInvitacion(usuario?.id);
-      const como = await compartirImagen(imagen.blob, `patty-${que}.png`, `${t('Lo descubrí con Patty 🦉')} ${link}`);
+      const como = await compartirImagen(imagen.blob, `patty-${que}.png`, `${t(TEXTOS[que])} ${link}`);
       medir('compartir', { que, como, ...(opcion ? { con: con ? 'si' : 'no' } : {}) });
       setAviso(AVISOS[como] ? t(AVISOS[como]!) : '');
     } catch {

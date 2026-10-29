@@ -1004,4 +1004,9 @@ export const PERMISOS: Record<string, string> = {
   "{n} h con lluvia": "{n} h of rain",
   "{n}% nublado": "{n}% cloudy",
   "{n}° de diferencia": "{n}° range",
+  "Mi racha en Patty 🦉": "My streak on Patty 🦉",
+  "Mi semana con Patty 🦉": "My week with Patty 🦉",
+  "Mi nivel en Patty 🦉": "My level on Patty 🦉",
+  "Lo anoté con Patty 🦉": "Logged with Patty 🦉",
+  "Cómo dormí, con Patty 🦉": "How I slept, with Patty 🦉",
 };
