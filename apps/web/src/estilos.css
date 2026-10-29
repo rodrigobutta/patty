@@ -1407,6 +1407,8 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .gantt-barra.actividad.sigue { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--verde) 70%, transparent) 0 6px, color-mix(in srgb, var(--verde) 40%, transparent) 6px 12px); }
 .gantt-antes { position: absolute; left: 2px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--suave); }
 .gantt-acciones { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.gantt-botones { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.gantt-botones .btn { width: 100%; justify-content: center; display: inline-flex; align-items: center; gap: 6px; }
 .linea-malestares.malestares-abiertos { border-color: var(--borde); }
 /* Lo que dura: sin título, con su propio fondo para distinguirse. */
 .linea-malestares.malestares-abiertos { background: var(--acento-suave); border-color: transparent; }

@@ -890,4 +890,6 @@ export const PERMISOS: Record<string, string> = {
   "Hoy anotaste 1 cosa": "1 thing logged today",
   "Hoy anotaste {n} cosas": "{n} things logged today",
   "para {que}": "for {que}",
+  "Terminé a las {hora}": "I finished at {hora}",
+  "Terminé recién": "I just finished",
 };

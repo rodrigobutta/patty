@@ -4,6 +4,7 @@
 // mejor / igual / peor; una actividad, terminé (a la hora que vio la ubicación, o recién) / sigo; lo terminado, editar.
 // Lo que sigue abierto desde otro día también aparece (entra por la izquierda).
 import { IconoCategoria } from '../ui/IconosPatty';
+import { IconoLapiz } from '../ui/Iconos';
 import { useEffect, useState } from 'react';
 import type { Categoria, Persona, Registro } from 'shared';
 import { api } from '../api';
@@ -128,23 +129,25 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
                       <IconoCategoria clave="medicacion" tamano={16} /> {t(m.concepto)} {horaEn(m.t, persona.zona_horaria)}
                     </span>
                   ))}
-                  {sigue && esActividad ? (
-                    <>
-                      {r.fin_sugerido ? (
-                        <button className="chip activa" onClick={() => void responder(r, 'paso', r.fin_sugerido!)}>{t('✓ Terminé a las {hora}', { hora: horaEn(r.fin_sugerido, persona.zona_horaria) })}</button>
-                      ) : null}
-                      <button className={`chip${r.fin_sugerido ? '' : ' activa'}`} onClick={() => void responder(r, 'paso')}>{t('✓ Terminé recién')}</button>
-                      <button className="chip" onClick={() => void responder(r, 'igual')}>{t('Sigo')}</button>
-                    </>
-                  ) : sigue ? (
-                    <>
-                      <button className="chip activa" onClick={() => void responder(r, 'paso')}>{t('✓ Ya se me pasó')}</button>
-                      <button className="chip" onClick={() => void responder(r, 'mejor')}>{t('Mejor')}</button>
-                      <button className="chip" onClick={() => void responder(r, 'igual')}>{t('Igual')}</button>
-                      <button className="chip" onClick={() => void responder(r, 'peor')}>{t('Peor')}</button>
-                    </>
-                  ) : null}
-                  <button className="chip" onClick={() => { setTocada(null); alEditar(r); }}>{t('✏️ Editar')}</button>
+                  <div className="gantt-botones">
+                    {sigue && esActividad ? (
+                      <>
+                        {r.fin_sugerido ? (
+                          <button className="btn chico" onClick={() => void responder(r, 'paso', r.fin_sugerido!)}>{t('Terminé a las {hora}', { hora: horaEn(r.fin_sugerido, persona.zona_horaria) })}</button>
+                        ) : null}
+                        <button className="btn chico" onClick={() => void responder(r, 'paso')}>{t('Terminé recién')}</button>
+                        <button className="btn chico" onClick={() => void responder(r, 'igual')}>{t('Sigo')}</button>
+                      </>
+                    ) : sigue ? (
+                      <>
+                        <button className="btn chico" onClick={() => void responder(r, 'paso')}>{t('Ya se me pasó')}</button>
+                        <button className="btn chico" onClick={() => void responder(r, 'mejor')}>{t('Mejor')}</button>
+                        <button className="btn chico" onClick={() => void responder(r, 'igual')}>{t('Igual')}</button>
+                        <button className="btn chico" onClick={() => void responder(r, 'peor')}>{t('Peor')}</button>
+                      </>
+                    ) : null}
+                    <button className="btn chico" onClick={() => { setTocada(null); alEditar(r); }}><IconoLapiz tamano={16} /> {t('Editar')}</button>
+                  </div>
                 </div>
               ) : null}
             </div>
