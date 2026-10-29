@@ -1,4 +1,4 @@
-// Cuando hay una versión nueva de Patty esperando: un cartelito arriba, en violeta, para actualizar con un toque (si no, se aplica
+// Cuando hay una versión nueva de Patty esperando: un cartelito arriba, en naranja, para actualizar con un toque (si no, se aplica
 // sola cuando la app pasa a segundo plano).
 import { useState } from 'react';
 import { actualizarAhora, useVersionNueva } from '../lib/actualizar';
