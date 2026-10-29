@@ -75,7 +75,7 @@ export const ESCENAS: Escena[] = [
   },
   {
     clave: 'patron',
-    texto: 'Y un día le avisa: “cuando comés frito, estás en tu período y hace calor, al otro día te duele la panza”.',
+    texto: 'Y un día Patty le avisa algo que ella nunca había notado: cuando come frito en un día de calor y está en su período, al día siguiente le duele la panza.',
     pantallas: [{ img: 'patron.webp' }],
     cara: 'espera',
     titulo: '¡Lo descubrió!',

@@ -12,10 +12,14 @@ import { fileURLToPath } from 'node:url';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const argumentos = process.argv.slice(2);
-const martin = argumentos[0] === 'martin';
-const HISTORIA = martin
-  ? { guion: 'src/guion-martin.ts', salida: 'public/voz/martin', genero: 'male' }
-  : { guion: 'src/guion.ts', salida: 'public/voz', genero: 'female' };
+// La historia: la de Sofía (por omisión), "sofia2" (la misma con otra voz, para comparar) o "martin".
+const HISTORIAS = {
+  sofia: { guion: 'src/guion.ts', salida: 'public/voz', genero: 'female' },
+  sofia2: { guion: 'src/guion.ts', salida: 'public/voz/sofia2', genero: 'female' },
+  martin: { guion: 'src/guion-martin.ts', salida: 'public/voz/martin', genero: 'male' },
+};
+const nombreHistoria = HISTORIAS[argumentos[0]] ? argumentos[0] : 'sofia';
+const HISTORIA = HISTORIAS[nombreHistoria];
 const SALIDA = path.join(aqui, HISTORIA.salida);
 const API = 'https://api.elevenlabs.io/v1';
 const MODELO = process.env.ELEVEN_MODELO ?? 'eleven_multilingual_v2';
@@ -31,7 +35,7 @@ const h = { 'xi-api-key': clave };
 // El guion sale del mismo archivo que usa el video (se lee el texto, sin compilar TypeScript).
 const guion = readFileSync(path.join(aqui, HISTORIA.guion), 'utf8');
 const escenas = [...guion.matchAll(/clave: '([^']+)',\s*\n\s*texto: '([^']+)'/g)].map((m) => ({ clave: m[1], texto: m[2] }));
-const pedidas = martin ? argumentos.slice(1) : argumentos;
+const pedidas = HISTORIAS[argumentos[0]] ? argumentos.slice(1) : argumentos;
 
 async function elegirVoz() {
   if (process.env.ELEVEN_VOZ) return { voice_id: process.env.ELEVEN_VOZ, name: process.env.ELEVEN_VOZ };
@@ -44,7 +48,9 @@ async function elegirVoz() {
   const r = await fetch(`${API}/shared-voices?page_size=30&language=es&accent=argentine&gender=${HISTORIA.genero}&sort=usage_character_count_1y`, { headers: h });
   if (!r.ok) throw new Error(`Buscar voces: ${r.status} ${await r.text()}`);
   const { voices } = await r.json();
-  const v = voices?.[0];
+  // ELEVEN_VOZ_NOMBRE=Malena elige una por el nombre; si no, la más usada.
+  const nombre = process.env.ELEVEN_VOZ_NOMBRE;
+  const v = nombre ? voices?.find((x) => x.name.toLowerCase().startsWith(nombre.toLowerCase())) : voices?.[0];
   if (!v) throw new Error('No encontré voces argentinas: pasá una con ELEVEN_VOZ=<id>.');
   // Las de la biblioteca se suman a "Mis voces" para poder usarlas.
   const sumar = await fetch(`${API}/voices/add/${v.public_owner_id}/${v.voice_id}`, {

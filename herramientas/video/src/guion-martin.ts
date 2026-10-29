@@ -48,7 +48,7 @@ export const ESCENAS_MARTIN: Escena[] = [
   },
   {
     clave: 'patron',
-    texto: 'Y un día le avisa: cuando dormís menos de seis horas, te duele la cabeza; y los días que caminás, andás mucho mejor.',
+    texto: 'Y un día Patty le avisa algo que él nunca había notado: cuando duerme menos de seis horas le duele la cabeza, y los días que camina anda mucho mejor.',
     pantallas: [{ img: 'patron-sueno.webp' }],
     cara: 'espera',
     titulo: '¡Lo descubrió!',

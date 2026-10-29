@@ -35,6 +35,8 @@ const PROPORCION = 1170 / 2532;
 /** Las historias: cada una con sus escenas y la carpeta de su voz (en public). */
 export const HISTORIAS = {
   sofia: { escenas: ESCENAS, voz: 'voz' },
+  /** La misma de Sofía con otra voz, para comparar. */
+  sofia2: { escenas: ESCENAS, voz: 'voz/sofia2' },
   martin: { escenas: ESCENAS_MARTIN, voz: 'voz/martin' },
 } as const;
 export type NombreHistoria = keyof typeof HISTORIAS;

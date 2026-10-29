@@ -32,6 +32,7 @@ export function Raiz() {
     <>
       <Composition id="Historia" component={Historia} fps={FPS} width={1920} height={1080} durationInFrames={FPS * 40} defaultProps={{ voz: null }} calculateMetadata={calcular} />
       <Composition id="HistoriaVertical" component={Historia} fps={FPS} width={1080} height={1920} durationInFrames={FPS * 40} defaultProps={{ voz: null }} calculateMetadata={calcular} />
+      <Composition id="HistoriaVoz2Vertical" component={Historia} fps={FPS} width={1080} height={1920} durationInFrames={FPS * 40} defaultProps={{ voz: null, historia: 'sofia2' }} calculateMetadata={calcular} />
       <Composition id="HistoriaMartin" component={Historia} fps={FPS} width={1920} height={1080} durationInFrames={FPS * 40} defaultProps={{ voz: null, historia: 'martin' }} calculateMetadata={calcular} />
       <Composition id="HistoriaMartinVertical" component={Historia} fps={FPS} width={1080} height={1920} durationInFrames={FPS * 40} defaultProps={{ voz: null, historia: 'martin' }} calculateMetadata={calcular} />
     </>
