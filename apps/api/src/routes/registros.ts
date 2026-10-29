@@ -2,7 +2,7 @@
 import { controlarLimite } from '../lib/usoIa.js';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { comidaEn, conDetalle, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
+import { comidaEn, conceptosDelMedio, conDetalle, limpiarMedio, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { registros } from '../db/schema.js';
 import { interpretarTexto } from '../ia/interpretar.js';
@@ -18,7 +18,7 @@ import { vincularToma } from './tratamientos.js';
 const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char(r.fecha, 'YYYY-MM-DD') AS fecha,
   r.valor, r.intensidad, r.unidad, r.nota, r.origen, r.datos->>'donde' AS donde, r.datos->>'lugar' AS lugar,
   r.datos->>'porcion' AS porcion, coalesce(r.datos->'tipos', '[]'::jsonb) AS tipos, coalesce(r.datos->'detalles', '[]'::jsonb) AS detalles,
-  (r.datos->>'abierto' = 'true') AS abierto, r.datos->'evolucion' AS evolucion, r.datos->>'fin_sugerido' AS fin_sugerido,
+  r.datos->'medio' AS medio, (r.datos->>'abierto' = 'true') AS abierto, r.datos->'evolucion' AS evolucion, r.datos->>'fin_sugerido' AS fin_sugerido,
   (r.datos->>'para_registro_id')::bigint AS para_registro_id,
   (SELECT c.nombre FROM registros m JOIN conceptos c ON c.id = m.concepto_id WHERE m.id = (r.datos->>'para_registro_id')::bigint AND m.borrado IS NULL) AS para,
   (SELECT jsonb_agg(jsonb_build_object('t', x.inicio, 'concepto', c.nombre) ORDER BY x.inicio) FROM registros x JOIN conceptos c ON c.id = x.concepto_id
@@ -121,6 +121,22 @@ async function datosDetalles(tx: Tx, u: Usuario, d: NuevoRegistro, c: Concepto):
   return { detalles, detalle_concepto_ids: ids };
 }
 
+/**
+ * Lo que se miró o escuchó (tele, película, serie, deporte, música, podcast): en `datos.medio`, con los conceptos que
+ * entran a los patrones ("Tele: Terror", "Tele en Netflix", "Música: Rock", en la misma categoría y con los minutos del
+ * registro) en medio_concepto_ids, que la vista serie_diaria suma. Undefined si no vino en el pedido.
+ */
+async function datosMedio(tx: Tx, u: Usuario, d: NuevoRegistro, c: Concepto): Promise<Record<string, unknown> | null | undefined> {
+  if (!('medio' in d)) return undefined;
+  const medio = limpiarMedio(d.medio);
+  if (!medio) return null;
+  const ids: number[] = [];
+  for (const nombre of conceptosDelMedio(medio)) {
+    ids.push((await obtenerOCrearConcepto(tx, { nombre, categoriaId: c.categoria_id, tipoValor: 'duracion', unidad: 'min', usuarioId: u.id })).concepto.id);
+  }
+  return { medio, medio_concepto_ids: ids };
+}
+
 /** Un remedio tomado para un malestar de la misma persona: `datos.para_registro_id` (lo une con ese malestar). */
 async function datosPara(tx: Tx, d: NuevoRegistro, personaId: number): Promise<Record<string, unknown> | null | undefined> {
   if (!('para_registro_id' in d)) return undefined;
@@ -147,7 +163,8 @@ export async function guardarRegistro(
   const plato = await datosPlato(tx, u, d, c);
   const detalles = await datosDetalles(tx, u, d, c);
   const para = await datosPara(tx, d, p.id);
-  const datos = comida || plato || detalles || para ? { ...comida, ...plato, ...detalles, ...para } : null;
+  const medio = await datosMedio(tx, u, d, c);
+  const datos = comida || plato || detalles || para || medio ? { ...comida, ...plato, ...detalles, ...para, ...medio } : null;
   const [r] = await tx
     .insert(registros)
     .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(datos ? { datos } : {}) })
@@ -360,6 +377,7 @@ export const rutasRegistros = new Hono<Env>()
       const plato = await datosPlato(tx, c.var.usuario, d, concepto);
       const detalles = await datosDetalles(tx, c.var.usuario, d, concepto);
       const para = await datosPara(tx, d, actual.persona.id);
+      const medio = await datosMedio(tx, c.var.usuario, d, concepto);
       await tx.update(registros).set({ concepto_id: concepto.id, ...valores(d, concepto, actual.persona) }).where(sql`id = ${id}`);
       // Dónde se comió: se reemplaza (o se saca) solo si vino en el pedido.
       if (comida !== undefined) {
@@ -373,6 +391,9 @@ export const rutasRegistros = new Hono<Env>()
       }
       if (para !== undefined) {
         await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'para_registro_id') || ${JSON.stringify(para ?? {})}::jsonb WHERE id = ${id}`);
+      }
+      if (medio !== undefined) {
+        await tx.execute(sql`UPDATE registros SET datos = (coalesce(datos, '{}'::jsonb) - 'medio' - 'medio_concepto_ids') || ${JSON.stringify(medio ?? {})}::jsonb WHERE id = ${id}`);
       }
       return una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${id}`);
     });

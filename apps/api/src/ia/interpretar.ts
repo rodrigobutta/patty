@@ -1,7 +1,7 @@
 // Carga en texto libre: "desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos.
 // No guarda nada: la app los muestra para que la persona los revise y después los manda a /api/registros/varios.
 import { sql } from 'drizzle-orm';
-import { esPorcion, esTipoComida, frecuenciaTexto, normalizar, PORCIONES, TIPOS_COMIDA, TIPOS_VALOR, type Categoria, type Idioma } from 'shared';
+import { esPorcion, esTipoComida, frecuenciaTexto, limpiarMedio, sePantalla, TIPOS_MEDIO, type Medio, normalizar, PORCIONES, TIPOS_COMIDA, TIPOS_VALOR, type Categoria, type Idioma } from 'shared';
 import { filas, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -10,6 +10,7 @@ import { pedirJson } from './cliente.js';
 import { lineaDelDia } from '../ubicacion/linea.js';
 import { nombresDeGente } from '../routes/gente.js';
 import { preguntasDe } from '../routes/preguntasConcepto.js';
+import { buscarMedios, generoDeItunes } from '../medios/itunes.js';
 
 const nulo = (tipo: 'string' | 'number' | 'integer', descripcion: string) => ({ anyOf: [{ type: tipo }, { type: 'null' }], description: descripcion });
 
@@ -36,6 +37,27 @@ const ESQUEMA = {
           porcion: { anyOf: [{ type: 'string', enum: PORCIONES.map((x) => x.clave) }, { type: 'null' }], description: 'Solo comidas: el tamaño del plato, si se ve o se dijo' },
           tipos: { type: 'array', items: { type: 'string', enum: TIPOS_COMIDA.map((x) => x.clave) }, description: 'Solo comidas: cómo es (vacío si no aplica o no se sabe)' },
           para_malestar: nulo('string', 'Solo medicación: para cuál de los malestares abiertos la tomó, con su nombre exacto de esa lista (si se dijo o se aclaró)'),
+          medio: {
+            anyOf: [
+              {
+                type: 'object',
+                properties: {
+                  tipo: { type: 'string', enum: [...TIPOS_MEDIO] },
+                  contenido: nulo('string', 'Solo tele: el tipo de contenido si no es película, serie, deporte ni noticias (Documentales, Entretenimiento, Política y debates, Chimentos, Música, Infantiles)'),
+                  servicio: nulo('string', 'Canal, plataforma o app: TN, Telefe, Netflix, Disney+, Prime Video, Max, YouTube, Flow, Spotify, Radio'),
+                  genero: nulo('string', 'Película o serie: Comedia, Drama, Acción, Terror, Suspenso, Romántica, Ciencia ficción, Animada, Documental, Aventura, Policial, Infantil. Música: Rock, Rock nacional, Pop, Cumbia, Folklore, Tango, Jazz, Clásica, Electrónica, Reggaetón, Trap, Cuarteto'),
+                  titulo: nulo('string', 'La película, la serie, el disco o tema, o el programa o podcast, si se dijo'),
+                  artista: nulo('string', 'Música: el artista o la banda'),
+                  deporte: nulo('string', 'Deporte que miró: Fútbol, Tenis, Básquet, Rugby, Fórmula 1…'),
+                  equipo: nulo('string', 'Deporte: el equipo o jugador que miró, si se dijo (River, Boca, la Selección)'),
+                },
+                required: ['tipo', 'contenido', 'servicio', 'genero', 'titulo', 'artista', 'deporte', 'equipo'],
+                additionalProperties: false,
+              },
+              { type: 'null' },
+            ],
+            description: 'Solo si miró tele, una película, una serie o deportes, o escuchó música o un podcast: el detalle. null en lo demás.',
+          },
           detalles: {
             type: 'array',
             description: 'Respuestas a las preguntas que la persona configuró para esta cosa (vacío si no tiene o no se sabe todavía)',
@@ -47,7 +69,7 @@ const ESQUEMA = {
             },
           },
         },
-        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar', 'porcion', 'tipos', 'para_malestar', 'detalles'],
+        required: ['categoria', 'concepto', 'tipo_valor', 'fecha', 'hora', 'duracion_min', 'valor', 'unidad', 'intensidad', 'nota', 'donde', 'lugar', 'porcion', 'tipos', 'para_malestar', 'medio', 'detalles'],
         additionalProperties: false,
       },
     },
@@ -112,6 +134,7 @@ interface Respuesta {
     tipos?: string[];
     detalles?: Array<{ pregunta: string; respuestas: string[] }>;
     para_malestar?: string | null;
+    medio?: Record<string, unknown> | null;
   }>;
   tratamientos: Array<{
     remedio: string;
@@ -218,6 +241,17 @@ export async function interpretarTexto(
     '"Viaje en auto", "Viaje en colectivo", "Viaje en tren o subte", "Viaje en bici", "Viaje caminando" o "Viaje en taxi", ' +
     'con duracion_min y la intensidad de cuánto pesó (2 tranquilo, 5 normal, 8 pesado); si fue pesado (tráfico, lleno, ' +
     'demoras), además un registro "Viaje pesado" en viaje. ' +
+    'Si cuenta que miró tele, una película, una serie o deportes ("miré Duna en Netflix 2 horas", "vi el partido de ' +
+    'River", "estuve con las noticias"), va en pantalla, concepto "Tele", con duracion_min y en medio: tipo pelicula, ' +
+    'serie, deporte, noticias o tele (canal de aire u otro contenido, con contenido), el servicio (canal o plataforma), ' +
+    'el género, el título, el deporte y el equipo que se sepan. Si escuchó música ("escuché Soda Stereo una hora") va en ' +
+    'musica, concepto "Escuchar música", con medio tipo musica (artista, disco o tema en titulo, género, servicio: ' +
+    'Spotify, Radio…); un podcast o programa de radio hablado, concepto "Podcast", medio tipo podcast (el programa en ' +
+    'titulo). Si el género de una película o serie conocida se sabe por el título, ponelo. Si miró una película o una ' +
+    'serie (o algo en una plataforma, no un canal de aire) y no se sabe qué tipo de película o serie era, preguntá en ' +
+    'dudas el género con opciones (Comedia, Drama, Acción, Terror, Romántica, Animada…) y, si no lo dijo, cuál era (sin ' +
+    'opciones, respuesta libre; es opcional: si no contesta, no insistas). Si dice que miró tele sin decir qué, preguntá ' +
+    'qué miró (Noticias, Una película, Una serie, Deportes, Otra cosa). En lo que no es tele, música ni podcast, medio null. ' +
     'Si cuenta que estuvo con alguien ("comí con mi hermana", "vino Juan", "salí con amigos"), un registro en la ' +
     'categoría gente por cada persona, con su nombre corto (si ya está en "Su gente", exactamente ese nombre); para un ' +
     'grupo sin nombres, "Amigos", "Familia", "Compañeros de trabajo". ' +
@@ -288,7 +322,7 @@ export async function interpretarTexto(
   const r = await pedirJson<Respuesta>({ sistema, texto: consigna, esquema: ESQUEMA, esfuerzo: 'low', maxTokens: 8000, imagenes: imagen ? [imagen] : undefined });
   const idCat = new Map(cats.map((c) => [c.clave, c.id]));
   const medicacion = idCat.get('medicacion');
-  return {
+  const propuesta = {
     // Cada duda con sus respuestas posibles, para contestar con un toque (también acepta texto suelto, por las dudas).
     dudas: (r.dudas ?? []).map((d) =>
       typeof d === 'string'
@@ -342,8 +376,46 @@ export async function interpretarTexto(
           ...(x.detalles?.length
             ? { detalles: x.detalles.map((d) => ({ pregunta: d.pregunta, respuestas: d.respuestas.filter((r) => r.trim()) })).filter((d) => d.respuestas.length) }
             : {}),
+          ...(x.medio ? { medio: medioPropuesto(x.medio, x.categoria) } : {}),
           ...(x.categoria === 'comida' ? { porcion: esPorcion(x.porcion) ? x.porcion : null, tipos: [...new Set((x.tipos ?? []).filter(esTipoComida))] } : {}),
         };
       }),
   };
+  await conTapas(tx, propuesta.registros);
+  return propuesta;
+}
+
+/** El medio que propone la IA, validado (sin los nulos). */
+function medioPropuesto(x: Record<string, unknown>, categoria: string): Medio | null {
+  const m = limpiarMedio(x);
+  // Si la IA lo puso en otra categoría que la del tipo (música en pantalla), manda la categoría.
+  if (m && categoria === 'musica' && sePantalla(m.tipo)) return { ...m, tipo: 'musica' };
+  return m;
+}
+
+/**
+ * Las tapas de lo que se miró o escuchó con título ("Duna"): el primer resultado de iTunes, con su año y, si la IA
+ * no lo sabía, su género. Si iTunes no contesta, queda sin tapa (en el Día se puede elegir después).
+ */
+async function conTapas(tx: Tx, registros: Array<{ medio?: Medio | null }>): Promise<void> {
+  await Promise.all(
+    registros.map(async (r) => {
+      const m = r.medio;
+      const q = m && [m.tipo === 'musica' ? m.artista : null, m.titulo].filter(Boolean).join(' ');
+      if (!m || !q || m.tapa || m.tipo === 'noticias' || m.tipo === 'deporte') return;
+      const [primero] = await buscarMedios(tx, m.tipo, q).catch(() => []);
+      if (!primero) return;
+      const genero = sePantalla(m.tipo) ? generoDeItunes(primero.genero) : primero.genero;
+      r.medio = {
+        ...m,
+        tipo: m.tipo === 'tele' ? primero.tipo : m.tipo,
+        titulo: m.titulo ?? (m.tipo === 'musica' ? null : primero.titulo),
+        ...(m.tipo === 'musica' && !m.album ? { album: primero.titulo } : {}),
+        ...(primero.anio ? { anio: primero.anio } : {}),
+        ...(primero.tapa ? { tapa: primero.tapa } : {}),
+        itunes_id: primero.itunes_id,
+        ...(!m.genero && genero ? { genero } : {}),
+      };
+    }),
+  );
 }

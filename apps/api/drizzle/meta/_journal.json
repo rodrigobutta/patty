@@ -309,6 +309,20 @@
       "when": 1793315247483,
       "tag": "0043_patrones_finos",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793317676633,
+      "tag": "0044_medios",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793317686660,
+      "tag": "0045_serie_con_medios",
+      "breakpoints": true
     }
   ]
 }

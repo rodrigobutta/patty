@@ -43,6 +43,7 @@ import { rutasTratamientos } from './routes/tratamientos.js';
 import { rutasUbicacion } from './routes/ubicacion.js';
 import { rutasUsuarios } from './routes/usuarios.js';
 import { rutasVoz } from './routes/voz.js';
+import { rutasMedios, rutasMediosPublico } from './routes/medios.js';
 
 const TIPOS: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -133,6 +134,8 @@ export function crearApp(): Hono<Env> {
   api.route('/', rutasBeta);
   // El PDF para el médico se abre afuera de la app (en el navegador del teléfono): lleva su propio token.
   api.route('/informe', rutasInformePublico);
+  // Las tapas de películas y discos para la imagen de compartir (un <img> no lleva la sesión; solo trae de iTunes).
+  api.route('/medios', rutasMediosPublico);
   // Todo lo demás necesita una sesión.
   api.use('*', async (c, next) => {
     const u = await usuarioDeToken(c.var.db, c.var.token);
@@ -173,6 +176,7 @@ export function crearApp(): Hono<Env> {
   api.route('/semanas', rutasSemanas);
   api.route('/informe', rutasInforme);
   api.route('/widget', rutasWidget);
+  api.route('/medios', rutasMedios);
   api.all('*', () => {
     throw new ErrorApi('Ruta desconocida.', 404);
   });

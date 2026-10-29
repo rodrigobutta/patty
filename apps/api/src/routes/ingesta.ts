@@ -13,6 +13,7 @@ import { fechaLocal, leerInstante } from '../lib/fechas.js';
 import { cuerpo, numeroONulo, texto, type C, type Env } from '../lib/http.js';
 import { obtenerOCrearConcepto } from './conceptos.js';
 import { guardarPuntos } from './ubicacion.js';
+import { guardarEscuchas } from '../medios/escuchas.js';
 
 const CATEGORIA_POR_FUENTE: Record<string, string> = { reloj: 'actividad', telefono: 'pantalla', clima: 'clima', ubicacion: 'lugar', otro: 'otro' };
 
@@ -80,6 +81,15 @@ export const rutasIngesta = new Hono<Env>()
       await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE id = ${f.id}`);
       return guardarPuntos(tx, { id: f.persona_id, zona_horaria: f.zona_horaria }, lista);
     });
+    return c.json({ ok: true, ...r });
+  })
+  // Lo que sonó o se miró en el teléfono (la app de Android, con el acceso a las notificaciones): un tramo por tema o
+  // capítulo, { "escuchas": [{ paquete, app, titulo, artista, album, inicio, fin }] }. Ver medios/escuchas.ts.
+  .post('/escuchas', async (c) => {
+    const f = await fuenteDelPedido(c);
+    const lista = (await cuerpo(c)).escuchas;
+    if (!Array.isArray(lista)) throw new ErrorApi('Mandá una lista "escuchas" (hasta 3000 por vez).');
+    const r = await c.var.db.transaction((tx) => guardarEscuchas(tx, f, lista));
     return c.json({ ok: true, ...r });
   })
   .post('/', async (c) => {
