@@ -74,6 +74,8 @@ export function App() {
   // app). En el teléfono, siempre la app.
   const verPresentacion = !esNativa() && !location.pathname.startsWith('/app') && !['#admin', '#entrar'].includes(location.hash);
   const salirDePresentacion = () => location.assign('/app/');
+  // index.html trae el título largo de la presentación (para Google); en la app alcanza con "Patty".
+  if (!verPresentacion && document.title !== 'Patty') document.title = 'Patty';
   /** El paso opcional de datos de la persona (una vez, después de la bienvenida). */
   const [perfilListo, setPerfilListo] = useState(false);
   /** Y el de permisos (avisos, ubicación, teléfono, salud), una vez por teléfono. */

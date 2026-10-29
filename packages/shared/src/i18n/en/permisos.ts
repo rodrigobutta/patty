@@ -962,4 +962,5 @@ export const PERMISOS: Record<string, string> = {
   "¡Listo! Te vamos a escribir a {email} cuando esté la de iPhone. 💜": "Done! We'll write to {email} when the iPhone app is ready. 💜",
   "¿Tenés iPhone?": "Have an iPhone?",
   "Ver Patty en la web": "Use Patty on the web",
+  "Temas": "Topics",
 };

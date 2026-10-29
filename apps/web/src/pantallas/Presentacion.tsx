@@ -10,6 +10,7 @@ import { useEstado } from '../estado';
 import { iniciarAnalytics, medir } from '../lib/analytics';
 import { t } from '../lib/idioma';
 import { Mascota } from '../mascota/Mascota';
+import { TEMAS } from '../temas/temas';
 
 const A = (n: string) => `presentacion/${n}`;
 
@@ -402,8 +403,20 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
         <div className="pres-botones">{entrar('final')}</div>
         <p className="suave chico">{t('Android te va a preguntar si dejás instalar una app que no viene del Play Store: es normal, decile que sí.')}</p>
         <FormBeta />
-        <p className="suave chico"><a href="privacidad.html" onClick={() => medir('ver_privacidad')}>{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
       </section>
+
+      {/* Las páginas de cada tema (HTML estático, para Google; ver temas/temas.ts). Están en castellano. */}
+      <footer className="pres-pie">
+        <nav className="pres-temas" aria-label={t('Temas')}>
+          <h3>{t('Temas')}</h3>
+          <ul>
+            {TEMAS.map((x) => (
+              <li key={x.slug}><a href={`/${x.slug}`} onClick={() => medir('ver_tema', { tema: x.slug })}>{x.nombre}</a></li>
+            ))}
+          </ul>
+        </nav>
+        <p className="suave chico"><a href="privacidad.html" onClick={() => medir('ver_privacidad')}>{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
+      </footer>
     </div>
   );
 }
