@@ -1234,6 +1234,8 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .presentacion { max-width: 1120px; margin: 0 auto; padding: 0 20px 40px; overflow-x: hidden; }
 .pres-barra { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; padding: calc(10px + env(safe-area-inset-top)) 0 10px; background: color-mix(in srgb, var(--fondo) 88%, transparent); backdrop-filter: blur(10px); }
 .pres-marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 20px; color: var(--acento); }
+/* El pelo hace que la cara quede abajo del dibujo: el búho sube un poco para que la cara quede a la altura del nombre. */
+.pres-marca .mascota { position: relative; top: -7px; }
 .presentacion h1 { font-size: clamp(32px, 6vw, 54px); line-height: 1.08; letter-spacing: -0.02em; margin: 16px 0 14px; }
 .presentacion h2 { font-size: clamp(26px, 4.2vw, 38px); line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 12px; }
 .pres-bajada { font-size: 18px; line-height: 1.5; color: var(--suave); margin: 0 0 18px; }
