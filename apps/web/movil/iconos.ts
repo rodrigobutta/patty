@@ -63,7 +63,7 @@ for (const cara of CARAS) {
 for (const [d, f] of Object.entries(DENSIDADES)) png(svgMascota('enojada', { lado: 108 * f, zona: 250 }), 108 * f, `${RES}/mipmap-${d}/icono_enojada_frente.png`);
 writeFileSync(
   `${RES}/values/icono_fondo.xml`,
-  `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO}</color>\n    <color name="patty_acento">#6b4fbb</color>\n</resources>\n`,
+  `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO}</color>\n    <color name="patty_acento">#6b4fbb</color>\n    <color name="widget_texto">#1d1a26</color>\n</resources>\n`,
 );
 
 // Modo oscuro en Android: el lanzador toma los colores de values-night, así el fondo del ícono adaptable (y el de
@@ -71,7 +71,7 @@ writeFileSync(
 mkdirSync(`${RES}/values-night`, { recursive: true });
 writeFileSync(
   `${RES}/values-night/icono_fondo.xml`,
-  `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO_OSCURO}</color>\n</resources>\n`,
+  `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO_OSCURO}</color>\n    <color name="widget_texto">#f2eff9</color>\n</resources>\n`,
 );
 
 // iPhone: un solo ícono de 1024, sin transparencia (Apple no la acepta): se pasa por JPEG con sips para sacarle el
