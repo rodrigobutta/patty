@@ -204,7 +204,8 @@ export const rutasRegistros = new Hono<Env>()
   })
   .get('/rutinas', async (c) => {
     // ?persona=1: lo que se viene anotando seguido y hoy todavía no (ver patrones/rutinas.ts). Solo cosas que se hacen
-    // (comida, bebida, actividad…): no cómo se siente ni los remedios, que tienen lo suyo.
+    // (comida, bebida, actividad…): no cómo se siente ni los remedios, que tienen lo suyo, ni la gente ("¿hoy también
+    // mamá?" no tiene sentido: con quién estuvo va junto a lo que hizo).
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const hoy = diaDePatty(new Date(), p.zona_horaria);
     const anotado = await filas<AnotadoRutina>(
@@ -214,7 +215,7 @@ export const rutasRegistros = new Hono<Env>()
                  r.valor::float AS valor, r.unidad
           FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
           WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.origen IN ('manual', 'ia')
-            AND k.clave IN ('comida', 'bebida', 'actividad', 'otro', 'lugar', 'gente')
+            AND k.clave IN ('comida', 'bebida', 'actividad', 'otro', 'lugar')
             AND r.fecha BETWEEN ${sumarDias(hoy, -21)} AND ${hoy}`,
     );
     return c.json(rutinasDe(anotado, hoy));
