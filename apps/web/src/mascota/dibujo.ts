@@ -58,22 +58,123 @@ function extra(cara: Cara, x: number, y: number): string {
   // Las zetas de sueño, arriba a la derecha.
   if (cara === 'dormida')
     return `<g fill="none" stroke="#9fd3ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M${x + 52} ${y - 128} h16 l-16 18 h16"/><path d="M${x + 76} ${y - 152} h11 l-11 12 h11"/></g>`;
-  // La venita de enojo arriba a la derecha y los cachetes colorados.
+  // Los cachetes colorados (el enojo ya se ve en el pelo alborotado).
   if (cara === 'enojada')
-    return `<g stroke="#e5484d" stroke-width="6" stroke-linecap="round" fill="none"><path d="M${x + 58} ${y - 118} q6 6 0 12"/><path d="M${x + 76} ${y - 118} q-6 6 0 12"/><path d="M${x + 61} ${y - 128} q6 -6 12 0"/><path d="M${x + 61} ${y - 98} q6 6 12 0"/></g><circle cx="${x - 62}" cy="${y}" r="13" fill="#e5484d" opacity=".45"/><circle cx="${x + 62}" cy="${y}" r="13" fill="#e5484d" opacity=".45"/>`;
+    return `<circle cx="${x - 62}" cy="${y}" r="13" fill="#e5484d" opacity=".45"/><circle cx="${x + 62}" cy="${y}" r="13" fill="#e5484d" opacity=".45"/>`;
   return '';
 }
 
+const PELO = '#b8a4ec';
+const PELO_SOMBRA = '#9d86e0';
+const PELO_BRILLO = '#d6c9f7';
+
+/** Un rulo esponjoso: un círculo con su sombra abajo y un brillito arriba. */
+const rulo = (x: number, y: number, r: number) =>
+  `<circle cx="${x}" cy="${y + r * 0.14}" r="${r}" fill="${PELO_SOMBRA}"/><circle cx="${x}" cy="${y}" r="${r}" fill="${PELO}"/><circle cx="${x - r * 0.32}" cy="${y - r * 0.36}" r="${r * 0.26}" fill="${PELO_BRILLO}" opacity=".75"/>`;
+const rulos = (l: Array<[number, number, number]>) => l.map(([x, y, r]) => rulo(x, y, r)).join('');
+
+/** El peinado de siempre (esperando): rulos atrás que enmarcan la cabeza y un flequillo de rulos adelante. */
+const PEINADO_BASE = {
+  atras: [[56, 132, 34], [244, 132, 34], [62, 88, 40], [238, 88, 40], [96, 52, 44], [204, 52, 44], [150, 40, 48]] as Array<[number, number, number]>,
+  adelante: [[114, 94, 24], [150, 88, 26], [186, 94, 24]] as Array<[number, number, number]>,
+};
+
+/**
+ * El peinado de siempre, más chico y con menos rulos (contenta, con sueño, triste). `chato` lo aplasta contra la
+ * cabeza (triste: el pelo "caído").
+ */
+function peinadoChico(chato = 1): { atras: string; adelante: string } {
+  const cx = 150;
+  const base = 104; // donde apoya el pelo sobre la cabeza
+  const achicar = ([x, y, r]: [number, number, number]): [number, number, number] => [
+    cx + (x - cx) * 0.86,
+    base - (base - y) * 0.82 * chato + (1 - chato) * 14,
+    r * 0.86,
+  ];
+  // Menos rulos: sin los de más abajo a los costados.
+  const atras = PEINADO_BASE.atras.filter(([, y]) => y < 120).map(achicar);
+  return { atras: rulos(atras), adelante: rulos([[120, 96, 22], [150, 91, 24], [180, 96, 22]]) };
+}
+
+/** Una corona de `n` picos que va de un costado de la cabeza al otro por arriba (el pelo de punta, enojada). */
+function picos(cx: number, cy: number, adentro: number, afuera: number, n: number): string {
+  const p: string[] = [];
+  const desde = Math.PI * 1.02;
+  const hasta = -Math.PI * 0.02;
+  for (let i = 0; i <= n * 2; i++) {
+    const a = desde + ((hasta - desde) * i) / (n * 2);
+    // Los picos un poco desparejos: más agresivo.
+    const r = i % 2 ? afuera * (0.92 + 0.08 * Math.sin(i * 2.3)) : adentro;
+    p.push(`${(cx + Math.cos(a) * r * 0.95).toFixed(1)},${(cy - Math.sin(a) * r * 0.85).toFixed(1)}`);
+  }
+  const puntos = p.join(' ');
+  return `<polygon points="${puntos}" fill="${PELO_SOMBRA}" transform="translate(0 5)"/><polygon points="${puntos}" fill="${PELO}" stroke="${PELO_SOMBRA}" stroke-width="4" stroke-linejoin="miter"/>`;
+}
+
+/** El flequillo en zigzag, con las puntas hacia la frente. */
+function flequilloDePunta(): string {
+  const xs = [104, 119, 134, 150, 166, 181, 196];
+  const zigzag = xs.map((x, i) => `${x},${i % 2 ? 106 : 86}`).join(' ');
+  // Sin borde arriba: se funde con la corona de atrás; solo el zigzag lleva la línea.
+  return `<polygon points="104,70 ${zigzag} 196,70" fill="${PELO}"/><polyline points="${zigzag}" fill="none" stroke="${PELO_SOMBRA}" stroke-width="4" stroke-linejoin="miter"/>`;
+}
+
+/** Ruleros rosas (x, y, giro en grados) sobre el pelo. */
+const ruleros = (l: Array<[number, number, number]>) =>
+  l
+    .map(
+      ([x, y, g]) =>
+        `<g transform="translate(${x} ${y}) rotate(${g})"><rect x="-15" y="-10" width="30" height="20" rx="8" fill="#f59ab8" stroke="#d9729a" stroke-width="3"/>` +
+        `<path d="M-6 -9 v18 M0 -9 v18 M6 -9 v18" stroke="#d9729a" stroke-width="3"/><rect x="-19" y="-3" width="38" height="6" rx="3" fill="#fbd3e1"/></g>`,
+    )
+    .join('');
+
+/**
+ * El peinado: un batido de rulos lila que enmarca la cabeza (atrás) con un flequillo (adelante). Esperando, el de
+ * siempre; contenta y con sueño, el mismo más chico y con menos rulos; triste, además aplastado; enojada, el de siempre
+ * alborotado (pelos sueltos para todos lados); recién levantada, despeinado y torcido.
+ */
+function peinado(c: Cara): { atras: string; adelante: string } {
+  const pelos = (l: string[]) => `<g stroke="${PELO_SOMBRA}" stroke-width="6" fill="none" stroke-linecap="round">${l.map((d) => `<path d="${d}"/>`).join('')}</g>`;
+  if (c === 'feliz') return peinadoChico();
+  if (c === 'dormida') {
+    // Con sueño: el peinado chico con ruleros rosas, como para ir a dormir.
+    const p = peinadoChico();
+    return { atras: p.atras, adelante: p.adelante + ruleros([[86, 88, -50], [126, 52, -15], [174, 52, 15], [214, 88, 50]]) };
+  }
+  if (c === 'triste') return peinadoChico(0.55);
+  if (c === 'enojada')
+    // De punta: una corona de picos alrededor de la cabeza y un flequillo en zigzag.
+    return { atras: picos(150, 112, 88, 136, 11), adelante: flequilloDePunta() };
+  if (c === 'manana')
+    // Torcido: más pelo de un lado, rulos de distinto tamaño, el flequillo corrido y unos pelos parados.
+    return {
+      atras: rulos([[48, 120, 30], [70, 76, 44], [112, 40, 40], [168, 34, 50], [222, 62, 36], [250, 108, 26], [236, 140, 22]]),
+      adelante: rulos([[110, 98, 22], [140, 86, 28], [190, 100, 20]]) + pelos(['M96 18 q-14 -8 -10 -24', 'M150 6 q10 -10 4 -24', 'M206 22 q20 -2 26 -18']),
+    };
+  return { atras: rulos(PEINADO_BASE.atras), adelante: rulos(PEINADO_BASE.adelante) };
+}
+
 const DIBUJOS: Record<Animal, (c: Cara) => string> = {
-  buho: (c) => `
+  // El búho, un poco más chico y más abajo, para que entre el peinado arriba.
+  buho: (c) => {
+    const pelo = peinado(c);
+    // Todo un poco más chico y más abajo, para que el peinado alto entre en el lienzo.
+    return `<g transform="translate(15 24) scale(0.9)">
+<g transform="translate(0 24)">${pelo.atras}</g>
+<g transform="translate(36 72) scale(0.76)">
 <ellipse cx="150" cy="160" rx="105" ry="110" fill="#6b4fbb"/>
-<path d="M60 80 L85 120 L110 92Z M240 80 L215 120 L190 92Z" fill="#53399e"/>
+</g>
+<g transform="translate(0 24)">${pelo.adelante}</g>
+<g transform="translate(36 72) scale(0.76)">
 <ellipse cx="150" cy="200" rx="62" ry="58" fill="#c9bcf2"/>
 <circle cx="108" cy="140" r="38" fill="#fff"/><circle cx="192" cy="140" r="38" fill="#fff"/>
 ${ojos(c, 108, 192, 140, 16)}
 <path d="M140 165 L160 165 L150 185Z" fill="#f2a33a"/>
 ${c === 'feliz' ? `<path d="M128 200 Q150 222 172 200" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>` : boca(c, 150, 205, 22)}
-${extra(c, 150, 180)}`,
+${extra(c, 150, 180)}
+</g></g>`;
+  },
   carpincho: (c) => `
 <ellipse cx="95" cy="70" rx="20" ry="16" fill="#8a5a36"/><ellipse cx="205" cy="70" rx="20" ry="16" fill="#8a5a36"/>
 <rect x="45" y="60" width="210" height="200" rx="90" fill="#b07a4b"/>
