@@ -206,11 +206,9 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
             {entrar('portada')}
             <a className="btn" href="#como" onClick={() => medir('ver_como_funciona')}>{t('Ver cómo funciona')}</a>
           </div>
-          {conSesion ? null : (
-            <p className="suave chico">
-              {t('¿Tenés iPhone?')} <a href="#beta" onClick={() => medir('pedir_iphone')}>{t('Avisame cuando esté')}</a>
-            </p>
-          )}
+          <p className="suave chico">
+            {t('¿Tenés iPhone?')} <a href="#beta" onClick={() => medir('pedir_iphone')}>{t('Avisame cuando esté')}</a>
+          </p>
         </div>
         <div className="pres-telefonos">
           <Telefono img="portada.webp" alt={t('Lo que descubre Patty: dormir poco y el ánimo, la comida frita y el dolor de panza')} />
@@ -359,23 +357,10 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
 
       <section ref={finalRef} className="pres-final">
         <Mascota cara="feliz" tamano={80} className="saluda" />
-        {conSesion ? (
-          <>
-            <h2>{t('Empezá hoy: contale cómo te sentís')}</h2>
-            <p className="pres-bajada">{t('Patty no diagnostica nada: te muestra relaciones en tus datos, para que las veas vos y, si querés, las charles con un profesional.')}</p>
-            <div className="pres-botones">
-              {entrar('final')}
-              <button className="btn" onClick={ir('final')}>{t('Volver a Patty')}</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <h2>{t('Bajala gratis para Android')}</h2>
-            <div className="pres-botones">{entrar('final')}</div>
-            <p className="suave chico">{t('Android te va a preguntar si dejás instalar una app que no viene del Play Store: es normal, decile que sí.')}</p>
-            <FormBeta />
-          </>
-        )}
+        <h2>{t('Bajala gratis para Android')}</h2>
+        <div className="pres-botones">{entrar('final')}</div>
+        <p className="suave chico">{t('Android te va a preguntar si dejás instalar una app que no viene del Play Store: es normal, decile que sí.')}</p>
+        <FormBeta />
         <p className="suave chico"><a href="privacidad.html">{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
       </section>
     </div>
