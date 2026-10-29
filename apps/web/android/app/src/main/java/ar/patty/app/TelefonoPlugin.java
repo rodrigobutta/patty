@@ -2,6 +2,7 @@ package ar.patty.app;
 
 import android.Manifest;
 import android.app.AppOpsManager;
+import android.content.ActivityNotFoundException;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
@@ -37,6 +38,7 @@ import java.util.Set;
  *   permiso del estado del teléfono, que Play Store no restringe).
  * - Las reuniones del calendario del teléfono (todas las cuentas sincronizadas: Google, Outlook, Exchange…): cuándo
  *   empiezan y terminan y cuánta gente hay. Nunca títulos, lugares ni invitados.
+ * Y, aparte, abrir un enlace en el navegador del teléfono (el PDF del informe para el médico).
  */
 @CapacitorPlugin(
     name = "Telefono",
@@ -47,6 +49,29 @@ import java.util.Set;
     }
 )
 public class TelefonoPlugin extends Plugin {
+
+    // ---- Enlaces afuera de la app ----
+
+    /**
+     * Abre un enlace en el navegador del teléfono. La app abre la web de Patty adentro y ese visor no muestra ni baja
+     * PDFs (y los enlaces del mismo sitio no salen solos): así el informe para el médico se ve, se guarda y se comparte.
+     */
+    @PluginMethod
+    public void abrirAfuera(PluginCall call) {
+        String url = call.getString("url", "");
+        if (!url.startsWith("https://") && !url.startsWith("http://")) {
+            call.reject("Enlace inválido");
+            return;
+        }
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (ActivityNotFoundException e) {
+            call.reject("No hay un navegador para abrirlo");
+        }
+    }
 
     // ---- Tiempo de uso ----
 

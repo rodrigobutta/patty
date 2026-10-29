@@ -21,6 +21,8 @@ interface PluginTelefono {
   llamadas(p: Periodo): Promise<Llamadas>;
   pedirPermisoCalendario(): Promise<Permisos>;
   eventos(p: Periodo): Promise<{ eventos: EventoCalendario[] }>;
+  /** Abre un enlace en el navegador del teléfono (las apps instaladas antes del informe para el médico no lo tienen). */
+  abrirAfuera(o: { url: string }): Promise<void>;
 }
 
 export const Telefono = registerPlugin<PluginTelefono>('Telefono');

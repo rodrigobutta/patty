@@ -3,7 +3,7 @@
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { resumenCiclo, CAPAS_CALENDARIO, COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, normalizar, PALABRAS_CHATARRA, traducir, traducirDato, type CalendarioCapa, type CapaCalendario, type Estadisticas, type SerieConcepto } from 'shared';
-import { filas, una } from '../db/client.js';
+import { filas, una, type Tx } from '../db/client.js';
 import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha as esFechaValida, localAInstante, sumarDias } from '../lib/fechas.js';
@@ -12,10 +12,41 @@ import { COLUMNAS, DESDE, tomasDe, type Fila } from './tratamientos.js';
 import { diasDeMenstruacion } from './ciclo.js';
 
 /** Promedio de horas (en minutos del día); las de la madrugada cuentan como "tarde" (la 1:00 es 25:00). */
-function horaPromedio(lista: number[], madrugadaTarde: boolean): number | null {
+export function horaPromedio(lista: number[], madrugadaTarde: boolean): number | null {
   if (!lista.length) return null;
   const v = lista.map((m) => (madrugadaTarde && m < 300 ? m + 1440 : m));
   return Math.round(v.reduce((a, b) => a + b, 0) / v.length) % 1440;
+}
+
+/**
+ * Las horas dormidas de cada noche (con la fecha del día en que se levantó): del reloj si hay; si no, de "me acosté"
+ * (la noche anterior) y "me levanté". Las sirven el calendario y el informe para el médico.
+ */
+export async function horasDeSueno(tx: Tx, personaId: number, desde: string, hasta: string): Promise<Array<{ fecha: string; horas: number }>> {
+  const reloj = new Map(
+    (
+      await filas<{ fecha: string; valor: number }>(
+        tx,
+        sql`SELECT to_char(s.fecha, 'YYYY-MM-DD') AS fecha, max(s.suma)::float AS valor FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id
+            WHERE s.persona_id = ${personaId} AND s.fecha BETWEEN ${desde} AND ${hasta} AND k.nombre = 'Horas de sueño' GROUP BY s.fecha`,
+      )
+    ).map((d) => [d.fecha, d.valor]),
+  );
+  const manual = await filas<{ fecha: string; nombre: string; valor: number }>(
+    tx,
+    sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, k.nombre, max(r.valor)::float AS valor FROM registros r JOIN conceptos k ON k.id = r.concepto_id
+        WHERE r.persona_id = ${personaId} AND r.borrado IS NULL AND r.fecha BETWEEN ${sumarDias(desde, -1)} AND ${hasta}
+          AND k.nombre IN ('Me acosté', 'Me levanté') AND r.valor IS NOT NULL GROUP BY r.fecha, k.nombre`,
+  );
+  const acoste = new Map(manual.filter((m) => m.nombre === 'Me acosté').map((m) => [m.fecha, m.valor]));
+  for (const m of manual.filter((x) => x.nombre === 'Me levanté' && x.fecha >= desde)) {
+    const a = acoste.get(sumarDias(m.fecha, -1));
+    if (a !== undefined && !reloj.has(m.fecha)) reloj.set(m.fecha, ((m.valor - a + 1440) % 1440) / 60);
+  }
+  return [...reloj]
+    .filter(([, h]) => h > 0 && h < 16)
+    .map(([fecha, h]) => ({ fecha, horas: Math.round(h * 10) / 10 }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
 export const rutasEstadisticas = new Hono<Env>()
@@ -138,21 +169,7 @@ export const rutasEstadisticas = new Hono<Env>()
     let r: Omit<CalendarioCapa, 'capa' | 'desde' | 'hasta'>;
 
     if (capa === 'sueno') {
-      // Del reloj si hay; si no, de "me acosté" (la noche anterior) y "me levanté".
-      const reloj = new Map((await serie(['Horas de sueño'])).map((d) => [d.fecha, d.valor]));
-      const manual = await filas<{ fecha: string; nombre: string; valor: number }>(
-        db,
-        sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, k.nombre, max(r.valor)::float AS valor FROM registros r JOIN conceptos k ON k.id = r.concepto_id
-            WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.fecha BETWEEN ${sumarDias(desde, -1)} AND ${hasta}
-              AND k.nombre IN ('Me acosté', 'Me levanté') AND r.valor IS NOT NULL GROUP BY r.fecha, k.nombre`,
-      );
-      const acoste = new Map(manual.filter((m) => m.nombre === 'Me acosté').map((m) => [m.fecha, m.valor]));
-      const dias: CalendarioCapa['dias'] = [];
-      for (const m of manual.filter((x) => x.nombre === 'Me levanté' && x.fecha >= desde)) {
-        const a = acoste.get(sumarDias(m.fecha, -1));
-        if (a !== undefined && !reloj.has(m.fecha)) reloj.set(m.fecha, ((m.valor - a + 1440) % 1440) / 60);
-      }
-      for (const [fecha, h] of reloj) if (h > 0 && h < 16) dias.push({ fecha, valor: Math.round(h * 10) / 10, detalle: hm(h) });
+      const dias: CalendarioCapa['dias'] = (await horasDeSueno(db, p.id, desde, hasta)).map((n) => ({ fecha: n.fecha, valor: n.horas, detalle: hm(n.horas) }));
       const pr = prom(dias.map((d) => d.valor!));
       r = { tipo: 'numero', unidad: 'h', mejor: 'mas', dias, resumen: pr === null ? t('Todavía no hay horas de sueño: anotá a qué hora te acostás y te levantás, o conectá un reloj.') : t('Dormiste {horas} en promedio ({n} noches).', { horas: hm(pr), n: dias.length }) };
     } else if (capa === 'animo') {

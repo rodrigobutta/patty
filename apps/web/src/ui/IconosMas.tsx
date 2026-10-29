@@ -153,3 +153,12 @@ export const IconoSeguimientos = () => (
     <path d="M10 14 l2 2 l3-3.5 M10 21 l2 2 l3-3.5 M18 14.5 h4 M18 21.5 h4" stroke={A} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </Base>
 );
+
+/** Informe para el médico: una hoja con una cruz de salud. */
+export const IconoInforme = () => (
+  <Base>
+    <path d="M8 3.5 h11 l6 6 V27.5 a1.5 1.5 0 0 1 -1.5 1.5 H8 a1.5 1.5 0 0 1 -1.5 -1.5 V5 A1.5 1.5 0 0 1 8 3.5 Z" fill={V} {...T} />
+    <path d="M19 3.5 V9.5 h6" {...T} />
+    <path d="M14 13 h4 v3.5 h3.5 v4 H18 V24 h-4 v-3.5 h-3.5 v-4 H14 Z" fill={A} {...T} />
+  </Base>
+);

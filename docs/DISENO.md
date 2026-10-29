@@ -152,6 +152,15 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   deja prendido el que toca (al salir de la app y cada 2 h con WorkManager, aunque no se abra). En iPhone, por ahora,
   solo adentro de la app (cambiar el ícono muestra un aviso del sistema cada vez). Los íconos (web y Android) salen
   del mismo dibujo con `pnpm movil:iconos` (usa Google Chrome sin ventana).
+- **Informe para el médico** (Más, y un botón en Descubrir → Números; `pantallas/InformeMedico.tsx`): se elige la
+  última semana, el último mes o los últimos 3 meses y la API arma un PDF A4 con pdfkit (`apps/api/src/informe`:
+  `datos.ts` junta, `pdf.ts` dibuja): persona (edad, sexo, condiciones), malestares con días, veces, intensidad,
+  duración y parte del día, remedios con dosis y para qué (`para_registro_id` y el motivo del tratamiento),
+  tratamientos con tomas, sueño, ánimo por semana, ciclo y los patrones firmes o confirmados (sin los descartados),
+  con el búho (la mascota vive en `shared/src/mascota.ts`) y la aclaración de que Patty no diagnostica.
+  `POST /api/informe/enlace` da un enlace con token al azar que dura 15 minutos (en memoria) y
+  `GET /api/informe/pdf/<token>.pdf` lo sirve sin sesión: en la app de Android el visor no muestra ni baja PDFs, así
+  que se abre en el navegador del teléfono con `Telefono.abrirAfuera` (si la app instalada es vieja, se copia el enlace).
 - Próximos pasos: leer Health Connect / HealthKit (pasos, sueño, pulso) desde la app nativa.
 
 ## Cómo se buscan los patrones

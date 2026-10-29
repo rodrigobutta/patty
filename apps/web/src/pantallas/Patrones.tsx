@@ -14,6 +14,7 @@ import { ListaSemanas } from './Semanas';
 import { RuedaProgreso } from './RuedaProgreso';
 import { IconoBuscar, IconoCalendario, IconoMapa, IconoNumeros, IconoRelacion } from '../ui/Iconos';
 import { MapaDescubrir } from './MapaDescubrir';
+import { irAMas } from '../lib/navegar';
 
 const Q_FIRME = 0.1;
 const cuando = (d: number) => (d === 0 ? t('el mismo día') : d === 1 ? t('al día siguiente') : t('{n} días después', { n: d }));
@@ -119,6 +120,8 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
         {caja}
         {pestanas}
         <Numeros persona={persona} alElegir={(id) => { setBuscado(id); setVista('buscar'); }} />
+        {/* Los mismos números, en un PDF para llevar a la consulta (se arma en Más). */}
+        <button className="btn ancho" onClick={() => irAMas('informe')}>{t('📄 Informe para el médico (PDF)')}</button>
       </section>
     );
   }
