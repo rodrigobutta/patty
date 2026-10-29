@@ -76,7 +76,7 @@ async function deslizar(c, hasta, ms = 2600) {
 
 const TOMAS = {
   async dia(c) {
-    await ir(c, BASE + '/', 6000);
+    await ir(c, BASE + '/#entrar', 6000);
     await captura(c, archivo('dia.webp'), { calidad: 90 });
     const s = await grabar(c, archivo('dia.webm'), async () => {
       await espera(700);
@@ -86,7 +86,7 @@ const TOMAS = {
     console.log(`dia.webm: ${s.toFixed(1)} s`);
   },
   async tocar(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     const s = await grabar(c, archivo('tocar.webm'), async () => {
       await espera(600);
       await tocar(c, '.boton-buho');
@@ -97,7 +97,7 @@ const TOMAS = {
     console.log(`tocar.webm: ${s.toFixed(1)} s`);
   },
   async voz(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     const s = await grabar(c, archivo('voz.webm'), async () => {
       await espera(500);
       await tocar(c, '.contale');
@@ -108,7 +108,7 @@ const TOMAS = {
     console.log(`voz.webm: ${s.toFixed(1)} s`);
   },
   async foto(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await c.enviar('Page.setInterceptFileChooserDialog', { enabled: true });
     c.on('Page.fileChooserOpened', async (p) => {
       await c
@@ -132,13 +132,13 @@ const TOMAS = {
     console.log(`foto.webm: ${s.toFixed(1)} s`);
   },
   async widgets(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await bajarA(c, '.widgets-auto');
     await espera(800);
     await captura(c, archivo('widgets.webp'), { calidad: 90 });
   },
   async mapa(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(1500);
     await tocar(c, '.subvistas button', 'Mapa');
@@ -146,7 +146,7 @@ const TOMAS = {
     await captura(c, archivo('mapa.webp'), { calidad: 90 });
   },
   async descubrir(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(2500);
     const s = await grabar(c, archivo('descubrir.webm'), async () => {

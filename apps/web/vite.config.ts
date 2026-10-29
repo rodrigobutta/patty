@@ -44,8 +44,9 @@ export default defineConfig(({ mode }) => {
           short_name: 'Patty',
           description: 'Anotá tu día y descubrí qué cosas se relacionan',
           lang: 'es-AR',
-          start_url: './',
-          scope: './',
+          // Instalada desde el navegador, abre la app (patty.today es la presentación).
+          start_url: '/app/',
+          scope: '/',
           display: 'standalone',
           orientation: 'portrait',
           background_color: '#f6f4fb',
@@ -59,7 +60,7 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/api\//],
+          navigateFallbackDenylist: [/^\/api\//, /^\/descargar\//],
           skipWaiting: false,
           clientsClaim: true,
           cleanupOutdatedCaches: true,

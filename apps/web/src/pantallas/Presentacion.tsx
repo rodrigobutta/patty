@@ -1,4 +1,4 @@
-// La página de presentación (patty.today para quien todavía no entró, y #presentacion siempre): qué es Patty, con
+// La página de presentación (patty.today; la app web vive en patty.today/app): qué es Patty, con
 // pantallas y videos de la app de verdad (una persona de ejemplo; ver movil/presentacion/capturar.mjs). En la app
 // del teléfono no se muestra: ahí se entra directo.
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';

@@ -70,13 +70,10 @@ export function App() {
     if (fase === 'listo' && usuarioId) paginaVista(`/${pestana === 'patrones' ? 'descubrir' : pestana}`, pestana);
   }, [fase, pestana, usuarioId]);
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
-  // La presentación: en la web, a quien no entró todavía (y con #presentacion, siempre). En la app del teléfono, nunca.
-  const [presentacion, setPresentacion] = useState(() => !esNativa() && location.hash !== '#entrar');
-  const verPresentacion = presentacion && (fase === 'entrar' || location.hash === '#presentacion');
-  const salirDePresentacion = () => {
-    if (location.hash === '#presentacion') history.replaceState(null, '', location.pathname);
-    setPresentacion(false);
-  };
+  // En la web, patty.today es siempre la presentación y la app vive en patty.today/app (#admin y #entrar también abren la
+  // app). En el teléfono, siempre la app.
+  const verPresentacion = !esNativa() && !location.pathname.startsWith('/app') && !['#admin', '#entrar'].includes(location.hash);
+  const salirDePresentacion = () => location.assign('/app/');
   /** El paso opcional de datos de la persona (una vez, después de la bienvenida). */
   const [perfilListo, setPerfilListo] = useState(false);
   /** Y el de permisos (avisos, ubicación, teléfono, salud), una vez por teléfono. */

@@ -84,41 +84,41 @@ const bajarA = (c, sel) => js(c, `(() => { const e = document.querySelector(${JS
 
 const ESCENAS = {
   async dia(c) {
-    await ir(c, BASE + '/', 6500);
+    await ir(c, BASE + '/#entrar', 6500);
     await captura(c, archivo('dia.webp'));
   },
   async widgets(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await bajarA(c, '.widgets-auto');
     await espera(800);
     await captura(c, archivo('widgets.webp'));
   },
   async sueno(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await tocar(c, '.widget-auto', 'a dormir');
     await espera(2500);
     await captura(c, archivo('sueno.webp'));
   },
   async sentir(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await tocar(c, '.boton-buho');
     await espera(1200);
     await captura(c, archivo('sentir.webp'));
   },
   async semana(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await tocar(c, 'button, a', 'Ver el resumen');
     await espera(1500);
     await captura(c, archivo('semana.webp'));
   },
   async objetivos(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await bajarA(c, '.objetivos-semana');
     await espera(600);
     await captura(c, archivo('objetivos.webp'));
   },
   async patrones(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(3000);
     // El segundo hallazgo arriba, justo debajo de las pestañas (que quedan fijas).
@@ -128,7 +128,7 @@ const ESCENAS = {
   },
   // Los dos primeros hallazgos, para la portada (que se arma después con portada.py).
   async hallazgos(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(3000);
     await js(c, `(() => { const h = document.querySelector('.hallazgo'); if (h) window.scrollTo(0, h.getBoundingClientRect().top + window.scrollY - 138); })()`);
@@ -136,7 +136,7 @@ const ESCENAS = {
     await captura(c, archivo('hallazgos.webp'));
   },
   async numeros(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(1500);
     await tocar(c, '.subvistas button', 'Números');
@@ -144,7 +144,7 @@ const ESCENAS = {
     await captura(c, archivo('numeros.webp'));
   },
   async preguntar(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(2500);
     await js(c, `document.querySelector('.preguntar input').focus()`);
@@ -154,7 +154,7 @@ const ESCENAS = {
     await captura(c, archivo('preguntar.webp'));
   },
   async calendario(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(1500);
     await tocar(c, '.subvistas button', 'Calendario');
@@ -162,7 +162,7 @@ const ESCENAS = {
     await captura(c, archivo('calendario.webp'));
   },
   async mapa(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(1500);
     await tocar(c, '.subvistas button', 'Mapa');
@@ -170,7 +170,7 @@ const ESCENAS = {
     await captura(c, archivo('mapa.webp'));
   },
   async ciclo(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await tocar(c, '.ciclo-dia .cabeza-plegable');
     await espera(800);
     await bajarA(c, '.cruce-fases');
@@ -179,7 +179,7 @@ const ESCENAS = {
   },
   async antes(c) {
     // El último dolor de cabeza: se va a ese día y se abre.
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     const fecha = execSync(`psql ${process.env.DEMO_DB ?? 'postgres://localhost/patty_demo'} -Atc "SELECT max(r.fecha) FROM registros r JOIN conceptos c ON c.id = r.concepto_id WHERE c.nombre = 'Dolor de cabeza' AND r.fecha < '${HOY}'"`).toString().trim();
     const dias = Math.round((Date.parse(HOY) - Date.parse(fecha)) / 86400000);
     for (let i = 0; i < dias; i++) {
@@ -193,7 +193,7 @@ const ESCENAS = {
   },
   // Videos (al final: guardan cosas en la base de demo).
   async voz(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     const s = await grabar(c, archivo('voz.webm'), async () => {
       await espera(600);
       await tocar(c, '.contale');
@@ -205,7 +205,7 @@ const ESCENAS = {
     console.log(`voz.webm: ${s.toFixed(1)} s`);
   },
   async foto(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     await c.enviar('Page.setInterceptFileChooserDialog', { enabled: true });
     c.on('Page.fileChooserOpened', async (p) => {
       await c.enviar('DOM.setFileInputFiles', { files: [path.join(aqui, 'plato.png')], backendNodeId: p.backendNodeId });
@@ -223,7 +223,7 @@ const ESCENAS = {
     console.log(`foto.webm: ${s.toFixed(1)} s`);
   },
   async tocar(c) {
-    await ir(c, BASE + '/', 5000);
+    await ir(c, BASE + '/#entrar', 5000);
     const s = await grabar(c, archivo('tocar.webm'), async () => {
       await espera(800);
       await tocar(c, '.boton-buho');
@@ -234,7 +234,7 @@ const ESCENAS = {
     console.log(`tocar.webm: ${s.toFixed(1)} s`);
   },
   async descubrir(c) {
-    await ir(c, BASE + '/', 4000);
+    await ir(c, BASE + '/#entrar', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(2500);
     const s = await grabar(c, archivo('descubrir.webm'), async () => {

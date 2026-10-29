@@ -179,7 +179,9 @@ export function crearApp(): Hono<Env> {
   // La web: los archivos que existen, y si no, index.html (la app usa rutas con #).
   app.get('*', async (c) => {
     const base = config.staticDir;
-    const pedido = path.normalize(path.join(base, decodeURIComponent(new URL(c.req.url).pathname)));
+    // La app web vive en /app (patty.today es la presentación): es el mismo build, así que /app/x es el archivo x.
+    const ruta = decodeURIComponent(new URL(c.req.url).pathname).replace(/^\/app(\/|$)/, '/');
+    const pedido = path.normalize(path.join(base, ruta));
     if (!pedido.startsWith(base)) return c.json({ error: traducir(idiomaDelPedido(c.req.header('X-Idioma'), c.req.header('Accept-Language')), 'No encontrado.') }, 404);
     return (await archivo(pedido, c.req.header('Range'))) ?? (await archivo(path.join(base, 'index.html'))) ?? c.text('Patty: falta compilar la web (STATIC_DIR).', 404);
   });
