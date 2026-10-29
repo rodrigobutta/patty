@@ -1265,6 +1265,12 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .pres-ejemplos { display: grid; gap: 10px; margin-bottom: 12px; }
 .pres-ejemplo { display: grid; grid-template-columns: 74px 1fr; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--panel); border: 1px solid var(--borde); line-height: 1.4; }
 .pres-ejemplo span { font-size: 20px; text-align: center; }
+.pres-aviso { width: min(100%, 360px); padding: 14px 16px; border-radius: 22px; background: var(--panel); border: 1px solid var(--borde);
+  box-shadow: 0 14px 40px rgb(40 20 90 / 0.14); line-height: 1.4; transform: rotate(-2deg); }
+.pres-aviso-barra { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.pres-aviso-barra span { margin-left: auto; font-weight: 400; opacity: 0.6; }
+.pres-aviso strong { display: block; margin-bottom: 2px; }
+.pres-aviso p { margin: 0; }
 .pres-pasos { list-style: none; counter-reset: paso; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 0; margin: 26px 0 0; }
 .pres-pasos li { counter-increment: paso; padding: 18px; border-radius: 18px; background: var(--panel); border: 1px solid var(--borde); color: var(--suave); line-height: 1.45; }
 .pres-pasos li::before { content: counter(paso); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--acento); color: var(--sobre-acento); font-weight: 700; margin-bottom: 10px; }

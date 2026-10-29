@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "avisar_preventivo" boolean DEFAULT true NOT NULL;

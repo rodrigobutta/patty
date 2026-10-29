@@ -11,6 +11,7 @@ import { diaDePatty, esFecha, sumarDias } from '../lib/fechas.js';
 import { cuerpo, idParam, type Env } from '../lib/http.js';
 import { analizarPersona, listarHallazgos } from '../patrones/analizar.js';
 import { DIAS_MINIMOS } from '../patrones/motor.js';
+import { preventivosDeHoy, textoPreventivo } from '../patrones/preventivo.js';
 
 export const rutasPatrones = new Hono<Env>()
   .post('/analisis', async (c) => {
@@ -42,6 +43,14 @@ export const rutasPatrones = new Hono<Env>()
   .get('/analisis/ultimo', async (c) => {
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     return c.json(await una(c.var.db, sql`SELECT * FROM analisis WHERE persona_id = ${p.id} ORDER BY creado DESC LIMIT 1`));
+  })
+  .get('/preventivo', async (c) => {
+    // ?persona=1: los patrones cuyas causas se juntaron hoy (la tarjeta del Día). Nada si quien mira apagó el aviso.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const u = await una<{ avisar_preventivo: boolean }>(c.var.db, sql`SELECT avisar_preventivo FROM usuarios WHERE id = ${c.var.usuario.id}`);
+    if (!u?.avisar_preventivo) return c.json([]);
+    const lista = await preventivosDeHoy(c.var.db, p);
+    return c.json(lista.map((x) => ({ hallazgo_id: x.hallazgo_id, ...textoPreventivo(x, c.var.idioma) })));
   })
   .get('/hallazgos', async (c) => {
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);

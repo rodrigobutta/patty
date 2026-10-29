@@ -37,9 +37,11 @@ export interface OpcionesAnalisis {
   origen: 'manual' | 'noche';
 }
 
-/** Corre el análisis y lo guarda. `nuevos`: los hallazgos que la persona no tenía antes. */
-export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnalisis): Promise<ResultadoAnalisis & { nuevos: number[] }> {
-  const { desde, hasta, idioma } = o;
+/**
+ * Los datos de cada día de una persona, como los usa el motor: la serie diaria (sin el clima por hora, que va resumido),
+ * con la hora de lo que se anotó, y la estación y la fase del ciclo. También los usa el aviso preventivo.
+ */
+export async function datosDePersona(db: Db, p: PersonaAcceso, desde: string, hasta: string): Promise<{ datos: FilaDiaria[]; conceptos: ConceptoInfo[] }> {
   const porHora = await db.transaction((tx) => climaPorHoraParaPatrones(tx, p, desde, hasta));
   const serieCompleta = await filas<FilaDiaria & { primera: Date | null }>(
     db,
@@ -85,6 +87,13 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
         WHERE c.id IN (SELECT DISTINCT concepto_id FROM serie_diaria WHERE persona_id = ${p.id})`,
   );
   for (const x of calendario.conceptos) if (!conceptos.some((k) => k.id === x.id)) conceptos.push(x);
+  return { datos, conceptos };
+}
+
+/** Corre el análisis y lo guarda. `nuevos`: los hallazgos que la persona no tenía antes. */
+export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnalisis): Promise<ResultadoAnalisis & { nuevos: number[] }> {
+  const { desde, hasta, idioma } = o;
+  const { datos, conceptos } = await datosDePersona(db, p, desde, hasta);
   const r = buscarPatrones(datos, conceptos, desde, hasta);
   const nombre = new Map(conceptos.map((x) => [x.id, x.nombre]));
   const tipo = new Map(conceptos.map((x) => [x.id, x.tipo_valor]));

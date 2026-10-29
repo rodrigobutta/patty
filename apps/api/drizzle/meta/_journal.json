@@ -295,6 +295,13 @@
       "when": 1793303058849,
       "tag": "0041_solicitudes_beta",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793314490156,
+      "tag": "0042_aviso_preventivo",
+      "breakpoints": true
     }
   ]
 }

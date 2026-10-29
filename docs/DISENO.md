@@ -178,6 +178,11 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
    esquema: una explicación clara de cada uno con su plausibilidad (marca los que pueden ser casualidad o tener otra
    explicación), un resumen y sugerencias de qué anotar o probar. Si no hay IA, queda un texto armado por el motor.
 6. Los hallazgos se guardan. La persona puede marcar "me pasa" o "no creo"; eso se respeta en los análisis siguientes.
+7. **Aviso preventivo** (`patrones/preventivo.ts`): de 16 a 21 (hora de la persona), una vez por hora, se mira si hoy
+   están todas las causas de un patrón firme o confirmado (no descartado ni obvio) que mira a otro día (desfase ≥ 1),
+   con los mismos rasgos del motor (`rasgosDelDia`). Si sí, el búho avisa por push ("Hoy se juntaron «Comida frita» y
+   «Día de calor»…"), una vez por día por efecto (si varios patrones dan el mismo efecto, el que junta más cosas), y se
+   ve como tarjeta en el Día (`GET /api/preventivo`). Se apaga en Más → Avisos (`usuarios.avisar_preventivo`).
 
 ## Carga en texto libre
 

@@ -18,6 +18,7 @@ import { avisarSeguimientos } from './seguimientos.js';
 import { seguirMalestares } from './malestares.js';
 import { sugerirFinDeActividades } from './actividades.js';
 import { sugerirPaseos } from './paseos.js';
+import { avisarPreventivos } from './preventivo.js';
 import { DIAS_MINIMOS } from './motor.js';
 
 const HORA_ANALISIS = 4;
@@ -280,6 +281,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await correr(db, 'Malestares en curso', () => seguirMalestares(db));
       await correr(db, 'Actividades en curso', () => sugerirFinDeActividades(db));
       await correr(db, 'Paseos detectados', () => sugerirPaseos(db));
+      await correr(db, 'Avisos preventivos', () => avisarPreventivos(db));
       await correr(db, '¿Qué pasó antes?', () => contextosPendientes(db));
     } finally {
       corriendo = false;

@@ -37,7 +37,7 @@ export async function crearUsuario(tx: Tx, d: Record<string, unknown>, rol: unkn
 async function preferencias(db: Tx, usuarioId: number) {
   const p = await una<{ cuenta_de_noche: boolean | null }>(
     db,
-    sql`SELECT avisar_sin_anotar, apodo, ranking, encuesta_hora, cuenta_de_noche FROM usuarios WHERE id = ${usuarioId}`,
+    sql`SELECT avisar_sin_anotar, avisar_preventivo, apodo, ranking, encuesta_hora, cuenta_de_noche FROM usuarios WHERE id = ${usuarioId}`,
   );
   return { ...p, de_noche: p?.cuenta_de_noche ?? (await cuentaDeNocheSegunUso(db, usuarioId)) };
 }
@@ -85,10 +85,13 @@ export const rutasUsuarios = new Hono<Env>()
     return c.json(await preferencias(c.var.db, c.var.usuario.id));
   })
   .put('/yo/preferencias', async (c) => {
-    // {avisar_sin_anotar, apodo}: lo que cada uno elige de los avisos que manda el servidor y cómo quiere que le digan.
+    // {avisar_sin_anotar, avisar_preventivo, apodo}: lo que cada uno elige de los avisos que manda el servidor y cómo quiere que le digan.
     const d = await cuerpo(c);
     if (typeof d.avisar_sin_anotar === 'boolean') {
       await c.var.db.execute(sql`UPDATE usuarios SET avisar_sin_anotar = ${d.avisar_sin_anotar} WHERE id = ${c.var.usuario.id}`);
+    }
+    if (typeof d.avisar_preventivo === 'boolean') {
+      await c.var.db.execute(sql`UPDATE usuarios SET avisar_preventivo = ${d.avisar_preventivo} WHERE id = ${c.var.usuario.id}`);
     }
     if (d.encuesta_hora === null || (typeof d.encuesta_hora === 'string' && /^\d{2}:\d{2}$/.test(d.encuesta_hora))) {
       await c.var.db.execute(sql`UPDATE usuarios SET encuesta_hora = ${d.encuesta_hora} WHERE id = ${c.var.usuario.id}`);

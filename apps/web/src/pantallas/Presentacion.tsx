@@ -316,6 +316,25 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
         <p className="suave chico">{t('Vos le decís si te sirvió, si ya lo sabías o si no tiene sentido, y Patty aprende qué mostrarte.')}</p>
       </Seccion>
 
+      <Seccion
+        id="avisa"
+        titulo={t('Te avisa antes')}
+        bajada={t('Cuando se empiezan a juntar las cosas de uno de tus patrones, Patty te avisa ese mismo día. Así llegás a tiempo de prevenirlo.')}
+        telefono={
+          <div className="pres-aviso" role="img" aria-label={t('Un aviso de Patty en el teléfono')}>
+            <div className="pres-aviso-barra"><Mascota cara="espera" tamano={22} /> Patty <span>{t('ahora')}</span></div>
+            <strong>{t('🦉 Ojo con mañana')}</strong>
+            <p>{t('Hoy se juntaron comida frita, calor y el período. Otras veces, al día siguiente te dolió la panza. Si podés, cuidate un poco.')}</p>
+          </div>
+        }
+      >
+        <ul className="pres-lista">
+          <li>🛡️ {t('Mira lo que anotaste hoy, el clima y tu ciclo, y lo compara con tus patrones.')}</li>
+          <li>🔔 {t('Un aviso a la tarde, una sola vez por día, y la tarjeta en el Día.')}</li>
+          <li>🙌 {t('Si no lo querés, se apaga con un toque.')}</li>
+        </ul>
+      </Seccion>
+
       <section ref={consultaRef} id="consultar" className="pres-seccion pres-tres">
         <div className="pres-texto centro">
           <h2>{t('Y todo lo tuyo, a mano')}</h2>

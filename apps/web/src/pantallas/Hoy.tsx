@@ -23,6 +23,7 @@ import { Editar } from './Editar';
 import { GloboDelBuho } from './GloboDelBuho';
 import { ComentarioDelDia, FueraDeLoNormal } from './ComentariosDePatty';
 import { RutinasDelDia } from './RutinasDelDia';
+import { AvisoPreventivo } from './AvisoPreventivo';
 import { TarjetaSemana } from './Semanas';
 import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
@@ -237,7 +238,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     (tipo: string) => {
       setFecha(hoyEn(persona.zona_horaria));
       void traer();
-      const sel = { paseo: '.paseo-pendiente', malestar: '.malestares-abiertos', actividad: '.malestares-abiertos', seguimiento: '.seguimiento-dia', fuera: '.fuera-de-lo-normal' }[tipo];
+      const sel = { paseo: '.paseo-pendiente', malestar: '.malestares-abiertos', actividad: '.malestares-abiertos', seguimiento: '.seguimiento-dia', fuera: '.fuera-de-lo-normal', preventivo: '.aviso-preventivo' }[tipo];
       if (!sel) return;
       let intentos = 0;
       const buscar = () => {
@@ -515,6 +516,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
         <PreguntaDespertar persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
       ) : null}
+      {fecha === hoy ? <AvisoPreventivo persona={persona} hoy={hoy} /> : null}
       {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
       {/* A la noche, si todavía no se anotó nada a mano: contar el día entero de una vez (Patty lo desglosa por horas). */}

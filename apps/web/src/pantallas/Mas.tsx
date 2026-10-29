@@ -111,15 +111,20 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const [recordatorios, setRecordatorios] = useState(recordatoriosActivos());
   // Se guarda en la cuenta (lo manda el servidor), no en el teléfono.
   const [sinAnotar, setSinAnotar] = useState<boolean | null>(null);
+  const [preventivo, setPreventivo] = useState<boolean | null>(null);
   // Si cuenta todo a la noche: null = que Patty se dé cuenta sola (`deNocheVisto` es lo que ve en cómo anota).
   const [deNoche, setDeNoche] = useState<{ elegido: boolean | null; visto: boolean } | null>(null);
   useEffect(() => {
-    api<{ avisar_sin_anotar: boolean; cuenta_de_noche: boolean | null; de_noche: boolean }>('GET', '/api/usuarios/yo/preferencias')
+    api<{ avisar_sin_anotar: boolean; avisar_preventivo: boolean; cuenta_de_noche: boolean | null; de_noche: boolean }>('GET', '/api/usuarios/yo/preferencias')
       .then((r) => {
         setSinAnotar(r.avisar_sin_anotar);
+        setPreventivo(r.avisar_preventivo);
         setDeNoche({ elegido: r.cuenta_de_noche, visto: r.de_noche });
       })
-      .catch(() => setSinAnotar(true));
+      .catch(() => {
+        setSinAnotar(true);
+        setPreventivo(true);
+      });
   }, []);
   const cambiarDeNoche = async (elegido: boolean | null) => {
     try {
@@ -137,6 +142,15 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       await api('PUT', '/api/usuarios/yo/preferencias', { avisar_sin_anotar: si });
     } catch (e) {
       setSinAnotar(!si);
+      setError((e as Error).message);
+    }
+  };
+  const cambiarPreventivo = async (si: boolean) => {
+    setPreventivo(si);
+    try {
+      await api('PUT', '/api/usuarios/yo/preferencias', { avisar_preventivo: si });
+    } catch (e) {
+      setPreventivo(!si);
       setError((e as Error).message);
     }
   };
@@ -263,6 +277,14 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           <span>{t('A las 19 h, si no anoté nada en el día, que Patty me lo recuerde.')}</span>
         </label>
         <p className="suave chico">{t('Si pasa más de una semana sin anotar, el aviso llega una vez por semana.')}</p>
+      </div>
+      <div className="tarjeta">
+        <h3>{t('🛡️ Avisarme antes')}</h3>
+        <label className="opcion">
+          <input type="checkbox" checked={preventivo ?? true} disabled={preventivo === null} onChange={(e) => void cambiarPreventivo(e.target.checked)} />
+          <span>{t('Si hoy se juntan las cosas de uno de mis patrones, que Patty me avise a la tarde para poder prevenirlo.')}</span>
+        </label>
+        <p className="suave chico">{t('Un aviso por día como mucho para cada cosa, y también se ve en el Día.')}</p>
       </div>
       {deNoche ? (
         <div className="tarjeta">

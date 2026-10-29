@@ -64,6 +64,8 @@ export const usuarios = pgTable(
     idioma: text('idioma').notNull().default('es'),
     /** Si quiere el aviso de la tarde cuando no anotó nada en el día ("te extraño"). */
     avisar_sin_anotar: boolean('avisar_sin_anotar').notNull().default(true),
+    /** Si quiere el aviso preventivo: hoy se juntaron las cosas de uno de sus patrones (patrones/preventivo.ts). */
+    avisar_preventivo: boolean('avisar_preventivo').notNull().default(true),
     /** La última vez que usó la app (se actualiza cada tantos minutos, para la administración). */
     ultimo_acceso: instante('ultimo_acceso'),
     creado: creado(),

@@ -250,6 +250,19 @@ function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, 
   return rasgos;
 }
 
+/**
+ * Los rasgos que se dan el último día (`hasta`), armados igual que para buscar patrones ("12|presente", "40|alto"): así
+ * se sabe si hoy se juntaron las causas de un patrón (patrones/preventivo.ts). Lo "alto" y lo "bajo" se miden contra lo
+ * habitual de todo el período.
+ */
+export function rasgosDelDia(filas: FilaDiaria[], conceptosLista: ConceptoInfo[], desde: string, hasta: string): Set<string> {
+  const n = diasEntre(desde, hasta) + 1;
+  const conceptos = new Map(conceptosLista.map((c) => [c.id, c]));
+  const r = new Set<string>();
+  for (const x of armarRasgos(filas, conceptos, desde, n)) if (x.esta[n - 1]) r.add(`${x.concepto.id}|${x.modo}`);
+  return r;
+}
+
 // ---------- Búsqueda ----------
 
 export interface Resultado {

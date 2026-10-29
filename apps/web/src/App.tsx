@@ -122,6 +122,8 @@ export function App() {
         if (d.tipo === 'hallazgo' || d.tipo === 'semana') setPestana('patrones');
         // Algo que se salió de lo normal: el Día, donde está la tarjeta.
         if (d.tipo === 'fuera') setPestana('hoy');
+        // Hoy se juntaron las cosas de un patrón: el Día, con la tarjeta del aviso.
+        if (d.tipo === 'preventivo') setPestana('hoy');
         // Un permiso que falta: Más, con los pasos para darlo en este teléfono.
         if (d.tipo === 'permiso' && ['avisos', 'ubicacion', 'telefono', 'salud'].includes(d.permiso)) {
           setPestana('mas');
