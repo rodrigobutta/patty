@@ -5,6 +5,7 @@ import { Fragment, useState, type ReactNode } from 'react';
 import { IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
 import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
+import { ClimaDelDia } from './ClimaDelDia';
 import { GraficoSueno, ResumenNoche } from './GraficoSueno';
 import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
@@ -241,7 +242,8 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                       <GraficoSueno persona={persona} fecha={fecha} />
                     </>
                   ) : null}
-                  {w.grupos.length ? (
+                  {w.lugar === 'clima' ? <ClimaDelDia persona={persona} fecha={fecha} todos={automaticos} /> : null}
+                  {w.grupos.length && w.lugar !== 'clima' ? (
                     <ul className="detalle-auto">
                       {w.grupos.flatMap((g) => g.lineas).map((x) => (
                         <li key={`${x.concepto}-${x.valor}`}>

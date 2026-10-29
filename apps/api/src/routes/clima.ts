@@ -11,7 +11,8 @@ import { climaPorHora, comienzoDeHora, MINIMO_POR_HORA } from '../clima/openMete
 import { resumirClimaDelDia } from '../clima/resumenDiario.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
-import { diaDePatty, leerInstante } from '../lib/fechas.js';
+import { diaDePatty, esFecha, leerInstante, sumarDias } from '../lib/fechas.js';
+import { listarHallazgos } from '../patrones/analizar.js';
 import { cuerpo, numeroONulo, type Env } from '../lib/http.js';
 import { conceptoMedido } from './ingesta.js';
 
@@ -77,7 +78,34 @@ function coordenada(v: unknown, campo: string, limite: number): number {
   return n;
 }
 
-export const rutasClima = new Hono<Env>().post('/', async (c) => {
+export const rutasClima = new Hono<Env>()
+  .get('/contexto', async (c) => {
+    // ?persona=1&fecha=AAAA-MM-DD: con qué comparar el clima del día en su detalle (la máxima de los 7 días anteriores)
+    // y los patrones de la persona en los que el clima es una de las causas (lo que el clima le hace a ella).
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const pedida = c.req.query('fecha') ?? '';
+    const fecha = esFecha(pedida) ? pedida : diaDePatty(new Date(), p.zona_horaria);
+    const semana = await filas<{ fecha: string; maxima: number }>(
+      c.var.db,
+      sql`SELECT to_char(s.fecha, 'YYYY-MM-DD') AS fecha, max(s.suma)::float AS maxima FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id
+          WHERE s.persona_id = ${p.id} AND k.nombre = 'Temperatura máxima' AND s.fecha BETWEEN ${sumarDias(fecha, -7)} AND ${sumarDias(fecha, -1)}
+          GROUP BY s.fecha ORDER BY s.fecha`,
+    );
+    const ids = await filas<{ id: number }>(
+      c.var.db,
+      sql`SELECT h.id FROM hallazgos h
+          WHERE h.persona_id = ${p.id} AND h.estado NOT IN ('descartado', 'obvio') AND (h.estado = 'confirmado' OR h.q_valor <= 0.1)
+            AND EXISTS (SELECT 1 FROM conceptos k JOIN categorias g ON g.id = k.categoria_id WHERE g.clave = 'clima'
+              AND (k.id = h.causa_id OR k.id IN (SELECT (e->>'id')::int FROM jsonb_array_elements(h.causas_extra) e)))
+          ORDER BY h.puntaje DESC LIMIT 3`,
+    );
+    return c.json({
+      maxima_semana: semana.length >= 3 ? Math.round((semana.reduce((n, x) => n + x.maxima, 0) / semana.length) * 10) / 10 : null,
+      maxima_ayer: semana.find((x) => x.fecha === sumarDias(fecha, -1))?.maxima ?? null,
+      patrones: ids.length ? await listarHallazgos(c.var.db, p.id, ids.map((x) => x.id)) : [],
+    });
+  })
+  .post('/', async (c) => {
   const d = await cuerpo(c);
   const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
   const lat = coordenada(d.lat, 'lat', 90);
