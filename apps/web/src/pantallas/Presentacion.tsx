@@ -180,7 +180,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
   // El botón principal baja la app de Android directo de acá (para volver a Patty está el botón de la barra); los de
   // iPhone dejan sus datos (abajo de todo).
   const entrar = (donde: string) => (
-    <a className="btn primario pres-cta" href={android} onClick={() => medir('bajar_android', { desde: donde })}>{t('Bajar para Android')}</a>
+    <a className="btn primario pres-cta" href={android} onClick={() => medir('bajar_android', { desde: donde })}>{t('Descargar para Android')}</a>
   );
   const finalRef = useVista('final');
   const consultaRef = useVista('consultar');
@@ -357,7 +357,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
 
       <section ref={finalRef} className="pres-final">
         <Mascota cara="feliz" tamano={80} className="saluda" />
-        <h2>{t('Bajala gratis para Android')}</h2>
+        <h2>{t('Descargala gratis para Android')}</h2>
         <div className="pres-botones">{entrar('final')}</div>
         <p className="suave chico">{t('Android te va a preguntar si dejás instalar una app que no viene del Play Store: es normal, decile que sí.')}</p>
         <FormBeta />
