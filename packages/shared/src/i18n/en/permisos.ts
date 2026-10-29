@@ -963,4 +963,11 @@ export const PERMISOS: Record<string, string> = {
   "¿Tenés iPhone?": "Have an iPhone?",
   "Ver Patty en la web": "Use Patty on the web",
   "Temas": "Topics",
+  "Dormir más no cambió mucho cómo te sentiste estas semanas.": "Sleeping more didn't change much how you felt these weeks.",
+  "Los días con algún malestar tu ánimo bajó bastante.": "On days with some discomfort your mood dropped quite a bit.",
+  "Los días que dormiste 7 h o más te sentiste mejor ({a} contra {b}).": "On days you slept 7 h or more you felt better ({a} vs {b}).",
+  "día con malestar": "day with discomfort",
+  "horas de sueño": "hours of sleep",
+  "Ver por dónde fue": "See where you went",
+  "Por dónde fue": "Where you went",
 };

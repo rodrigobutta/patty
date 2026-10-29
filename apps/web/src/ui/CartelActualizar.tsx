@@ -12,7 +12,7 @@ export function CartelActualizar() {
   if (!hay || cerrado) return null;
   return (
     <div className="cartel-actualizar" role="status">
-      <Mascota cara="feliz" tamano={32} />
+      <Mascota cara="feliz" tamano={46} />
       <span>{t('Hay una versión nueva de Patty')}</span>
       <button className="btn chico" disabled={actualizando} onClick={() => { setActualizando(true); void actualizarAhora(); }}>
         {actualizando ? t('Actualizando…') : t('Actualizar')}

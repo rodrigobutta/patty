@@ -1539,3 +1539,26 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .fila-compartir { display: flex; justify-content: flex-end; margin-top: 8px; }
 .rueda-progreso .btn { margin-top: 10px; }
 .fila-compartir.centrada { justify-content: center; margin: 4px 0 10px; }
+/* El detalle del ánimo de la semana: el sueño de fondo, los malestares y los días en lista. */
+.animo-linea .sueno { fill: color-mix(in srgb, var(--acento) 18%, transparent); }
+.animo-linea .malestar { fill: #e5484d; }
+.animo-leyenda { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.animo-leyenda .muestra { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.animo-leyenda .muestra.sueno { background: color-mix(in srgb, var(--acento) 25%, transparent); }
+.animo-leyenda .muestra.malestar { background: #e5484d; border-radius: 50%; width: 8px; height: 8px; }
+.animo-comparacion { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: var(--acento-suave); }
+.animo-comparacion p { margin: 0; font-size: 14px; }
+.animo-comparacion p + p { margin-top: 6px; }
+.animo-dias { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 8px; }
+.animo-dias li { display: grid; grid-template-columns: 70px 1fr; column-gap: 8px; row-gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--borde); }
+.animo-dias .cuando { grid-row: 1 / span 2; font-weight: 600; text-transform: capitalize; }
+.animo-dias .animo { display: inline-flex; align-items: center; gap: 6px; }
+/* El mapita de una vuelta a pie sin anotar, a la derecha de la tarjeta. */
+.paseo-pendiente { position: relative; }
+.paseo-pendiente .paseo-mapita { float: right; width: 112px; margin: 0 0 6px 10px; padding: 0; border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; cursor: pointer; background: none; }
+.paseo-pendiente .chips, .paseo-pendiente .otro-puntual { clear: both; }
+.animo-extras { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.animo-extras > span { display: inline-flex; align-items: center; gap: 4px; }
+.animo-extras .mini-icono { display: inline-flex; width: 16px; height: 16px; }
+.animo-extras .mini-icono svg { width: 16px; height: 16px; }
+.animo-comparacion p { display: flex; align-items: center; gap: 8px; }

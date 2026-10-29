@@ -6,6 +6,7 @@ import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 import { etiquetasDePaseos } from '../patrones/paseos.js';
+import { sinSaltos } from '../ubicacion/resumen.js';
 import { guardarRegistro } from './registros.js';
 
 export const rutasPaseos = new Hono<Env>()
@@ -16,7 +17,18 @@ export const rutasPaseos = new Hono<Env>()
       c.var.db,
       sql`SELECT id, inicio, fin, metros FROM paseos_detectados WHERE persona_id = ${p.id} AND estado = 'pendiente' AND inicio > now() - interval '2 days' ORDER BY inicio`,
     );
-    return c.json({ pendientes, ...(await etiquetasDePaseos(c.var.db, p.id)) });
+    // El recorrido de cada una (sin los saltos del GPS), para el mapita: así se ve si era lo que parece.
+    const conCamino = await Promise.all(
+      pendientes.map(async (x) => {
+        const l = await filas<{ instante: string; lat: number; lon: number }>(
+          c.var.db,
+          sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${x.inicio} AND ${x.fin} ORDER BY instante`,
+        );
+        const camino = sinSaltos(l.map((q) => ({ lat: q.lat, lon: q.lon, instante: Date.parse(q.instante) }))).map(({ lat, lon }) => ({ lat, lon }));
+        return { ...x, camino };
+      }),
+    );
+    return c.json({ pendientes: conCamino, ...(await etiquetasDePaseos(c.var.db, p.id)) });
   })
   .post('/:id', async (c) => {
     // { concepto } la anota como esa actividad (con su hora y sus minutos); { descartar: true } la saca.

@@ -12,6 +12,7 @@ import { diaDePatty, esFecha, leerInstante, minutosDelDia, sumarDias } from '../
 import { rutinasDe, type AnotadoRutina } from '../patrones/rutinas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
 import { obtenerOCrearConcepto } from './conceptos.js';
+import { horasDeSueno } from './estadisticas.js';
 import { vincularToma } from './tratamientos.js';
 
 const COLUMNAS = sql`r.id, r.persona_id, r.concepto_id, r.inicio, r.fin, to_char(r.fecha, 'YYYY-MM-DD') AS fecha,
@@ -236,7 +237,37 @@ export const rutasRegistros = new Hono<Env>()
           GROUP BY r.fecha`,
     );
     const por = new Map(hay.map((x) => [x.fecha, Math.round(x.animo * 10) / 10]));
-    return c.json(Array.from({ length: 14 }, (_, i) => sumarDias(desde, i)).map((fecha) => ({ fecha, animo: por.get(fecha) ?? null })));
+    // Lo que acompaña al ánimo en el detalle del widget: cuánto durmió, cuánto caminó y qué malestares tuvo cada día.
+    const sueno = new Map((await horasDeSueno(c.var.db, p.id, desde, hasta)).map((x) => [x.fecha, Math.round(x.horas * 10) / 10]));
+    const pasos = new Map(
+      (
+        await filas<{ fecha: string; valor: number }>(
+          c.var.db,
+          sql`SELECT to_char(s.fecha, 'YYYY-MM-DD') AS fecha, max(s.suma)::float AS valor FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id
+              WHERE s.persona_id = ${p.id} AND s.fecha BETWEEN ${desde} AND ${hasta} AND k.nombre = 'Pasos' GROUP BY s.fecha`,
+        )
+      ).map((x) => [x.fecha, Math.round(x.valor)]),
+    );
+    const malestares = new Map(
+      (
+        await filas<{ fecha: string; nombres: string[] }>(
+          c.var.db,
+          sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, array_agg(DISTINCT k.nombre) AS nombres
+              FROM registros r JOIN conceptos k ON k.id = r.concepto_id JOIN categorias g ON g.id = k.categoria_id
+              WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND g.clave = 'sintoma' AND r.fecha BETWEEN ${desde} AND ${hasta}
+              GROUP BY r.fecha`,
+        )
+      ).map((x) => [x.fecha, x.nombres]),
+    );
+    return c.json(
+      Array.from({ length: 14 }, (_, i) => sumarDias(desde, i)).map((fecha) => ({
+        fecha,
+        animo: por.get(fecha) ?? null,
+        sueno: sueno.get(fecha) ?? null,
+        pasos: pasos.get(fecha) ?? null,
+        malestares: malestares.get(fecha) ?? [],
+      })),
+    );
   })
   .get('/abiertos', async (c) => {
     // ?persona=1: los malestares que siguen abiertos (Patty pregunta si siguen), del más viejo al más nuevo.
