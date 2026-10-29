@@ -1,6 +1,7 @@
 // Inglés: el castellano como clave y su traducción. Está partido por zonas de la app para que sea fácil de mantener.
 import { CICLO } from './ciclo.js';
 import { COMIDA } from './comida.js';
+import { COMPARTIR } from './compartir.js';
 import { CUENTA } from './cuenta.js';
 import { COMUN } from './comun.js';
 import { DATOS } from './datos.js';
@@ -10,4 +11,4 @@ import { PERMISOS } from './permisos.js';
 import { PATRONES } from './patrones.js';
 import { SERVIDOR } from './servidor.js';
 
-export const EN: Record<string, string> = { ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...COMIDA, ...COMUN };
+export const EN: Record<string, string> = { ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...COMIDA, ...COMPARTIR, ...COMUN };

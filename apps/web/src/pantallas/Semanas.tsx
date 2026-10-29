@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import type { Persona } from 'shared';
 import { api } from '../api';
 import { locale, t } from '../lib/idioma';
+import { useEstado } from '../estado';
+import { BotonCompartir, type Compartible } from '../ui/HojaCompartir';
 
 export interface Semana {
   semana: string;
@@ -32,8 +34,8 @@ function useSemanas(persona: Persona): Semana[] | null {
   return l;
 }
 
-/** Los números de la semana, con una flechita contra la anterior. */
-function Numeros({ s, antes }: { s: Semana; antes?: Semana }) {
+/** Los números de la semana, con si subieron o bajaron contra la anterior (y si eso es bueno). */
+function filasSemana(s: Semana, antes?: Semana) {
   const filas: Array<[string, string, (n: number) => string, boolean]> = [
     ['sueno_horas', t('Sueño por noche'), (n) => t('{n} h', { n: n.toLocaleString(locale()) }), true],
     ['pasos', t('Pasos por día'), (n) => Math.round(n).toLocaleString(locale()), true],
@@ -42,29 +44,41 @@ function Numeros({ s, antes }: { s: Semana; antes?: Semana }) {
     ['molestias', t('Molestias anotadas'), (n) => String(n), false],
     ['dias_anotados', t('Días con algo anotado'), (n) => `${n}/7`, true],
   ];
+  return filas
+    .filter(([k]) => s.numeros[k] !== null && s.numeros[k] !== undefined)
+    .map(([k, nombre, f, masEsMejor]) => {
+      const v = s.numeros[k]!;
+      const a = antes?.numeros[k];
+      const sube = a !== null && a !== undefined && v > a;
+      const baja = a !== null && a !== undefined && v < a;
+      return { k, nombre, valor: f(v), flecha: sube ? ('▲' as const) : baja ? ('▼' as const) : undefined, bien: (sube && masEsMejor) || (baja && !masEsMejor) };
+    });
+}
+
+/** Los números de la semana, con una flechita contra la anterior. */
+function Numeros({ s, antes }: { s: Semana; antes?: Semana }) {
   return (
     <ul className="numeros-semana">
-      {filas
-        .filter(([k]) => s.numeros[k] !== null && s.numeros[k] !== undefined)
-        .map(([k, nombre, f, masEsMejor]) => {
-          const v = s.numeros[k]!;
-          const a = antes?.numeros[k];
-          const sube = a !== null && a !== undefined && v > a;
-          const baja = a !== null && a !== undefined && v < a;
-          const bueno = (sube && masEsMejor) || (baja && !masEsMejor);
-          return (
-            <li key={k}>
-              <span className="suave chico">{nombre}</span>
-              <strong>{f(v)}</strong>
-              {sube || baja ? <span className={`flecha-semana ${bueno ? 'bien' : 'mal'}`}>{sube ? '▲' : '▼'}</span> : null}
-            </li>
-          );
-        })}
+      {filasSemana(s, antes).map((f) => (
+        <li key={f.k}>
+          <span className="suave chico">{f.nombre}</span>
+          <strong>{f.valor}</strong>
+          {f.flecha ? <span className={`flecha-semana ${f.bien ? 'bien' : 'mal'}`}>{f.flecha}</span> : null}
+        </li>
+      ))}
     </ul>
   );
 }
 
+/** La imagen para compartir la semana: solo los números (sin las molestias ni lo que escribió Patty). */
+const compartible = (s: Semana, antes?: Semana): Compartible => ({
+  que: 'semana',
+  tarjeta: { tipo: 'semana', arriba: t('Mi semana con Patty'), subtitulo: rango(s.semana), filas: filasSemana(s, antes).filter((f) => f.k !== 'molestias') },
+});
+
 export function HojaSemana({ s, antes, alCerrar }: { s: Semana; antes?: Semana; alCerrar(): void }) {
+  const { usuario } = useEstado();
+  const sePuede = usuario?.rol !== 'lector' && filasSemana(s, antes).some((f) => f.k !== 'molestias');
   return createPortal(
     <>
       <div className="velo" onClick={alCerrar} />
@@ -89,6 +103,7 @@ export function HojaSemana({ s, antes, alCerrar }: { s: Semana; antes?: Semana; 
             {s.sugerencias.map((x) => <p key={x}>💡 {x}</p>)}
           </div>
         ) : null}
+        {sePuede ? <div className="fila-compartir centrada"><BotonCompartir armar={() => compartible(s, antes)} /></div> : null}
       </div>
     </>,
     document.body,

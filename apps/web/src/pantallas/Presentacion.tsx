@@ -8,6 +8,7 @@ import { IconoClima, IconoLugares, IconoReloj, IconoTelefono } from '../ui/Icono
 import { IconoCategoria } from '../ui/IconosPatty';
 import { useEstado } from '../estado';
 import { iniciarAnalytics, medir } from '../lib/analytics';
+import { medirLlegadaInvitada } from '../lib/compartir';
 import { t } from '../lib/idioma';
 import { Mascota } from '../mascota/Mascota';
 
@@ -211,7 +212,10 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
   }, []);
   // Solo se mide a quien no entró (los que ya usan Patty no cuentan como visitas de la presentación).
   useEffect(() => {
-    if (!conSesion) iniciarAnalytics(sesion?.analytics);
+    if (conSesion) return;
+    iniciarAnalytics(sesion?.analytics);
+    // Si llegó por una invitación (?ref=), se guarda quién invitó y se mide.
+    medirLlegadaInvitada();
   }, [conSesion, sesion?.analytics]);
   const ir = (donde: string) => () => {
     medir(conSesion ? 'volver_a_patty' : 'empezar', { desde: donde });

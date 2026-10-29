@@ -24,15 +24,25 @@ export function iniciarAnalytics(medicion: string | null | undefined, app = fals
   document.head.appendChild(s);
 }
 
-/** Un evento ("empezar", "ver_video"), con datos opcionales. No hace nada si Analytics no está cargado. */
-export function medir(evento: string, datos: Record<string, string | number> = {}): void {
-  if (!id) return;
+/** Un evento ("empezar", "ver_video"), con datos opcionales. No hace nada (y devuelve false) si Analytics no está cargado. */
+export function medir(evento: string, datos: Record<string, string | number> = {}): boolean {
+  if (!id) return false;
   void preparado.then(() => (window as unknown as { gtag?: Gtag }).gtag?.('event', evento, datos));
+  return true;
 }
 
 /** Una pantalla de la app ("/dia", "/descubrir/mapa"), como si fuera una página. */
 export function paginaVista(ruta: string, titulo: string): void {
   medir('page_view', { page_location: `${location.origin}/app${ruta}`, page_path: `/app${ruta}`, page_title: titulo });
+}
+
+/**
+ * El identificador anónimo de un usuario: un hash del id (siempre el mismo para la misma persona). Es el user_id de
+ * Analytics y, sus primeros 8 caracteres, el código de las invitaciones (`?ref=`), así se pueden cruzar.
+ */
+export async function anonimo(usuarioId: number): Promise<string> {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`patty|${usuarioId}`));
+  return [...new Uint8Array(h)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /** Quién usa la app, anónimo (un hash del id, para contar a la misma persona en varios teléfonos), y desde dónde. */
@@ -41,9 +51,7 @@ export function usuarioAnalytics(usuarioId: number, datos: Record<string, string
   preparado = (async () => {
     const g = (window as unknown as { gtag?: Gtag }).gtag;
     try {
-      const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`patty|${usuarioId}`));
-      const anonimo = [...new Uint8Array(h)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
-      g?.('set', { user_id: anonimo });
+      g?.('set', { user_id: await anonimo(usuarioId) });
     } catch {
       // sin cómo hacerlo anónimo, va sin usuario
     }

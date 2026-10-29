@@ -1514,3 +1514,12 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .pres-conexion { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 2px; align-items: center; padding: 14px 16px; border-radius: 16px; background: var(--panel); border: 1px solid var(--borde); }
 .pres-conexion-icono { grid-row: 1 / span 2; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 14px; background: var(--acento-suave); color: var(--acento); }
 @media (max-width: 560px) { .pres-fila.cuatro { grid-template-columns: 1fr; } }
+
+/* ---------- Compartir ---------- */
+.hoja-compartir { display: grid; gap: 10px; }
+.hoja-compartir .hoja-cabeza { margin-bottom: 0; }
+.vista-compartir { display: grid; place-items: center; min-height: 200px; }
+.vista-compartir img { max-height: 52dvh; max-width: 100%; aspect-ratio: 4 / 5; border-radius: 16px; box-shadow: 0 8px 24px rgb(20 10 60 / 0.25); }
+.fila-compartir { display: flex; justify-content: flex-end; margin-top: 8px; }
+.rueda-progreso .btn { margin-top: 10px; }
+.fila-compartir.centrada { justify-content: center; margin: 4px 0 10px; }
