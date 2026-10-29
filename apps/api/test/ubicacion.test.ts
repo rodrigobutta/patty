@@ -178,6 +178,41 @@ describe('viajes del día', () => {
     expect(adivinarViaje(2, 30).modo).toBe('caminando');
   });
 
+  it('tráfico: los tramos a paso de hombre y lo que tarda habitualmente ese recorrido', async () => {
+    const { viajesDelDia, minutosHabituales, huboTrafico } = await import('../src/ubicacion/resumen.js');
+    const dia = (d: number) => (min: number) => Date.parse('2026-10-20T12:00:00Z') + d * 86400000 + min * 60000;
+    // De casa al centro: 3 tramos rápidos de 2,2 km y, en el medio, 4 minutos para 150-250 m (embotellamiento).
+    const conTrafico = (m: (n: number) => number) => [
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.62, lon: -58.4, instante: m(5) },
+      { lat: -34.6215, lon: -58.4, instante: m(9) },
+      { lat: -34.6235, lon: -58.4, instante: m(13) },
+      { lat: -34.6255, lon: -58.4, instante: m(17) },
+      { lat: -34.6455, lon: -58.4, instante: m(22) },
+    ];
+    const v = viajesDelDia(conTrafico(dia(5)));
+    expect(v).toHaveLength(1);
+    expect(v[0].lento_min).toBe(12);
+    expect(huboTrafico(v[0], null)).toBe(true);
+    // El mismo recorrido, otros días, sin tráfico: 10 minutos. Hoy tardó 22 sin tramos lentos marcados: también.
+    const rapido = (m: (n: number) => number) => [
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.62, lon: -58.4, instante: m(4) },
+      { lat: -34.6455, lon: -58.4, instante: m(10) },
+    ];
+    const anteriores = [1, 2, 3].flatMap((d) => viajesDelDia(rapido(dia(d))));
+    const hoy = viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: dia(6)(0) },
+      { lat: -34.62, lon: -58.4, instante: dia(6)(11) },
+      { lat: -34.6455, lon: -58.4, instante: dia(6)(22) },
+    ]);
+    expect(minutosHabituales(hoy[0], anteriores)).toBe(10);
+    expect(huboTrafico(hoy[0], 10)).toBe(true);
+    expect(huboTrafico(anteriores[0], 10)).toBe(false);
+    // Un recorrido nuevo no tiene habitual.
+    expect(minutosHabituales(hoy[0], [])).toBeNull();
+  });
+
   it('un punto del GPS que salta lejos no arma un viaje imposible; un tramo largo después de estar quieto no dura un minuto', async () => {
     const { viajesDelDia } = await import('../src/ubicacion/resumen.js');
     const m = (min: number) => Date.parse('2026-10-24T12:00:00Z') + min * 60000;
@@ -264,5 +299,21 @@ describe('recorrido del día', () => {
     expect(r.puntos.map((x: any) => x.lat)).toEqual([-34.62, -34.64]);
     expect(r.antes).toMatchObject({ lat: -34.6 });
     expect(r.despues).toBeNull();
+  });
+});
+
+describe('contar un viaje', () => {
+  afterAll(() => cerrarDb());
+  it('con tráfico, además de cómo fue quedan "Viaje con tráfico" y los minutos en tráfico', async () => {
+    const { ana, personaId } = await conAdmin();
+    const inicio = '2026-10-24T15:00:00.000Z';
+    const r = await ana.post('/api/ubicacion/viajes', { persona_id: personaId, inicio, fin: '2026-10-24T15:40:00.000Z', minutos: 40, km: 12, modo: 'auto', como: 'normal', trafico: true, lento_min: 14, habitual_min: 22 });
+    expect(r.status).toBe(201);
+    const l = (await ana.get(`/api/registros?persona=${personaId}&desde=2026-10-24&hasta=2026-10-24`)).body;
+    const por = new Map(l.map((x: any) => [x.concepto, x.valor]));
+    expect(por.has('Viaje en auto')).toBe(true);
+    expect(por.has('Viaje con tráfico')).toBe(true);
+    // Lo que más tardó que lo habitual (18) le gana a los tramos lentos (14).
+    expect(por.get('Minutos en tráfico')).toBe(18);
   });
 });

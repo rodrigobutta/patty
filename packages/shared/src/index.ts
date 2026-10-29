@@ -1433,7 +1433,17 @@ export interface ViajeDelDia {
   contado: boolean;
   /** Por dónde pasó, para el mapita. */
   camino: Array<{ lat: number; lon: number }>;
+  /** Minutos a paso de hombre (tráfico, si fue en auto o colectivo). */
+  lento_min: number;
+  /** Cuánto tarda habitualmente este mismo recorrido (null: recorrido nuevo). */
+  habitual_min: number | null;
+  /** Si Patty vio tráfico (tramos lentos o mucho más que lo habitual). */
+  trafico: boolean;
 }
+
+/** Lo que se guarda de un viaje con tráfico (para los patrones). */
+export const MINUTOS_EN_TRAFICO = 'Minutos en tráfico';
+export const VIAJE_CON_TRAFICO = 'Viaje con tráfico';
 
 /** Qué se adivina de un viaje por su velocidad y largo: en qué fue y si parece pesado (tráfico, mucho tiempo). */
 export function adivinarViaje(km: number, minutos: number): { modo: ModoViaje; pista: string; pesado: boolean } {

@@ -85,6 +85,8 @@ export interface Viaje {
   metros: number;
   /** Por dónde pasó (los puntos del viaje, en orden): para el mapita. */
   camino?: Coordenadas[];
+  /** Minutos a paso de hombre (menos de 10 km/h) entre puntos seguidos del viaje: en auto o colectivo, tráfico. */
+  lento_min?: number;
 }
 
 /** Entre dos puntos de un mismo viaje no pasa más que esto (en movimiento, el teléfono guarda uno cada ~150 m). */
@@ -143,8 +145,8 @@ const CAMINANDO_KMH = 7;
  */
 export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Viaje[] {
   const orden = sinSaltos([...puntosDia].sort((a, b) => a.instante - b.instante));
-  const r: Array<Viaje & { desde: Punto; hasta: Punto; camino: Coordenadas[] }> = [];
-  let actual: (Viaje & { desde: Punto; hasta: Punto; camino: Coordenadas[] }) | null = null;
+  const r: Array<Viaje & { desde: Punto; hasta: Punto; camino: Coordenadas[]; lento_min: number }> = [];
+  let actual: (Viaje & { desde: Punto; hasta: Punto; camino: Coordenadas[]; lento_min: number }) | null = null;
   for (let i = 1; i < orden.length; i++) {
     const a = orden[i - 1];
     const b = orden[i];
@@ -153,6 +155,8 @@ export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
     const largo = b.instante - a.instante > CONTINUO_MIN * 60000;
     const seguido = actual !== null && actual.fin === a.instante && !largo && !lugarDe(a, lugares);
     if (seguido) {
+      const min = (b.instante - a.instante) / 60000;
+      if (min <= LENTO_HUECO_MIN && d / 1000 / (min / 60) < LENTO_KMH) actual!.lento_min += min;
       actual!.fin = b.instante;
       actual!.metros += d;
       actual!.hasta = b;
@@ -162,7 +166,7 @@ export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
       // ciudad, antes de llegar al punto (la hora de salida es aproximada). Antes empezaba en el mismo punto y un tramo
       // largo quedaba en un minuto: 400 km/h.
       const inicio = largo ? Math.max(a.instante, b.instante - Math.round((d / SALIDA_MS) * 1000)) : a.instante;
-      actual = { inicio, fin: b.instante, metros: d, desde: a, hasta: b, camino: [{ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }] };
+      actual = { inicio, fin: b.instante, metros: d, desde: a, hasta: b, camino: [{ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }], lento_min: 0 };
       r.push(actual);
     }
   }
@@ -170,7 +174,42 @@ export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
     .filter((v) => v.metros >= VIAJE_M)
     .filter((v) => !esVuelta(v))
     .filter((v) => v.metros / 1000 / Math.max((v.fin - v.inicio) / 3600000, 1 / 60) <= VIAJE_MAX_KMH)
-    .map(({ inicio, fin, metros, camino }) => ({ inicio, fin, metros, camino }));
+    .map(({ inicio, fin, metros, camino, lento_min }) => ({ inicio, fin, metros, camino, lento_min: Math.round(lento_min) }));
+}
+
+/** Más lento que esto entre dos puntos seguidos es a paso de hombre: en un auto, tráfico. */
+const LENTO_KMH = 10;
+/** Entre puntos más separados que esto no se sabe qué pasó en el medio (no cuenta como lento). */
+const LENTO_HUECO_MIN = 5;
+/** Un viaje "igual" a otro: sale y llega a menos de esto de donde salió y llegó el otro. */
+const MISMO_RECORRIDO_M = 600;
+
+/**
+ * Cuánto tarda habitualmente este mismo recorrido (salir y llegar cerca de los mismos lugares, en el mismo sentido):
+ * la mediana de los viajes anteriores, si hay al menos dos. null si es un recorrido nuevo.
+ */
+export function minutosHabituales(v: Viaje, anteriores: Viaje[]): number | null {
+  const ini = v.camino?.[0];
+  const fin = v.camino?.at(-1);
+  if (!ini || !fin) return null;
+  const mismos = anteriores
+    .filter((x) => x.camino?.length && distanciaMetros(x.camino[0], ini) < MISMO_RECORRIDO_M && distanciaMetros(x.camino.at(-1)!, fin) < MISMO_RECORRIDO_M)
+    .map((x) => (x.fin - x.inicio) / 60000)
+    .sort((a, b) => a - b);
+  if (mismos.length < 2) return null;
+  return Math.round(mismos[Math.floor(mismos.length / 2)]);
+}
+
+/**
+ * Si hubo tráfico: un buen rato a paso de hombre yendo en algo con motor (el viaje en total no fue a pie), o bastante
+ * más de lo que tarda habitualmente ese recorrido.
+ */
+export function huboTrafico(v: Viaje, habitual: number | null): boolean {
+  const minutos = (v.fin - v.inicio) / 60000;
+  const kmh = v.metros / 1000 / Math.max(minutos / 60, 1 / 60);
+  const lento = (v.lento_min ?? 0) >= 8 && kmh >= 12;
+  const tarde = habitual !== null && minutos >= habitual * 1.35 && minutos - habitual >= 8;
+  return lento || tarde;
 }
 
 /** Una vuelta a pie: termina cerca de donde empezó, a paso de caminata. */

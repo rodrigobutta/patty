@@ -28,7 +28,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
   const contar = async (v: ViajeDelDia, como: (typeof COMO_VIAJE)[number]['clave']) => {
     const m = modo[v.inicio] ?? v.modo;
     try {
-      await api('POST', '/api/ubicacion/viajes', { persona_id: persona.id, inicio: v.inicio, fin: v.fin, minutos: v.minutos, km: v.km, modo: m, como });
+      await api('POST', '/api/ubicacion/viajes', { persona_id: persona.id, inicio: v.inicio, fin: v.fin, minutos: v.minutos, km: v.km, modo: m, como, trafico: v.trafico, lento_min: v.lento_min, habitual_min: v.habitual_min });
       festejar(como === 'pesado' ? t('Anotado: viaje pesado 😩 ¡Ya pasó!') : t('Anotado: viaje {modo} 👍', { modo: t(MODOS_VIAJE[m].nombre).toLowerCase() }), como === 'pesado' ? 'espera' : 'feliz');
       avisarAnotado();
       alCambiar();
@@ -53,7 +53,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
                 <strong>
                   {horaEn(v.inicio, persona.zona_horaria)} → {horaEn(v.fin, persona.zona_horaria)} · {String(v.km).replace('.', ',')} km · {duracion(v.minutos)}
                 </strong>
-                <span className={`chico renglon-sub${v.pesado ? ' pista-pesada' : ' suave'}`}>{v.pista} ({v.velocidad} km/h)</span>
+                <span className={`chico renglon-sub${v.pesado ? ' pista-pesada' : ' suave'}`}>{v.pista}{v.trafico ? '' : ` (${v.velocidad} km/h)`}</span>
               </span>
               <span className="rotulo-campo">{t('¿En qué fuiste?')}</span>
               <span className="chips envolver">

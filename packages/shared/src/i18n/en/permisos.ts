@@ -898,4 +898,9 @@ export const PERMISOS: Record<string, string> = {
   "Hay una versión nueva de Patty": "A new version of Patty is ready",
   "Completo": "Complete",
   "Falta": "To do",
+  "Unos {n} min a paso lento: tráfico": "About {n} min crawling: traffic",
+  "{n} min más que lo habitual ({h} min): tráfico": "{n} min longer than usual ({h} min): traffic",
+  "{pista}, como siempre ({h} min)": "{pista}, as usual ({h} min)",
+  "Viaje con tráfico": "Trip with traffic",
+  "Minutos en tráfico": "Minutes in traffic",
 };

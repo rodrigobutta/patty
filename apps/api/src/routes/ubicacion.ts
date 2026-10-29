@@ -10,7 +10,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { adivinarViaje, COMO_VIAJE, MODOS_VIAJE, traducir, VIAJE_PESADO, type ModoViaje, type ViajeDelDia, distanciaMetros, lugarDe, nombreLindo, normalizar, puntoNuevo, RADIO_LUGAR_M, type DiaUbicacion, type Lugar, type ParadaSinNombre } from 'shared';
+import { adivinarViaje, COMO_VIAJE, MINUTOS_EN_TRAFICO, MODOS_VIAJE, traducir, VIAJE_CON_TRAFICO, VIAJE_PESADO, type ModoViaje, type ViajeDelDia, distanciaMetros, lugarDe, nombreLindo, normalizar, puntoNuevo, RADIO_LUGAR_M, type DiaUbicacion, type Lugar, type ParadaSinNombre } from 'shared';
 import { direccionDe } from '../ubicacion/direccion.js';
 import { filas, una, type Db, type Tx } from '../db/client.js';
 import { fuentes, lugares, mediciones, puntos, registros } from '../db/schema.js';
@@ -18,7 +18,7 @@ import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
-import { paradasSinNombre, resumirDia, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
+import { huboTrafico, minutosHabituales, paradasSinNombre, resumirDia, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
 import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
 import { conceptoMedido } from './ingesta.js';
 
@@ -253,21 +253,44 @@ export const rutasUbicacion = new Hono<Env>()
       )).map((x) => new Date(x.inicio).getTime()),
     );
     const lugaresP = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
+    // Los viajes de las últimas semanas, para saber cuánto tarda habitualmente cada recorrido.
+    const antes = await filas<{ instante: string; lat: number; lon: number; fecha: string }>(
+      c.var.db,
+      sql`SELECT instante, lat, lon, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos
+          WHERE persona_id = ${p.id} AND fecha < ${dia} AND fecha >= ${dia}::date - 45`,
+    );
+    const porDia = new Map<string, Punto[]>();
+    for (const x of antes) porDia.set(x.fecha, [...(porDia.get(x.fecha) ?? []), { instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon }]);
+    const anteriores = [...porDia.values()].flatMap((l) => viajesDelDia(l, lugaresP));
     const r: ViajeDelDia[] = viajesDelDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), lugaresP).map((v) => {
       const minutos = Math.max(1, Math.round((v.fin - v.inicio) / 60000));
       const km = Math.round(v.metros / 100) / 10;
+      const habitual = minutosHabituales(v, anteriores);
+      const trafico = huboTrafico(v, habitual);
       const g = adivinarViaje(km, minutos);
+      const lento = v.lento_min ?? 0;
+      // Lo que vio Patty, en palabras: el tráfico va antes que la velocidad.
+      const pista = trafico
+        ? lento >= 8
+          ? traducir(c.var.idioma, 'Unos {n} min a paso lento: tráfico', { n: lento })
+          : traducir(c.var.idioma, '{n} min más que lo habitual ({h} min): tráfico', { n: minutos - habitual!, h: habitual! })
+        : habitual !== null
+          ? traducir(c.var.idioma, '{pista}, como siempre ({h} min)', { pista: traducir(c.var.idioma, g.pista), h: habitual })
+          : traducir(c.var.idioma, g.pista);
       return {
         inicio: new Date(v.inicio).toISOString(),
         fin: new Date(v.fin).toISOString(),
         minutos,
         km,
         velocidad: Math.round(km / (minutos / 60)),
-        modo: g.modo,
-        pista: traducir(c.var.idioma, g.pista),
-        pesado: g.pesado,
+        modo: g.modo === 'caminando' || g.modo === 'bici' ? g.modo : trafico ? 'auto' : g.modo,
+        pista,
+        pesado: g.pesado || trafico,
         contado: [...contados].some((t) => Math.abs(t - v.inicio) < 60000),
         camino: v.camino ?? [],
+        lento_min: lento,
+        habitual_min: habitual,
+        trafico,
       };
     });
     return c.json(r);
@@ -290,10 +313,24 @@ export const rutasUbicacion = new Hono<Env>()
         WHERE c.id = r.concepto_id AND k.clave = 'viaje' AND r.persona_id = ${p.id} AND r.borrado IS NULL
           AND abs(extract(epoch FROM r.inicio - ${inicio.toISOString()}::timestamptz)) < 60`);
       const viaje = (await obtenerOCrearConcepto(tx, { nombre: MODOS_VIAJE[modo].concepto, categoriaId: cat, tipoValor: 'duracion', unidad: 'min' })).concepto;
-      const nuevos = [{ concepto_id: viaje.id, valor: minutos, unidad: 'min', intensidad: como.intensidad, nota: km ? `${String(km).replace('.', ',')} km` : null }];
+      const nuevos: Array<{ concepto_id: number; valor: number | null; unidad: string | null; intensidad: number | null; nota: string | null }> = [
+        { concepto_id: viaje.id, valor: minutos, unidad: 'min', intensidad: como.intensidad, nota: km ? `${String(km).replace('.', ',')} km` : null },
+      ];
       if (como.clave === 'pesado') {
         const pesado = (await obtenerOCrearConcepto(tx, { nombre: VIAJE_PESADO, categoriaId: cat, tipoValor: 'evento', unidad: null })).concepto;
         nuevos.push({ concepto_id: pesado.id, valor: null as unknown as number, unidad: null as unknown as string, intensidad: como.intensidad, nota: null });
+      }
+      // El tráfico que vio Patty (tramos lentos o más que lo habitual): queda aparte, para los patrones ("los días con
+      // tráfico dormís peor"), aunque la persona diga que el viaje fue tranquilo.
+      if (d.trafico === true) {
+        const conTrafico = (await obtenerOCrearConcepto(tx, { nombre: VIAJE_CON_TRAFICO, categoriaId: cat, tipoValor: 'evento', unidad: null })).concepto;
+        nuevos.push({ concepto_id: conTrafico.id, valor: null, unidad: null, intensidad: null, nota: null });
+        const habitual = Number(d.habitual_min) || 0;
+        const extra = Math.max(Math.round(Number(d.lento_min) || 0), habitual ? minutos - habitual : 0);
+        if (extra > 0) {
+          const enTrafico = (await obtenerOCrearConcepto(tx, { nombre: MINUTOS_EN_TRAFICO, categoriaId: cat, tipoValor: 'duracion', unidad: 'min' })).concepto;
+          nuevos.push({ concepto_id: enTrafico.id, valor: Math.min(extra, minutos), unidad: 'min', intensidad: null, nota: null });
+        }
       }
       for (const n of nuevos) {
         await tx.insert(registros).values({
