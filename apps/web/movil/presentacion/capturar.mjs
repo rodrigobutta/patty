@@ -154,7 +154,7 @@ const ESCENAS = {
       await captura(c, archivo('contar.webp'));
       await tocar(c, '.btn.confirmar');
       await espera(2500);
-    });
+    }, { bitrate: '2M' });
     console.log(`voz.webm: ${s.toFixed(1)} s`);
   },
   async foto(c) {
@@ -172,7 +172,7 @@ const ESCENAS = {
       await captura(c, archivo('foto.webp'));
       await tocar(c, '.btn.confirmar');
       await espera(2500);
-    });
+    }, { bitrate: '2M' });
     console.log(`foto.webm: ${s.toFixed(1)} s`);
   },
   async tocar(c) {
@@ -183,7 +183,7 @@ const ESCENAS = {
       await espera(1300);
       await tocar(c, '.carita.muy_bien');
       await espera(2800);
-    });
+    }, { bitrate: '2M' });
     console.log(`tocar.webm: ${s.toFixed(1)} s`);
   },
   async descubrir(c) {
@@ -196,7 +196,7 @@ const ESCENAS = {
         await espera(28);
       }
       await espera(1200);
-    });
+    }, { bitrate: '2M' });
     console.log(`descubrir.webm: ${s.toFixed(1)} s`);
   },
 };
