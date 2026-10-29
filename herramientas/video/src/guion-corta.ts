@@ -1,19 +1,20 @@
-// La versión corta para TikTok y Reels (unos 20 segundos): un gancho, cómo se anota y lo que descubre, todo rápido.
+// La versión corta para TikTok y Reels (unos 15 segundos): lo de todos los días, cómo se anota y lo que un día te
+// avisa, todo rápido.
 // Otra voz de mujer (public/voz/corta, `npm run voz -- corta`), un poco más acelerada. Sale como historia-corta.mp4.
 import type { Escena } from './guion';
 
 export const ESCENAS_CORTA: Escena[] = [
   {
     clave: 'gancho',
-    texto: '¿Te duele la panza y no sabés por qué?',
+    texto: 'Cada día le contás a Patty cómo va tu día.',
     pantallas: [],
-    cara: 'triste',
-    titulo: '¿Por qué?',
-    globitos: ['Me duele la panza', 'Otra vez'],
+    cara: 'feliz',
+    titulo: 'Cada día',
+    globitos: ['Lo que comés', 'Cómo dormís', 'Cómo te sentís'],
   },
   {
     clave: 'foto',
-    texto: 'Le sacás una foto a lo que comés…',
+    texto: 'Una foto al plato…',
     pantallas: [{ video: 'foto.webm', desde: 0.6, velocidad: 1.8 }],
     cara: 'feliz',
     titulo: 'Una foto',
@@ -22,7 +23,7 @@ export const ESCENAS_CORTA: Escena[] = [
   },
   {
     clave: 'tocar',
-    texto: 'contás cómo te sentís con un toque…',
+    texto: 'un toque para decir cómo estás…',
     pantallas: [{ video: 'tocar.webm', desde: 0.4, velocidad: 1.6 }],
     cara: 'feliz',
     titulo: 'Un toque',
@@ -30,7 +31,7 @@ export const ESCENAS_CORTA: Escena[] = [
   },
   {
     clave: 'patron',
-    texto: 'y Patty te avisa: frito, calor y período… al otro día, panza.',
+    texto: 'Y un día, Patty te avisa: frito, calor y período… al otro día, panza.',
     pantallas: [{ img: 'patron.webp' }],
     cara: 'espera',
     titulo: '¡Lo descubrió!',
@@ -39,7 +40,7 @@ export const ESCENAS_CORTA: Escena[] = [
   },
   {
     clave: 'final',
-    texto: 'Patty. Pedí tu invitación en patty punto today.',
+    texto: 'Patty. Descubrí qué te hace bien.',
     pantallas: [],
     cara: 'feliz',
     titulo: 'patty.today',
