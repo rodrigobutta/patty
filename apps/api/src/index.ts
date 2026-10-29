@@ -15,7 +15,7 @@ await inicializar(db);
 arrancarRecordatorios(db);
 arrancarPatronesDeNoche(db);
 // Los viajes se cuentan distinto desde la 1.20.1 (puntos cada ~150 m, sin contar los paseos): se recalculan una vez.
-void recalcularSiCambio(db, 'viajes-tramos-2').catch((e) => console.error('Recalcular ubicación:', e));
+void recalcularSiCambio(db, 'viajes-sin-saltos-3').catch((e) => console.error('Recalcular ubicación:', e));
 
 serve({ fetch: crearApp().fetch, port: config.port, hostname: config.host }, (info) => {
   console.log(`Patty funcionando en http://localhost:${info.port}`);

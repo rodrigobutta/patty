@@ -99,6 +99,24 @@ export async function recalcularTodo(tx: Tx, p: PersonaZona): Promise<void> {
   await recalcular(tx, p, dias.map((d) => d.fecha));
 }
 
+/** Más rápido que esto desde el punto anterior no es posible por tierra: es el GPS que saltó. */
+const SALTO_KMH = 300;
+/** Pasado este rato desde el anterior se acepta igual (por si el que estaba mal era el anterior). */
+const SALTO_VENTANA_MS = 30 * 60000;
+
+/**
+ * Si un punto que llega es posible: no en 0,0 (el GPS sin señal), ni tan lejos del anterior que habría que haber ido
+ * a más de 300 km/h para llegar (los saltos a otra ciudad o a 8.000 km). Esos no se guardan.
+ */
+function posible(x: { lat: number; lon: number; instante: Date; precision: number | null }, anterior: { lat: number; lon: number } | null, anteriorT: number | null): boolean {
+  if (Math.abs(x.lat) < 0.01 && Math.abs(x.lon) < 0.01) return false;
+  if (x.precision !== null && x.precision > 2000) return false;
+  if (!anterior || anteriorT === null) return true;
+  const ms = x.instante.getTime() - anteriorT;
+  if (ms > SALTO_VENTANA_MS || ms <= 0) return true;
+  return distanciaMetros(anterior, x) / 1000 / (ms / 3600000) <= SALTO_KMH;
+}
+
 /**
  * Guarda los puntos que valen la pena (ver `puntoNuevo`) y recalcula sus días. Devuelve cuántos guardó y en qué lugar
  * está el último punto recibido.
@@ -133,10 +151,13 @@ export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): P
   );
   let anterior = previo ? { lat: previo.lat, lon: previo.lon, dia: diaDePatty(new Date(previo.instante), p.zona_horaria) } : null;
   const nuevos: Array<typeof puntos.$inferInsert> = [];
+  let anteriorT = previo ? new Date(previo.instante).getTime() : null;
   for (const x of recibidos) {
+    if (!posible(x, anterior, anteriorT)) continue;
     if (!puntoNuevo(anterior, x, ls)) continue;
     nuevos.push({ persona_id: p.id, instante: x.instante.toISOString(), fecha: x.dia, lat: x.lat, lon: x.lon, precision_m: x.precision });
     anterior = x;
+    anteriorT = x.instante.getTime();
   }
   const guardados = nuevos.length ? await tx.insert(puntos).values(nuevos).onConflictDoNothing().returning({ fecha: puntos.fecha }) : [];
   await recalcular(tx, p, [...new Set(guardados.map((g) => g.fecha))]);

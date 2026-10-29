@@ -52,6 +52,25 @@ describe('qué puntos se guardan', () => {
   });
 });
 
+describe('puntos imposibles', () => {
+  afterAll(() => cerrarDb());
+  it('no se guardan los saltos del GPS (8.000 km en un minuto) ni los 0,0', async () => {
+    const { ana, personaId } = await conAdmin();
+    const t = (min: number) => new Date(Date.now() - 3600000 + min * 60000).toISOString();
+    const r = await ana.post('/api/ubicacion', {
+      persona_id: personaId,
+      puntos: [
+        { lat: -34.6, lon: -58.4, instante: t(0) },
+        { lat: 29.73, lon: -98.5, instante: t(1) },
+        { lat: 0, lon: 0, instante: t(2) },
+        { lat: -34.61, lon: -58.4, instante: t(5) },
+      ],
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.guardados).toBe(2);
+  });
+});
+
 describe('puntos que manda la app nativa', () => {
   it('lleva el formato del plugin de ubicación al de Patty', async () => {
     const { puntoDeLaApp } = await import('../src/routes/ingesta.js');
