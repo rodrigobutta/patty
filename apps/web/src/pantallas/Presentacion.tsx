@@ -177,13 +177,11 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
     medir(conSesion ? 'volver_a_patty' : 'empezar', { desde: donde });
     alEntrar();
   };
-  // Quien no tiene cuenta baja la app de Android directo de acá; los de iPhone dejan sus datos (abajo de todo).
-  const entrar = (donde: string) =>
-    conSesion ? (
-      <button className="btn primario pres-cta" onClick={ir(donde)}>{t('Volver a Patty')}</button>
-    ) : (
-      <a className="btn primario pres-cta" href={android} onClick={() => medir('bajar_android', { desde: donde })}>{t('Bajar para Android')}</a>
-    );
+  // El botón principal baja la app de Android directo de acá (para volver a Patty está el botón de la barra); los de
+  // iPhone dejan sus datos (abajo de todo).
+  const entrar = (donde: string) => (
+    <a className="btn primario pres-cta" href={android} onClick={() => medir('bajar_android', { desde: donde })}>{t('Bajar para Android')}</a>
+  );
   const finalRef = useVista('final');
   const consultaRef = useVista('consultar');
   const conexionesRef = useVista('conexiones');
@@ -367,7 +365,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
             <p className="pres-bajada">{t('Patty no diagnostica nada: te muestra relaciones en tus datos, para que las veas vos y, si querés, las charles con un profesional.')}</p>
             <div className="pres-botones">
               {entrar('final')}
-              {android ? <a className="btn" href={android} onClick={() => medir('bajar_android')}>{t('Bajar la app de Android')}</a> : null}
+              <button className="btn" onClick={ir('final')}>{t('Volver a Patty')}</button>
             </div>
           </>
         ) : (
