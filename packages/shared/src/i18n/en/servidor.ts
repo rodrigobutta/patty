@@ -11,6 +11,7 @@ export const SERVIDOR: Record<string, string> = {
   'El pedido tiene que ser un objeto JSON.': 'The request must be a JSON object.',
   '{campo}: tiene que ser un número.': '{campo}: must be a number.',
   '{campo}: fecha inválida.': '{campo}: invalid date.',
+  'El rato tiene que ser de hasta 24 horas.': 'The time span has to be 24 hours at most.',
   '{campo}: ubicación inválida.': '{campo}: invalid location.',
   'Rango de fechas inválido.': 'Invalid date range.',
 

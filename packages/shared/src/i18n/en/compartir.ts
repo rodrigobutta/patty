@@ -1,5 +1,5 @@
-// Compartir: las imágenes para compartir (un patrón, la racha, la semana, un nivel), la hoja con la vista previa y la
-// invitación con el link a patty.today.
+// Compartir: las imágenes para compartir (un patrón, la racha, la semana, un nivel, una actividad, una noche), la hoja
+// con la vista previa y la invitación con el link a patty.today.
 export const COMPARTIR: Record<string, string> = {
   // La hoja
   Compartir: 'Share',
@@ -12,6 +12,9 @@ export const COMPARTIR: Record<string, string> = {
   'No se pudo compartir. Probá de nuevo.': "Couldn't share. Try again.",
   'Listo: la imagen quedó en tus descargas.': 'Done: the image is in your downloads.',
   'Para compartir imágenes hace falta la última versión de la app.': 'Sharing images needs the latest version of the app.',
+  'Armando…': 'Getting it ready…',
+  'Mostrar el mapa de por dónde fui': 'Show the map of where I went',
+  'Sumar lo que dijo Patty de la noche': 'Include what Patty said about the night',
   // La invitación
   'Invitá a alguien': 'Invite someone',
   '💌 Invitá a alguien a usar Patty': '💌 Invite someone to use Patty',
@@ -32,4 +35,11 @@ export const COMPARTIR: Record<string, string> = {
   'Mi semana con Patty': 'My week with Patty',
   'Subí de nivel en Patty': 'I leveled up on Patty',
   'Lo que encuentra Patty es cada vez más confiable': 'What Patty finds is more and more reliable',
+  // Una actividad o un viaje, y una noche
+  duración: 'duration',
+  recorridos: 'covered',
+  'de viaje': 'traveled',
+  promedio: 'average',
+  'Mi noche con Patty': 'My night with Patty',
+  calidad: 'quality',
 };

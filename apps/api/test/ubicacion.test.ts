@@ -319,6 +319,21 @@ describe('recorrido del día', () => {
     expect(r.antes).toMatchObject({ lat: -34.6 });
     expect(r.despues).toBeNull();
   });
+
+  it('el camino de un rato (para la imagen de una actividad): solo esos puntos, sin saltos, con los km', async () => {
+    const { ana, personaId } = await conAdmin();
+    const puntos = [
+      { lat: -34.6, lon: -58.4, instante: '2026-10-27T12:00:00.000Z' },
+      { lat: -34.61, lon: -58.4, instante: '2026-10-27T12:10:00.000Z' },
+      { lat: -34.62, lon: -58.4, instante: '2026-10-27T12:20:00.000Z' },
+      { lat: -34.7, lon: -58.4, instante: '2026-10-27T15:00:00.000Z' }, // ya fuera del rato
+    ];
+    await ana.post('/api/ubicacion', { persona_id: personaId, puntos });
+    const r = await ana.get(`/api/ubicacion/camino?persona=${personaId}&desde=2026-10-27T11:55:00.000Z&hasta=2026-10-27T12:30:00.000Z`);
+    expect(r.body.camino.map((x: any) => x.lat)).toEqual([-34.6, -34.61, -34.62]);
+    expect(r.body.km).toBeCloseTo(2.2, 1);
+    expect((await ana.get(`/api/ubicacion/camino?persona=${personaId}&desde=2026-10-27T12:30:00.000Z&hasta=2026-10-27T11:00:00.000Z`)).status).toBe(400);
+  });
 });
 
 describe('contar un viaje', () => {

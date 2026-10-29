@@ -2,6 +2,7 @@
 //   POST   /api/ubicacion            { persona_id, puntos: [{ lat, lon, instante?, precision? }] }   (la web, con sesión)
 //   POST   /api/ingesta/ubicacion    { lat, lon, instante? }   con el token de una fuente (un atajo del teléfono)
 //   GET    /api/ubicacion/dia?persona=1&fecha=2026-10-24      viajes, km y estadías del día
+//   GET    /api/ubicacion/camino?persona=1&desde=…&hasta=…    por dónde anduvo en ese rato (para compartir)
 //   DELETE /api/ubicacion?persona=1                           borra todos los puntos y lo calculado con ellos
 //   GET/POST /api/ubicacion/lugares, PUT/DELETE /api/ubicacion/lugares/:id
 // De los puntos se guarda solo uno cada vez que la persona se movió más de 1 km o entró o salió de un lugar (el
@@ -18,7 +19,7 @@ import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
-import { huboTrafico, minutosHabituales, paradasSinNombre, resumirDia, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
+import { huboTrafico, minutosHabituales, paradasSinNombre, resumirDia, sinSaltos, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
 import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
 import { conceptoMedido } from './ingesta.js';
 
@@ -258,6 +259,24 @@ export const rutasUbicacion = new Hono<Env>()
       viajes: r.viajes,
       km: r.km,
     });
+  })
+  .get('/camino', async (c) => {
+    // ?persona=1&desde=ISO&hasta=ISO: por dónde anduvo en ese rato (una actividad o un viaje anotados), sin los saltos
+    // del GPS, y cuántos km fueron. Para el mapita de la imagen para compartir. Hasta 24 horas.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const desde = leerInstante(c.req.query('desde'), 'desde');
+    const hasta = leerInstante(c.req.query('hasta'), 'hasta');
+    if (hasta <= desde || hasta.getTime() - desde.getTime() > 24 * 3600000) throw new ErrorApi('El rato tiene que ser de hasta 24 horas.');
+    const ps = await filas<{ instante: string; lat: number; lon: number }>(
+      c.var.db,
+      sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${desde.toISOString()} AND ${hasta.toISOString()} ORDER BY instante`,
+    );
+    const limpio = sinSaltos(ps.map((x) => ({ lat: x.lat, lon: x.lon, instante: Date.parse(x.instante) })));
+    const metros = limpio.slice(1).reduce((s, q, i) => s + distanciaMetros(limpio[i], q), 0);
+    // Con muchísimos puntos alcanza con uno de cada tanto (y siempre el último) para dibujarlo.
+    const paso = Math.max(1, Math.ceil(limpio.length / 400));
+    const camino = limpio.filter((_, i) => i % paso === 0 || i === limpio.length - 1).map(({ lat, lon }) => ({ lat, lon }));
+    return c.json({ camino, km: Math.round(metros / 100) / 10 });
   })
   .get('/viajes', async (c) => {
     // ?persona=1&fecha=AAAA-MM-DD: los viajes del día con lo que se adivina (en qué fue, si parece pesado) y si ya se
