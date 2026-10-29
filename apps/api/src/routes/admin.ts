@@ -15,36 +15,13 @@ import { compararVersiones, limitesDe, PLANES, USOS_IA, type VersionApp } from '
 import { config } from '../config.js';
 import type { Aviso } from '../push/firebase.js';
 import { mandarAviso } from '../push/mandar.js';
+import { avisarA, avisoVersion, desactualizados, guardarVersionApp } from '../push/versionApp.js';
 import { hayEnvio } from '../push/firebase.js';
 
 /** Los registros de los últimos 14 días, por día, para la rayita de actividad. */
 const ULTIMOS_DIAS = 14;
 
 /** Manda un aviso a los teléfonos de esos usuarios (o de todos). Devuelve a cuántos llegó. */
-async function avisarA(db: Env['Variables']['db'], usuarios: number[] | null, aviso: Aviso): Promise<{ enviados: number; telefonos: number }> {
-  if (!hayEnvio()) throw new ErrorApi('El servidor todavía no tiene Firebase configurado.');
-  const lista = await filas<{ id: number; token: string }>(
-    db,
-    sql`SELECT d.id, d.token FROM dispositivos d JOIN usuarios u ON u.id = d.usuario_id AND u.activo
-        WHERE ${usuarios === null} OR d.usuario_id IN (${sql.join((usuarios?.length ? usuarios : [0]).map((x) => sql`${x}`), sql`, `)})`,
-  );
-  let enviados = 0;
-  for (const d of lista) {
-    if ((await mandarAviso(db, d, aviso)) === 'ok') enviados++;
-  }
-  return { enviados, telefonos: lista.length };
-}
-
-/** Los usuarios con la app de Android más vieja que `version` (o tan vieja que no la cuenta). */
-async function desactualizados(db: Env['Variables']['db'], version: string): Promise<number[]> {
-  const l = await filas<{ usuario_id: number; app: string | null }>(
-    db,
-    sql`SELECT DISTINCT ON (i.usuario_id) i.usuario_id, i.estado->'version'->>'app' AS app FROM instalaciones i
-        JOIN usuarios u ON u.id = i.usuario_id AND u.activo WHERE i.plataforma = 'android' ORDER BY i.usuario_id, i.actualizado DESC`,
-  );
-  return l.filter((x) => !x.app || compararVersiones(x.app, version) < 0).map((x) => x.usuario_id);
-}
-
 export const rutasAdmin = new Hono<Env>()
   .use('*', async (c, next) => {
     exigirRol(c.var.usuario, 'admin');
@@ -375,16 +352,10 @@ export const rutasAdmin = new Hono<Env>()
     const url = texto(d.url);
     if (!/^\d+\.\d+\.\d+$/.test(version)) throw new ErrorApi('La versión tiene que ser como 1.4.0.');
     if (!/^https:\/\//.test(url)) throw new ErrorApi('El link tiene que empezar con https://');
-    const valor: VersionApp = { version, url };
-    await c.var.db.execute(sql`INSERT INTO ajustes (clave, valor) VALUES ('version_app', ${JSON.stringify(valor)}::jsonb)
-      ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, creado = now()`);
+    await guardarVersionApp(c.var.db, { version, url });
     const viejos = await desactualizados(c.var.db, version);
     const r = d.avisar && viejos.length
-      ? await avisarA(c.var.db, viejos, {
-          titulo: '📲 Hay una versión nueva de Patty',
-          cuerpo: `Ya está la ${version}. Tocá para bajarla e instalarla.`,
-          datos: { tipo: 'version', url, cara: 'feliz' },
-        })
+      ? await avisarA(c.var.db, viejos, avisoVersion(version, url))
       : { enviados: 0, telefonos: 0 };
     return c.json({ desactualizados: viejos.length, ...r });
   });

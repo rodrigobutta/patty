@@ -7,6 +7,7 @@ import { aplicarMigraciones } from './db/migrar.js';
 import { inicializar } from './inicializar.js';
 import { arrancarPatronesDeNoche } from './patrones/noche.js';
 import { arrancarRecordatorios } from './push/recordatorios.js';
+import { arrancarVersionApp } from './push/versionApp.js';
 import { recalcularSiCambio } from './routes/ubicacion.js';
 
 const db = obtenerDb();
@@ -14,6 +15,7 @@ await aplicarMigraciones(db);
 await inicializar(db);
 arrancarRecordatorios(db);
 arrancarPatronesDeNoche(db);
+arrancarVersionApp(db);
 // Los viajes se cuentan distinto desde la 1.20.1 (puntos cada ~150 m, sin contar los paseos): se recalculan una vez.
 void recalcularSiCambio(db, 'viajes-sin-saltos-3').catch((e) => console.error('Recalcular ubicación:', e));
 
