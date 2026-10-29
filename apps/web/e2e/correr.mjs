@@ -145,7 +145,8 @@ for (const [nombre, prueba] of Object.entries(PRUEBAS)) {
   const c = await abrirChrome(puerto++);
   const inicio = Date.now();
   try {
-    await prepararPagina(c, { base: BASE, token: 'demo-sofia', ahora: new Date(), escala: 1, respuestas: RESPUESTAS });
+    // A la noche la hora queda fija a las 20:30: más tarde el búho y el Día muestran otras cosas (cómo dormir, el resumen).
+    await prepararPagina(c, { base: BASE, token: 'demo-sofia', ahora: new Date(Math.min(Date.now(), Date.parse(en('20:30')))), escala: 1, respuestas: RESPUESTAS });
     await c.enviar('Page.addScriptToEvaluateOnNewDocument', { source: DICTADO });
     await ir(c, BASE + '/', 4000);
     await prueba(c);
