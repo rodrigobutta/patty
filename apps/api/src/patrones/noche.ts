@@ -62,7 +62,7 @@ export async function analizarDeNoche(db: Db, ahora = new Date()): Promise<numbe
     if (!enHora(ahora, p.zona_horaria, HORA_ANALISIS)) continue;
     // A las 4 todavía es "ayer" para Patty: el análisis llega hasta el último día completo.
     const hasta = diaDePatty(ahora, p.zona_horaria);
-    const desde = sumarDias(hasta, -179);
+    const desde = sumarDias(hasta, -364);
     const dias = await una<{ n: number }>(
       db,
       sql`SELECT count(DISTINCT fecha)::int AS n FROM registros WHERE persona_id = ${p.id} AND borrado IS NULL AND fecha BETWEEN ${desde} AND ${hasta}`,

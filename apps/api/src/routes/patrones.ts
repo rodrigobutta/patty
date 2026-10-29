@@ -18,7 +18,7 @@ export const rutasPatrones = new Hono<Env>()
     const db = c.var.db;
     const p = await persona(db, c.var.usuario, Number(d.persona_id), true);
     const hasta = esFecha(d.hasta) ? d.hasta : diaDePatty(new Date(), p.zona_horaria);
-    const desde = esFecha(d.desde) ? d.desde : sumarDias(hasta, -179);
+    const desde = esFecha(d.desde) ? d.desde : sumarDias(hasta, -364);
     if (desde > hasta || desde < sumarDias(hasta, -730)) throw new ErrorApi('El período tiene que ser de hasta dos años.');
 
     if (d.ia !== false) await controlarLimite(db, c.var.usuario, 'analisis');
@@ -34,7 +34,7 @@ export const rutasPatrones = new Hono<Env>()
       sql`SELECT count(DISTINCT r.fecha)::int AS dias,
                  count(DISTINCT r.fecha) FILTER (WHERE k.rol = 'efecto')::int AS dias_efecto
           FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
-          WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.fecha BETWEEN ${sumarDias(hasta, -179)} AND ${hasta}`,
+          WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.fecha BETWEEN ${sumarDias(hasta, -364)} AND ${hasta}`,
     );
     const res: Progreso = { dias: r?.dias ?? 0, dias_efecto: r?.dias_efecto ?? 0, minimo: DIAS_MINIMOS, minimo_efecto: 7 };
     return c.json(res);

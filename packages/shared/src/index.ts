@@ -697,8 +697,12 @@ export interface ParadaSinNombre {
 
 /** confirmado: le sirvió; obvio: ya lo sabía; descartado: no tiene sentido. Los dos últimos se apartan y no vuelven a avisarse. */
 export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'obvio' | 'descartado';
-/** presente = ese día hubo; alto / bajo = ese día el valor estuvo por encima / debajo de lo habitual de la persona */
-export type Modo = 'presente' | 'alto' | 'bajo';
+/**
+ * presente = ese día hubo; alto / bajo = ese día el valor estuvo por encima / debajo de lo habitual de la persona;
+ * alto_semana / bajo_semana = la semana que termina ese día (el promedio de los últimos 7 días) estuvo por encima /
+ * debajo de lo habitual ("una semana durmiendo menos").
+ */
+export type Modo = 'presente' | 'alto' | 'bajo' | 'alto_semana' | 'bajo_semana';
 
 /** "Tomate", "Menos energía", "Me acosté tarde": cómo se nombra un rasgo de un día (alto y bajo, respecto de lo habitual). */
 /** El ánimo y el clima dichos como se dicen: "Menos cómo me sentí en el día" no se entiende; "Un día peor", sí. */
@@ -710,6 +714,10 @@ const NOMBRES_ANIMO: Record<string, { alto: [string, string]; bajo: [string, str
 };
 
 export function nombreRasgo(nombre: string, tipo: TipoValor, modo: Modo, idioma: Idioma = 'es'): string {
+  if (modo === 'alto_semana' || modo === 'bajo_semana') {
+    const base = nombreRasgo(nombre, tipo, modo === 'alto_semana' ? 'alto' : 'bajo', idioma);
+    return idioma === 'en' ? `A week of ${base.charAt(0).toLowerCase()}${base.slice(1)}` : `Una semana con ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+  }
   const animo = modo !== 'presente' ? NOMBRES_ANIMO[nombre]?.[modo] : undefined;
   if (animo) return animo[idioma === 'en' ? 1 : 0];
   if (idioma === 'en') {
@@ -1467,4 +1475,53 @@ export function adivinarViaje(km: number, minutos: number): { modo: ModoViaje; p
       : { modo: 'bici', pista: 'A velocidad de bici (o con tráfico)', pesado: minutos >= 45 };
   if (v < 40) return { modo: 'auto', pista: 'Velocidad de ciudad', pesado: minutos >= 50 };
   return { modo: 'auto', pista: 'Rápido: ruta, autopista o tren', pesado: minutos >= 90 };
+}
+
+// ---------- Fechas para los patrones ----------
+
+/** Los días de la semana como los nombra Patty (0: domingo, como Date.getUTCDay). */
+export const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+/** El domingo de Pascua de un año (algoritmo de Meeus/Butcher), AAAA-MM-DD. */
+export function pascua(anio: number): string {
+  const a = anio % 19;
+  const b = Math.floor(anio / 100);
+  const c = anio % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31);
+  const dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+/**
+ * Los rasgos de una fecha que no hace falta anotar (para buscar patrones): el día de la semana, el fin de semana, los
+ * feriados nacionales de Argentina (los fijos, Carnaval y Semana Santa), Navidad, las fiestas de fin de año y el
+ * principio y el fin de mes. Los feriados que se mueven de un año a otro (puentes) no se cuentan.
+ */
+export function rasgosDeFecha(fecha: string): string[] {
+  const d = new Date(`${fecha}T12:00:00Z`);
+  const anio = d.getUTCFullYear();
+  const md = fecha.slice(5);
+  const dia = d.getUTCDate();
+  const r = [DIAS_SEMANA[d.getUTCDay()]];
+  if (d.getUTCDay() === 0 || d.getUTCDay() === 6) r.push('Fin de semana');
+  const sumar = (f: string, n: number) => new Date(Date.parse(`${f}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  const p = pascua(anio);
+  const fijos = ['01-01', '03-24', '04-02', '05-01', '05-25', '06-20', '07-09', '08-17', '10-12', '11-20', '12-08', '12-25'];
+  const moviles = [sumar(p, -48), sumar(p, -47), sumar(p, -3), sumar(p, -2)]; // Carnaval (lunes y martes), jueves y viernes santo
+  if (fijos.includes(md) || moviles.includes(fecha)) r.push('Feriado');
+  if (md === '12-24' || md === '12-25') r.push('Navidad');
+  if (md >= '12-24' || md === '01-01') r.push('Fiestas de fin de año');
+  if (dia <= 5) r.push('Principio de mes');
+  const ultimo = new Date(Date.UTC(anio, d.getUTCMonth() + 1, 0)).getUTCDate();
+  if (dia > ultimo - 5) r.push('Fin de mes');
+  return r;
 }

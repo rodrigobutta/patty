@@ -108,6 +108,8 @@ interface Rasgo {
   universo: Uint8Array;
   /** por índice de día: ms de la primera vez (para el orden dentro del mismo día) */
   primera: Float64Array;
+  /** Solo puede ser causa (las tendencias de la semana). */
+  soloCausa?: boolean;
 }
 
 /** Las intensidades anotadas al menos en esta proporción de los días activos se tratan como un puntaje diario. */
@@ -207,6 +209,33 @@ function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, 
       const sinHora = new Float64Array(n).fill(Number.NaN);
       rasgos.push({ concepto, modo: 'alto', esta: alto, universo, primera: sinHora });
       rasgos.push({ concepto, modo: 'bajo', esta: bajo, universo, primera: sinHora });
+      // La semana: el promedio de los últimos 7 días (con al menos 4 con valor), por encima o por debajo de lo habitual.
+      // Solo como causa ("una semana durmiendo menos → dolor de cabeza"): como efecto, una semana se parece demasiado a
+      // la anterior y saldría todo relacionado con todo.
+      if (concepto.rol !== 'efecto' && conValor.length >= 14) {
+        const porDia = new Map(conValor.map((f, j) => [diasEntre(desde, f.fecha), valores[j]]));
+        const semana = new Float64Array(n).fill(Number.NaN);
+        for (let d = 0; d < n; d++) {
+          const l: number[] = [];
+          for (let x = Math.max(0, d - 6); x <= d; x++) if (porDia.has(x)) l.push(porDia.get(x)!);
+          if (l.length >= 4) semana[d] = l.reduce((a, b) => a + b, 0) / l.length;
+        }
+        const conSemana = [...semana].filter((v) => !Number.isNaN(v));
+        if (conSemana.length >= 10) {
+          const medSem = mediana(conSemana);
+          const uSem = new Uint8Array(n);
+          const altoSem = new Uint8Array(n);
+          const bajoSem = new Uint8Array(n);
+          for (let d = 0; d < n; d++) {
+            if (Number.isNaN(semana[d])) continue;
+            uSem[d] = 1;
+            if (semana[d] > medSem) altoSem[d] = 1;
+            else if (semana[d] < medSem) bajoSem[d] = 1;
+          }
+          rasgos.push({ concepto, modo: 'alto_semana', esta: altoSem, universo: uSem, primera: sinHora, soloCausa: true });
+          rasgos.push({ concepto, modo: 'bajo_semana', esta: bajoSem, universo: uSem, primera: sinHora, soloCausa: true });
+        }
+      }
     } else {
       const esta = new Uint8Array(n);
       const primera = new Float64Array(n).fill(Number.NaN);
@@ -245,7 +274,7 @@ export function buscarPatrones(
   if (diasActivos < DIAS_MINIMOS) return { candidatos: [], pares_evaluados: 0, dias: n, dias_activos: diasActivos };
 
   const causas = rasgos.filter((r) => r.concepto.rol !== 'efecto');
-  const efectos = rasgos.filter((r) => r.concepto.rol !== 'causa');
+  const efectos = rasgos.filter((r) => r.concepto.rol !== 'causa' && !r.soloCausa);
   const crudos: Array<Omit<Candidato, 'q_valor' | 'puntaje'>> = [];
   let pares = 0;
   /** Por efecto y desfase, las causas que muestran algo de relación (para probar combinaciones). */
@@ -303,7 +332,8 @@ export function buscarPatrones(
         if (!t) continue;
         pares++;
         // Se combinan causas solo para síntomas y ánimo: lo que la persona siente, que es lo que quiere entender.
-        if (t.a >= 2 && t.lift > 1.05 && (B.concepto.rol === 'efecto' || B.concepto.tipo_valor === 'intensidad')) {
+        // Las tendencias de la semana no se combinan: se parecen mucho entre sí y sumarían casualidades.
+        if (t.a >= 2 && t.lift > 1.05 && !A.soloCausa && (B.concepto.rol === 'efecto' || B.concepto.tipo_valor === 'intensidad')) {
           const clave = `${efectos.indexOf(B)}|${k}`;
           let l = relacionadas.get(clave);
           if (!l) relacionadas.set(clave, (l = []));
@@ -376,10 +406,11 @@ export function buscarPatrones(
 
   // De cada par causa → efecto queda el mejor desfase (si no, "tomate → dolor" aparecería con 1, 2 y 3 días).
   // Y "acostarse tarde → energía baja" es lo mismo que "acostarse temprano → energía alta": queda uno solo.
-  const espejo = (m: Modo): Modo => (m === 'alto' ? 'bajo' : m === 'bajo' ? 'alto' : m);
+  const espejo = (m: Modo): Modo =>
+    m === 'alto' ? 'bajo' : m === 'bajo' ? 'alto' : m === 'alto_semana' ? 'bajo_semana' : m === 'bajo_semana' ? 'alto_semana' : m;
   const mejor = new Map<string, Candidato>();
   for (const x of todos) {
-    const [cm, em] = x.causa_modo === 'bajo' && !x.causas_extra.length ? [espejo(x.causa_modo), espejo(x.efecto_modo)] : [x.causa_modo, x.efecto_modo];
+    const [cm, em] = (x.causa_modo === 'bajo' || x.causa_modo === 'bajo_semana') && !x.causas_extra.length ? [espejo(x.causa_modo), espejo(x.efecto_modo)] : [x.causa_modo, x.efecto_modo];
     const clave = `${claveCausas(x)}|${cm}>${x.efecto_id}${em}`;
     const y = mejor.get(clave);
     if (!y || x.puntaje > y.puntaje) mejor.set(clave, x);
@@ -387,7 +418,14 @@ export function buscarPatrones(
   // Una combinación sobra si una de sus partes sola (con cualquier desfase) ya explica lo mismo, o si es de tres y no
   // supera a una de dos con las mismas partes.
   const todosMejores = [...mejor.values()];
+  const semanal = (m: Modo) => m === 'alto_semana' || m === 'bajo_semana';
   const elegidos = todosMejores.filter((x) => {
+    // La tendencia de la semana sobra si el mismo rasgo del día ya lo explica casi igual (dormir poco anoche y dormir
+    // poco esta semana suelen ir juntos): queda solo cuando la semana dice bastante más.
+    if (semanal(x.causa_modo) && !x.causas_extra.length) {
+      const diaria = todosMejores.find((y) => !y.causas_extra.length && y.causa_id === x.causa_id && !semanal(y.causa_modo) && y.efecto_id === x.efecto_id && y.efecto_modo === x.efecto_modo);
+      return !diaria || x.lift > diaria.lift * MEJORA_COMBINADA;
+    }
     if (!x.causas_extra.length) return true;
     const mias = partes(x);
     return !todosMejores.some(

@@ -2,7 +2,7 @@
 // duración promedio, la próxima, la ovulación y los días fértiles (estimados), y qué síntomas aparecen en cada fase.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, estacionDe, FASES_CICLO, fasesPorDia, MENSTRUACION, PREMENSTRUAL, resumenCiclo, type FaseCiclo, type ResumenCiclo, type RolCategoria } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, ESTACIONES, rasgosDeFecha, estacionDe, FASES_CICLO, fasesPorDia, MENSTRUACION, PREMENSTRUAL, resumenCiclo, type FaseCiclo, type ResumenCiclo, type RolCategoria } from 'shared';
 import { filas, type Tx } from '../db/client.js';
 import { persona } from '../lib/acceso.js';
 import { diaDePatty, sumarDias } from '../lib/fechas.js';
@@ -110,8 +110,10 @@ export const rutasCiclo = new Hono<Env>().get('/', async (c) => {
 
 /**
  * Para los patrones: rasgos del calendario que vienen solos, sin anotar nada. La estación de cada día (en la categoría
- * Clima: "en invierno te duele más la cabeza") si el período abarca más de una, y la fase del ciclo de cada día (con
- * los días premenstruales aparte) si hay menstruaciones anotadas.
+ * Clima: "en invierno te duele más la cabeza") si el período abarca más de una, la fase del ciclo de cada día (con
+ * los días premenstruales aparte) si hay menstruaciones anotadas, y lo de cada fecha: el día de la semana, el fin de
+ * semana, los feriados, Navidad y las fiestas, el principio y el fin de mes (ver rasgosDeFecha). Estos últimos van en
+ * "Otro" y solo como causa ("los domingos estás más bajón"): nunca son el efecto.
  */
 export async function rasgosDelCalendario(
   tx: Tx,
@@ -129,7 +131,8 @@ export async function rasgosDelCalendario(
       const { concepto: c } = await obtenerOCrearConcepto(tx, { nombre, categoriaId: cat.id, tipoValor: 'evento', unidad: null });
       id = c.id;
       ids.set(nombre, id);
-      conceptosR.push({ id, nombre: c.nombre, tipo_valor: c.tipo_valor, rol: cat.rol });
+      // Todo lo del calendario es causa: la fase del ciclo o la estación no son algo que "pase" por otra cosa.
+      conceptosR.push({ id, nombre: c.nombre, tipo_valor: c.tipo_valor, rol: 'causa' });
     }
     return id;
   };
@@ -150,6 +153,10 @@ export async function rasgosDelCalendario(
       filasR.push(fila(fecha, await concepto(ciclo, FASES_CICLO[f.fase].concepto)));
       if (f.premenstrual) filasR.push(fila(fecha, await concepto(ciclo, PREMENSTRUAL)));
     }
+  }
+  const otro = await categoria('otro');
+  if (otro) {
+    for (const f of dias) for (const nombre of rasgosDeFecha(f)) filasR.push(fila(f, await concepto(otro, nombre)));
   }
   return { filas: filasR, conceptos: conceptosR };
 }

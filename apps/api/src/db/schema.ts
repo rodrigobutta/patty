@@ -510,12 +510,12 @@ export const hallazgos = pgTable(
       .notNull()
       .references(() => conceptos.id),
     /** presente = ese día hubo; alto / bajo = ese día el valor estuvo por encima / debajo de lo habitual de la persona */
-    causa_modo: text('causa_modo', { enum: ['presente', 'alto', 'bajo'] }).notNull().default('presente'),
+    causa_modo: text('causa_modo', { enum: ['presente', 'alto', 'bajo', 'alto_semana', 'bajo_semana'] }).notNull().default('presente'),
     /** Las otras causas de una combinación ("comida frita + fase menstrual + calor"), además de causa_id. */
-    causas_extra: jsonb('causas_extra').$type<Array<{ id: number; modo: 'presente' | 'alto' | 'bajo' }>>().notNull().default([]),
+    causas_extra: jsonb('causas_extra').$type<Array<{ id: number; modo: 'presente' | 'alto' | 'bajo' | 'alto_semana' | 'bajo_semana' }>>().notNull().default([]),
     /** Las causas de la combinación en orden fijo ("12:presente+40:alto"; vacío en un patrón simple), para no repetirla. */
     combo: text('combo').notNull().default(''),
-    efecto_modo: text('efecto_modo', { enum: ['presente', 'alto', 'bajo'] }).notNull().default('presente'),
+    efecto_modo: text('efecto_modo', { enum: ['presente', 'alto', 'bajo', 'alto_semana', 'bajo_semana'] }).notNull().default('presente'),
     desfase_dias: smallint('desfase_dias').notNull(),
     soporte: integer('soporte').notNull(),
     dias_causa: integer('dias_causa').notNull(),

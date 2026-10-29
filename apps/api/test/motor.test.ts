@@ -192,6 +192,52 @@ describe('patrones combinados', () => {
   });
 });
 
+describe('patrones de fechas y de semanas', () => {
+  it('las fechas: día de la semana, feriados (con Semana Santa), Navidad, fiestas y principio y fin de mes', async () => {
+    const { pascua, rasgosDeFecha } = await import('shared');
+    expect(pascua(2026)).toBe('2026-04-05');
+    expect(rasgosDeFecha('2026-12-25')).toEqual(expect.arrayContaining(['Viernes', 'Feriado', 'Navidad', 'Fiestas de fin de año']));
+    expect(rasgosDeFecha('2026-12-30')).toEqual(expect.arrayContaining(['Fiestas de fin de año', 'Fin de mes']));
+    expect(rasgosDeFecha('2026-04-03')).toEqual(expect.arrayContaining(['Viernes', 'Feriado', 'Principio de mes']));
+    expect(rasgosDeFecha('2026-10-25')).toEqual(['Domingo', 'Fin de semana']);
+  });
+
+  it('los domingos, peor ánimo; y una semana durmiendo poco, dolor de cabeza (aunque la noche anterior no haya sido corta)', () => {
+    const r = azar(5);
+    const conceptos: ConceptoInfo[] = [
+      { id: 1, nombre: 'Domingo', tipo_valor: 'evento', rol: 'causa' },
+      { id: 2, nombre: 'Horas de sueño', tipo_valor: 'medida', rol: 'ambos' },
+      { id: 3, nombre: 'Café', tipo_valor: 'evento', rol: 'causa' },
+      { id: 10, nombre: 'Bajón', tipo_valor: 'evento', rol: 'efecto' },
+      { id: 11, nombre: 'Dolor de cabeza', tipo_valor: 'evento', rol: 'efecto' },
+    ];
+    const filas: FilaDiaria[] = [];
+    const dias = 140;
+    const sueno: number[] = [];
+    for (let i = 0; i < dias; i++) {
+      const dia = sumarDias(DESDE, i);
+      const domingo = new Date(`${dia}T12:00:00Z`).getUTCDay() === 0;
+      const ev = (id: number) => filas.push({ fecha: dia, concepto_id: id, veces: 1, suma: null, promedio: null, intensidad: null, primera: Date.parse(`${dia}T20:00:00Z`) });
+      if (domingo) filas.push({ fecha: dia, concepto_id: 1, veces: 1, suma: null, promedio: null, intensidad: null, primera: null, automatica: true });
+      if (r() < 0.6) ev(3);
+      if (r() < (domingo ? 0.85 : 0.08)) ev(10);
+      // Rachas de semanas durmiendo poco (de a 2 semanas), con noches sueltas que no cambian nada.
+      const racha = Math.floor(i / 14) % 3 === 1;
+      sueno[i] = (racha ? 5.5 : 7.5) + (r() - 0.5) * 6; // noche a noche varía mucho: lo que cuenta es la semana
+      filas.push({ fecha: dia, concepto_id: 2, veces: 1, suma: sueno[i], promedio: sueno[i], intensidad: null, primera: null, automatica: true });
+      const ultimos = sueno.slice(Math.max(0, i - 6), i + 1);
+      const semanaCorta = ultimos.reduce((a, b) => a + b, 0) / ultimos.length < 6.5;
+      if (r() < (semanaCorta ? 0.5 : 0.04)) ev(11);
+    }
+    const res = buscarPatrones(filas, conceptos, DESDE, sumarDias(DESDE, dias - 1));
+    expect(res.candidatos.some((x) => x.causa_id === 1 && x.efecto_id === 10 && x.desfase_dias === 0)).toBe(true);
+    const semana = res.candidatos.find((x) => x.causa_id === 2 && x.efecto_id === 11 && x.causa_modo === 'bajo_semana');
+    expect(semana).toBeTruthy();
+    // La semana no aparece como efecto.
+    expect(res.candidatos.some((x) => x.efecto_modo === 'alto_semana' || x.efecto_modo === 'bajo_semana')).toBe(false);
+  });
+});
+
 describe('nombres de los rasgos', () => {
   it('presente, horas y medidas', async () => {
     const { nombreRasgo } = await import('shared');

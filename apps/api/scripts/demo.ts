@@ -69,8 +69,9 @@ const medClima: unknown[] = [];
 const caminatas: Array<{ fecha: string; caminatas: Array<{ inicio: string; fin: string; pasos: number }> }> = [];
 const etapas: Array<{ noche: string; etapas: Array<{ inicio: string; fin: string; etapa: string }> }> = [];
 
-// Tres períodos de 5 días; el número es qué día del período es (0 a 4).
-const menstruacion = new Map([-69, -41, -13].flatMap((ini) => [0, 1, 2, 3, 4].map((j) => [sumarDias(hoy, ini + j), j] as const)));
+// Tres períodos de 5 días (ciclos de 29 días, así no empiezan siempre el mismo día de la semana); el número es qué día
+// del período es (0 a 4).
+const menstruacion = new Map([-71, -42, -13].flatMap((ini) => [0, 1, 2, 3, 4].map((j) => [sumarDias(hoy, ini + j), j] as const)));
 // Lo de ayer, para el patrón combinado: frito + período + calor → dolor de panza al día siguiente (cada cosa sola casi no).
 let ayer = { frito: false, periodo: false, calor: false };
 let pantallaAyer = 220;
@@ -136,7 +137,7 @@ for (let k = -DIAS; k <= 0; k++) {
   const lluvia = azar() < 0.18 ? r1(entre(2, 18)) : 0;
   medClima.push(
     { concepto: 'Temperatura máxima', categoria: 'clima', unidad: '°C', valor: max, inicio: cuando(f, '00:00') },
-    { concepto: 'Temperatura mínima', categoria: 'clima', unidad: '°C', valor: max - Math.round(entre(5, 15)), inicio: cuando(f, '00:00') },
+    { concepto: 'Temperatura mínima', categoria: 'clima', unidad: '°C', valor: Math.round(entre(4, 16)), inicio: cuando(f, '00:00') },
     { concepto: 'Lluvia del día', categoria: 'clima', unidad: 'mm', valor: lluvia, inicio: cuando(f, '00:00') },
     { concepto: 'Horas de sol', categoria: 'clima', unidad: 'h', valor: lluvia ? r1(entre(1, 4)) : r1(entre(7, 10)), inicio: cuando(f, '00:00') },
   );
