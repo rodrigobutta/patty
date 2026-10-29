@@ -6,7 +6,7 @@
 import { spawn, execSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { abrirChrome, espera, ir, js, prepararPagina, tocar } from '../movil/presentacion/cdp.mjs';
+import { abrirChrome, captura, espera, ir, js, prepararPagina, tocar } from '../movil/presentacion/cdp.mjs';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const API = path.join(aqui, '../../api');
@@ -80,6 +80,15 @@ const PRUEBAS = {
   async 'el Día abre con lo anotado'(c) {
     await hasta(c, contiene('Hoy'), 'se ve "Hoy"');
     await hasta(c, `!!document.querySelector('li.tocable')`, 'hay registros en la lista');
+  },
+  async 'los viajes muestran su mapa'(c) {
+    await hasta(c, `!!document.querySelector('.viaje .mapa-viaje.leaflet-container, .viaje .mapa-viaje .leaflet-container')`, 'el mapita del viaje');
+    await hasta(c, `!/\\d{3,} km\\/h/.test(document.querySelector('.tarjeta.viajes')?.innerText ?? '')`, 'velocidad posible');
+    if (process.env.E2E_FOTOS) {
+      await js(c, `document.querySelector('.tarjeta.viajes').scrollIntoView()`);
+      await espera(1500);
+      await captura(c, path.join(process.env.E2E_FOTOS, 'viajes.jpg'));
+    }
   },
   async 'cómo te sentís: muy bien'(c) {
     await tocar(c, '.boton-buho');
