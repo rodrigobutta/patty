@@ -239,6 +239,7 @@ await db.execute(sql`DELETE FROM hallazgos h USING conceptos ca, conceptos ef WH
   ${queda('Horas de sueño', 'bajo', 'Dolor de cabeza', 'presente')} OR ${queda('Comida frita', 'presente', 'Dolor de panza', 'presente')}
   OR ${queda('Caminata', 'presente', 'Cómo me siento', 'alto')} OR ${queda('Horas de sueño', 'bajo', 'Cómo me sentí en el día', 'bajo')}
   OR ${queda('Me levanté', 'alto', 'Hora de despertar', 'alto')} OR ${queda('Menstruación', 'presente', 'Fase menstrual', 'presente')}
+  OR ${queda('Tiempo de pantalla', 'alto', 'Horas de sueño', 'bajo')}
   OR (jsonb_array_length(h.causas_extra) > 0 AND ef.nombre = 'Dolor de panza'))`);
 await db.execute(sql`UPDATE hallazgos h SET estado = 'obvio' FROM conceptos ca WHERE h.causa_id = ca.id AND ca.nombre IN ('Me levanté', 'Menstruación')`);
 await ex('Horas de sueño', 'Cómo me sentí en el día', 'Los días después de dormir poco, a la noche contás que el día fue peor. Dormir bien es de lo que más mueve tu ánimo.');

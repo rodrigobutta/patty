@@ -158,6 +158,10 @@ const TOMAS = {
     await js(c, `(() => { const h = [...document.querySelectorAll('.hallazgo')].find((x) => x.innerText.includes('frita')); if (h) window.scrollTo(0, h.getBoundingClientRect().top + window.scrollY - 150); })()`);
     await espera(600);
     await captura(c, archivo('patron.webp'), { calidad: 90 });
+    // El del sueño (para la historia de Martín): dormir poco → dolor de cabeza, arriba de todo.
+    await js(c, `(() => { const h = [...document.querySelectorAll('.hallazgo')].find((x) => x.innerText.includes('Dolor de cabeza')); if (h) window.scrollTo(0, h.getBoundingClientRect().top + window.scrollY - 150); })()`);
+    await espera(600);
+    await captura(c, archivo('patron-sueno.webp'), { calidad: 90 });
     console.log(`descubrir.webm: ${s.toFixed(1)} s`);
   },
 };

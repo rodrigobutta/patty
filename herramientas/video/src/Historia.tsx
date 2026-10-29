@@ -21,6 +21,7 @@ import {
 } from 'remotion';
 import { svgMascota } from '../../../apps/web/src/mascota/dibujo';
 import { ESCENAS, FPS, TRANSICION, duraciones, type Escena, type Pantalla } from './guion';
+import { ESCENAS_MARTIN } from './guion-martin';
 
 const { fontFamily } = loadFont('normal', { weights: ['600', '800', '900'] });
 
@@ -31,16 +32,25 @@ const COLORES = ['#8f78d6', '#f2a33a', '#e58bb4', '#4fb38a'];
 /** Las pantallas grabadas son de 1170 x 2532 (un iPhone a 3x). */
 const PROPORCION = 1170 / 2532;
 
+/** Las historias: cada una con sus escenas y la carpeta de su voz (en public). */
+export const HISTORIAS = {
+  sofia: { escenas: ESCENAS, voz: 'voz' },
+  martin: { escenas: ESCENAS_MARTIN, voz: 'voz/martin' },
+} as const;
+export type NombreHistoria = keyof typeof HISTORIAS;
+
 export type Props = {
+  historia?: NombreHistoria;
   /** Segundos de voz de cada escena (de public/voz/duraciones.json), o null si todavía no hay voz. */
   voz: Record<string, number> | null;
   /** Si hay música de fondo (public/voz/musica.mp3). */
   musica?: boolean;
 };
 
-export function largoTotal(voz: Props['voz']): number {
-  const total = duraciones(voz).reduce((a, b) => a + Math.round(b * FPS), 0);
-  return total - TRANSICION * (ESCENAS.length - 1);
+export function largoTotal(voz: Props['voz'], historia: NombreHistoria = 'sofia'): number {
+  const { escenas } = HISTORIAS[historia];
+  const total = duraciones(voz, escenas).reduce((a, b) => a + Math.round(b * FPS), 0);
+  return total - TRANSICION * (escenas.length - 1);
 }
 
 const TRANSICIONES = [
@@ -50,9 +60,10 @@ const TRANSICIONES = [
   () => fade(),
 ];
 
-export function Historia({ voz, musica }: Props) {
-  const durs = duraciones(voz);
-  const total = largoTotal(voz);
+export function Historia({ voz, musica, historia = 'sofia' }: Props) {
+  const { escenas: ESCENAS, voz: carpeta } = HISTORIAS[historia];
+  const durs = duraciones(voz, ESCENAS);
+  const total = largoTotal(voz, historia);
   const { fps } = useVideoConfig();
   const f = useCurrentFrame();
   return (
@@ -64,7 +75,7 @@ export function Historia({ voz, musica }: Props) {
           const partes = [
             <TransitionSeries.Sequence key={e.clave} durationInFrames={largo} name={e.clave}>
               <EscenaVista escena={e} largo={largo} />
-              {voz?.[e.clave] ? <Audio src={staticFile(`voz/${e.clave}.mp3`)} /> : null}
+              {voz?.[e.clave] ? <Audio src={staticFile(`${carpeta}/${e.clave}.mp3`)} /> : null}
             </TransitionSeries.Sequence>,
           ];
           if (i < ESCENAS.length - 1) {

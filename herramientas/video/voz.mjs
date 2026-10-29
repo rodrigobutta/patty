@@ -1,7 +1,9 @@
 // Genera la voz de cada escena con ElevenLabs: public/voz/<clave>.mp3 y public/voz/duraciones.json (los segundos de
 // cada una, para que el video dure lo que dura la voz). La clave se lee de ~/patty-release/elevenlabs.key (fuera del
-// repo). La voz: ELEVEN_VOZ=<id> si se quiere una en particular; si no, la primera voz femenina argentina de la
-// biblioteca de ElevenLabs. Uso: npm run voz [-- clave …] (sin claves, todas).
+// repo). Hay una historia por voz: la de Sofía (src/guion.ts, voz femenina, en public/voz) y la de Martín
+// (src/guion-martin.ts, voz masculina, en public/voz/martin). La voz elegida queda en voz.json y se reusa; para otra:
+// ELEVEN_VOZ=<id>. Si no hay, la primera voz argentina de la biblioteca de ElevenLabs.
+// Uso: npm run voz [-- martin] [clave …] (sin claves, todas).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -9,7 +11,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
-const SALIDA = path.join(aqui, 'public/voz');
+const argumentos = process.argv.slice(2);
+const martin = argumentos[0] === 'martin';
+const HISTORIA = martin
+  ? { guion: 'src/guion-martin.ts', salida: 'public/voz/martin', genero: 'male' }
+  : { guion: 'src/guion.ts', salida: 'public/voz', genero: 'female' };
+const SALIDA = path.join(aqui, HISTORIA.salida);
 const API = 'https://api.elevenlabs.io/v1';
 const MODELO = process.env.ELEVEN_MODELO ?? 'eleven_multilingual_v2';
 
@@ -22,13 +29,19 @@ const clave = readFileSync(archivoClave, 'utf8').trim();
 const h = { 'xi-api-key': clave };
 
 // El guion sale del mismo archivo que usa el video (se lee el texto, sin compilar TypeScript).
-const guion = readFileSync(path.join(aqui, 'src/guion.ts'), 'utf8');
+const guion = readFileSync(path.join(aqui, HISTORIA.guion), 'utf8');
 const escenas = [...guion.matchAll(/clave: '([^']+)',\s*\n\s*texto: '([^']+)'/g)].map((m) => ({ clave: m[1], texto: m[2] }));
-const pedidas = process.argv.slice(2);
+const pedidas = martin ? argumentos.slice(1) : argumentos;
 
 async function elegirVoz() {
   if (process.env.ELEVEN_VOZ) return { voice_id: process.env.ELEVEN_VOZ, name: process.env.ELEVEN_VOZ };
-  const r = await fetch(`${API}/shared-voices?page_size=30&language=es&accent=argentine&gender=female&sort=usage_character_count_1y`, { headers: h });
+  // La que ya se usó para esta historia (así todas las escenas tienen la misma voz).
+  const guardada = path.join(SALIDA, 'voz.json');
+  if (existsSync(guardada)) {
+    const g = JSON.parse(readFileSync(guardada, 'utf8'));
+    if (g.voice_id) return { voice_id: g.voice_id, name: g.voz };
+  }
+  const r = await fetch(`${API}/shared-voices?page_size=30&language=es&accent=argentine&gender=${HISTORIA.genero}&sort=usage_character_count_1y`, { headers: h });
   if (!r.ok) throw new Error(`Buscar voces: ${r.status} ${await r.text()}`);
   const { voices } = await r.json();
   const v = voices?.[0];
