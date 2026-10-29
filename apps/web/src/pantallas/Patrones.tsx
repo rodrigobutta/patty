@@ -14,9 +14,27 @@ import { ListaSemanas } from './Semanas';
 import { RuedaProgreso } from './RuedaProgreso';
 import { IconoBuscar, IconoCalendario, IconoMapa, IconoNumeros, IconoRelacion } from '../ui/Iconos';
 import { MapaDescubrir } from './MapaDescubrir';
+import { BotonCompartir, type Compartible } from '../ui/HojaCompartir';
 
 const Q_FIRME = 0.1;
 const cuando = (d: number) => (d === 0 ? t('el mismo día') : d === 1 ? t('al día siguiente') : t('{n} días después', { n: d }));
+const nombresCausa = (h: Hallazgo) =>
+  [{ nombre: h.causa, tipo: h.causa_tipo, modo: h.causa_modo }, ...(h.causas_extra ?? [])].map((c) => nombreRasgo(c.nombre, c.tipo, c.modo, idioma()));
+
+/** La imagen para compartir un patrón: solo los nombres de las cosas y los números, sin la persona. */
+const compartible = (h: Hallazgo): Compartible => ({
+  que: 'patron',
+  tarjeta: {
+    tipo: 'patron',
+    arriba: t('Patty encontró un patrón en mis días'),
+    causa: nombresCausa(h).join(' + '),
+    efecto: nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma()),
+    cuando: `${cuando(h.desfase_dias)} · ${t('{n} de {total} veces', { n: h.soporte, total: h.dias_causa })}`,
+    numero: `×${h.lift.toLocaleString(locale(), { maximumFractionDigits: h.lift >= 10 ? 0 : 1 })}`,
+    numeroTexto: t('más probable'),
+    aclaracion: t('Es lo que aparece en mis datos, no un diagnóstico.'),
+  },
+});
 
 export function Patrones({ persona, progreso }: { persona: Persona; progreso: Progreso | null }) {
   const { sesion, usuario } = useEstado();
@@ -72,10 +90,10 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const tarjeta = (h: Hallazgo) => (
     <article key={h.id} className={`tarjeta hallazgo ${h.estado}`}>
       <h3>
-        {[{ nombre: h.causa, tipo: h.causa_tipo, modo: h.causa_modo }, ...(h.causas_extra ?? [])].map((c, i) => (
+        {nombresCausa(h).map((c, i) => (
           <Fragment key={i}>
             {i ? <span className="mas-causa"> + </span> : null}
-            {nombreRasgo(c.nombre, c.tipo, c.modo, idioma())}
+            {c}
           </Fragment>
         ))}{' '}
         <span className="flecha">→</span> {nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma())}
@@ -95,6 +113,9 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
             ))}
           </div>
         </div>
+      ) : null}
+      {usuario?.rol !== 'lector' && h.estado !== 'descartado' ? (
+        <div className="fila-compartir"><BotonCompartir className="btn chico compartir-hallazgo" armar={() => compartible(h)} /></div>
       ) : null}
     </article>
   );

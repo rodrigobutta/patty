@@ -228,6 +228,21 @@ saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), crea
 - Sesión con cookie en la web, y el mismo token como `Authorization: Bearer` para la app con Capacitor (que corre en
   otro origen y no puede usar la cookie).
 
+## Compartir e invitar
+
+- Se puede compartir una imagen de un patrón (botón en cada tarjeta de Patrones), la racha o el día completo (hoja de
+  puntos), el resumen de la semana (solo los números, sin molestias ni lo que escribió Patty) y el nivel de la rueda de
+  progreso. La imagen (1080 x 1350, violeta, con el búho y patty.today) se dibuja en el teléfono, en un canvas
+  (`lib/tarjetaCompartir.ts`), con los textos ya traducidos y sin el nombre de la persona; antes de mandarla se ve
+  cómo queda (`ui/HojaCompartir.tsx`). Los que tienen rol `lector` no ven los botones.
+- Cómo se comparte (`lib/compartir.ts`): en la app nativa, plugins Share y Filesystem (la imagen va a la caché y se
+  pasa al menú del teléfono; si el APK es viejo y no los tiene, se avisa que hay que actualizar); en el navegador,
+  `navigator.share` con archivos; si no, se descarga.
+- "Invitá a alguien" (en Más y en la hoja de compartir) manda un texto corto con `https://patty.today/?ref=<código>`.
+  El código son los primeros 8 caracteres del user_id anónimo de Analytics de quien invita. La presentación mide
+  `llegada_invitacion` y guarda el código; la bienvenida lo manda en `bienvenida_terminada`. También se miden
+  `compartir_ver`, `compartir` (qué y cómo) e `invitar`.
+
 ## Estructura
 
 ```

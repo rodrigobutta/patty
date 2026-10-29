@@ -11,6 +11,7 @@ import { locale, t } from '../lib/idioma';
 import { Tablero } from './Tablero';
 import { Mascota } from '../mascota/Mascota';
 import type { Cara } from '../mascota/dibujo';
+import { BotonCompartir, type Compartible } from '../ui/HojaCompartir';
 
 interface Respuesta {
   hoy: PuntosDia;
@@ -49,7 +50,7 @@ export const PISTAS: Partial<Record<ItemPuntos | 'dia', { texto: string; titulo:
 };
 
 export function PuntosDelDia({ persona, cara, alTocarBuho }: { persona: Persona; cara: Cara | null; alTocarBuho(): void }) {
-  const { festejar } = useEstado();
+  const { festejar, usuario } = useEstado();
   const [r, setR] = useState<Respuesta | null>(null);
   const [tablero, setTablero] = useState(false);
   const [abierta, setAbierta] = useState(false);
@@ -126,6 +127,15 @@ export function PuntosDelDia({ persona, cara, alTocarBuho }: { persona: Persona;
   if (!r) return null;
   const { hoy } = r;
   const estado: EstadoPuntos = hoy.puntos >= 100 ? 'completo' : hoy.puntos >= 70 ? 'casi' : hoy.puntos >= 35 ? 'bien' : 'arranca';
+  const enSemana = r.semana.reduce((a, b) => a + b.puntos, 0);
+  // Para compartir: la racha (desde 2 días) o, si no, el día completo. Solo números, sin lo anotado.
+  const compartible = (): Compartible => ({
+    que: 'racha',
+    tarjeta:
+      r.racha >= 2
+        ? { tipo: 'grande', cara: 'feliz', arriba: t('Mi racha en Patty'), emoji: '🔥', numero: String(r.racha), texto: t('días seguidos anotando mi día'), detalle: t('⭐ {n} puntos esta semana', { n: enSemana }) }
+        : { tipo: 'grande', cara: 'feliz', arriba: t('Mi día en Patty'), emoji: '🏆', numero: String(hoy.puntos), texto: t('puntos: ¡día completo!'), detalle: t('⭐ {n} puntos esta semana', { n: enSemana }) },
+  });
   const faltan = hoy.items.filter((i) => i.puntos < i.maximo).sort((a, b) => b.maximo - b.puntos - (a.maximo - a.puntos));
 
   return (
@@ -178,7 +188,7 @@ export function PuntosDelDia({ persona, cara, alTocarBuho }: { persona: Persona;
           <span className="suave chico">{r.racha === 1 ? t('día de racha') : t('días de racha')}</span>
         </div>
         <div className="ficha">
-          <strong>⭐ {r.semana.reduce((a, b) => a + b.puntos, 0)}</strong>
+          <strong>⭐ {enSemana}</strong>
           <span className="suave chico">{t('en la semana')}</span>
         </div>
         <button className="ficha ficha-boton" onClick={() => setTablero(true)}>
@@ -186,6 +196,9 @@ export function PuntosDelDia({ persona, cara, alTocarBuho }: { persona: Persona;
           <span className="suave chico">{t('Tablero')}</span>
         </button>
       </div>
+      {usuario?.rol !== 'lector' && (r.racha >= 2 || estado === 'completo') ? (
+        <div className="fila-compartir centrada"><BotonCompartir armar={compartible} /></div>
+      ) : null}
       <div className="semana-juego" aria-label={t('Los últimos 7 días')}>
         {r.semana.map((d, k) => (
           <span key={d.fecha} className={`${d.puntos >= 100 ? 'lleno' : d.puntos >= PUNTOS_RACHA ? 'bien' : ''}${k === r.semana.length - 1 ? ' hoy' : ''}`}>

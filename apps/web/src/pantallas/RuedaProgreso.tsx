@@ -5,11 +5,14 @@ import { useEffect, useState } from 'react';
 import { avanceProgreso, NIVELES_PROGRESO, type Progreso } from 'shared';
 import { t } from '../lib/idioma';
 import { Mascota } from '../mascota/Mascota';
+import { useEstado } from '../estado';
+import { BotonCompartir, type Compartible } from '../ui/HojaCompartir';
 
 const R = 92;
 const LARGO = 2 * Math.PI * R;
 
 export function RuedaProgreso({ progreso }: { progreso: Progreso }) {
+  const { usuario } = useEstado();
   const { nivel, avance, siguiente } = avanceProgreso(progreso);
   // Arranca vacía y se llena con animación (también al cambiar).
   const [mostrado, setMostrado] = useState(0);
@@ -34,6 +37,20 @@ export function RuedaProgreso({ progreso }: { progreso: Progreso }) {
   const faltanEfecto = Math.max(0, progreso.minimo_efecto - progreso.dias_efecto);
   const listo = nivel > 0;
   const dias = (n: number) => (n === 1 ? t('{n} día', { n }) : t('{n} días', { n }));
+
+  // Para compartir el nivel al que se llegó: los días anotados y el nombre del nivel.
+  const compartible = (): Compartible => ({
+    que: 'nivel',
+    tarjeta: {
+      tipo: 'grande',
+      cara: 'feliz',
+      arriba: t('Subí de nivel en Patty'),
+      emoji: '🏅',
+      numero: dias(progreso.dias),
+      texto: t(NIVELES_PROGRESO[nivel - 1].nombre),
+      detalle: t('Lo que encuentra Patty es cada vez más confiable'),
+    },
+  });
 
   return (
     <div className={`rueda-progreso${listo ? ' lista' : ''}`}>
@@ -110,6 +127,7 @@ export function RuedaProgreso({ progreso }: { progreso: Progreso }) {
           </li>
         ))}
       </ol>
+      {listo && usuario?.rol !== 'lector' ? <BotonCompartir armar={compartible} /> : null}
     </div>
   );
 }

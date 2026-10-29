@@ -5,6 +5,7 @@ import { BorrarCuenta } from '../ui/BorrarCuenta';
 import { UsoIaMio } from '../ui/UsoIaMio';
 import { PreguntasPatty } from './PreguntasPatty';
 import { medir } from '../lib/analytics';
+import { invitar } from '../lib/compartir';
 import { agregarWidget } from '../lib/push';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
@@ -485,6 +486,17 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           </li>
         ))}
       </ul>
+      <button
+        className="btn ancho invitar-mas"
+        onClick={() =>
+          void invitar(usuario?.id, 'mas').then((como) => {
+            if (como === 'copiado') avisar(t('Copié el link: pegalo donde quieras.'));
+            else if (como === 'sin_soporte') avisar(t('Compartí este link: {url}', { url: 'https://patty.today' }));
+          })
+        }
+      >
+        {t('💌 Invitá a alguien a usar Patty')}
+      </button>
       {usuario?.rol === 'admin' && alAdministrar ? (
         <button className="btn ancho admin-entrar" onClick={alAdministrar}>{t('🛠️ Administración: usuarios y actividad')}</button>
       ) : null}

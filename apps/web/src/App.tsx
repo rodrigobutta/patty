@@ -21,6 +21,7 @@ import { Presentacion } from './pantallas/Presentacion';
 import { esNativa, plataforma } from './lib/nativo';
 import { VERSION } from './lib/version';
 import { iniciarAnalytics, medir, paginaVista, usuarioAnalytics } from './lib/analytics';
+import { invitadoPor } from './lib/compartir';
 import { idioma } from './lib/idioma';
 import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
@@ -150,7 +151,7 @@ export function App() {
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>{t('Reintentar')}</button></div>;
   if (verPresentacion) return <Presentacion alEntrar={salirDePresentacion} conSesion={fase === 'listo'} />;
   if (fase === 'entrar' || fase === 'configurar') return <Entrar configurar={fase === 'configurar'} />;
-  if (bienvenida) return <Bienvenida alTerminar={() => { medir('bienvenida_terminada'); setBienvenida(false); }} />;
+  if (bienvenida) return <Bienvenida alTerminar={() => { medir('bienvenida_terminada', invitadoPor() ? { ref: invitadoPor()! } : {}); setBienvenida(false); }} />;
   if (!persona) return <NuevaPersona primera />;
   if (!permisosListo && ofrecerPermisos() && (perfilListo || !ofrecerPerfil(persona))) {
     return (
