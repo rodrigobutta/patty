@@ -45,8 +45,11 @@ png(svgMascota('feliz', { lado: 512, fondo: FONDO, zona: 235 }), 512, 'public/ic
 const DENSIDADES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
 for (const cara of CARAS) {
   for (const [d, f] of Object.entries(DENSIDADES)) {
-    png(svgMascota(cara, { lado: 108 * f, zona: 250 }), 108 * f, `${RES}/mipmap-${d}/icono_${cara}_frente.png`);
-    png(svgMascota(cara, { lado: 48 * f, fondo: FONDO, zona: 320 }), 48 * f, `${RES}/mipmap-${d}/icono_${cara}.png`);
+    // El ícono de la app: la cara grande, centrada, y el pelo cortado por el borde.
+    png(svgMascota(cara, { lado: 108 * f, zona: 340, centro: 184 }), 108 * f, `${RES}/mipmap-${d}/icono_${cara}_frente.png`);
+    png(svgMascota(cara, { lado: 48 * f, fondo: FONDO, zona: 420, centro: 178 }), 48 * f, `${RES}/mipmap-${d}/icono_${cara}.png`);
+    // El búho entero, con todo el pelo: el del widget y el de los avisos.
+    png(svgMascota(cara, { lado: 108 * f, zona: 250 }), 108 * f, `${RES}/mipmap-${d}/buho_${cara}.png`);
   }
   writeFileSync(
     `${RES}/mipmap-anydpi-v26/icono_${cara}.xml`,
@@ -60,7 +63,7 @@ for (const cara of CARAS) {
   );
 }
 // La cara enojada no es ícono de la app: solo va al costado de algunos avisos (una toma que no se tomó).
-for (const [d, f] of Object.entries(DENSIDADES)) png(svgMascota('enojada', { lado: 108 * f, zona: 250 }), 108 * f, `${RES}/mipmap-${d}/icono_enojada_frente.png`);
+for (const [d, f] of Object.entries(DENSIDADES)) png(svgMascota('enojada', { lado: 108 * f, zona: 250 }), 108 * f, `${RES}/mipmap-${d}/buho_enojada.png`);
 writeFileSync(
   `${RES}/values/icono_fondo.xml`,
   `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="icono_fondo">${FONDO}</color>\n    <color name="patty_acento">#6b4fbb</color>\n    <color name="widget_texto">#1d1a26</color>\n</resources>\n`,

@@ -80,7 +80,7 @@ public class WidgetPatty extends AppWidgetProvider {
     private static RemoteViews vista(Context ctx) {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_patty);
         String cara = MascotaPlugin.caraDeHoy(ctx);
-        int img = ctx.getResources().getIdentifier("icono_" + cara + "_frente", "mipmap", ctx.getPackageName());
+        int img = ctx.getResources().getIdentifier("buho_" + cara, "mipmap", ctx.getPackageName());
         if (img != 0) v.setImageViewResource(R.id.widget_buho, img);
         SharedPreferences sp = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String linea = sp.getString("linea", null);

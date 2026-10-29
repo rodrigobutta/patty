@@ -199,11 +199,17 @@ ${extra(c, 150, 180)}`,
 export const figuras = (cara: Cara, animal: Animal = ANIMAL): string => DIBUJOS[animal](cara);
 
 /** El SVG completo. `zona` deja la mascota dentro de un cuadrado de ese lado (en px del lienzo), centrada. */
-export function svgMascota(cara: Cara, opciones: { lado?: number; fondo?: string; zona?: number; animal?: Animal } = {}): string {
+export function svgMascota(
+  cara: Cara,
+  opciones: { lado?: number; fondo?: string; zona?: number; animal?: Animal; centro?: number } = {},
+): string {
   const lado = opciones.lado ?? 300;
   const zona = opciones.zona ?? 300;
   const escala = zona / 300;
-  const corrimiento = (300 - zona) / 2;
+  // `centro`: qué altura del dibujo queda en el medio (por defecto, el medio). Con zona grande y el centro en la cara,
+  // la cara se ve grande y el pelo se corta en el borde (el ícono de la app).
+  const centro = opciones.centro ?? 150;
+  const corrimiento = `${150 - 150 * escala} ${150 - centro * escala}`;
   const fondo = opciones.fondo ? `<rect width="300" height="300" fill="${opciones.fondo}"/>` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${lado}" height="${lado}" viewBox="0 0 300 300">${fondo}<g transform="translate(${corrimiento} ${corrimiento}) scale(${escala})">${figuras(cara, opciones.animal)}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${lado}" height="${lado}" viewBox="0 0 300 300">${fondo}<g transform="translate(${corrimiento}) scale(${escala})">${figuras(cara, opciones.animal)}</g></svg>`;
 }

@@ -22,7 +22,7 @@
             android:layout_height="40dp"
             android:padding="2dp"
             android:background="@drawable/widget_buho_fondo"
-            android:src="@mipmap/icono_feliz_frente"
+            android:src="@mipmap/buho_feliz"
             android:contentDescription="@string/app_name" />
 
         <!-- La línea del día (o la pregunta) y, encima, el aviso de "Anotado" que aparece y se va solo
