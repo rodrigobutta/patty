@@ -191,7 +191,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
     <div className="presentacion">
       <header className="pres-barra">
         <span className="pres-marca"><Mascota cara="feliz" tamano={34} /> Patty</span>
-        <button className="btn chico" onClick={ir('barra')}>{conSesion ? t('Volver a Patty') : t('Entrar')}</button>
+        <button className="btn chico" onClick={ir('barra')}>{t('Ver Patty en la web')}</button>
       </header>
 
       <section className="pres-portada">
