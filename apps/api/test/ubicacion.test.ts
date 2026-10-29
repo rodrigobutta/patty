@@ -188,6 +188,22 @@ describe('viajes del día', () => {
       { lat: -34.78, lon: -58.4, instante: m(61) },
       { lat: -34.6, lon: -58.4, instante: m(62) },
     ])).toEqual([]);
+    // Varios puntos seguidos lejos (el caso real: 104 km en 15 minutos) y de vuelta al barrio: tampoco.
+    expect(viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.601, lon: -58.401, instante: m(5) },
+      { lat: -35.06, lon: -58.4, instante: m(8) },
+      { lat: -35.061, lon: -58.401, instante: m(10) },
+      { lat: -34.602, lon: -58.402, instante: m(14) },
+      { lat: -34.603, lon: -58.403, instante: m(20) },
+    ])).toEqual([]);
+    // Si el que saltó es el primero del día, se saca ese y no los buenos.
+    expect(viajesDelDia([
+      { lat: -35.06, lon: -58.4, instante: m(0) },
+      { lat: -34.6, lon: -58.4, instante: m(3) },
+      { lat: -34.62, lon: -58.4, instante: m(9) },
+      { lat: -34.64, lon: -58.4, instante: m(15) },
+    ])).toHaveLength(1);
     // Dos horas quieto y el primer punto en camino ya a 7 km: salió unos 14 minutos antes, no un minuto.
     const v = viajesDelDia([
       { lat: -34.6, lon: -58.4, instante: m(0) },

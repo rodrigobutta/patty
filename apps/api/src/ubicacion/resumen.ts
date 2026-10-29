@@ -99,21 +99,36 @@ const SALTO_KMH = 200;
 const SALIDA_MS = 30 / 3.6;
 
 /**
- * Saca los saltos del GPS: un punto que queda lejísimos del anterior y del siguiente en poco tiempo (ir y volver a
- * más de 200 km/h). Sin eso, un solo punto mal puesto armaba un viaje de 400 km/h.
+ * Saca los saltos del GPS: uno o varios puntos seguidos que quedan lejísimos (llegar ahí habría sido a más de 200 km/h)
+ * y después vuelve a donde estaba. Si más adelante (hasta 6 puntos) hay uno cerca de donde estaba, al que sí se pudo
+ * llegar a una velocidad posible, lo del medio se saca. Sin eso, un par de puntos mal puestos armaban un viaje de 100 km en 15 minutos.
  */
 export function sinSaltos(orden: Punto[]): Punto[] {
   const kmh = (a: Punto, b: Punto) => distanciaMetros(a, b) / 1000 / Math.max((b.instante - a.instante) / 3600000, 1 / 3600);
   const r: Punto[] = [];
   for (let i = 0; i < orden.length; i++) {
     const a = r.at(-1);
-    const b = orden[i];
-    const c = orden[i + 1];
-    if (a && kmh(a, b) > SALTO_KMH && (!c || kmh(b, c) > SALTO_KMH)) continue;
-    r.push(b);
+    if (a && kmh(a, orden[i]) > SALTO_KMH) {
+      const lejos = distanciaMetros(a, orden[i]);
+      const vuelve = orden.slice(i + 1, i + 7).findIndex((c) => kmh(a, c) <= SALTO_KMH && distanciaMetros(a, c) < lejos / 3);
+      // Vuelve a algo posible: lo del medio era el salto.
+      if (vuelve >= 0) {
+        i += vuelve;
+        continue;
+      }
+      // No vuelve, pero desde acá sigue a una velocidad posible: el que saltó era el anterior (el primero del día, por
+      // ejemplo). Si tampoco, se saca este.
+      const siguiente = orden[i + 1];
+      if (siguiente && kmh(orden[i], siguiente) <= SALTO_KMH) r.pop();
+      else continue;
+    }
+    r.push(orden[i]);
   }
   return r;
 }
+
+/** Un viaje más rápido que esto en promedio no es posible por tierra: es ruido del GPS que quedó. */
+const VIAJE_MAX_KMH = 160;
 
 /** Una vuelta que termina donde empezó, a paso de caminata, es un paseo (una caminata), no un viaje. */
 const VUELTA_M = 300;
@@ -154,6 +169,7 @@ export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
   return r
     .filter((v) => v.metros >= VIAJE_M)
     .filter((v) => !esVuelta(v))
+    .filter((v) => v.metros / 1000 / Math.max((v.fin - v.inicio) / 3600000, 1 / 60) <= VIAJE_MAX_KMH)
     .map(({ inicio, fin, metros, camino }) => ({ inicio, fin, metros, camino }));
 }
 
