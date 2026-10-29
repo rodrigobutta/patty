@@ -110,9 +110,19 @@ const ESCENAS = {
     await ir(c, BASE + '/', 4000);
     await tocar(c, 'nav button', 'Descubrir');
     await espera(3000);
-    await bajarA(c, '.hallazgo');
+    // El segundo hallazgo arriba, justo debajo de las pestañas (que quedan fijas).
+    await js(c, `(() => { const h = document.querySelectorAll('.hallazgo')[1]; if (h) window.scrollTo(0, h.getBoundingClientRect().top + window.scrollY - 138); })()`);
     await espera(600);
     await captura(c, archivo('patrones.webp'));
+  },
+  // La portada de la presentación: lo más propio de Patty, lo que descubre (Descubrir, con el primer hallazgo arriba).
+  async portada(c) {
+    await ir(c, BASE + '/', 4000);
+    await tocar(c, 'nav button', 'Descubrir');
+    await espera(3000);
+    await js(c, `(() => { const h = document.querySelector('.hallazgo'); if (h) window.scrollTo(0, h.getBoundingClientRect().top + window.scrollY - 138); })()`);
+    await espera(700);
+    await captura(c, archivo('portada.webp'));
   },
   async mapa(c) {
     await ir(c, BASE + '/', 4000);

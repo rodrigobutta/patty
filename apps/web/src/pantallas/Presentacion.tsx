@@ -143,7 +143,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
           </div>
         </div>
         <div className="pres-telefonos">
-          <Telefono img="dia.webp" alt={t('El Día en Patty: el búho, los objetivos de la semana y lo anotado')} />
+          <Telefono img="portada.webp" alt={t('Lo que descubre Patty: dormir poco y el ánimo, la comida frita y el dolor de panza')} />
         </div>
       </section>
 
