@@ -164,3 +164,12 @@ export const IconoPatrones = () => (
     <circle cx="18" cy="11" r="2.2" fill={A} {...T} />
   </Base>
 );
+
+/** Informe para el médico: una hoja con una cruz de salud. */
+export const IconoInforme = () => (
+  <Base>
+    <path d="M8 3.5 h11 l6 6 V27.5 a1.5 1.5 0 0 1 -1.5 1.5 H8 a1.5 1.5 0 0 1 -1.5 -1.5 V5 A1.5 1.5 0 0 1 8 3.5 Z" fill={V} {...T} />
+    <path d="M19 3.5 V9.5 h6" {...T} />
+    <path d="M14 13 h4 v3.5 h3.5 v4 H18 V24 h-4 v-3.5 h-3.5 v-4 H14 Z" fill={A} {...T} />
+  </Base>
+);

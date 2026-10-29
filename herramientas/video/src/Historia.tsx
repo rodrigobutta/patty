@@ -19,7 +19,7 @@ import {
   useVideoConfig,
   Easing,
 } from 'remotion';
-import { svgMascota } from '../../../apps/web/src/mascota/dibujo';
+import { svgMascota } from '../../../packages/shared/src/mascota';
 import { ESCENAS, FPS, TRANSICION, duraciones, type Escena, type Pantalla, type Ritmo } from './guion';
 import { ESCENAS_CORTA, RITMO_CORTA } from './guion-corta';
 import { ESCENAS_MARTIN } from './guion-martin';

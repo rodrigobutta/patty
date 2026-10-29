@@ -26,6 +26,8 @@ import { alPedirIrAMas, tomarSeccionPedida, verSeccionPedida } from '../lib/nave
 import { IconoPatrones, IconoPreguntas, IconoSeguimientos } from '../ui/IconosMas';
 import { QuePatronesBuscar } from './QuePatronesBuscar';
 import { Seguimientos } from './Seguimientos';
+import { IconoInforme } from '../ui/IconosMas';
+import { InformeMedico } from './InformeMedico';
 import { IconoAvanzado, IconoAvisos, IconoClima, IconoCuenta, IconoPermisos, IconoReloj, IconoTelefono, IconoFamilia, IconoGente, IconoLugares, IconoRemedios, IconoSalud } from '../ui/IconosMas';
 import { DatosSalud } from './DatosSalud';
 import { DatosCalendario, DatosTelefono } from './DatosTelefono';
@@ -41,7 +43,7 @@ import { leerEstado, type EstadoTelefono } from '../lib/estadoTelefono';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
-type Seccion = 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
+type Seccion = 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
@@ -201,6 +203,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     personas: () => <IconoGente />,
     cuenta: () => <IconoCuenta />,
     avanzado: () => <IconoAvanzado />,
+    informe: () => <IconoInforme />,
   };
   const pantalla = (titulo: string, contenido: ReactNode, sinTituloRepetido = false) => (
     <section className={`mas sub-mas${sinTituloRepetido ? ' sin-titulo-repetido' : ''}`}>
@@ -213,6 +216,9 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     </section>
   );
 
+  if (seccion === 'informe' && persona) return pantalla(t('📄 Informe para el médico'), <>
+      <InformeMedico persona={persona} />
+  </>);
   if (seccion === 'clima') return pantalla(t('Clima'), <>
       <div className="tarjeta">
         <label className="opcion">
@@ -452,6 +458,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'telefono', icono: <IconoTelefono />, titulo: t('Uso del teléfono'), sub: t('Pantalla, apps y llamadas'), ver: hayDatosDelTelefono() && Boolean(persona) },
     { clave: 'reloj', icono: <IconoReloj />, titulo: t('Reloj y salud'), sub: t('Sueño, pasos y pulso'), ver: esNativa() && Boolean(persona) },
     { clave: 'lugares', icono: <IconoLugares />, titulo: t('Lugares'), sub: t('Casa, trabajo y los lugares a los que vas'), ver: Boolean(persona) },
+    { clave: 'informe', icono: <IconoInforme />, titulo: t('Informe para el médico'), sub: t('Un PDF con lo anotado para la consulta'), ver: Boolean(persona) },
     { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
     { clave: 'seguimientos', icono: <IconoSeguimientos />, titulo: t('Seguimientos'), sub: t('Más de cerca por unos días: enfermo, panza…'), ver: Boolean(persona) },
     { clave: 'preguntas', icono: <IconoPreguntas />, titulo: t('Preguntas de Patty'), sub: t('El detalle de lo que anotás: café con azúcar…'), ver: Boolean(persona) },

@@ -22,6 +22,7 @@ import { rutasConceptos } from './routes/conceptos.js';
 import { rutasDispositivos } from './routes/dispositivos.js';
 import { rutasEstadisticas } from './routes/estadisticas.js';
 import { rutasIngesta } from './routes/ingesta.js';
+import { rutasInforme, rutasInformePublico } from './routes/informe.js';
 import { rutasPatrones } from './routes/patrones.js';
 import { rutasPreguntar } from './routes/preguntar.js';
 import { rutasComentarios } from './routes/comentarios.js';
@@ -130,6 +131,8 @@ export function crearApp(): Hono<Env> {
   api.route('/ingesta', rutasIngesta);
   api.route('/', rutasErrores);
   api.route('/', rutasBeta);
+  // El PDF para el médico se abre afuera de la app (en el navegador del teléfono): lleva su propio token.
+  api.route('/informe', rutasInformePublico);
   // Todo lo demás necesita una sesión.
   api.use('*', async (c, next) => {
     const u = await usuarioDeToken(c.var.db, c.var.token);
@@ -168,6 +171,7 @@ export function crearApp(): Hono<Env> {
   api.route('/sueno', rutasSueno);
   api.route('/actividad', rutasActividad);
   api.route('/semanas', rutasSemanas);
+  api.route('/informe', rutasInforme);
   api.route('/widget', rutasWidget);
   api.all('*', () => {
     throw new ErrorApi('Ruta desconocida.', 404);

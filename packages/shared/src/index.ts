@@ -1,6 +1,7 @@
 // Reglas y tipos que comparten la API y la web.
 import { traducir, type Idioma } from './i18n.js';
 export * from './i18n.js';
+export * from './mascota.js';
 
 /**
  * Qué se anota con cada concepto:
