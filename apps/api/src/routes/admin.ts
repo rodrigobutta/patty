@@ -50,6 +50,22 @@ export const rutasAdmin = new Hono<Env>()
     exigirRol(c.var.usuario, 'admin');
     await next();
   })
+  .get('/beta', async (c) =>
+    // Los pedidos de invitación a la beta, los nuevos primero.
+    c.json(
+      await filas(
+        c.var.db,
+        sql`SELECT id, nombre, email, motivo, estado, idioma, creado FROM solicitudes_beta
+            ORDER BY (estado = 'nueva') DESC, creado DESC LIMIT 300`,
+      ),
+    ),
+  )
+  .put('/beta/:id', async (c) => {
+    const estado = texto((await cuerpo(c)).estado);
+    if (!['nueva', 'invitada', 'descartada'].includes(estado)) throw new ErrorApi('Estado inválido.');
+    await c.var.db.execute(sql`UPDATE solicitudes_beta SET estado = ${estado} WHERE id = ${idParam(c)}`);
+    return c.json({ ok: true });
+  })
   .get('/salud', async (c) => {
     // Cómo anda todo: cada proceso que corre solo, los errores de las últimas 48 horas, cuántos por origen y el tamaño
     // de las tablas más grandes.

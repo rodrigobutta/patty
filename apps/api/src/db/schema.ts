@@ -889,3 +889,19 @@ export const usoIa = pgTable(
   },
   (t) => [index('uso_ia_usuario_idx').on(t.usuario_id, t.fecha, t.tipo)],
 );
+
+/** Pedidos de invitación a la beta, desde la página de presentación (sin cuenta). */
+export const solicitudesBeta = pgTable(
+  'solicitudes_beta',
+  {
+    id: id(),
+    nombre: text('nombre').notNull(),
+    email: text('email').notNull(),
+    motivo: text('motivo'),
+    /** nueva: recién llegada; invitada: ya se le mandó la invitación; descartada: no. */
+    estado: text('estado', { enum: ['nueva', 'invitada', 'descartada'] }).notNull().default('nueva'),
+    idioma: text('idioma'),
+    creado: creado(),
+  },
+  (t) => [index('solicitudes_beta_creado_idx').on(t.creado)],
+);

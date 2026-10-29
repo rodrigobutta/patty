@@ -9,6 +9,7 @@ import { obtenerDb } from './db/client.js';
 import { registrarError } from './lib/salud.js';
 import { conUso } from './lib/usoIa.js';
 import { rutasErrores } from './routes/errores.js';
+import { rutasBeta } from './routes/beta.js';
 import { tokenDePedido, usuarioDeToken } from './auth/sesion.js';
 import { codigoPg, ErrorApi } from './lib/errores.js';
 import type { Env } from './lib/http.js';
@@ -124,6 +125,7 @@ export function crearApp(): Hono<Env> {
   api.route('/', rutasSesion);
   api.route('/ingesta', rutasIngesta);
   api.route('/', rutasErrores);
+  api.route('/', rutasBeta);
   // Todo lo demás necesita una sesión.
   api.use('*', async (c, next) => {
     const u = await usuarioDeToken(c.var.db, c.var.token);

@@ -1,7 +1,8 @@
 // La página de presentación (patty.today para quien todavía no entró, y #presentacion siempre): qué es Patty, con
 // pantallas y videos de la app de verdad (una persona de ejemplo; ver movil/presentacion/capturar.mjs). En la app
 // del teléfono no se muestra: ahí se entra directo.
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { api } from '../api';
 import { useEstado } from '../estado';
 import { iniciarAnalytics, medir } from '../lib/analytics';
 import { t } from '../lib/idioma';
@@ -66,6 +67,49 @@ function VideoHistoria() {
   );
 }
 
+/**
+ * Mientras Patty está en beta se entra por invitación: quien quiere probarla deja su nombre, su mail y qué le
+ * interesa, y le llega la invitación cuando haya lugar. El campo "web" está escondido: si viene lleno, es un bot.
+ */
+function FormBeta() {
+  const [datos, setDatos] = useState({ nombre: '', email: '', motivo: '', web: '' });
+  const [estado, setEstado] = useState<'listo' | 'mandando' | 'enviado'>('listo');
+  const [error, setError] = useState('');
+  const mandar = async (e: FormEvent) => {
+    e.preventDefault();
+    setEstado('mandando');
+    setError('');
+    try {
+      await api('POST', '/api/beta', datos);
+      medir('beta_enviado');
+      setEstado('enviado');
+    } catch (x) {
+      setError((x as Error).message);
+      setEstado('listo');
+    }
+  };
+  return (
+    <div id="beta" className="pres-beta-caja">
+      <h2>{t('Patty está en beta')}</h2>
+      <p className="pres-bajada">
+        {t('Por ahora la estamos probando con un grupo chico, así que para bajar la app hace falta una invitación. Dejanos tus datos y te escribimos cuando haya lugar.')}
+      </p>
+      {estado === 'enviado' ? (
+        <p className="pres-beta-gracias">{t('¡Listo! Te vamos a escribir a {email} cuando tengamos tu invitación. 💜', { email: datos.email })}</p>
+      ) : (
+        <form className="pres-form" onSubmit={(e) => void mandar(e)}>
+          <label>{t('Nombre')}<input required maxLength={80} value={datos.nombre} onChange={(e) => setDatos({ ...datos, nombre: e.target.value })} autoComplete="name" /></label>
+          <label>{t('Mail')}<input required type="email" maxLength={120} value={datos.email} onChange={(e) => setDatos({ ...datos, email: e.target.value })} autoComplete="email" /></label>
+          <label>{t('¿Por qué te interesa?')}<textarea maxLength={1000} rows={3} value={datos.motivo} onChange={(e) => setDatos({ ...datos, motivo: e.target.value })} placeholder={t('Ej: tengo migrañas seguido y quiero entender qué las dispara')} /></label>
+          <input className="pres-trampa" tabIndex={-1} autoComplete="off" aria-hidden value={datos.web} onChange={(e) => setDatos({ ...datos, web: e.target.value })} name="web" />
+          {error ? <p className="error chico">{error}</p> : null}
+          <button className="btn primario pres-cta" disabled={estado === 'mandando'}>{estado === 'mandando' ? t('Mandando…') : t('Pedir invitación')}</button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 /** Avisa (una vez) cuando una sección se ve: así se sabe hasta dónde baja la gente. */
 function useVista(nombre: string) {
   const r = useRef<HTMLElement>(null);
@@ -119,7 +163,13 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
     medir(conSesion ? 'volver_a_patty' : 'empezar', { desde: donde });
     alEntrar();
   };
-  const entrar = (donde: string) => <button className="btn primario pres-cta" onClick={ir(donde)}>{conSesion ? t('Volver a Patty') : t('Empezar')}</button>;
+  // Mientras está en beta, quien no tiene cuenta pide una invitación (el formulario de abajo de todo).
+  const entrar = (donde: string) =>
+    conSesion ? (
+      <button className="btn primario pres-cta" onClick={ir(donde)}>{t('Volver a Patty')}</button>
+    ) : (
+      <a className="btn primario pres-cta" href="#beta" onClick={() => medir('pedir_invitacion', { desde: donde })}>{t('Pedir invitación')}</a>
+    );
   const finalRef = useVista('final');
   const tiempoRef = useVista('tiempo');
   const comoRef = useVista('como');
@@ -133,6 +183,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
       <section className="pres-portada">
         <div className="pres-texto">
           <Mascota cara="feliz" tamano={96} className="saluda" />
+          <span className="pres-beta">{t('Beta · por invitación')}</span>
           <h1>{t('Contale tu día. Patty encuentra lo que se relaciona.')}</h1>
           <p className="pres-bajada">
             {t('Lo que comés, cómo dormís, cómo te sentís, si algo te dolió. Lo contás en segundos, con la voz, una foto o un toque, y Patty te muestra qué cosas van juntas en tu vida.')}
@@ -254,12 +305,18 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
 
       <section ref={finalRef} className="pres-final">
         <Mascota cara="feliz" tamano={80} className="saluda" />
-        <h2>{t('Empezá hoy: contale cómo te sentís')}</h2>
-        <p className="pres-bajada">{t('Patty no diagnostica nada: te muestra relaciones en tus datos, para que las veas vos y, si querés, las charles con un profesional.')}</p>
-        <div className="pres-botones">
-          {entrar('final')}
-          {android ? <a className="btn" href={android} onClick={() => medir('bajar_android')}>{t('Bajar la app de Android')}</a> : null}
-        </div>
+        {conSesion ? (
+          <>
+            <h2>{t('Empezá hoy: contale cómo te sentís')}</h2>
+            <p className="pres-bajada">{t('Patty no diagnostica nada: te muestra relaciones en tus datos, para que las veas vos y, si querés, las charles con un profesional.')}</p>
+            <div className="pres-botones">
+              {entrar('final')}
+              {android ? <a className="btn" href={android} onClick={() => medir('bajar_android')}>{t('Bajar la app de Android')}</a> : null}
+            </div>
+          </>
+        ) : (
+          <FormBeta />
+        )}
         <p className="suave chico"><a href="privacidad.html">{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
       </section>
     </div>

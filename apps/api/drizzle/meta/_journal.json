@@ -288,6 +288,13 @@
       "when": 1793301334722,
       "tag": "0040_patrones_combinados",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793303058849,
+      "tag": "0041_solicitudes_beta",
+      "breakpoints": true
     }
   ]
 }
