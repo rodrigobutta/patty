@@ -3,7 +3,7 @@ import { medir, paginaVista } from '../lib/analytics';
 import { useCallback, useEffect, useState } from 'react';
 import { avanceProgreso, nombreRasgo, type Hallazgo, type Persona, type Progreso, type ResultadoAnalisis } from 'shared';
 import { api } from '../api';
-import { locale, t } from '../lib/idioma';
+import { idioma, locale, t } from '../lib/idioma';
 import { useEstado } from '../estado';
 import { Buscar } from './Buscar';
 import { Calendario } from './Calendario';
@@ -71,7 +71,7 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const posibles = hallazgos?.filter((h) => !apartados.includes(h) && !firmes.includes(h)) ?? [];
   const tarjeta = (h: Hallazgo) => (
     <article key={h.id} className={`tarjeta hallazgo ${h.estado}`}>
-      <h3>{nombreRasgo(t(h.causa), h.causa_tipo, h.causa_modo)} <span className="flecha">→</span> {nombreRasgo(t(h.efecto), h.efecto_tipo, h.efecto_modo)}</h3>
+      <h3>{nombreRasgo(h.causa, h.causa_tipo, h.causa_modo, idioma())} <span className="flecha">→</span> {nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma())}</h3>
       <p className="suave chico">{cuando(h.desfase_dias)} · {t('{n} de {total} veces', { n: h.soporte, total: h.dias_causa })} · {t('×{n} más probable', { n: h.lift.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}{h.q_valor > 0.2 ? ` · ${t('puede ser casualidad')}` : ''}</p>
       <div className="barras" aria-label={t('{con}% con, {sin}% sin', { con: Math.round(h.prob_con * 100), sin: Math.round(h.prob_sin * 100) })}>
         <div><span style={{ width: `${h.prob_con * 100}%` }} className="con" />{t('con {n}%', { n: Math.round(h.prob_con * 100) })}</div>

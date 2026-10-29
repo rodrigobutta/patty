@@ -701,7 +701,15 @@ export type EstadoHallazgo = 'nuevo' | 'confirmado' | 'obvio' | 'descartado';
 export type Modo = 'presente' | 'alto' | 'bajo';
 
 /** "Tomate", "Menos energía", "Me acosté tarde": cómo se nombra un rasgo de un día (alto y bajo, respecto de lo habitual). */
+/** El ánimo dicho como se dice: "Menos cómo me sentí en el día" no se entiende; "Un día peor", sí. */
+const NOMBRES_ANIMO: Record<string, { alto: [string, string]; bajo: [string, string] }> = {
+  'Cómo me sentí en el día': { alto: ['Un día mejor', 'A better day'], bajo: ['Un día peor', 'A worse day'] },
+  'Cómo me siento': { alto: ['Mejor ánimo', 'Better mood'], bajo: ['Peor ánimo', 'Worse mood'] },
+};
+
 export function nombreRasgo(nombre: string, tipo: TipoValor, modo: Modo, idioma: Idioma = 'es'): string {
+  const animo = modo !== 'presente' ? NOMBRES_ANIMO[nombre]?.[modo] : undefined;
+  if (animo) return animo[idioma === 'en' ? 1 : 0];
   if (idioma === 'en') {
     const n = traducirDato(nombre, idioma);
     if (modo === 'presente') return n;
