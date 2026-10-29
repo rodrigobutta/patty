@@ -35,6 +35,7 @@ import { Remedios } from './Remedios';
 import { Supervision } from './Supervision';
 import { NuevaPersona } from './NuevaPersona';
 import { COMMIT, VERSION, versionNativa } from '../lib/version';
+import { leerEstado, type EstadoTelefono } from '../lib/estadoTelefono';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
@@ -80,6 +81,14 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   }, [seccion]);
   const [nativa, setNativa] = useState<string | null>(null);
   useEffect(() => void versionNativa().then(setNativa), []);
+  // Qué está completo y qué falta (para el tilde o el aviso de cada opción). Se vuelve a mirar al volver al menú.
+  const [estadoTel, setEstadoTel] = useState<EstadoTelefono | null>(null);
+  const [hayLugares, setHayLugares] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (seccion !== null || permisos) return;
+    void leerEstado().then(setEstadoTel).catch(() => {});
+    if (persona) api<unknown[]>('GET', `/api/ubicacion/lugares?persona=${persona.id}`).then((l) => setHayLugares(l.length > 0)).catch(() => {});
+  }, [seccion, permisos, persona]);
   const [guia, setGuia] = useState<Paso | undefined>(undefined);
   // Tocar el aviso de un permiso que falta abre los permisos con sus pasos.
   useEffect(() => {
@@ -393,6 +402,21 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       ) : null}
   </>);
 
+  const p = estadoTel?.permisos;
+  const a = estadoTel?.activos;
+  /** true: completo, false: falta algo, undefined: no aplica o todavía no se sabe. */
+  const completo: Partial<Record<Seccion, boolean | undefined>> = {
+    salud: persona ? Boolean(persona.nacimiento && persona.sexo && persona.altura_cm && persona.peso_kg) : undefined,
+    datos: p
+      ? p.avisos !== 'no' && p.ubicacion === 'siempre' && p.uso_apps !== 'no' && p.llamadas !== 'no' && p.salud !== 0
+      : undefined,
+    clima: a ? a.clima : undefined,
+    telefono: p && a ? a.telefono && p.uso_apps === 'si' && p.llamadas === 'si' : undefined,
+    reloj: p && a ? a.salud && typeof p.salud === 'number' && p.salud > 0 : undefined,
+    lugares: hayLugares ?? undefined,
+    avisos: p ? p.avisos !== 'no' : undefined,
+  };
+
   const opciones: Array<{ clave: Seccion; icono: ReactNode; titulo: string; sub: string; ver?: boolean; accion?: () => void }> = [
     { clave: 'salud', icono: <IconoSalud />, titulo: t('Tus datos de salud'), sub: t('Edad, peso, altura y condiciones'), ver: Boolean(persona) },
     { clave: 'datos', icono: <IconoPermisos />, titulo: t('Permisos de este teléfono'), sub: t('Avisos, ubicación, uso del teléfono y salud'), ver: esNativa() && Boolean(persona), accion: () => setPermisos(true) },
@@ -427,6 +451,13 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
                 <strong>{o.titulo}</strong>
                 <span className="suave chico">{o.sub}</span>
               </span>
+              {completo[o.clave] === true ? (
+                <span className="estado-opcion listo" aria-label={t('Completo')}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </span>
+              ) : completo[o.clave] === false ? (
+                <span className="estado-opcion falta">{t('Falta')}</span>
+              ) : null}
               <span className="suave" aria-hidden>›</span>
             </button>
           </li>

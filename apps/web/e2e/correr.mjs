@@ -125,6 +125,9 @@ const PRUEBAS = {
   async 'activar un seguimiento'(c) {
     await tocar(c, 'nav button', 'Más');
     await espera(800);
+    // Cada opción dice si está completa o le falta algo (Sofía tiene sus datos y lugares).
+    await hasta(c, `!!document.querySelector('.menu-mas .estado-opcion')`, 'el tilde o el aviso de las opciones');
+    if (process.env.E2E_FOTOS) await captura(c, path.join(process.env.E2E_FOTOS, 'mas.jpg'));
     await tocar(c, '.menu-mas li button, .menu-mas li', 'Seguimientos');
     await hasta(c, contiene('Problema de panza'), 'las plantillas');
     await tocar(c, '.plantilla-seguimiento .btn.primario');

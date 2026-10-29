@@ -6,6 +6,7 @@ FROM node:24-slim AS build
 WORKDIR /repo
 RUN npm install -g pnpm@10.12.1
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY patches patches
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/

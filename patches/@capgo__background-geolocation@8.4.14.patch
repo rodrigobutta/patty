@@ -1,0 +1,93 @@
+diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
+index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..e2e4c6d9e2c7f88d10a24697ad22e7b35c51c072 100644
+--- a/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
++++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
+@@ -12,6 +12,7 @@ import java.util.Collections;
+ import java.util.HashMap;
+ import java.util.Iterator;
+ import java.util.Map;
++import org.json.JSONArray;
+ import org.json.JSONException;
+ import org.json.JSONObject;
+ 
+@@ -129,6 +130,35 @@ final class LocationStore {
+         prefs(context).edit().putLong(KEY_LAST_POST_TIME, locationTimeMs).apply();
+     }
+ 
++    // Patty: locations that could not be delivered (no signal on the road) are kept
++    // and sent with the next one as {"puntos": [...]}, instead of being lost.
++    private static final String KEY_PENDING = "pendingLocations";
++    private static final int MAX_PENDING = 3000;
++    private static final int BATCH = 400;
++
++    private static synchronized JSONArray pending(Context context) {
++        try {
++            return new JSONArray(prefs(context).getString(KEY_PENDING, "[]"));
++        } catch (JSONException e) {
++            return new JSONArray();
++        }
++    }
++
++    private static synchronized void savePending(Context context, JSONArray list) {
++        prefs(context).edit().putString(KEY_PENDING, list.toString()).apply();
++    }
++
++    private static synchronized void addPending(Context context, JSONObject data) {
++        JSONArray list = pending(context);
++        list.put(data);
++        if (list.length() > MAX_PENDING) {
++            JSONArray trimmed = new JSONArray();
++            for (int i = list.length() - MAX_PENDING; i < list.length(); i++) trimmed.put(list.opt(i));
++            list = trimmed;
++        }
++        savePending(context, list);
++    }
++
+     // POSTs a single location as JSON to the configured url. Runs synchronously,
+     // so callers must invoke it off the main thread.
+     static void sendLocation(Context context, JSONObject data) throws IOException {
+@@ -140,10 +170,26 @@ final class LocationStore {
+         if (!shouldPost(context, locationTimeMs)) {
+             return;
+         }
++        JSONArray waiting = pending(context);
++        int sentPending = Math.min(waiting.length(), BATCH);
++        String payload;
++        if (sentPending > 0) {
++            JSONArray batch = new JSONArray();
++            for (int i = 0; i < sentPending; i++) batch.put(waiting.opt(i));
++            batch.put(data);
++            try {
++                payload = new JSONObject().put("puntos", batch).toString();
++            } catch (JSONException e) {
++                payload = data.toString();
++                sentPending = 0;
++            }
++        } else {
++            payload = data.toString();
++        }
+         HttpURLConnection connection = null;
+         try {
+             URL url = new URL(urlString);
+-            byte[] body = data.toString().getBytes(StandardCharsets.UTF_8);
++            byte[] body = payload.getBytes(StandardCharsets.UTF_8);
+             connection = (HttpURLConnection) url.openConnection();
+             connection.setRequestMethod("POST");
+             connection.setConnectTimeout(15000);
+@@ -164,6 +210,16 @@ final class LocationStore {
+                 throw new IOException("Location POST failed with response code: " + responseCode);
+             }
+             markPosted(context, locationTimeMs);
++            if (sentPending > 0) {
++                JSONArray rest = new JSONArray();
++                JSONArray now = pending(context);
++                for (int i = sentPending; i < now.length(); i++) rest.put(now.opt(i));
++                savePending(context, rest);
++            }
++        } catch (IOException e) {
++            addPending(context, data);
++            markPosted(context, locationTimeMs);
++            throw e;
+         } finally {
+             if (connection != null) {
+                 connection.disconnect();

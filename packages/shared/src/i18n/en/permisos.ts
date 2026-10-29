@@ -896,4 +896,6 @@ export const PERMISOS: Record<string, string> = {
   "¿Cómo fueron tus {n} viajes?": "How were your {n} trips?",
   "Viaje {i} de {n}": "Trip {i} of {n}",
   "Hay una versión nueva de Patty": "A new version of Patty is ready",
+  "Completo": "Complete",
+  "Falta": "To do",
 };

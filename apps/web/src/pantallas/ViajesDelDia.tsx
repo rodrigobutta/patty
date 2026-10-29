@@ -11,6 +11,7 @@ import { horaEn } from '../lib/fechas';
 import { t } from '../lib/idioma';
 import { avisarAnotado } from '../mascota/cara';
 import { Mapa } from '../ui/Mapa';
+import { useCaminoParaMapa } from '../lib/rutaPorCalles';
 
 export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: Persona; fecha: string; vuelta: number; alCambiar(): void }) {
   const { festejar, usuario } = useEstado();
@@ -47,7 +48,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
           return (
             <li key={v.inicio} className="viaje">
               {pendientes.length > 1 ? <span className="suave chico">{t('Viaje {i} de {n}', { i: i + 1, n: pendientes.length })}</span> : null}
-              {v.camino.length > 1 ? <Mapa ruta={{ puntos: v.camino }} puntos={[]} alto={130} className="mapa-viaje" /> : null}
+              {v.camino.length > 1 ? <MapaDelViaje camino={v.camino} /> : null}
               <span className="que">
                 <strong>
                   {horaEn(v.inicio, persona.zona_horaria)} → {horaEn(v.fin, persona.zona_horaria)} · {String(v.km).replace('.', ',')} km · {duracion(v.minutos)}
@@ -76,4 +77,10 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
       </ul>
     </div>
   );
+}
+
+/** El mapita de un viaje: por donde pasó (o, si hay pocos puntos, el camino más probable por las calles). */
+function MapaDelViaje({ camino }: { camino: Array<{ lat: number; lon: number }> }) {
+  const ruta = useCaminoParaMapa(camino);
+  return <Mapa ruta={{ puntos: ruta }} puntos={[]} alto={130} className="mapa-viaje" />;
 }
