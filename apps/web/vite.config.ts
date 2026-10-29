@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import type { Plugin } from 'vite';
+import { archivosDeTemas } from './src/temas/pagina';
+import { TEMAS } from './src/temas/temas';
 
 /** La versión de la app (package.json de la web) y el commit, para mostrarla en Más y contársela al servidor. */
 const VERSION = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version;
@@ -15,6 +18,22 @@ const commit = () => {
     return '';
   }
 };
+
+/**
+ * Las páginas de temas para Google (patty.today/migranas, …): HTML estático con el contenido adentro, escrito en
+ * dist/<slug>/index.html al compilar, más el sitemap. El texto está en src/temas/temas.ts.
+ */
+function paginasDeTemas(): Plugin {
+  return {
+    name: 'patty-temas',
+    apply: 'build',
+    generateBundle() {
+      for (const { ruta, contenido } of archivosDeTemas()) this.emitFile({ type: 'asset', fileName: ruta, source: contenido });
+    },
+  };
+}
+/** Las rutas de los temas, para que el service worker no las cambie por la app (navigateFallback). */
+const RUTAS_TEMAS = new RegExp(`^/(${TEMAS.map((t) => t.slug).join('|')})(/|$)`);
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -33,6 +52,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      paginasDeTemas(),
       VitePWA({
         // La versión nueva no se aplica sola en medio del uso (la página se recargaba de golpe): la app avisa y se
         // actualiza al tocar, al pasar a segundo plano o recién abierta (ver lib/actualizar.ts).
@@ -60,7 +80,10 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/api\//, /^\/descargar\//],
+          // Los temas, el sitemap y robots.txt son páginas aparte: el service worker no los reemplaza por la app ni los
+          // guarda (se piden siempre al servidor).
+          navigateFallbackDenylist: [/^\/api\//, /^\/descargar\//, RUTAS_TEMAS, /^\/(sitemap\.xml|robots\.txt|privacidad\.html|borrar-cuenta\.html)$/],
+          globIgnores: ['**/node_modules/**/*', ...TEMAS.map((t) => `${t.slug}/**`), 'sitemap.xml', 'robots.txt'],
           skipWaiting: false,
           clientsClaim: true,
           cleanupOutdatedCaches: true,

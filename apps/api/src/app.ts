@@ -57,6 +57,7 @@ const TIPOS: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
 };
 
 async function archivo(ruta: string, rango?: string): Promise<Response | null> {
@@ -66,10 +67,10 @@ async function archivo(ruta: string, rango?: string): Promise<Response | null> {
     return null;
   }
   const ext = path.extname(ruta);
-  // index.html y el service worker no se guardan en caché: así las versiones nuevas llegan enseguida. Lo de la
-  // presentación (capturas y videos, sin hash en el nombre) se guarda un día.
+  // Las páginas (index.html, los temas), el service worker, el sitemap y robots.txt no se guardan en caché: así las
+  // versiones nuevas llegan enseguida. Lo de la presentación (capturas y videos, sin hash en el nombre) se guarda un día.
   const cache =
-    ext === '.html' || path.basename(ruta) === 'sw.js'
+    ext === '.html' || ext === '.xml' || ext === '.txt' || path.basename(ruta) === 'sw.js'
       ? 'no-cache'
       : ruta.includes(`${path.sep}presentacion${path.sep}`)
         ? 'public, max-age=86400'
@@ -183,7 +184,19 @@ export function crearApp(): Hono<Env> {
     const ruta = decodeURIComponent(new URL(c.req.url).pathname).replace(/^\/app(\/|$)/, '/');
     const pedido = path.normalize(path.join(base, ruta));
     if (!pedido.startsWith(base)) return c.json({ error: traducir(idiomaDelPedido(c.req.header('X-Idioma'), c.req.header('Accept-Language')), 'No encontrado.') }, 404);
-    return (await archivo(pedido, c.req.header('Range'))) ?? (await archivo(path.join(base, 'index.html'))) ?? c.text('Patty: falta compilar la web (STATIC_DIR).', 404);
+    // Las páginas de temas (patty.today/migranas) están en migranas/index.html: sin extensión, se prueba <ruta>.html y
+    // <ruta>/index.html antes de caer en la app.
+    const limpio = pedido.replace(/[\\/]+$/, '');
+    const pagina = async () =>
+      path.extname(limpio) || !limpio.startsWith(path.join(base, path.sep))
+        ? null
+        : ((await archivo(`${limpio}.html`)) ?? (await archivo(path.join(limpio, 'index.html'))));
+    return (
+      (await archivo(pedido, c.req.header('Range'))) ??
+      (await pagina()) ??
+      (await archivo(path.join(base, 'index.html'))) ??
+      c.text('Patty: falta compilar la web (STATIC_DIR).', 404)
+    );
   });
   return app;
 }

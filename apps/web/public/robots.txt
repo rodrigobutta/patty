@@ -1,0 +1,7 @@
+# Patty (patty.today): la presentación y las páginas de temas se pueden indexar; la app y la API, no.
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /api/
+
+Sitemap: https://patty.today/sitemap.xml

@@ -1520,3 +1520,10 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .pres-conexion { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 2px; align-items: center; padding: 14px 16px; border-radius: 16px; background: var(--panel); border: 1px solid var(--borde); }
 .pres-conexion-icono { grid-row: 1 / span 2; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 14px; background: var(--acento-suave); color: var(--acento); }
 @media (max-width: 560px) { .pres-fila.cuatro { grid-template-columns: 1fr; } }
+
+/* El pie de la presentación: los temas (páginas para Google) y la privacidad. */
+.pres-pie { padding: 20px 0 0; border-top: 1px solid var(--borde); text-align: center; }
+.pres-temas h3 { font-size: 15px; color: var(--suave); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px; }
+.pres-temas ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; list-style: none; padding: 0; margin: 0 0 14px; }
+.pres-temas a { display: inline-block; padding: 6px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--borde); color: var(--texto); text-decoration: none; font-size: 14px; }
+.pres-temas a:hover { border-color: var(--acento); }
