@@ -115,7 +115,15 @@ const ESCENAS = {
     await espera(600);
     await captura(c, archivo('patrones.webp'));
   },
-  // La portada se arma después con un hallazgo y este calendario: python3 portada.py.
+  // Los dos primeros hallazgos, para la portada (que se arma después con portada.py).
+  async hallazgos(c) {
+    await ir(c, BASE + '/', 4000);
+    await tocar(c, 'nav button', 'Descubrir');
+    await espera(3000);
+    await js(c, `(() => { const h = document.querySelector('.hallazgo'); if (h) window.scrollTo(0, h.getBoundingClientRect().top + window.scrollY - 138); })()`);
+    await espera(700);
+    await captura(c, archivo('hallazgos.webp'));
+  },
   async calendario(c) {
     await ir(c, BASE + '/', 4000);
     await tocar(c, 'nav button', 'Descubrir');

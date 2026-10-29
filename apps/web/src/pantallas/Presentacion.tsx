@@ -144,6 +144,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
         </div>
         <div className="pres-telefonos">
           <Telefono img="portada.webp" alt={t('Lo que descubre Patty: dormir poco y el ánimo, la comida frita y el dolor de panza')} />
+          <Telefono img="calendario.webp" alt={t('El calendario del sueño: cuánto dormiste cada noche del mes')} chico />
         </div>
       </section>
 
