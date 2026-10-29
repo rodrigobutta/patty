@@ -3,6 +3,9 @@
 // del teléfono no se muestra: ahí se entra directo.
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { api } from '../api';
+import { IconoCalendario } from '../ui/Iconos';
+import { IconoClima, IconoLugares, IconoReloj, IconoTelefono } from '../ui/IconosMas';
+import { IconoCategoria } from '../ui/IconosPatty';
 import { useEstado } from '../estado';
 import { iniciarAnalytics, medir } from '../lib/analytics';
 import { t } from '../lib/idioma';
@@ -66,6 +69,16 @@ function VideoHistoria() {
     </section>
   );
 }
+
+/** Lo que Patty suma solo, una vez conectado (la sección "Se conecta con lo que ya usás"). */
+const CONEXIONES: Array<{ icono: ReactNode; titulo: string; detalle: string }> = [
+  { icono: <IconoReloj />, titulo: 'Reloj y Health Connect', detalle: 'Sueño con sus etapas, pasos, caminatas y pulso, de tu reloj o pulsera (Samsung, Fitbit y otros) por Health Connect.' },
+  { icono: <IconoLugares />, titulo: 'Ubicación', detalle: 'Tus viajes con su mapa, si hubo tráfico, y los lugares donde pasás el tiempo.' },
+  { icono: <IconoTelefono />, titulo: 'Uso del teléfono', detalle: 'El tiempo de pantalla, qué apps usás más y cuánto hablás por teléfono.' },
+  { icono: <IconoCalendario tamano={28} />, titulo: 'Tu calendario', detalle: 'Las reuniones de Google o Outlook, para ver si un día cargado te pega.' },
+  { icono: <IconoClima />, titulo: 'Clima', detalle: 'El clima de cada hora donde estás: calor, lluvia, humedad, cambios de presión.' },
+  { icono: <IconoCategoria clave="ciclo" tamano={28} />, titulo: 'Ciclo menstrual', detalle: 'La fase de cada día, para ver cómo te va en cada una.' },
+];
 
 /**
  * Mientras Patty está en beta se entra por invitación: quien quiere probarla deja su nombre, su mail y qué le
@@ -171,6 +184,8 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
       <a className="btn primario pres-cta" href="#beta" onClick={() => medir('pedir_invitacion', { desde: donde })}>{t('Pedir invitación')}</a>
     );
   const finalRef = useVista('final');
+  const consultaRef = useVista('consultar');
+  const conexionesRef = useVista('conexiones');
   const tiempoRef = useVista('tiempo');
   const comoRef = useVista('como');
   return (
@@ -251,23 +266,58 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
       >
         <div className="pres-ejemplos">
           <div className="pres-ejemplo"><span>😴 → 🤕</span>{t('Después de dormir menos de 6 horas, ese día el dolor de cabeza aparece casi siempre.')}</div>
-          <div className="pres-ejemplo"><span>🍟 → 😣</span>{t('Cuando comés frito, a la tarde aparece el dolor de panza.')}</div>
+          <div className="pres-ejemplo"><span>🍟 + 🩸 + ☀️ → 😣</span>{t('Cuando se juntan comida frita, el período y un día de calor, al otro día duele la panza. Una sola de esas cosas, casi nunca.')}</div>
           <div className="pres-ejemplo"><span>🚶 → 😄</span>{t('Los días que caminás media hora, tu ánimo está más arriba.')}</div>
           <div className="pres-ejemplo"><span>📱 → 😴</span>{t('Con mucha pantalla a la noche, dormís menos.')}</div>
         </div>
         <p className="suave chico">{t('Vos le decís si te sirvió, si ya lo sabías o si no tiene sentido, y Patty aprende qué mostrarte.')}</p>
       </Seccion>
 
+      <section ref={consultaRef} id="consultar" className="pres-seccion pres-tres">
+        <div className="pres-texto centro">
+          <h2>{t('Y todo lo tuyo, a mano')}</h2>
+          <p className="pres-bajada">{t('No son solo patrones: todo lo que anotás y lo que junta Patty se puede mirar, buscar y preguntar.')}</p>
+        </div>
+        <div className="pres-fila cuatro">
+          <figure>
+            <Telefono img="preguntar.webp" alt={t('Preguntarle a Patty cómo venís durmiendo')} chico />
+            <figcaption><strong>{t('🦉 Preguntale')}</strong>{t('«¿Cómo vengo durmiendo?», «¿cuándo comí huevos?»: Patty te contesta con tus datos.')}</figcaption>
+          </figure>
+          <figure>
+            <Telefono img="numeros.webp" alt={t('Los números del mes')} chico />
+            <figcaption><strong>{t('📊 Tus números')}</strong>{t('Qué anotaste más, cuántos días, cuántas tazas de café en el mes.')}</figcaption>
+          </figure>
+          <figure>
+            <Telefono img="calendario.webp" alt={t('El calendario del sueño')} chico />
+            <figcaption><strong>{t('📅 El calendario')}</strong>{t('El sueño, el ánimo o los dolores de cada día del mes, de un vistazo.')}</figcaption>
+          </figure>
+          <figure>
+            <Telefono img="mapa.webp" alt={t('El mapa de dónde pasaste tu tiempo')} chico />
+            <figcaption><strong>{t('🗺️ El mapa')}</strong>{t('Dónde pasaste tu tiempo y por dónde anduviste.')}</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section ref={conexionesRef} id="conexiones" className="pres-conexiones">
+        <h2>{t('Se conecta con lo que ya usás')}</h2>
+        <p className="pres-bajada">{t('Lo activás una vez y Patty lo suma solo, sin que tengas que anotar nada.')}</p>
+        <div className="pres-conexiones-grilla">
+          {CONEXIONES.map((x) => (
+            <div key={x.titulo} className="pres-conexion">
+              <span className="pres-conexion-icono" aria-hidden>{x.icono}</span>
+              <strong>{t(x.titulo)}</strong>
+              <span className="suave chico">{t(x.detalle)}</span>
+            </div>
+          ))}
+        </div>
+        <p className="suave chico">{t('Cada conexión se prende y se apaga cuando quieras, y lo de Android funciona con la app instalada.')}</p>
+      </section>
+
       <Seccion
         id="antes"
         titulo={t('¿Qué pasó antes?')}
         bajada={t('Cuando anotás un dolor o un mal momento, Patty mira las horas anteriores: qué comiste, cómo dormiste, el clima, cuánto te moviste. Así es más fácil darte cuenta.')}
-        telefono={
-          <>
-            <Telefono img="antes.webp" alt={t('Lo que pasó antes de un dolor de cabeza')} />
-            <Telefono img="mapa.webp" alt={t('El mapa de dónde pasaste tu tiempo')} chico />
-          </>
-        }
+        telefono={<Telefono img="antes.webp" alt={t('Lo que pasó antes de un dolor de cabeza')} />}
       />
 
       <Seccion

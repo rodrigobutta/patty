@@ -33,6 +33,17 @@ const RESPUESTAS = {
     dudas: [],
     __demora: 1400,
   },
+  // Preguntarle a Patty: la pregunta (POST) con una respuesta fija; la lista de últimas preguntas (GET), vacía.
+  '/api/preguntar': (pedido) =>
+    pedido.method === 'GET'
+      ? []
+      : {
+          respuesta:
+            'Venís durmiendo 6 h 44 min en promedio este mes. Las noches después de mucha pantalla son las más cortas (unas 5 h y media), y los fines de semana dormís casi una hora más.',
+          fechas: [en('07:00').slice(0, 10)],
+          conceptos: [],
+          __demora: 1500,
+        },
   '/api/registros/foto': {
     registros: [
       propuesta({ categoria_id: 2, concepto_nombre: 'Milanesa con papas fritas', inicio: en('13:30'), porcion: 'grande', tipos: ['frito', 'proteina', 'harinas'] }),
@@ -123,6 +134,24 @@ const ESCENAS = {
     await js(c, `(() => { const h = document.querySelector('.hallazgo'); if (h) window.scrollTo(0, h.getBoundingClientRect().top + window.scrollY - 138); })()`);
     await espera(700);
     await captura(c, archivo('hallazgos.webp'));
+  },
+  async numeros(c) {
+    await ir(c, BASE + '/', 4000);
+    await tocar(c, 'nav button', 'Descubrir');
+    await espera(1500);
+    await tocar(c, '.subvistas button', 'Números');
+    await espera(3500);
+    await captura(c, archivo('numeros.webp'));
+  },
+  async preguntar(c) {
+    await ir(c, BASE + '/', 4000);
+    await tocar(c, 'nav button', 'Descubrir');
+    await espera(2500);
+    await js(c, `document.querySelector('.preguntar input').focus()`);
+    await espera(500);
+    await tocar(c, '.preguntar .chip', '¿Cómo vengo durmiendo?');
+    await espera(3200);
+    await captura(c, archivo('preguntar.webp'));
   },
   async calendario(c) {
     await ir(c, BASE + '/', 4000);

@@ -77,12 +77,13 @@ export async function prepararPagina(c, { base, token, ahora, escala = 3, oscuro
       const r = rutas.find((x) => p.request.url.includes(x));
       const cuerpo = typeof respuestas[r] === 'function' ? respuestas[r](p.request) : respuestas[r];
       await espera(cuerpo?.__demora ?? 900);
-      const { __demora, ...resto } = cuerpo ?? {};
+      // Una lista va tal cual; un objeto, sin la demora.
+      const { __demora, ...resto } = Array.isArray(cuerpo) ? { __demora: 0 } : (cuerpo ?? {});
       await c.enviar('Fetch.fulfillRequest', {
         requestId: p.requestId,
         responseCode: 200,
         responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
-        body: Buffer.from(JSON.stringify(resto)).toString('base64'),
+        body: Buffer.from(JSON.stringify(Array.isArray(cuerpo) ? cuerpo : resto)).toString('base64'),
       });
     });
   }

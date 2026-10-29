@@ -65,7 +65,7 @@ export function Numeros({ persona, alElegir }: { persona: Persona; alElegir(conc
                 </span>
                 <span className="cifra">
                   <span><strong>{x.dias}</strong> {dias1(x.dias)}</span>
-                  {x.suma && x.unidad ? <span className="suave chico">{conUnidad(x.suma, x.unidad, 1, idioma())}</span> : x.veces > x.dias ? <span className="suave chico">{t('{n} veces', { n: x.veces })}</span> : null}
+                  {x.suma && x.unidad && x.unidad !== 'hora' ? <span className="suave chico">{conUnidad(x.suma, x.unidad, 1, idioma())}</span> : x.veces > x.dias ? <span className="suave chico">{t('{n} veces', { n: x.veces })}</span> : null}
                 </span>
               </li>
             ))}
