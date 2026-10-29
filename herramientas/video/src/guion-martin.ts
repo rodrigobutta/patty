@@ -14,7 +14,7 @@ export const ESCENAS_MARTIN: Escena[] = [
   },
   {
     clave: 'tocar',
-    texto: 'Con Patty, contar cómo está es un toque.',
+    texto: 'Con Patty, contarle cómo te sentís es un toque.',
     pantallas: [{ video: 'tocar.webm' }],
     cara: 'feliz',
     titulo: 'Un toque',
