@@ -190,13 +190,13 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
   return (
     <div className="presentacion">
       <header className="pres-barra">
-        <span className="pres-marca"><Mascota cara="feliz" tamano={34} /> Patty</span>
+        <span className="pres-marca"><Mascota cara="feliz" tamano={48} /> Patty</span>
         <button className="btn chico" onClick={ir('barra')}>{t('Ver Patty en la web')}</button>
       </header>
 
       <section className="pres-portada">
         <div className="pres-texto">
-          <Mascota cara="feliz" tamano={96} className="saluda" />
+          <Mascota cara="feliz" tamano={150} className="saluda" />
           <span className="pres-beta">{t('Beta · gratis para Android')}</span>
           <h1>{t('Contale tu día. Patty encuentra lo que se relaciona.')}</h1>
           <p className="pres-bajada">
@@ -356,7 +356,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
       </section>
 
       <section ref={finalRef} className="pres-final">
-        <Mascota cara="feliz" tamano={80} className="saluda" />
+        <Mascota cara="feliz" tamano={120} className="saluda" />
         <h2>{t('Descargala gratis para Android')}</h2>
         <div className="pres-botones">{entrar('final')}</div>
         <p className="suave chico">{t('Android te va a preguntar si dejás instalar una app que no viene del Play Store: es normal, decile que sí.')}</p>
