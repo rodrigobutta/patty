@@ -302,6 +302,13 @@
       "when": 1793314490156,
       "tag": "0042_aviso_preventivo",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793315247483,
+      "tag": "0043_patrones_finos",
+      "breakpoints": true
     }
   ]
 }

@@ -374,12 +374,23 @@ describe('análisis de patrones', () => {
     expect(r.body.dias).toBe(45);
     const h = r.body.hallazgos[0];
     expect(h).toMatchObject({ causa: 'Tomate', efecto: 'Dolor de cabeza', desfase_dias: 2, estado: 'nuevo' });
-    expect(h.explicacion).toMatch(/2 días después/);
+    expect(h.explicacion).toMatch(/a los dos días/);
 
     await ana.put(`/api/hallazgos/${h.id}`, { estado: 'confirmado' });
     const otra = await ana.post('/api/analisis', { persona_id: personaId, desde, hasta: sumarDias(desde, 44), ia: false });
     expect(otra.body.hallazgos[0]).toMatchObject({ id: h.id, estado: 'confirmado' });
     expect((await ana.get(`/api/hallazgos?persona=${personaId}`)).body[0].estado).toBe('confirmado');
+
+    // Qué patrones buscar: sin los efectos a los dos o tres días, el del tomate no se muestra ni se vuelve a buscar.
+    expect((await ana.put(`/api/personas/${personaId}`, { patrones: { desfases_largos: 'no' } })).status).toBe(400);
+    expect((await ana.put(`/api/personas/${personaId}`, { patrones: { desfases_largos: false, otra: true } })).status).toBe(200);
+    expect((await ana.get('/api/personas')).body.find((p: { id: number }) => p.id === personaId).patrones).toEqual({ desfases_largos: false });
+    expect((await ana.get(`/api/hallazgos?persona=${personaId}`)).body.some((x: { id: number }) => x.id === h.id)).toBe(false);
+    const sin = await ana.post('/api/analisis', { persona_id: personaId, desde, hasta: sumarDias(desde, 44), ia: false });
+    expect(sin.body.hallazgos.every((x: { desfase_dias: number }) => x.desfase_dias <= 1)).toBe(true);
+    // Prendido otra vez, vuelve (con lo que la persona había dicho).
+    await ana.put(`/api/personas/${personaId}`, { patrones: { desfases_largos: true } });
+    expect((await ana.get(`/api/hallazgos?persona=${personaId}`)).body[0]).toMatchObject({ id: h.id, estado: 'confirmado' });
   });
 
   it('ir a un lugar con nombre entra como causa: «Supermercado → dolor de cabeza al día siguiente»', async () => {

@@ -153,3 +153,14 @@ export const IconoSeguimientos = () => (
     <path d="M10 14 l2 2 l3-3.5 M10 21 l2 2 l3-3.5 M18 14.5 h4 M18 21.5 h4" stroke={A} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </Base>
 );
+
+/** Qué patrones buscar: una lupa sobre dos puntos unidos. */
+export const IconoPatrones = () => (
+  <Base>
+    <circle cx="14" cy="14" r="10" fill={V} {...T} />
+    <path d="M21.5 21.5 L28 28" {...T} strokeWidth="3" />
+    <path d="M10 17 L18 11" stroke={A} strokeWidth="2.2" strokeLinecap="round" />
+    <circle cx="10" cy="17" r="2.2" fill={A} {...T} />
+    <circle cx="18" cy="11" r="2.2" fill={A} {...T} />
+  </Base>
+);
