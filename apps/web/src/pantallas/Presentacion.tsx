@@ -85,6 +85,13 @@ const CONEXIONES: Array<{ icono: ReactNode; titulo: string; detalle: string }> =
  * esté. El campo "web" está escondido: si viene lleno, es un bot.
  */
 function FormBeta() {
+  // Quien empieza a llenar el formulario (aunque no lo mande), una vez.
+  const empezado = useRef(false);
+  const empezar = () => {
+    if (empezado.current) return;
+    empezado.current = true;
+    medir('beta_empezado');
+  };
   const [datos, setDatos] = useState({ nombre: '', email: '', motivo: '', web: '' });
   const [estado, setEstado] = useState<'listo' | 'mandando' | 'enviado'>('listo');
   const [error, setError] = useState('');
@@ -110,7 +117,7 @@ function FormBeta() {
       {estado === 'enviado' ? (
         <p className="pres-beta-gracias">{t('¡Listo! Te vamos a escribir a {email} cuando esté la de iPhone. 💜', { email: datos.email })}</p>
       ) : (
-        <form className="pres-form" onSubmit={(e) => void mandar(e)}>
+        <form className="pres-form" onSubmit={(e) => void mandar(e)} onFocus={empezar}>
           <label>{t('Nombre')}<input required maxLength={80} value={datos.nombre} onChange={(e) => setDatos({ ...datos, nombre: e.target.value })} autoComplete="name" /></label>
           <label>{t('Mail')}<input required type="email" maxLength={120} value={datos.email} onChange={(e) => setDatos({ ...datos, email: e.target.value })} autoComplete="email" /></label>
           <label>{t('¿Por qué te interesa?')}<textarea maxLength={1000} rows={3} value={datos.motivo} onChange={(e) => setDatos({ ...datos, motivo: e.target.value })} placeholder={t('Ej: tengo migrañas seguido y quiero entender qué las dispara')} /></label>
@@ -138,6 +145,39 @@ function useVista(nombre: string) {
     return () => o.disconnect();
   }, [nombre]);
   return r;
+}
+
+/**
+ * Hasta dónde lee la gente y cuánto se queda: un evento al pasar el 25, 50, 75 y 100 % de la página (`profundidad`) y
+ * otro a los 10 s, 30 s, 1, 2 y 5 minutos con la página a la vista (`tiempo_en_pagina`). Cada uno, una vez por visita.
+ */
+function useLectura() {
+  useEffect(() => {
+    const vistos = new Set<number>();
+    const alBajar = () => {
+      const alto = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = alto > 0 ? (window.scrollY / alto) * 100 : 100;
+      for (const marca of [25, 50, 75, 100]) {
+        if (pct >= marca - 1 && !vistos.has(marca)) {
+          vistos.add(marca);
+          medir('profundidad', { porcentaje: marca });
+        }
+      }
+    };
+    window.addEventListener('scroll', alBajar, { passive: true });
+    // El tiempo cuenta solo con la pestaña a la vista.
+    let segundos = 0;
+    const marcas = [10, 30, 60, 120, 300];
+    const reloj = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      segundos++;
+      if (marcas.includes(segundos)) medir('tiempo_en_pagina', { segundos });
+    }, 1000);
+    return () => {
+      window.removeEventListener('scroll', alBajar);
+      clearInterval(reloj);
+    };
+  }, []);
 }
 
 function Seccion({ id, titulo, bajada, children, invertida = false, telefono }: {
@@ -182,6 +222,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
   const entrar = (donde: string) => (
     <a className="btn primario pres-cta" href={android} onClick={() => medir('bajar_android', { desde: donde })}>{t('Descargar para Android')}</a>
   );
+  useLectura();
   const finalRef = useVista('final');
   const consultaRef = useVista('consultar');
   const conexionesRef = useVista('conexiones');
@@ -361,7 +402,7 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
         <div className="pres-botones">{entrar('final')}</div>
         <p className="suave chico">{t('Android te va a preguntar si dejás instalar una app que no viene del Play Store: es normal, decile que sí.')}</p>
         <FormBeta />
-        <p className="suave chico"><a href="privacidad.html">{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
+        <p className="suave chico"><a href="privacidad.html" onClick={() => medir('ver_privacidad')}>{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
       </section>
     </div>
   );
