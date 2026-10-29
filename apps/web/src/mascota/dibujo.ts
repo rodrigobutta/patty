@@ -40,7 +40,8 @@ function ojos(cara: Cara, x1: number, x2: number, y: number, r: number): string 
 function boca(cara: Cara, x: number, y: number, w: number): string {
   if (cara === 'feliz') return `<path d="M${x - w} ${y} Q${x} ${y + w * 1.1} ${x + w} ${y}" stroke="${TINTA}" stroke-width="7" fill="#e85d75" stroke-linejoin="round"/>`;
   // Esperando: una boquita chica y curiosa (no recta, que parecía enojo).
-  if (cara === 'espera') return `<ellipse cx="${x}" cy="${y + 6}" rx="${w * 0.22}" ry="${w * 0.2}" fill="none" stroke="${TINTA}" stroke-width="6"/>`;
+  // Esperando: una línea recta, casi sin gesto.
+  if (cara === 'espera') return `<path d="M${x - w * 0.6} ${y + 6} H${x + w * 0.6}" stroke="${TINTA}" stroke-width="6" stroke-linecap="round"/>`;
   if (cara === 'manana') return `<path d="M${x - w * 0.45} ${y + 4} Q${x} ${y + w * 0.6} ${x + w * 0.45} ${y + 4}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   if (cara === 'enojada') return `<path d="M${x - w * 0.55} ${y + 10} Q${x} ${y} ${x + w * 0.55} ${y + 10}" stroke="${TINTA}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   // Bostezando: una boquita redonda.
