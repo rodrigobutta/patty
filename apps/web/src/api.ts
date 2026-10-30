@@ -2,6 +2,7 @@
 // se guarda el token y se manda como "Authorization: Bearer". Cada pedido dice el idioma (X-Idioma): el servidor
 // contesta los errores y los textos que arma (resúmenes, avisos) en ese idioma.
 import { encolar, respuestaProvisoria, sePuedeEncolar, subirPendientes } from './lib/cola';
+import { guardar } from './lib/guardado';
 import { idioma, t } from './lib/idioma';
 export const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) || '').replace(/\/$/, '');
 const CON_TOKEN = API_BASE !== '';
@@ -71,5 +72,7 @@ export async function api<T = unknown>(metodo: 'GET' | 'POST' | 'PUT' | 'DELETE'
     if (r.status === 401 && !ruta.startsWith('/api/entrar')) alPerderSesion();
     throw new ErrorApi((datos as { error?: string } | null)?.error || `Error ${r.status}`, r.status);
   }
+  // Las lecturas quedan guardadas para mostrarlas enseguida la próxima vez (ver lib/guardado).
+  if (metodo === 'GET' && !ruta.startsWith('/api/sesion')) guardar(ruta, datos);
   return datos as T;
 }

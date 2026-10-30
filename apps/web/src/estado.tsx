@@ -1,6 +1,7 @@
 // Estado general: sesión, personas, categorías y la persona que se está anotando.
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Categoria, Persona, Sesion, Usuario } from 'shared';
+import { olvidarGuardado } from './lib/guardado';
 import { guardarSesionNativa, olvidarDispositivo } from './lib/push';
 import { guardarApodo } from './lib/apodo';
 import { api, cuandoSePierdaLaSesion, guardarToken } from './api';
@@ -110,6 +111,7 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
 
   const salir = useCallback(async () => {
     await olvidarDispositivo();
+    olvidarGuardado();
     await api('POST', '/api/salir').catch(() => {});
     guardarToken(null);
     guardarSesionNativa(false);

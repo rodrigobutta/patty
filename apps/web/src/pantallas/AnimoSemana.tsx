@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { estadoDe, type Persona } from 'shared';
 import { api } from '../api';
+import { guardado } from '../lib/guardado';
 import { locale, t } from '../lib/idioma';
 import { IconoAnimo, IconoCategoria } from '../ui/IconosPatty';
 import { IconoPasos, IconoSueno } from '../ui/IconosWidget';
@@ -18,7 +19,7 @@ const promedio = (d: Dia[]) => {
 };
 
 export function AnimoSemana({ persona, fecha, vuelta }: { persona: Persona; fecha: string; vuelta: number }) {
-  const [dias, setDias] = useState<Dia[] | null>(null);
+  const [dias, setDias] = useState<Dia[] | null>(() => guardado<Dia[]>(`/api/registros/animo-semana?persona=${persona.id}&hasta=${fecha}`) ?? null);
   const [abierto, setAbierto] = useState(false);
   useEffect(() => {
     api<Dia[]>('GET', `/api/registros/animo-semana?persona=${persona.id}&hasta=${fecha}`).then(setDias).catch(() => setDias(null));

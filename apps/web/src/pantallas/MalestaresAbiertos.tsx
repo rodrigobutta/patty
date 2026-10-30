@@ -8,6 +8,7 @@ import { IconoLapiz } from '../ui/Iconos';
 import { useEffect, useState } from 'react';
 import type { Categoria, Persona, Registro, SesionEscucha } from 'shared';
 import { api } from '../api';
+import { guardado } from '../lib/guardado';
 import { useEstado } from '../estado';
 import { medir } from '../lib/analytics';
 import { duracion } from '../lib/automatico';
@@ -45,7 +46,7 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
 
   // Lo que sonó en el teléfono (música, podcasts, videos): una fila más por tipo, al final y cerrada; al tocarla, las
   // sesiones con lo que más sonó y sus géneros.
-  const [escuchas, setEscuchas] = useState<SesionEscucha[]>([]);
+  const [escuchas, setEscuchas] = useState<SesionEscucha[]>(() => guardado<SesionEscucha[]>(`/api/medios/escuchas?persona=${persona.id}&fecha=${fecha}`) ?? []);
   const [escuchaAbierta, setEscuchaAbierta] = useState<SesionEscucha['tipo'] | null>(null);
   useEffect(() => {
     api<SesionEscucha[]>('GET', `/api/medios/escuchas?persona=${persona.id}&fecha=${fecha}`).then(setEscuchas).catch(() => setEscuchas([]));

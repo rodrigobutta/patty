@@ -1,4 +1,5 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
+import { guardado } from '../lib/guardado';
 import { conApodo } from '../lib/apodo';
 import { medir } from '../lib/analytics';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
@@ -126,8 +127,13 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       if (f) setFecha(f);
     });
   }, []);
-  const [registros, setRegistros] = useState<Registro[] | null>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.registros ?? null);
-  const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>(() => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.automaticos ?? []);
+  // Lo que ya se sabía del día (de esta vez o de la última vez que se abrió la app) se muestra enseguida.
+  const [registros, setRegistros] = useState<Registro[] | null>(
+    () => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.registros ?? guardado<Registro[]>(`/api/registros?persona=${persona.id}&desde=${fecha}`) ?? null,
+  );
+  const [automaticos, setAutomaticos] = useState<DatoAutomatico[]>(
+    () => YA_TRAIDO.get(`${persona.id}|${fecha}`)?.automaticos ?? guardado<DatoAutomatico[]>(`/api/registros/automaticos?persona=${persona.id}&fecha=${fecha}`) ?? [],
+  );
   /** La fuente de datos automáticos que está abierta (se ve todo lo que llegó de ella). */
   // En la app del teléfono, en el día propio: las fuentes cuyo permiso falta van como widgets grises para activarlas.
   const conPermisos = esNativa() && Boolean(persona.propia);
@@ -222,8 +228,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   useEffect(() => {
     // Lo último que se trajo de ese día se muestra enseguida (al volver de otra pestaña) mientras se actualiza.
     const ya = YA_TRAIDO.get(`${persona.id}|${fecha}`);
-    setRegistros(ya?.registros ?? null);
-    setAutomaticos(ya?.automaticos ?? []);
+    setRegistros(ya?.registros ?? guardado<Registro[]>(`/api/registros?persona=${persona.id}&desde=${fecha}`) ?? null);
+    setAutomaticos(ya?.automaticos ?? guardado<DatoAutomatico[]>(`/api/registros/automaticos?persona=${persona.id}&fecha=${fecha}`) ?? []);
     void traer();
   }, [traer]);
   // Una toma marcada desde el aviso del teléfono también se ve en el Día.
