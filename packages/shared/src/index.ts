@@ -2,6 +2,8 @@
 import { traducir, type Idioma } from './i18n.js';
 export * from './i18n.js';
 export * from './mascota.js';
+export * from './medios.js';
+import type { Medio } from './medios.js';
 
 /**
  * Qué se anota con cada concepto:
@@ -52,6 +54,7 @@ export const CATEGORIAS_INICIALES: CategoriaBase[] = [
   { clave: 'viaje', nombre: 'Viajes', icono: '🚗', rol: 'causa', tipo_valor: 'duracion', unidad: 'min', orden: 16 },
   { clave: 'trabajo', nombre: 'Trabajo y reuniones', icono: '💼', rol: 'causa', tipo_valor: 'medida', unidad: null, orden: 17 },
   { clave: 'higiene', nombre: 'Higiene', icono: '🪥', rol: 'causa', tipo_valor: 'evento', unidad: null, orden: 18 },
+  { clave: 'musica', nombre: 'Música y podcasts', icono: '🎧', rol: 'causa', tipo_valor: 'duracion', unidad: 'min', orden: 19 },
 ];
 
 /** Conceptos que conviene que existan desde el principio (los que van a llenar los relojes y el clima). */
@@ -76,6 +79,8 @@ export const CONCEPTOS_INICIALES: Array<{ categoria: string; nombre: string; tip
   { categoria: 'lugar', nombre: 'Viajes', tipo_valor: 'medida', unidad: 'viajes' },
   { categoria: 'lugar', nombre: 'Km recorridos', tipo_valor: 'medida', unidad: 'km' },
   { categoria: 'ciclo', nombre: 'Menstruación', tipo_valor: 'intensidad', unidad: null },
+  { categoria: 'musica', nombre: 'Escuchar música', tipo_valor: 'duracion', unidad: 'min' },
+  { categoria: 'musica', nombre: 'Podcast', tipo_valor: 'duracion', unidad: 'min' },
 ];
 
 /**
@@ -499,6 +504,8 @@ export function traducirDato(nombre: string, idioma: Idioma = 'es'): string {
   if (m) return `${traducir(idioma, TELE)}: ${traducir(idioma, m[1])}`;
   m = /^Tele en (.+)$/.exec(nombre);
   if (m) return traducir(idioma, 'Tele en {canal}', { canal: m[1] });
+  m = /^Música: (.+)$/.exec(nombre);
+  if (m) return `${traducir(idioma, 'Música')}: ${traducir(idioma, m[1])}`;
   m = /^Comida en (.+)$/.exec(nombre);
   if (m) return traducir(idioma, 'Comida en {lugar}', { lugar: m[1] });
   m = /^Uso de (.+)$/.exec(nombre);
@@ -570,6 +577,8 @@ export interface Registro {
   tipos?: TipoComida[];
   /** Lo contestado a las preguntas configuradas de esa cosa. */
   detalles?: Detalle[];
+  /** Tele, música o podcast: qué se miró o escuchó (tipo, servicio, género, título, tapa…). Ver medios.ts. */
+  medio?: Medio | null;
   /** Un malestar que sigue (Patty pregunta si pasó) y cómo fue yendo. */
   abierto?: boolean;
   evolucion?: Array<{ t: string; estado: 'paso' | 'igual' | 'mejor' | 'peor' }> | null;
@@ -638,6 +647,8 @@ export interface NuevoRegistro {
   detalles?: Detalle[];
   /** Solo remedios: el malestar (su registro) para el que se tomó. */
   para_registro_id?: number | null;
+  /** Tele, música o podcast: el detalle (ver medios.ts). */
+  medio?: Medio | null;
 }
 
 /** Una respuesta a una pregunta configurada ("¿Con qué?" → azúcar, leche). */

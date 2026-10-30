@@ -1,7 +1,7 @@
 // El día de la persona: lo anotado, en orden, y el botón para anotar más.
 import { medir } from '../lib/analytics';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { IconoAnimo, IconoCategoria } from '../ui/IconosPatty';
+import { IconoAnimo, IconoCategoria, IconoTele } from '../ui/IconosPatty';
 import { alPedirIrAlDia, fechaPedidaParaVer, olvidarFechaPedida } from '../lib/avisos';
 import { esHoraDeEncuesta, useAlTocarAviso } from '../lib/encuesta';
 import { alTocarAvisoPush, configurarWidget, TIPOS_DEL_DIA, tomarWidgetPendiente, verPendiente } from '../lib/push';
@@ -52,6 +52,8 @@ import { FilaDeslizable } from '../ui/FilaDeslizable';
 import { etiquetaDonde } from '../ui/DondeComida';
 import { Frase } from '../ui/Frase';
 import { Sentir } from './Sentir';
+import { detalleDelMedio } from '../lib/medios';
+import { EscuchasDelDia } from './EscuchasDelDia';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
 const HORAS_SIN_PREGUNTAR = 3;
@@ -583,7 +585,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                 alBorrar={() => void quitar(r)}
               >
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
-                <span className="icono">{esSentir(r) && r.intensidad !== null ? <IconoAnimo clave={estadoDe(r.intensidad).clave} /> : <IconoCategoria clave={cat?.clave} emoji={cat?.icono} />}</span>
+                <span className="icono">{esSentir(r) && r.intensidad !== null ? <IconoAnimo clave={estadoDe(r.intensidad).clave} /> : r.concepto === TELE ? <IconoTele /> : <IconoCategoria clave={cat?.clave} emoji={cat?.icono} />}</span>
                 <span className="que">
                   <span className="frase"><Frase r={r} tipo={cat?.tipo_valor} categoria={cat?.clave} juntos={comidaIds.includes(r.categoria_id) ? registros.filter((o) => o.id !== r.id && comidaIds.includes(o.categoria_id) && mismoMinuto(o, r)) : []} sintomas={esSentir(r) ? partesDe(r, registros, sintomaId) : []} /></span>
                   {(() => {
@@ -592,6 +594,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                     const unir = (l: string[]) => (l.length > 1 ? `${l.slice(0, -1).join(', ')}${y}${l.at(-1)}` : l[0]);
                     const gente = genteId !== undefined && r.categoria_id !== genteId ? registros.filter((o) => o.categoria_id === genteId && o.inicio === r.inicio).map((o) => o.concepto) : [];
                     const extra = [
+                      ...(r.medio ? [detalleDelMedio(r.medio).join(' · ')] : []),
                       ...(r.detalles ?? []).map((d) => unir(d.respuestas)),
                       r.para ? t('para {que}', { que: t(r.para).toLowerCase() }) : '',
                       etiquetaDonde(r.donde, r.lugar) ?? '',
@@ -601,6 +604,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
                     return extra.length ? <span className="frase-extra">{extra.join(' · ')}</span> : null;
                   })()}
                 </span>
+                {r.medio?.tapa ? <img className="tapa-mini" src={r.medio.tapa} alt="" loading="lazy" /> : null}
               </FilaDeslizable>
               </Fragment>
             );
@@ -608,6 +612,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         </ul>
         </>
       )}
+      {/* Lo que sonó o se miró en el teléfono (Spotify, Netflix…), si está prendido: en sesiones, con los temas. */}
+      <EscuchasDelDia persona={persona} fecha={fecha} vuelta={vuelta} />
       {/* Lo que llegó solo (clima, ubicación, teléfono, sueño y salud): widgets chicos, distintos de lo anotado. */}
       <WidgetsDelDia
         automaticos={automaticos}

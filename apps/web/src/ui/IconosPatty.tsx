@@ -133,6 +133,16 @@ const DIBUJOS: Record<string, () => ReactNode> = {
       <circle cx="16" cy="25.5" r="1.2" fill="currentColor" />
     </>
   ),
+  // Auriculares con una notita: lo que se escucha (música, podcasts).
+  musica: () => (
+    <>
+      <path d="M6 19 V15 a10 10 0 0 1 20 0 V19" {...T} />
+      <rect x="4.5" y="17" width="6" height="10" rx="2.5" fill={V} {...T} />
+      <rect x="21.5" y="17" width="6" height="10" rx="2.5" fill={V} {...T} />
+      <path d="M15 21.5 V13.5 l4.5 -1.5" {...T} />
+      <circle cx="13.6" cy="22" r="2" fill={A} {...T} />
+    </>
+  ),
   medicacion: () => (
     <g transform="rotate(-40 16 16)">
       <path d="M16 10 H11 a6 6 0 0 0 0 12 H16 Z" fill={V} />
@@ -220,4 +230,37 @@ const MODOS: Record<ModoViaje, () => ReactNode> = {
 
 export function IconoModo({ modo, tamano }: { modo: ModoViaje; tamano?: number }) {
   return <Base tamano={tamano}>{MODOS[modo]()}</Base>;
+}
+
+/** La tele (con sus antenas y un botón de play): mirar tele, películas, series, deportes. */
+export function IconoTele({ tamano }: { tamano?: number }) {
+  return (
+    <Base tamano={tamano}>
+      <path d="M12 4.5 l4 4 l4 -4" {...T} />
+      <rect x="3.5" y="8.5" width="25" height="17" rx="3.5" fill={V} {...T} />
+      <rect x="6.5" y="11.5" width="19" height="11" rx="1.5" fill="#fff" />
+      <path d="M14 14 v6 l5 -3 Z" fill={A} {...T} strokeWidth={1.6} />
+      <path d="M10 28 h12" {...T} />
+    </Base>
+  );
+}
+
+/** Un micrófono de radio: los podcasts. */
+export function IconoPodcast({ tamano }: { tamano?: number }) {
+  return (
+    <Base tamano={tamano}>
+      <rect x="11.5" y="3.5" width="9" height="15" rx="4.5" fill={V} {...T} />
+      <path d="M14 8 h4 M14 11.5 h4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M7.5 15 a8.5 8.5 0 0 0 17 0" {...T} />
+      <path d="M16 23.5 V28 M11.5 28.5 h9" {...T} />
+      <circle cx="25.5" cy="7" r="2" fill={A} />
+    </Base>
+  );
+}
+
+/** El de cada tipo de medio: la tele, los auriculares o el micrófono. */
+export function IconoMedio({ tipo, tamano }: { tipo: 'tele' | 'musica' | 'podcast'; tamano?: number }) {
+  if (tipo === 'musica') return <IconoCategoria clave="musica" tamano={tamano} />;
+  if (tipo === 'podcast') return <IconoPodcast tamano={tamano} />;
+  return <IconoTele tamano={tamano} />;
 }

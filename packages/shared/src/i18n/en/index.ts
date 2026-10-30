@@ -8,10 +8,11 @@ import { DATOS } from './datos.js';
 import { DIA } from './dia.js';
 import { INFORME } from './informe.js';
 import { MAS } from './mas.js';
+import { MEDIOS } from './medios.js';
 import { PERMISOS } from './permisos.js';
 import { PREVENTIVO } from './preventivo.js';
 import { PATRONES } from './patrones.js';
 import { PATRONES_FINOS } from './patronesfinos.js';
 import { SERVIDOR } from './servidor.js';
 
-export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...COMUN };
+export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...MEDIOS, ...COMUN };

@@ -309,6 +309,45 @@ export const puntos = pgTable(
   (t) => [uniqueIndex('puntos_persona_instante_idx').on(t.persona_id, t.instante), index('puntos_persona_fecha_idx').on(t.persona_id, t.fecha)],
 );
 
+// ---------- Lo que se mira y se escucha ----------
+
+/**
+ * Lo que sonó o se miró en el teléfono (Spotify, YouTube Music, Netflix…), tal como lo manda la app de Android: un
+ * tramo por tema o capítulo. Con los tramos de cada día se recalculan las mediciones «Música escuchada», «Podcasts
+ * escuchados» y «Series y videos en el teléfono» (una por sesión: los tramos seguidos van juntos). Se borran solos a
+ * los 90 días y la persona los puede borrar cuando quiera.
+ */
+export const escuchas = pgTable(
+  'escuchas',
+  {
+    id: idGrande(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    fuente_id: integer('fuente_id')
+      .notNull()
+      .references(() => fuentes.id, { onDelete: 'cascade' }),
+    paquete: text('paquete').notNull(),
+    app: text('app').notNull(),
+    titulo: text('titulo').notNull().default(''),
+    artista: text('artista').notNull().default(''),
+    album: text('album').notNull().default(''),
+    inicio: instante('inicio').notNull(),
+    fin: instante('fin').notNull(),
+    /** Día de la persona (de 5 a 5). */
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    creado: creado(),
+  },
+  (t) => [uniqueIndex('escuchas_persona_paquete_inicio_idx').on(t.persona_id, t.paquete, t.inicio), index('escuchas_persona_fecha_idx').on(t.persona_id, t.fecha)],
+);
+
+/** Las búsquedas de títulos en iTunes (para las tapas), guardadas un mes: la misma búsqueda no se repite. */
+export const mediosCache = pgTable('medios_cache', {
+  clave: text('clave').primaryKey(),
+  resultado: jsonb('resultado').notNull(),
+  creado: creado(),
+});
+
 // ---------- Remedios ----------
 
 /**

@@ -66,6 +66,18 @@ export type Tarjeta = {
       marcas: Array<{ en: number; texto: string }>;
       comentario?: string;
     }
+  | {
+      /** Lo que se miró o escuchó: la tapa (por la API, con CORS), el título, el género y "Lo vi hoy · 2 h". */
+      tipo: 'medio';
+      tapa: string | null;
+      /** Un póster de película (más alto que ancho) o la tapa cuadrada de un disco. */
+      forma: 'poster' | 'cuadrada';
+      /** Lo que se dibuja si no hay tapa. */
+      icono: 'tele' | 'musica' | 'podcast';
+      titulo: string;
+      subtitulo: string;
+      cuando: string;
+    }
 );
 
 const TINTA = '#2a2440';
@@ -145,9 +157,11 @@ function fondo(c: Ctx) {
   }
 }
 
-function cargarImagen(src: string): Promise<HTMLImageElement> {
+function cargarImagen(src: string, deOtroLado = false): Promise<HTMLImageElement> {
   return new Promise((ok, mal) => {
     const img = new Image();
+    // Una imagen de otro sitio sin CORS "mancha" el canvas y después no se puede exportar.
+    if (deOtroLado) img.crossOrigin = 'anonymous';
     img.onload = () => ok(img);
     img.onerror = () => mal(new Error('imagen'));
     img.src = src;
@@ -409,8 +423,114 @@ function bloquesSueno(c: Ctx, d: Extract<Tarjeta, { tipo: 'sueno' }>, ancho: num
   return [...sinTotales, ...pie(dicho(Math.max(1, Math.min(3, Math.floor(lugar(sinTotales) / 42)))))];
 }
 
+/** Sin tapa: un cuadro lila con la tele, la nota o el micrófono, dibujados. */
+function dibujarSinTapa(c: Ctx, icono: 'tele' | 'musica' | 'podcast', x: number, y: number, lado: number) {
+  c.fillStyle = '#ece7fa';
+  redondeado(c, x, y, lado, lado, lado * 0.12);
+  c.fill();
+  const k = lado / 32;
+  c.save();
+  c.translate(x, y);
+  c.scale(k, k);
+  c.lineWidth = 1.6;
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  c.strokeStyle = ACENTO;
+  c.fillStyle = ACENTO;
+  if (icono === 'tele') {
+    redondeado(c, 6, 9, 20, 14, 2.5);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(14, 13);
+    c.lineTo(14, 19);
+    c.lineTo(19, 16);
+    c.closePath();
+    c.fill();
+    c.beginPath();
+    c.moveTo(12.5, 5.5);
+    c.lineTo(16, 9);
+    c.lineTo(19.5, 5.5);
+    c.moveTo(11, 26.5);
+    c.lineTo(21, 26.5);
+    c.stroke();
+  } else if (icono === 'musica') {
+    c.beginPath();
+    c.moveTo(14, 21);
+    c.lineTo(14, 9);
+    c.lineTo(22, 7);
+    c.lineTo(22, 19);
+    c.stroke();
+    for (const [cx, cy] of [[11.8, 21.5], [19.8, 19.5]]) {
+      c.beginPath();
+      c.ellipse(cx, cy, 2.6, 2, -0.3, 0, Math.PI * 2);
+      c.fill();
+    }
+  } else {
+    redondeado(c, 12.5, 5, 7, 12, 3.5);
+    c.stroke();
+    c.beginPath();
+    c.arc(16, 13, 7, 0.1 * Math.PI, 0.9 * Math.PI);
+    c.moveTo(16, 20);
+    c.lineTo(16, 25);
+    c.moveTo(12.5, 25.5);
+    c.lineTo(19.5, 25.5);
+    c.stroke();
+  }
+  c.restore();
+}
+
+/** Lo que se miró o escuchó: la tapa grande, el título, el género y cuándo, todo centrado. */
+function bloquesMedio(c: Ctx, d: Extract<Tarjeta, { tipo: 'medio' }>, ancho: number, maxAlto: number, tapa: HTMLImageElement | null): Bloque[] {
+  const titulo = texto(c, d.titulo, { peso: 800, tamano: d.titulo.length > 28 ? 58 : 68, color: TINTA, ancho, centrado: true, maxLineas: 2 });
+  const sub = d.subtitulo ? texto(c, d.subtitulo, { peso: 500, tamano: 38, color: SUAVE, ancho, centrado: true, maxLineas: 2 }) : espacio(0);
+  c.font = fuente(800, 40);
+  const anchoPildora = Math.min(ancho, c.measureText(d.cuando).width + 72);
+  const pildora: Bloque = {
+    alto: 76,
+    dibujar(c, x, y, w) {
+      const px = x + (w - anchoPildora) / 2;
+      c.fillStyle = '#ece7fa';
+      redondeado(c, px, y, anchoPildora, 76, 38);
+      c.fill();
+      c.font = fuente(800, 40);
+      c.fillStyle = ACENTO;
+      c.textAlign = 'center';
+      c.fillText(d.cuando, x + w / 2, y + 52);
+      c.textAlign = 'left';
+    },
+  };
+  const textos = [espacio(36), titulo, espacio(12), sub, espacio(30), pildora];
+  const altoMax = Math.max(240, Math.min(600, maxAlto - textos.reduce((a, b) => a + b.alto, 0)));
+  // La tapa entra en el lugar que queda, sin deformarse (los pósters son más altos que anchos).
+  const proporcion = tapa ? tapa.naturalWidth / Math.max(1, tapa.naturalHeight) : 1;
+  const alto = tapa ? Math.min(altoMax, ancho / proporcion) : Math.min(altoMax, 360);
+  const anchoImg = tapa ? alto * proporcion : alto;
+  const imagen: Bloque = {
+    alto,
+    dibujar(c, x, y, w) {
+      const ix = x + (w - anchoImg) / 2;
+      if (!tapa) return dibujarSinTapa(c, d.icono, ix, y, alto);
+      c.save();
+      c.shadowColor = 'rgba(20,10,60,0.35)';
+      c.shadowBlur = 36;
+      c.shadowOffsetY = 14;
+      c.fillStyle = '#ffffff';
+      redondeado(c, ix, y, anchoImg, alto, 22);
+      c.fill();
+      c.restore();
+      c.save();
+      redondeado(c, ix, y, anchoImg, alto, 22);
+      c.clip();
+      c.drawImage(tapa, ix, y, anchoImg, alto);
+      c.restore();
+    },
+  };
+  return [imagen, ...textos];
+}
+
 /** Lo de adentro de la tarjeta blanca, según qué se comparte. */
-async function contenido(c: Ctx, d: Tarjeta, ancho: number, maxAlto: number): Promise<Bloque[]> {
+async function contenido(c: Ctx, d: Tarjeta, ancho: number, maxAlto: number, tapa: HTMLImageElement | null = null): Promise<Bloque[]> {
+  if (d.tipo === 'medio') return bloquesMedio(c, d, ancho, maxAlto, tapa);
   if (d.tipo === 'actividad' || d.tipo === 'sueno') {
     const icono = d.icono ? await cargarImagen(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(d.icono)}`).catch(() => null) : null;
     return d.tipo === 'actividad' ? bloquesActividad(c, d, ancho, maxAlto, icono) : bloquesSueno(c, d, ancho, maxAlto, icono);
@@ -491,7 +611,9 @@ export async function dibujarTarjeta(d: Tarjeta, canvas: HTMLCanvasElement = doc
   // En el medio: la tarjeta blanca, centrada entre la frase y el pie.
   const relleno = d.tipo === 'actividad' || d.tipo === 'sueno' ? 56 : 72;
   const anchoTarjeta = ANCHO - 120;
-  const bloques = await contenido(c, d, anchoTarjeta - relleno * 2, pie - 40 - (96 + arriba.alto + 50) - relleno * 2);
+  // La tapa de lo que se miró o escuchó se trae antes (si no llega, va el dibujo).
+  const tapa = d.tipo === 'medio' && d.tapa ? await cargarImagen(d.tapa, true).catch(() => null) : null;
+  const bloques = await contenido(c, d, anchoTarjeta - relleno * 2, pie - 40 - (96 + arriba.alto + 50) - relleno * 2, tapa);
   const altoContenido = bloques.reduce((a, b) => a + b.alto, 0);
   const desde = 96 + arriba.alto + 50;
   const alto = Math.min(pie - 40 - desde, altoContenido + relleno * 2);

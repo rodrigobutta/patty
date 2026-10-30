@@ -15,7 +15,8 @@ describe('patrones de noche', () => {
     const tomate = (await ana.post('/api/conceptos', { nombre: 'Tomate', categoria_id: categorias.comida })).body.concepto.id;
     const cafe = (await ana.post('/api/conceptos', { nombre: 'Café', categoria_id: categorias.bebida })).body.concepto.id;
     const dolor = (await ana.post('/api/conceptos', { nombre: 'Dolor de cabeza', categoria_id: categorias.sintoma })).body.concepto.id;
-    const hoy = new Date().toISOString().slice(0, 10);
+    // El día en Argentina (pasada la medianoche UTC, el de UTC ya es mañana y lo anotado quedaba en el futuro).
+    const hoy = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
     const desde = sumarDias(hoy, -46);
     for (let i = 0; i < 45; i++) {
       const dia = sumarDias(desde, i);

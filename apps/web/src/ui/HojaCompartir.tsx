@@ -17,7 +17,7 @@ const AVISOS: Partial<Record<ComoSeCompartio, string>> = {
 
 /** Lo que se puede compartir: la tarjeta (ya traducida) y qué es, para Analytics y el nombre del archivo. */
 export interface Compartible {
-  que: 'patron' | 'racha' | 'semana' | 'nivel' | 'actividad' | 'viaje' | 'sueno';
+  que: 'patron' | 'racha' | 'semana' | 'nivel' | 'actividad' | 'viaje' | 'sueno' | 'medio';
   tarjeta: Tarjeta;
   /** Algo que se puede sacar de la imagen: el tilde (prendido de entrada) y la tarjeta sin eso. */
   opcion?: { rotulo: string; sin: Tarjeta };
@@ -32,6 +32,7 @@ const TEXTOS: Record<Compartible['que'], string> = {
   actividad: 'Lo anoté con Patty 🦉',
   viaje: 'Lo anoté con Patty 🦉',
   sueno: 'Cómo dormí, con Patty 🦉',
+  medio: 'Lo anoté con Patty 🦉',
 };
 
 export function HojaCompartir({ que, tarjeta, opcion, alCerrar }: Compartible & { alCerrar(): void }) {

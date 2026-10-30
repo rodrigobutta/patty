@@ -14,6 +14,60 @@ import { compartibleActividad } from '../lib/tarjetasDelDia';
 import { BotonCompartir } from '../ui/HojaCompartir';
 
 import { QuePasoAntes } from './QuePasoAntes';
+import { GENEROS_MUSICA, GENEROS_PANTALLA, sePantalla, type Medio } from 'shared';
+import { IconoMedio } from '../ui/IconosPatty';
+import { BuscarMedio, type Elegido } from '../ui/BuscarMedio';
+import { detalleDelMedio, tarjetaDeMedio, tituloDelMedio } from '../lib/medios';
+import { hoyEn } from '../lib/fechas';
+
+/**
+ * Lo que se miró o escuchó: la tapa, el título y el detalle, el botón para compartirlo y, si se quiere, cambiar el
+ * género o cuál fue (buscando de nuevo la tapa).
+ */
+function MedioDelRegistro({ r, medio, zona, puedeCompartir, alCambiar }: { r: Registro; medio: Medio; zona: string; puedeCompartir: boolean; alCambiar(m: Medio): void }) {
+  const [cambiando, setCambiando] = useState(false);
+  const [titulo, setTitulo] = useState<Elegido>({ titulo: medio.titulo ?? (medio.tipo === 'musica' ? medio.artista ?? '' : ''), resultado: null });
+  const conTitulo = medio.tipo !== 'noticias' && medio.tipo !== 'deporte';
+  const generos = medio.tipo === 'musica' ? GENEROS_MUSICA : sePantalla(medio.tipo) ? GENEROS_PANTALLA : [];
+  const elegir = (e: Elegido) => {
+    setTitulo(e);
+    const x = e.resultado;
+    if (!x) return alCambiar({ ...medio, ...(medio.tipo === 'musica' ? { artista: e.titulo || null } : { titulo: e.titulo || null }) });
+    alCambiar({
+      ...medio,
+      ...(medio.tipo === 'musica' ? { album: x.titulo, artista: x.artista } : { titulo: x.titulo, tipo: medio.tipo === 'tele' ? x.tipo : medio.tipo }),
+      tapa: x.tapa,
+      anio: x.anio,
+      itunes_id: x.itunes_id,
+      genero: medio.genero ?? (x.genero && (medio.tipo === 'musica' || GENEROS_PANTALLA.includes(x.genero)) ? x.genero : null),
+    });
+  };
+  return (
+    <div className="medio-detalle">
+      <div className="medio-cabeza">
+        {medio.tapa ? <img src={medio.tapa} alt="" className={`tapa ${sePantalla(medio.tipo) ? '' : 'cuadrada'}`} /> : null}
+        <span className="que">
+          {tituloDelMedio(medio) ? <strong>{tituloDelMedio(medio)}</strong> : null}
+          <span className="suave chico renglon-sub">{[...detalleDelMedio(medio, false), medio.anio].filter(Boolean).join(' · ')}</span>
+          <span className="acciones-medio">
+            {puedeCompartir ? <BotonCompartir armar={() => ({ que: 'medio', tarjeta: tarjetaDeMedio({ ...r, medio }, hoyEn(zona)) })} /> : null}
+            {conTitulo ? <button type="button" className="enlace chico" onClick={() => setCambiando(!cambiando)}>{cambiando ? t('Listo') : t('Cambiar qué fue')}</button> : null}
+          </span>
+        </span>
+      </div>
+      {cambiando ? (
+        <>
+          {generos.length ? (
+            <div className="chips envolver">
+              {generos.map((g) => <button key={g} type="button" className={`chip${medio.genero === g ? ' activa' : ''}`} onClick={() => alCambiar({ ...medio, genero: medio.genero === g ? null : g })}>{t(g)}</button>)}
+            </div>
+          ) : null}
+          <BuscarMedio tipo={medio.tipo === 'tele' ? 'serie' : medio.tipo} valor={titulo} alCambiar={elegir} />
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBorrar }: {
   persona: Persona;
@@ -50,6 +104,9 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
   const [respuestas, setRespuestas] = useState<Record<number, string[]> | null>(null);
   const elegidasDetalle =
     respuestas ?? Object.fromEntries(preguntasCosa.map((q) => [q.id, (r.detalles ?? []).find((d) => d.pregunta === q.pregunta)?.respuestas ?? []]));
+  /** Tele, música o podcast: el detalle, si se cambió. */
+  const [medio, setMedio] = useState<Medio | null>(null);
+  const { sesion } = useEstado();
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   // Con quién estuvo: la gente anotada junto con esto (a la misma hora), para sumar o sacar personas de tu gente.
@@ -87,6 +144,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
         ...(propio && esComida ? { donde, lugar: lugar.trim() || null } : {}),
         ...(propio && esPlato ? { porcion, tipos } : {}),
         ...(propio && respuestas ? { detalles: comoDetalles(preguntasCosa, respuestas) } : {}),
+        ...(propio && medio ? { medio } : {}),
       });
     try {
       await cambio(r, true);
@@ -110,7 +168,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
   return (
     <div className="hoja" role="dialog" aria-label={t('Cambiar {que}', { que: t(r.concepto) })}>
       <div className="hoja-cabeza">
-        <h3>{cat?.icono} {t(r.concepto)}</h3>
+        <h3>{r.medio ? <IconoMedio tipo={sePantalla(r.medio.tipo) ? 'tele' : r.medio.tipo === 'podcast' ? 'podcast' : 'musica'} tamano={22} /> : cat?.icono} {t(r.concepto)}</h3>
         <button className="btn-icono" onClick={alCerrar} aria-label={t('Cerrar')}>✕</button>
       </div>
       {compartible ? (
@@ -121,6 +179,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
       {/* Una molestia o un mal momento: qué pasó antes (lo arma Patty al rato de anotarlo). */}
       {cat?.clave === 'sintoma' || (esSentir && r.intensidad !== null && r.intensidad <= 4) ? <QuePasoAntes persona={persona} registroId={r.id} /> : null}
       <div className="valor">
+        {r.medio ? <MedioDelRegistro r={r} medio={medio ?? r.medio} zona={persona.zona_horaria} puedeCompartir={sesion?.usuario?.rol !== 'lector'} alCambiar={setMedio} /> : null}
         {esSentir ? (
           <div className="caritas">
             {ESTADOS.map((e) => (
