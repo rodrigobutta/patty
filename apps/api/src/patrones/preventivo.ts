@@ -92,6 +92,7 @@ export function textoPreventivo(x: Preventivo, i: Idioma): { titulo: string; cue
 export function avisoPreventivo(personaId: number, x: Preventivo, i: Idioma): Aviso {
   return {
     ...textoPreventivo(x, i),
+    conApodo: true,
     datos: { tipo: 'preventivo', persona_id: String(personaId), cara: 'espera' },
     etiqueta: `preventivo|${personaId}|${x.efecto_id}`,
   };

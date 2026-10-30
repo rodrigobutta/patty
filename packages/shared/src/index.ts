@@ -1609,3 +1609,15 @@ export const RELACIONES = [
 ] as const;
 export type Relacion = (typeof RELACIONES)[number]['clave'];
 export const esRelacion = (x: unknown): x is Relacion => RELACIONES.some((r) => r.clave === x);
+
+/** "Hoy se juntaron…" → "Rodri, hoy se juntaron…": que Patty le hable a la persona por su apodo. */
+export function sumarApodo(cuerpo: string, apodo: string): string {
+  if (!apodo || !cuerpo) return cuerpo;
+  // Una sigla o un nombre propio al principio queda como está.
+  const primera = cuerpo.split(/\s/)[0];
+  const minuscula = /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]/.test(primera) && primera !== primera.toUpperCase() ? cuerpo.charAt(0).toLocaleLowerCase('es') + cuerpo.slice(1) : cuerpo;
+  // "¿Qué fue?" → "Rodri, ¿qué fue?"
+  const conPregunta = minuscula.replace(/^([¿¡])([A-ZÁÉÍÓÚÑ])(?=[a-záéíóúñ])/, (_, s: string, l: string) => s + l.toLocaleLowerCase('es'));
+  return `${apodo}, ${conPregunta}`;
+}
+

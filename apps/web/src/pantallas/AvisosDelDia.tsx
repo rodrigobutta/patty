@@ -2,6 +2,7 @@
 // - Lo que Patty pregunta: un pedido que llegó ("¿Pediste comida? ¿Qué fue?", con lo que más pedís, escrito o con una
 //   foto, y queda como comida pedida) y un viaje en Uber/Cabify/DiDi que no vio la ubicación ("¿Fuiste en Uber?").
 // - Cuántos avisos llegaron (por hora y por app, y los que sonaron de noche) y cuántos mensajes, al tocarlo con el detalle.
+import { conApodo } from '../lib/apodo';
 import { useCallback, useEffect, useState } from 'react';
 import { COMO_VIAJE, type AvisoPendiente, type AvisosDelDia as Datos, type Persona } from 'shared';
 import { api } from '../api';
@@ -54,7 +55,7 @@ export function AvisosPendientes({ persona, vuelta, alAnotar, alFoto }: { person
         a.tipo === 'pedido' ? (
           <div key={a.id} className="tarjeta aviso-pendiente">
             <h3 className="con-icono">
-              <IconoCategoria clave="comida" tamano={26} /> {t('¿Pediste comida? ¿Qué fue?')}
+              <IconoCategoria clave="comida" tamano={26} /> {conApodo(t('¿Pediste comida? ¿Qué fue?'))}
             </h3>
             <p className="suave chico">{t('Llegó tu pedido de {app} a las {hora}.', { app: a.app, hora: horaEn(a.inicio, zona) })}</p>
             {datos.comidas.length ? (

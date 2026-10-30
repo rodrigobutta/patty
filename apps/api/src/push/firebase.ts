@@ -69,6 +69,8 @@ export interface Aviso {
    * y cambia el aviso por `listo`. Si con eso quiere seguir (contar qué pasó), `luego` es el aviso que queda.
    */
   acciones?: Array<{ titulo: string; pedidos: Array<{ ruta: string; cuerpo: Record<string, unknown> }>; listo: string; luego?: string }>;
+  /** Que el texto arranque con el apodo de quien lo recibe ("Rodri, hoy se juntaron…"), para que suene a Patty. */
+  conApodo?: boolean;
 }
 
 /** Para las pruebas: reemplaza el envío real. */

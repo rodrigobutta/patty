@@ -182,3 +182,13 @@ describe('avisos desde la administración', () => {
     expect((await ana.get('/api/admin/version-app')).body.desactualizados).toBe(0);
   });
 });
+
+describe('el apodo en los avisos', () => {
+  it('arranca el texto con el apodo y pasa a minúscula lo que sigue (sin tocar siglas ni nombres)', async () => {
+    const { sumarApodo } = await import('../src/push/mandar.js');
+    expect(sumarApodo('Hoy se juntaron dos cosas.', 'Rodri')).toBe('Rodri, hoy se juntaron dos cosas.');
+    expect(sumarApodo('¿Qué fue?', 'Rodri')).toBe('Rodri, ¿qué fue?');
+    expect(sumarApodo('UV alto hoy.', 'Rodri')).toBe('Rodri, UV alto hoy.');
+    expect(sumarApodo('Hoy.', '')).toBe('Hoy.');
+  });
+});

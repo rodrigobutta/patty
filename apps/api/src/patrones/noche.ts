@@ -201,6 +201,7 @@ export async function revisarFueraDeLoNormal(db: Db, ahora = new Date()): Promis
           cuerpo: hechos.length > 1 ? `${hechos[0].texto} ${traducir(i, '(y {n} más)', { n: hechos.length - 1 })}` : hechos[0].texto,
           datos: { tipo: 'fuera', persona_id: String(p.id), cara: 'espera' },
           etiqueta: `fuera|${p.id}`,
+          conApodo: true,
         });
       }
     } catch (e) {
@@ -234,6 +235,7 @@ export function avisoDeHallazgo(personaId: number, explicacion: string, otros: n
     cuerpo: otros > 0 ? `${corto} ${traducir(i, '(y {n} más en Patrones)', { n: otros })}` : corto,
     datos: { tipo: 'hallazgo', persona_id: String(personaId), cara: 'feliz' },
     etiqueta: `hallazgo|${personaId}`,
+    conApodo: true,
   };
 }
 

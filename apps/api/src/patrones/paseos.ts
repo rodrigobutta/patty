@@ -74,6 +74,7 @@ export async function sugerirPaseos(db: Db, ahora = new Date()): Promise<number>
             : traducir(i, 'De {desde} a {hasta} ({km} km). ¿Qué fue?', { desde: hora(v.inicio), hasta: hora(v.fin), km }),
           datos: { tipo: 'paseo', persona_id: String(p.id), cara: 'feliz' },
           etiqueta: `paseo|${p.id}`,
+          conApodo: true,
           acciones: directa ? [{ ...boton(directa), titulo: traducir(i, 'Sí') }, ...lista.filter((x) => x !== directa).slice(0, 1).map(boton), no] : [...lista.slice(0, 2).map(boton), no],
         });
         if (ok) n++;

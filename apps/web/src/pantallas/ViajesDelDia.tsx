@@ -2,6 +2,7 @@
 // Patty adivina (en qué fue, si parece que hubo tráfico) y la pregunta de cómo fue, para contestar con dos toques.
 // Lo contado entra en los patrones ("los días con viaje pesado te duele la cabeza"). Si los avisos de Uber, Cabify o
 // DiDi dicen que fue en una de esas apps, ya viene marcado en taxi y la app queda en la nota.
+import { conApodo } from '../lib/apodo';
 import { useCallback, useEffect, useState } from 'react';
 import { IconoAnimo, IconoCategoria, IconoModo } from '../ui/IconosPatty';
 import { COMO_VIAJE, MODOS_VIAJE, type ModoViaje, type Persona, type ViajeDelDia } from 'shared';
@@ -41,7 +42,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
   return (
     <div className="tarjeta viajes">
       <h3 className="con-icono">
-        <IconoCategoria clave="viaje" tamano={26} /> {pendientes.length === 1 ? t('¿Cómo fue tu viaje?') : t('¿Cómo fueron tus {n} viajes?', { n: pendientes.length })}
+        <IconoCategoria clave="viaje" tamano={26} /> {pendientes.length === 1 ? conApodo(t('¿Cómo fue tu viaje?')) : t('¿Cómo fueron tus {n} viajes?', { n: pendientes.length })}
       </h3>
       <ul className="lista">
         {pendientes.map((v, i) => {

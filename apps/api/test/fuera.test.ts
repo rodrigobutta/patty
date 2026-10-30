@@ -42,7 +42,7 @@ describe('fuera de lo normal', () => {
     expect(await revisarFueraDeLoNormal(db, new Date(ahora.getTime() + 20 * 60000))).toBe(0); // una vez por día
     expect(enviados).toHaveLength(1);
     expect(enviados[0]).toMatchObject({ titulo: '🦉 Algo distinto estos días', datos: { tipo: 'fuera' } });
-    expect(enviados[0].cuerpo).toContain('Hace 3 noches que dormís menos de lo habitual: 2 h menos');
+    expect(enviados[0].cuerpo).toContain('Anita, hace 3 noches que dormís menos de lo habitual: 2 h menos');
 
     const l = (await ana.get(`/api/fuera-de-lo-normal?persona=${personaId}`)).body;
     expect(l.map((x: any) => x.emoji).sort()).toEqual(['😴', '🤕']);

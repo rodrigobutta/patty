@@ -104,7 +104,7 @@ describe('aviso preventivo', () => {
     expect(await avisarPreventivos(db, a(20))).toBe(1);
     expect(enviados[0]).toMatchObject({
       titulo: '🦉 Ojo con mañana',
-      cuerpo: 'Hoy se juntaron «Comida frita» y «Helado». Otras veces que pasó, al día siguiente apareció «Dolor de panza». Si podés, cuidate un poco.',
+      cuerpo: 'Anita, hoy se juntaron «Comida frita» y «Helado». Otras veces que pasó, al día siguiente apareció «Dolor de panza». Si podés, cuidate un poco.',
       datos: { tipo: 'preventivo', persona_id: String(personaId) },
     });
     expect(await avisarPreventivos(db, new Date(a(20).getTime() + 5 * 60000))).toBe(0); // la misma hora: no se revisa de nuevo
