@@ -1,12 +1,14 @@
 // Lo que llegó solo en el Día, en widgets chicos: un ícono dibujado (el del clima cambia según el día) y un resumen
 // cortito, sin títulos. Cuatro lugares fijos: clima, ubicación, teléfono, sueño y salud. Los que no tienen datos porque
-// falta el permiso van grises (ver FuenteApagada); tocando uno con datos se ve el detalle a lo ancho.
+// falta el permiso van grises (ver FuenteApagada); tocando uno con datos se ve el detalle a lo ancho. Más uno de lo que se
+// comió (ver ComidaDelDia), que aparece cuando hay algo anotado.
 import { Fragment, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { IconoCampana, IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
-import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
+import { patronesFinos, type Categoria, type DatoAutomatico, type Persona, type Registro } from 'shared';
 import { AvisosDelTelefono } from './AvisosDelDia';
 import { ClimaDelDia } from './ClimaDelDia';
+import { ComidaDelDiaHoja, comidasAnotadas, destacadoDe, lineaComidas, useComidaDelDia } from './ComidaDelDia';
 import { GraficoSueno, ResumenNoche } from './GraficoSueno';
 import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico, type LineaAutomatica } from '../lib/automatico';
@@ -16,7 +18,7 @@ import { locale, t } from '../lib/idioma';
 import { IconoCelular, IconoReuniones, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
 import { WidgetApagado, type Fuente } from './FuenteApagada';
 
-type Lugar = 'clima' | 'ubicacion' | 'pasos' | 'telefono' | 'reuniones' | 'sueno';
+type Lugar = 'clima' | 'ubicacion' | 'pasos' | 'telefono' | 'reuniones' | 'sueno' | 'comida';
 
 interface Widget {
   lugar: Lugar;
@@ -202,6 +204,11 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
   // El buen día (la tarjeta o el aviso de la mañana) abre la hoja del sueño.
   useAlPedirNoche(useCallback(() => setAbierto('sueno'), []));
   const grupos = agruparAutomaticos(automaticos);
+  // Lo que se comió: el interruptor de los componentes también lo apaga (si no quiere que Patty estime eso, tampoco se muestra).
+  const anotadas = comidasAnotadas(registros, categorias, fecha);
+  const hayComida = patronesFinos(persona.patrones).componentes && anotadas.comidas + anotadas.bebidas > 0;
+  // Al abrir la hoja se vuelve a pedir: lo que se estaba calculando puede haber terminado.
+  const comida = useComidaDelDia(persona, fecha, hayComida, `${anotadas.firma}#${abierto === 'comida'}`);
   const widgets = [
     widgetClima(automaticos, grupos),
     widgetUbicacion(automaticos, grupos),
@@ -209,6 +216,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
     widgetTelefono(automaticos, grupos),
     widgetReuniones(automaticos, grupos),
     widgetSueno(automaticos, grupos, registros),
+    hayComida ? { lugar: 'comida' as const, icono: <IconoCategoria clave="comida" />, linea: lineaComidas(anotadas), sub: destacadoDe(comida), grupos: [], nombre: t('Comida') } : null,
   ].map((w) => {
     // Lo del reloj se reparte por categoría: actividad (pasos, km, calorías, ejercicio) al de los pasos; el sueño y la
     // salud (pulso, oxígeno, peso) al del sueño.
@@ -227,7 +235,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
   useEffect(() => {
     if (abierto === 'sueno' && hayNoche) marcarNocheVista(persona.id, fecha);
   }, [abierto, hayNoche, persona.id, fecha]);
-  const orden: Lugar[] = ['clima', 'ubicacion', 'pasos', 'telefono', 'reuniones', 'sueno'];
+  const orden: Lugar[] = ['clima', 'ubicacion', 'pasos', 'telefono', 'reuniones', 'sueno', 'comida'];
   const celdas = orden.map((l) => ({ l, w: widgets.find((w) => w?.lugar === l) ?? null, apagada: apagadas.find((f) => LUGAR_DE[f] === l) }));
   if (!antes && !celdas.some((c) => c.w || c.apagada)) return null;
   return (
@@ -281,6 +289,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                   ) : null}
                   {w.lugar === 'clima' ? <ClimaDelDia persona={persona} fecha={fecha} todos={automaticos} /> : null}
                   {w.lugar === 'telefono' ? <AvisosDelTelefono persona={persona} fecha={fecha} /> : null}
+                  {w.lugar === 'comida' ? <ComidaDelDiaHoja datos={comida} /> : null}
                   {w.grupos.length && w.lugar !== 'clima' ? <DetalleAuto lineas={w.grupos.flatMap((g) => g.lineas)} categorias={categorias} /> : null}
                 </div>
               </>,

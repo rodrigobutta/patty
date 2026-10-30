@@ -805,6 +805,57 @@ export interface ComponenteHallazgo {
   alimentos: string[];
 }
 
+/** Cómo vino un componente en un día, comparado con lo habitual de la persona. Null: no se puede decir (poca historia, o el día todavía no terminó). */
+export type NivelComponente = 'poco' | 'normal' | 'mucho' | null;
+
+/** Un componente de lo que se comió en un día (GET /api/componentes/dia). Todo es una estimación. */
+export interface ComponenteDelDia {
+  clave: string;
+  /** tabla: un número con su unidad. ia: la suma de los platos de 0 a 3, que se muestra como una palabra (sin precisión de mentira). */
+  de: 'tabla' | 'ia';
+  unidad: 'kcal' | 'g' | 'mg' | null;
+  /** Null: de lo anotado hasta ahora no se sabe nada de esto. */
+  valor: number | null;
+  nivel: NivelComponente;
+  /** Lo que más aportó. */
+  alimentos: string[];
+}
+
+/** Un componente en los últimos 7 días, contra los 7 anteriores. */
+export interface ComponenteDeLaSemana {
+  clave: string;
+  /** Uno por cada día de `SemanaComponentes.dias`. Null: ese día no se sabe lo suficiente. */
+  valores: Array<number | null>;
+  niveles: NivelComponente[];
+  /** El promedio por día, de los días que cuentan. */
+  promedio: number | null;
+  promedio_anterior: number | null;
+  /** Null: no hay días suficientes para comparar. */
+  cambio: 'mas' | 'menos' | 'igual' | null;
+}
+
+export interface SemanaComponentes {
+  dias: string[];
+  componentes: ComponenteDeLaSemana[];
+}
+
+/** Lo que trae el widget Comida del Día: GET /api/componentes/dia. */
+export interface ComidaDelDia {
+  fecha: string;
+  /** Es hoy: lo que se comió hasta ahora, así que todavía no se puede decir "poco". */
+  en_curso: boolean;
+  comidas: Array<{ nombre: string; hora: string | null; categoria: 'comida' | 'bebida'; estado: 'resuelta' | 'pendiente' | 'aproximada' | 'sin_dato'; porciones: number }>;
+  /** Cuántas de esas ya se saben, y cuántas se están calculando. */
+  cobertura: { comidas: number; resueltas: number; aproximadas: number; sin_dato: number; pendientes: number };
+  /** Lo que más se nota, primero. */
+  componentes: ComponenteDelDia[];
+  /** Lo más notable para decir en una línea ("mucha sal"), si hay algo. */
+  destacado: { clave: string; nivel: 'poco' | 'mucho' } | null;
+  semana: SemanaComponentes;
+  /** Los patrones de la persona con un componente como causa. */
+  patrones: Hallazgo[];
+}
+
 export interface Hallazgo {
   id: number;
   persona_id: number;

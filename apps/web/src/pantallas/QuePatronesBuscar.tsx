@@ -34,7 +34,7 @@ const OPCIONES: Array<{ clave: PatronFino; titulo: string; texto: string; ejempl
   {
     clave: 'componentes',
     titulo: '🧂 Componentes de lo que comés',
-    texto: 'Patty estima de qué están hechas tus comidas (sal, harinas, azúcar, alcohol…) para encontrar patrones entre comidas distintas. No tenés que anotar nada más, y nunca vas a ver calorías ni gramos.',
+    texto: 'Patty estima de qué están hechas tus comidas (sal, harinas, azúcar, alcohol…) para encontrar patrones entre comidas distintas y mostrártelo en el widget Comida del Día. No tenés que anotar nada más. Si lo apagás, se va también ese widget.',
     ejemplo: 'Por ejemplo: «los días con mucha sal, al día siguiente te duele la cabeza».',
   },
 ];

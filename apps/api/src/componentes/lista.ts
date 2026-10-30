@@ -1,6 +1,6 @@
 // Los componentes de lo que se come: qué se estima de cada comida para buscar patrones entre comidas distintas ("los días con
-// mucha sal → dolor de cabeza") sin ser una app de dieta. Nada de esto se muestra en gramos ni en calorías: solo aparece cuando
-// hay un patrón, y siempre como una estimación relativa a lo habitual de la persona.
+// mucha sal → dolor de cabeza") sin ser una app de dieta. Se ve en dos lados, siempre como una estimación: en los patrones, relativo a
+// lo habitual de la persona; y en el widget Comida del Día (componentes/delDia.ts), con su valor y sin metas ni juicios.
 //
 // Son 16, no todos los nutrientes: los de la tabla (USDA) que suelen aparecer en lo que la gente cuenta que le cae mal, y unos
 // pocos que las tablas casi no traen y estima la IA por plato (de 0 a 3). Cada uno suma pruebas al motor: lo que no sirve para
@@ -9,24 +9,24 @@ import { normalizar } from 'shared';
 
 export const COMPONENTES = [
   // De la tabla: se calculan de los ingredientes.
-  { clave: 'calorias', concepto: 'Días con muchas calorías', piso: 300, de: 'tabla' },
-  { clave: 'grasa', concepto: 'Días con mucha grasa', piso: 10, de: 'tabla' },
-  { clave: 'grasa_saturada', concepto: 'Días con mucha grasa saturada', piso: 4, de: 'tabla' },
-  { clave: 'azucar', concepto: 'Días con mucha azúcar', piso: 10, de: 'tabla' },
-  { clave: 'harinas', concepto: 'Días con muchas harinas', piso: 20, de: 'tabla' },
-  { clave: 'fibra', concepto: 'Días con mucha fibra', piso: 5, de: 'tabla' },
-  { clave: 'proteina', concepto: 'Días con mucha proteína', piso: 20, de: 'tabla' },
+  { clave: 'calorias', concepto: 'Días con muchas calorías', piso: 300, de: 'tabla', unidad: 'kcal' },
+  { clave: 'grasa', concepto: 'Días con mucha grasa', piso: 10, de: 'tabla', unidad: 'g' },
+  { clave: 'grasa_saturada', concepto: 'Días con mucha grasa saturada', piso: 4, de: 'tabla', unidad: 'g' },
+  { clave: 'azucar', concepto: 'Días con mucha azúcar', piso: 10, de: 'tabla', unidad: 'g' },
+  { clave: 'harinas', concepto: 'Días con muchas harinas', piso: 20, de: 'tabla', unidad: 'g' },
+  { clave: 'fibra', concepto: 'Días con mucha fibra', piso: 5, de: 'tabla', unidad: 'g' },
+  { clave: 'proteina', concepto: 'Días con mucha proteína', piso: 20, de: 'tabla', unidad: 'g' },
   /** En miligramos de sodio. */
-  { clave: 'sal', concepto: 'Días con mucha sal', piso: 500, de: 'tabla' },
-  { clave: 'alcohol', concepto: 'Días con mucho alcohol', piso: 10, de: 'tabla' },
-  { clave: 'cafeina', concepto: 'Días con mucha cafeína', piso: 40, de: 'tabla' },
+  { clave: 'sal', concepto: 'Días con mucha sal', piso: 500, de: 'tabla', unidad: 'mg' },
+  { clave: 'alcohol', concepto: 'Días con mucho alcohol', piso: 10, de: 'tabla', unidad: 'g' },
+  { clave: 'cafeina', concepto: 'Días con mucha cafeína', piso: 40, de: 'tabla', unidad: 'mg' },
   // Las tablas casi no los traen: los estima la IA por plato, de 0 (nada) a 3 (mucho).
-  { clave: 'lactosa', concepto: 'Días con mucha lactosa', piso: 1.5, de: 'ia' },
-  { clave: 'gluten', concepto: 'Días con mucho gluten', piso: 1.5, de: 'ia' },
-  { clave: 'fodmap', concepto: 'Días con muchos FODMAP', piso: 2, de: 'ia' },
-  { clave: 'histamina', concepto: 'Días con mucha histamina', piso: 2, de: 'ia' },
-  { clave: 'picante', concepto: 'Días con mucho picante', piso: 1.5, de: 'ia' },
-  { clave: 'ultraprocesado', concepto: 'Días con muchos ultraprocesados', piso: 2, de: 'ia' },
+  { clave: 'lactosa', concepto: 'Días con mucha lactosa', piso: 1.5, de: 'ia', unidad: null },
+  { clave: 'gluten', concepto: 'Días con mucho gluten', piso: 1.5, de: 'ia', unidad: null },
+  { clave: 'fodmap', concepto: 'Días con muchos FODMAP', piso: 2, de: 'ia', unidad: null },
+  { clave: 'histamina', concepto: 'Días con mucha histamina', piso: 2, de: 'ia', unidad: null },
+  { clave: 'picante', concepto: 'Días con mucho picante', piso: 1.5, de: 'ia', unidad: null },
+  { clave: 'ultraprocesado', concepto: 'Días con muchos ultraprocesados', piso: 2, de: 'ia', unidad: null },
 ] as const;
 
 export type ClaveComponente = (typeof COMPONENTES)[number]['clave'];

@@ -7,8 +7,8 @@ import { comidaDe, rasgosDeComidas, type ComidaDia, type RegistroComida } from '
 import { obtenerOCrearConcepto } from '../routes/conceptos.js';
 import type { ConceptoInfo, FilaDiaria } from './motor.js';
 
-/** Las comidas y bebidas de una persona en un período, con lo que se sabe de cada una. */
-export async function comidasDePersona(tx: Tx, personaId: number, desde: string, hasta: string): Promise<ComidaDia[]> {
+/** Lo anotado de comidas y bebidas de una persona en un período, con lo que se sabe de cada una. */
+export async function registrosDeComidas(tx: Tx, personaId: number, desde: string, hasta: string): Promise<RegistroComida[]> {
   const lista = await filas<Omit<RegistroComida, 'hora'> & { hora: Date | string | null }>(
     tx,
     sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.inicio AS hora, c.nombre, k.clave AS categoria, r.valor, r.unidad, r.datos->>'porcion' AS porcion, r.datos->'tipos' AS tipos,
@@ -16,12 +16,12 @@ export async function comidasDePersona(tx: Tx, personaId: number, desde: string,
         FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id LEFT JOIN alimentos a ON a.id = c.alimento_id
         WHERE r.persona_id = ${personaId} AND r.borrado IS NULL AND r.fecha BETWEEN ${desde} AND ${hasta} AND k.clave IN ('comida', 'bebida')`,
   );
-  const r: ComidaDia[] = [];
-  for (const x of lista) {
-    const c = comidaDe({ ...x, hora: x.hora ? new Date(x.hora).getTime() : null });
-    if (c) r.push(c);
-  }
-  return r;
+  return lista.map((x) => ({ ...x, hora: x.hora ? new Date(x.hora).getTime() : null }));
+}
+
+/** Las comidas y bebidas de una persona en un período, listas para sumar. */
+export async function comidasDePersona(tx: Tx, personaId: number, desde: string, hasta: string): Promise<ComidaDia[]> {
+  return (await registrosDeComidas(tx, personaId, desde, hasta)).map(comidaDe).filter((c): c is ComidaDia => c !== null);
 }
 
 export async function rasgosDeComponentes(tx: Tx, personaId: number, desde: string, hasta: string): Promise<{ filas: FilaDiaria[]; conceptos: ConceptoInfo[] }> {

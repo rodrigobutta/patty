@@ -119,8 +119,8 @@ function cuantil(ordenados: number[], q: number): number {
   return ordenados[Math.min(ordenados.length - 1, Math.max(0, Math.round(q * (ordenados.length - 1))))];
 }
 
-/** El valor de cada día de un componente, sin los días en que no se sabe lo suficiente. */
-export function valoresDelDia(comidas: ComidaDia[], clave: ClaveComponente): Map<string, { valor: number; cobertura: number }> {
+/** Lo que suma cada día un componente: su valor, lo comido y lo que se sabe de eso (estas dos, en gramos). */
+export function sumasDelDia(comidas: ComidaDia[], clave: ClaveComponente): Map<string, { valor: number; total: number; sabido: number }> {
   const r = new Map<string, { valor: number; total: number; sabido: number }>();
   for (const c of comidas) {
     const d = r.get(c.fecha) ?? { valor: 0, total: 0, sabido: 0 };
@@ -130,16 +130,21 @@ export function valoresDelDia(comidas: ComidaDia[], clave: ClaveComponente): Map
     d.sabido += c.gramos * c.peso;
     d.valor += (c.componentes[clave] ?? 0) * c.peso;
   }
+  return r;
+}
+
+/** El valor de cada día de un componente, sin los días en que no se sabe lo suficiente. */
+export function valoresDelDia(comidas: ComidaDia[], clave: ClaveComponente): Map<string, { valor: number; cobertura: number }> {
   const out = new Map<string, { valor: number; cobertura: number }>();
-  for (const [f, d] of r) {
+  for (const [f, d] of sumasDelDia(comidas, clave)) {
     const cobertura = d.total ? d.sabido / d.total : 0;
     if (cobertura >= COBERTURA_MIN) out.set(f, { valor: d.valor, cobertura });
   }
   return out;
 }
 
-/** Los rasgos de una persona: para cada componente, sus días con mucho (y poco, si importa), según sus propios días. */
-export function rasgosDeComidas(comidas: ComidaDia[]): RasgoComponente[] {
+/** Las comidas de cada día, en orden. */
+export function comidasPorDia(comidas: ComidaDia[]): Map<string, ComidaDia[]> {
   const porDia = new Map<string, ComidaDia[]>();
   for (const c of comidas) {
     const l = porDia.get(c.fecha) ?? [];
@@ -147,19 +152,52 @@ export function rasgosDeComidas(comidas: ComidaDia[]): RasgoComponente[] {
     porDia.set(c.fecha, l);
   }
   for (const l of porDia.values()) l.sort((a, b) => (a.hora ?? 0) - (b.hora ?? 0));
-  // Un día con mucho menos anotado de lo que esta persona suele anotar quedó a medias: no dice "poco".
+  return porDia;
+}
+
+/** Un día con mucho menos anotado de lo que esta persona suele anotar quedó a medias: no dice "poco". Esto es lo mínimo. */
+export function comidasMinimas(porDia: Map<string, ComidaDia[]>): number {
   const cuantas = [...porDia.values()].map((l) => l.length).sort((a, b) => a - b);
-  const minComidas = Math.max(1, Math.ceil(cuantil(cuantas, 0.5) / 2));
+  return cuantas.length ? Math.max(1, Math.ceil(cuantil(cuantas, 0.5) / 2)) : 1;
+}
+
+/** Lo habitual de una persona en un componente: entre qué valores andan sus días. */
+export interface RangoHabitual {
+  /** Sus días que cuentan (bien sabidos y anotados como siempre). */
+  valores: Map<string, { valor: number; cobertura: number }>;
+  mediana: number;
+  /** Desde acá es "mucho": lo mismo que usan los patrones. */
+  corteMucho: number;
+  /** Hasta acá es "poco". */
+  cortePoco: number;
+}
+
+/** Lo habitual en un componente; null si todavía no hay días suficientes para hablar de eso. */
+export function rangoHabitual(comidas: ComidaDia[], porDia: Map<string, ComidaDia[]>, minComidas: number, comp: (typeof COMPONENTES)[number]): RangoHabitual | null {
+  const valores = valoresDelDia(comidas, comp.clave);
+  for (const [f] of valores) if (porDia.get(f)!.length < minComidas) valores.delete(f);
+  if (valores.size < DIAS_MIN) return null;
+  const orden = [...valores.values()].map((v) => v.valor).sort((a, b) => a - b);
+  const mediana = cuantil(orden, 0.5);
+  return {
+    valores,
+    mediana,
+    corteMucho: Math.max(cuantil(orden, CUANTIL_MUCHO), comp.piso, mediana * SOBRE_MEDIANA),
+    cortePoco: Math.min(cuantil(orden, CUANTIL_POCO), mediana * BAJO_MEDIANA),
+  };
+}
+
+/** Los rasgos de una persona: para cada componente, sus días con mucho (y poco, si importa), según sus propios días. */
+export function rasgosDeComidas(comidas: ComidaDia[]): RasgoComponente[] {
+  const porDia = comidasPorDia(comidas);
+  const minComidas = comidasMinimas(porDia);
 
   const rasgos: RasgoComponente[] = [];
   for (const comp of COMPONENTES) {
-    const valores = valoresDelDia(comidas, comp.clave);
-    for (const [f] of valores) if (porDia.get(f)!.length < minComidas) valores.delete(f);
-    if (valores.size < DIAS_MIN) continue;
-    const orden = [...valores.values()].map((v) => v.valor).sort((a, b) => a - b);
-    const med = cuantil(orden, 0.5);
+    const rango = rangoHabitual(comidas, porDia, minComidas, comp);
+    if (!rango) continue;
+    const { valores, corteMucho } = rango;
     const universo = new Set(valores.keys());
-    const corteMucho = Math.max(cuantil(orden, CUANTIL_MUCHO), comp.piso, med * SOBRE_MEDIANA);
     const dias: RasgoComponente['dias'] = [];
     const aporte = new Map<string, number>();
     for (const [f, v] of valores) {
@@ -181,10 +219,9 @@ export function rasgosDeComidas(comidas: ComidaDia[]): RasgoComponente[] {
     }
     const poco = POCOS.find((p) => p.clave === comp.clave);
     if (poco) {
-      const corte = Math.min(cuantil(orden, CUANTIL_POCO), med * BAJO_MEDIANA);
       const bajos: RasgoComponente['dias'] = [];
       for (const [f, v] of valores) {
-        if (v.valor > corte) continue;
+        if (v.valor > rango.cortePoco) continue;
         // Que fue poco se sabe recién con lo último que se comió.
         const l = porDia.get(f)!;
         bajos.push({ fecha: f, primera: l[l.length - 1].hora });

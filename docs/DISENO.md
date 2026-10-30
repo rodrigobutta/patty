@@ -376,10 +376,19 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
    - **Falsos positivos** (`MEDIR_COMPONENTES=1 vitest run test/medirComponentes.test.ts`, datos al azar con composiciones de la semilla): firmes por persona con
      y sin componentes, 365 días y 60 conceptos 0,03 contra 0 (una persona de 40); 730 días y 150 conceptos 0,05 contra 0,05; 5 años y 300 conceptos 0
      contra 0; igual con días anotados muy dispares. Suma de 3 a 7 mil pruebas, y al motor le agrega de 5 a 25 ms por persona; armar los rasgos de 5 años, 22 ms.
-   - **Lo que ve la persona**: nada, salvo que haya un patrón: "Días con mucha sal → Dolor de cabeza", con "Sobre todo: Milanesa, Empanadas. Es una
-     estimación…" (`hallazgos.componente`). Sin gramos ni calorías en ninguna parte. Se apaga en Qué patrones buscar (`personas.patrones.componentes`). No entra al aviso
+   - **Lo que ve la persona**, en dos lados. En los patrones: "Días con mucha sal → Dolor de cabeza", con "Sobre todo: Milanesa, Empanadas. Es una
+     estimación…" (`hallazgos.componente`), sin gramos ni calorías. En el **widget Comida del Día**, a pedido de Rodrigo, los valores (ver abajo). No entra al aviso
      preventivo: "hoy comiste mucha sal, cuidate" sería un consejo de dieta. En el informe va marcado "(estimación)". A la IA (hipótesis y explicaciones) le
      llegan como conceptos del perfil, y se le pide que no dé consejos.
+   - **El widget Comida del Día** (`GET /api/componentes/dia?persona=&fecha=`, `componentes/delDia.ts`; en la web `pantallas/ComidaDelDia.tsx`): aparece con al menos una
+     comida o una bebida que no sea agua, y dice "3 comidas" y lo que más se nota ("mucha sal"). La hoja trae los 16 en tarjetitas, lo que se nota primero: número
+     redondo y unidad para los de la tabla, una palabra (Nada, Un poco, Algo, Bastante, Mucho) para los de 0 a 3 de la IA; "más / menos / como lo habitual"; lo que más
+     aportó; la semana contra la anterior y los patrones de componentes. Las cuentas son las de los patrones (`sumasDelDia`, `rangoHabitual`: misma porción, mismo peso por
+     confianza, mismos cortes). Lo que cambia es que acá se puede hablar de un día a medias: hoy no entra a lo habitual ni al promedio de la semana, "mucho" se dice apenas
+     se pasa el corte, y "poco" solo de un día terminado y anotado como siempre. Con menos de 21 días, valores sin niveles. Tampoco se dice "poco" de lo que casi no se
+     come (mediana bajo la mitad del piso). **No es una app de dieta**: sin metas, sin colores de bien o mal (mucho y poco se marcan igual), sin consejos, y comparado solo
+     contra la misma persona. "Muchas calorías" nunca va en la línea del Día ni abre las listas si no se nota. El interruptor de Qué patrones buscar
+     (`personas.patrones.componentes`) apaga los patrones y también este widget.
    - Para probarlo a mano (administración): `POST /api/admin/componentes/probar` con `{ "nombre": "Pastel de papa" }` (la IA de verdad, sin guardar),
      `POST /api/admin/componentes/lote` (un lote ya) y `GET /api/admin/componentes` (cómo viene y cuánto se gastó hoy).
 9. **Aviso preventivo** (`patrones/preventivo.ts`): de 16 a 21 (hora de la persona), una vez por hora, se mira si hoy

@@ -1594,6 +1594,15 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .clima-notas h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 15px; }
 .clima-notas ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
 @media (max-width: 360px) { .clima-tarjetas { grid-template-columns: repeat(2, 1fr); } }
+/* Lo que se comió: las mismas tarjetas. Lo que se nota va marcado igual sea mucho o poco, sin colores de bien o mal. */
+.comida-estimacion { margin: 0 0 4px; text-align: center; }
+.clima-tarjeta.se-nota { border-color: var(--acento); }
+.clima-tarjeta.se-nota .sub { color: var(--acento); font-weight: 600; }
+.clima-notas ul.comida-semana { list-style: none; padding-left: 0; gap: 10px; }
+.comida-semana li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.comida-barras { flex: none; display: flex; align-items: flex-end; gap: 3px; width: 62px; height: 26px; }
+.comida-barras i { flex: 1; min-height: 3px; border-radius: 2px; background: var(--acento); }
+.comida-barras i.sin-dato { height: 3px; opacity: 0.3; }
 
 /* Tele, música y podcasts: las tapas (de iTunes), la búsqueda de títulos y lo que sonó en el teléfono. */
 .que-medio { display: flex; margin-bottom: 10px; }
