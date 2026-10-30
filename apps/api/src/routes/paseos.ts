@@ -6,7 +6,7 @@ import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 import { etiquetasDePaseos } from '../patrones/paseos.js';
-import { sinSaltos } from '../ubicacion/resumen.js';
+import { caminoLimpio, puntoDeFila, sinSaltos } from '../ubicacion/resumen.js';
 import { guardarRegistro } from './registros.js';
 
 export const rutasPaseos = new Hono<Env>()
@@ -20,11 +20,11 @@ export const rutasPaseos = new Hono<Env>()
     // El recorrido de cada una (sin los saltos del GPS), para el mapita: así se ve si era lo que parece.
     const conCamino = await Promise.all(
       pendientes.map(async (x) => {
-        const l = await filas<{ instante: string; lat: number; lon: number }>(
+        const l = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
           c.var.db,
-          sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${x.inicio} AND ${x.fin} ORDER BY instante`,
+          sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${x.inicio} AND ${x.fin} ORDER BY instante`,
         );
-        const camino = sinSaltos(l.map((q) => ({ lat: q.lat, lon: q.lon, instante: Date.parse(q.instante) }))).map(({ lat, lon }) => ({ lat, lon }));
+        const camino = caminoLimpio(sinSaltos(l.map(puntoDeFila)));
         return { ...x, camino };
       }),
     );

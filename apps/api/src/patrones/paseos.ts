@@ -7,7 +7,7 @@ import { esIdioma, traducir, type Idioma } from 'shared';
 import { filas, una, type Db, type Tx } from '../db/client.js';
 import { hayEnvio } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
-import { paseosDelDia } from '../ubicacion/resumen.js';
+import { paseosDelDia, puntoDeFila } from '../ubicacion/resumen.js';
 
 const ESPERA_MS = 10 * 60000;
 const HASTA_MS = 3 * 3600000;
@@ -34,10 +34,10 @@ export async function sugerirPaseos(db: Db, ahora = new Date()): Promise<number>
   );
   let n = 0;
   for (const p of personas) {
-    const puntos = (await filas<{ instante: string; lat: number; lon: number }>(
+    const puntos = (await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
       db,
-      sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante > ${new Date(ahora.getTime() - HASTA_MS - 3600000).toISOString()} ORDER BY instante`,
-    )).map((x) => ({ instante: Date.parse(x.instante), lat: x.lat, lon: x.lon }));
+      sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante > ${new Date(ahora.getTime() - HASTA_MS - 3600000).toISOString()} ORDER BY instante`,
+    )).map(puntoDeFila);
     const lugares = await filas<{ id: number; lat: number; lon: number; radio_m: number }>(
       db,
       sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`,

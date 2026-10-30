@@ -4,7 +4,7 @@ import { horasDeLuz, lunaIluminada } from '../src/clima/cielo.js';
 import { cerrarDb } from '../src/db/client.js';
 import { esperarClima } from '../src/routes/clima.js';
 import { Cliente, conAdmin } from './ayudas.js';
-import { paradasSinNombre, resumirDia } from '../src/ubicacion/resumen.js';
+import { caminoLimpio, huboTrafico, metrosDe, paradasSinNombre, paseosDelDia, resumirDia, viajesDelDia, type Punto } from '../src/ubicacion/resumen.js';
 
 // Puntos de Buenos Aires: 0,01° de latitud son ~1,1 km.
 const CASA = { id: 1, lat: -34.6, lon: -58.4, radio_m: 150 };
@@ -267,6 +267,192 @@ describe('viajes del día', () => {
     ]);
     const kmh = v[0].metros / 1000 / ((v[0].fin - v[0].inicio) / 3600000);
     expect(kmh).toBeLessThan(40);
+  });
+});
+
+describe('con puntos seguidos (uno cada 15 m a pie)', () => {
+  const m = (min: number) => Date.parse('2026-10-26T12:00:00Z') + min * 60000;
+  const METRO = 1 / 111195;
+  const METRO_LON = METRO / Math.cos((34.6 * Math.PI) / 180);
+  /** Un azar que da siempre lo mismo. */
+  const azar = (semilla: number) => () => {
+    semilla = (semilla * 1664525 + 1013904223) % 4294967296;
+    return semilla / 4294967296 - 0.5;
+  };
+  /** De un lugar a otro, en metros desde -34.6/-58.4, con un punto cada `paso` metros, a `ms` m/s, con temblor de hasta ±`temblor`/2 m. */
+  const tramo = (de: [number, number], a: [number, number], desde: number, ms: number, paso: number, temblor = 0, precision = 10, semilla = 1): Punto[] => {
+    const r = azar(semilla);
+    const largo = Math.hypot(a[0] - de[0], a[1] - de[1]);
+    const n = Math.round(largo / paso);
+    return Array.from({ length: n + 1 }, (_, i) => ({
+      lat: -34.6 + (de[0] + ((a[0] - de[0]) * i) / n + r() * temblor) * METRO,
+      lon: -58.4 + (de[1] + ((a[1] - de[1]) * i) / n + r() * temblor) * METRO_LON,
+      instante: desde + (i * paso * 1000) / ms,
+      precision_m: precision,
+    }));
+  };
+  /** Parado en un lugar: un punto cada `cada` segundos, temblando. */
+  const parado = (donde: [number, number], desde: number, minutos: number, temblor: number, cada = 30, precision = 20, semilla = 2): Punto[] => {
+    const r = azar(semilla);
+    return Array.from({ length: Math.round((minutos * 60) / cada) }, (_, i) => ({
+      lat: -34.6 + (donde[0] + r() * temblor) * METRO,
+      lon: -58.4 + (donde[1] + r() * temblor) * METRO_LON,
+      instante: desde + i * cada * 1000,
+      precision_m: precision,
+    }));
+  };
+  /** Una vuelta a la manzana de `lado` metros, a pie. */
+  const vueltaAPie = (t0: number, lado = 300, temblor = 6) => {
+    const esquinas: Array<[number, number]> = [[0, 0], [lado, 0], [lado, lado], [0, lado], [0, 0]];
+    return esquinas.slice(0, -1).flatMap((e, k) => tramo(e, esquinas[k + 1], t0 + (k * lado * 1000) / 1.4, 1.4, 15, temblor, 10, k + 3));
+  };
+
+  it('quedarse parado con el GPS temblando no arma viajes, ni km, ni caminatas, y se ve la parada', () => {
+    const puntos = parado([0, 0], m(0), 180, 60);
+    expect(resumirDia(puntos, [])).toEqual({ viajes: 0, km: 0, estadias: [] });
+    expect(paseosDelDia(puntos, [])).toEqual([]);
+    const paradas = paradasSinNombre(puntos, [], m(180));
+    expect(paradas).toHaveLength(1);
+    expect((paradas[0].salida - paradas[0].llegada) / 60000).toBe(180);
+  });
+
+  it('una vuelta a pie es un paseo, con sus km bien medidos aunque el GPS tiemble, y no un viaje', () => {
+    const puntos = vueltaAPie(m(0));
+    expect(puntos.length).toBeGreaterThan(70);
+    const [p, ...otros] = paseosDelDia(puntos, []);
+    expect(otros).toEqual([]);
+    expect(p.metros).toBeGreaterThan(1000);
+    expect(p.metros).toBeLessThan(1320); // son 1200 m: sumar todos los tramos con temblor daría bastante más
+    expect((p.fin - p.inicio) / 60000).toBeGreaterThan(8);
+    expect(viajesDelDia(puntos, [])).toEqual([]);
+    expect(resumirDia(puntos, []).km).toBe(0);
+  });
+
+  it('un viaje en auto cuenta lo mismo con pocos puntos que con muchos', () => {
+    const fino = [...parado([0, 0], m(-40), 30, 10), ...tramo([0, 0], [5000, 0], m(0), 10, 60, 4)];
+    const ralo = tramo([0, 0], [5000, 0], m(0), 10, 150);
+    const [f] = viajesDelDia(fino, []);
+    const [r] = viajesDelDia(ralo, []);
+    expect(viajesDelDia(fino, [])).toHaveLength(1);
+    expect(Math.abs(f.metros - r.metros)).toBeLessThan(200);
+    expect(f.metros).toBeLessThan(5250);
+    expect(f.lento_min).toBe(0);
+    expect(f.camino!.length).toBeGreaterThan(r.camino!.length);
+  });
+
+  it('el temblor en un semáforo no suma km, y una caminata de 15 m por punto no se parte en mil', () => {
+    const puntos = [
+      ...tramo([0, 0], [2000, 0], m(0), 10, 60, 4),
+      ...parado([2000, 0], m(0) + 200000, 1.5, 25, 5, 15),
+      ...tramo([2000, 0], [4000, 0], m(0) + 290000, 10, 60, 4),
+    ];
+    const v = viajesDelDia(puntos, []);
+    expect(v).toHaveLength(1);
+    expect(v[0].metros).toBeGreaterThan(3900);
+    expect(v[0].metros).toBeLessThan(4200);
+  });
+
+  it('los minutos de tráfico se ven igual con muchos puntos', () => {
+    const puntos = [
+      ...tramo([0, 0], [2000, 0], m(0), 12, 70, 4),
+      ...tramo([2000, 0], [3000, 0], m(0) + 170000, 1.5, 15, 3), // ~11 min a paso de hombre
+      ...tramo([3000, 0], [6000, 0], m(0) + 840000, 12, 70, 4),
+    ];
+    const [v] = viajesDelDia(puntos, []);
+    expect(v.lento_min).toBeGreaterThanOrEqual(9);
+    expect(v.lento_min).toBeLessThanOrEqual(12);
+    expect(huboTrafico(v, null)).toBe(true);
+  });
+
+  it('pasar en auto por un lugar con nombre no corta el viaje ni es una estadía', () => {
+    const lugar = { id: 9, lat: -34.6 + 2000 * METRO, lon: -58.4, radio_m: 150 };
+    const puntos = tramo([0, 0], [4000, 0], m(0), 10, 60, 2);
+    const r = resumirDia(puntos, [lugar]);
+    expect(r.viajes).toBe(1);
+    expect(r.estadias).toEqual([]);
+  });
+
+  it('llegar a un lugar y quedarse sí corta el viaje, y caminar por el borde del radio no parte la estadía', () => {
+    const lugar = { id: 9, lat: -34.6 + 2000 * METRO, lon: -58.4, radio_m: 150 };
+    const llega = m(0) + 200000;
+    const puntos = [
+      ...tramo([0, 0], [2000, 0], m(0), 10, 60),
+      { lat: lugar.lat + 149 * METRO, lon: lugar.lon, instante: llega + 60000 },
+      { lat: lugar.lat + 155 * METRO, lon: lugar.lon, instante: llega + 90000 }, // un ratito afuera
+      { lat: lugar.lat + 149 * METRO, lon: lugar.lon, instante: llega + 120000 },
+      ...tramo([2000, 0], [4000, 0], m(40), 10, 60, 0, 10),
+    ];
+    const r = resumirDia(puntos, [lugar]);
+    expect(r.viajes).toBe(2);
+    expect(r.estadias).toHaveLength(1);
+    expect(r.estadias[0].salida).toBeGreaterThan(m(40));
+  });
+
+  it('el dibujo: sin los puntos malos ni los picos, y un paseo largo con menos puntos sin perder las esquinas', () => {
+    const buenos = tramo([0, 0], [300, 0], m(0), 1.4, 15);
+    const conErrores = [...buenos];
+    conErrores.splice(5, 0, { lat: buenos[5].lat, lon: buenos[5].lon + 200 * METRO_LON, instante: buenos[5].instante - 2000, precision_m: 200 }); // de la red
+    conErrores.splice(14, 0, { lat: buenos[13].lat, lon: buenos[13].lon + 80 * METRO_LON, instante: buenos[13].instante + 2000, precision_m: 20 }); // un rebote
+    const lejos = (c: Array<{ lat: number; lon: number }>) => Math.max(...c.map((x) => Math.abs(x.lon + 58.4) / METRO_LON));
+    expect(lejos(conErrores)).toBeGreaterThan(150);
+    expect(lejos(caminoLimpio(conErrores))).toBeLessThan(10);
+    expect(metrosDe(conErrores.filter((p) => p.precision_m! <= 50))).toBeLessThan(330);
+
+    const vuelta = vueltaAPie(m(0), 900, 4);
+    expect(vuelta.length).toBeGreaterThan(200);
+    const c = caminoLimpio(vuelta);
+    expect(c.length).toBeLessThan(vuelta.length);
+    // Las esquinas siguen: pasa a pocos metros de la de enfrente.
+    const esquina = { lat: -34.6 + 900 * METRO, lon: -58.4 + 900 * METRO_LON };
+    expect(Math.min(...c.map((x) => Math.hypot((x.lat - esquina.lat) / METRO, (x.lon - esquina.lon) / METRO_LON)))).toBeLessThan(15);
+  });
+
+  it('un camino con todos los puntos flojos se dibuja igual (mejor que nada)', () => {
+    const flojos = tramo([0, 0], [1000, 0], m(0), 10, 200, 0, 150);
+    expect(caminoLimpio(flojos)).toHaveLength(flojos.length);
+    expect(metrosDe(flojos)).toBeCloseTo(1000, -1);
+  });
+
+  describe('lo que se guarda', () => {
+    afterAll(() => cerrarDb());
+    const hace = (min: number) => new Date(Date.now() - 2 * 3600000 + min * 60000).toISOString();
+
+    it('con la marca de movimiento y buena precisión se guarda cada pocos metros, con más decimales; sin ella, como siempre', async () => {
+      const { ana, personaId } = await conAdmin();
+      const f = await ana.post(`/api/personas/${personaId}/fuentes`, { tipo: 'telefono', nombre: 'App' });
+      const app = new Cliente();
+      app.headers.Authorization = `Bearer ${f.body.token}`;
+      const fijo = (segundos: number, metros: number, extra: Record<string, unknown>) => ({
+        latitude: -34.60001 - metros * METRO,
+        longitude: -58.40001,
+        time: Date.now() - 3600000 + segundos * 1000,
+        ...extra,
+      });
+      const r = await app.post('/api/ingesta/ubicacion?clima=no', {
+        puntos: [
+          fijo(0, 0, { accuracy: 8, movimiento: true }), // primero
+          fijo(10, 15, { accuracy: 8, movimiento: true }), // 15 m: del recorrido
+          fijo(20, 18, { accuracy: 8, movimiento: true }), // 3 m: no agrega nada
+          fijo(30, 35, { accuracy: 90, movimiento: true }), // mala: solo si se alejó como para decir dónde está
+          fijo(40, 50, { accuracy: 8 }), // sin la marca (una app vieja, un punto de la red): no
+          fijo(50, 70, { accuracy: 8, movimiento: true }),
+          fijo(60, 400, { accuracy: 120 }), // lejos: dice dónde está, aunque sea malo
+        ],
+      });
+      expect(r.status).toBe(200);
+      expect(r.body.guardados).toBe(4);
+      const dibujo = (await ana.get(`/api/ubicacion/camino?persona=${personaId}&desde=${hace(0)}&hasta=${new Date().toISOString()}`)).body;
+      expect(dibujo.camino[0].lat).toBeCloseTo(-34.60001, 5); // 5 decimales, no 4
+      expect(dibujo.camino).toHaveLength(3); // el malo no se dibuja
+    });
+
+    it('el mapa de calor no pesa más por tener más puntos', async () => {
+      const { ana, personaId } = await conAdmin();
+      const puntos = Array.from({ length: 12 }, (_, i) => ({ lat: -34.60001 - i * 15 * METRO * 0.2, lon: -58.4, precision: 8, movimiento: true, instante: hace(i * 0.1) }));
+      expect((await ana.post('/api/ubicacion', { persona_id: personaId, puntos })).status).toBeLessThan(300);
+      const r = (await ana.get(`/api/ubicacion/calor?persona=${personaId}&dias=7`)).body;
+      expect(r.reduce((s: number, x: any) => s + x.n, 0)).toBeLessThanOrEqual(3);
+    });
   });
 });
 

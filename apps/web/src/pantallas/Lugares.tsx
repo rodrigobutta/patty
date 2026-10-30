@@ -160,13 +160,13 @@ export function Lugares({ persona, puedeEscribir }: { persona: Persona; puedeEsc
       </label>
       {esNativa() ? (
         <p className="suave chico">
-          {t('Guarda un punto al moverte más de 1 km o al entrar o salir de un lugar con nombre, también con Patty cerrada')}
+          {t('Guarda tu recorrido mientras te movés y cuándo entrás o salís de un lugar con nombre, también con Patty cerrada')}
           {plataforma() === 'android' ? t(' (Android muestra una notificación fija mientras tanto)') : ''}.{' '}
           {t('Para que no se corte, dale el permiso «Permitir todo el tiempo». Los puntos se borran a los 90 días.')}
         </p>
       ) : (
         <p className="suave chico">
-          {t('Guarda un punto al moverte más de 1 km o al entrar o salir de un lugar con nombre. En el navegador solo funciona con Patty abierta. Los puntos se borran a los 90 días.')}
+          {t('Guarda un punto al moverte más de 150 m o al entrar o salir de un lugar con nombre. En el navegador solo funciona con Patty abierta. Los puntos se borran a los 90 días.')}
         </p>
       )}
 

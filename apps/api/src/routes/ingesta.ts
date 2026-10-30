@@ -69,6 +69,8 @@ export function puntoDeLaApp(x: unknown): unknown {
     lon: p.longitude,
     precision: p.accuracy ?? undefined,
     instante: typeof p.time === 'number' ? new Date(p.time).toISOString() : undefined,
+    // Tomado en movimiento y con buena precisión: del recorrido (ver guardarPuntos).
+    movimiento: p.movimiento === true ? true : undefined,
   };
 }
 

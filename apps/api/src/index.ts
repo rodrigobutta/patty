@@ -24,7 +24,7 @@ if (modo === 'completo' || modo === 'worker') {
   arrancarPatronesDeNoche(db);
   arrancarVersionApp(db);
   // Los viajes se cuentan distinto desde la 1.20.1 (puntos cada ~150 m, sin contar los paseos): se recalculan una vez.
-  void recalcularSiCambio(db, 'viajes-sin-saltos-3').catch((e) => console.error('Recalcular ubicación:', e));
+  void recalcularSiCambio(db, 'puntos-seguidos-1').catch((e) => console.error('Recalcular ubicación:', e));
 }
 
 serve({ fetch: (modo === 'worker' ? appWorker() : crearApp()).fetch, port: config.port, hostname: config.host }, (info) => {

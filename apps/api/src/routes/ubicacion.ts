@@ -5,8 +5,9 @@
 //   GET    /api/ubicacion/camino?persona=1&desde=…&hasta=…    por dónde anduvo en ese rato (para compartir)
 //   DELETE /api/ubicacion?persona=1                           borra todos los puntos y lo calculado con ellos
 //   GET/POST /api/ubicacion/lugares, PUT/DELETE /api/ubicacion/lugares/:id
-// De los puntos se guarda solo uno cada vez que la persona se movió más de 1 km o entró o salió de un lugar (el
-// primero de cada día siempre). Con ellos se recalculan, por día, las mediciones de la fuente «Ubicación»: «Viajes»,
+// De los puntos se guarda uno cada vez que la persona se movió más de 150 m o entró o salió de un lugar (el primero de cada
+// día siempre) y, además, los que la app nativa marca como tomados en movimiento con buena precisión, para dibujar el
+// recorrido. Con ellos se recalculan, por día, las mediciones de la fuente «Ubicación»: «Viajes»,
 // «Km recorridos» y una por cada estadía en un lugar (el concepto del lugar, con los minutos). Eso es lo que ve el motor.
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
@@ -19,7 +20,7 @@ import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
-import { huboTrafico, minutosHabituales, paradasSinNombre, resumirDia, sinSaltos, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
+import { caminoLimpio, huboTrafico, metrosDe, minutosHabituales, paradasSinNombre, PRECISION_CAMINO_M, puntoDeFila, resumirDia, sinLosMalos, sinSaltos, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
 import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
 import { appDelViaje, viajesEnApps } from '../avisos/telefono.js';
 import { conceptoMedido } from './ingesta.js';
@@ -48,6 +49,10 @@ function coordenada(v: unknown, campo: string, limite: number): number {
 
 /** ~11 m: alcanza para saber en qué lugar estaba y no guarda la ubicación exacta. */
 const redondear = (n: number) => Math.round(n * 10000) / 10000;
+/** ~1 m, solo para los puntos tomados en movimiento: con uno cada 15 m, redondear a 11 m dibuja una escalera. */
+const redondearFino = (n: number) => Math.round(n * 100000) / 100000;
+/** Un punto de recorrido tan cerca del anterior no agrega nada (el teléfono ya los manda más separados). */
+const DISTANCIA_RECORRIDO_M = 10;
 
 const zonas = (tx: Tx, personaId: number) =>
   filas<LugarZona & { concepto_id: number }>(tx, sql`SELECT id, lat, lon, radio_m, concepto_id FROM lugares WHERE persona_id = ${personaId}`);
@@ -63,15 +68,15 @@ export async function recalcular(tx: Tx, p: PersonaZona, fechas: string[]): Prom
   const viajes = await conceptoMedido(tx, f, 'Viajes', 'lugar', 'viajes', cache);
   const km = await conceptoMedido(tx, f, 'Km recorridos', 'lugar', 'km', cache);
   await tx.execute(sql`DELETE FROM mediciones WHERE fuente_id = ${fuenteId} AND fecha IN ${fechas}`);
-  const delDia = await filas<{ fecha: string; instante: string; lat: number; lon: number }>(
+  const delDia = await filas<{ fecha: string; instante: string; lat: number; lon: number; precision_m: number | null }>(
     tx,
-    sql`SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha, instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND fecha IN ${fechas}`,
+    sql`SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha, instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND fecha IN ${fechas}`,
   );
   const porDia = new Map<string, Punto[]>();
   for (const x of delDia) {
     let l = porDia.get(x.fecha);
     if (!l) porDia.set(x.fecha, (l = []));
-    l.push({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon });
+    l.push(puntoDeFila(x));
   }
   const valores: Array<typeof mediciones.$inferInsert> = [];
   for (const [fecha, lista] of porDia) {
@@ -129,12 +134,17 @@ export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): P
     .map((x, i) => {
       const t = leerInstante(x?.instante, `puntos[${i}].instante`);
       const precision = numeroONulo(x?.precision, `puntos[${i}].precision`);
+      // Del recorrido: lo dice la app nativa, que ve la velocidad del GPS. Los demás (la web, un atajo, una app vieja)
+      // siguen la regla de siempre, así un teléfono quieto que tiembla no llena la tabla.
+      const recorrido = x?.movimiento === true && precision !== null && precision <= PRECISION_CAMINO_M;
+      const redondeo = recorrido ? redondearFino : redondear;
       return {
         instante: t,
         dia: diaDePatty(t, p.zona_horaria),
-        lat: redondear(coordenada(x?.lat, `puntos[${i}].lat`, 90)),
-        lon: redondear(coordenada(x?.lon, `puntos[${i}].lon`, 180)),
+        lat: redondeo(coordenada(x?.lat, `puntos[${i}].lat`, 90)),
+        lon: redondeo(coordenada(x?.lon, `puntos[${i}].lon`, 180)),
         precision: precision === null ? null : Math.round(precision),
+        recorrido,
       };
     })
     .filter((x) => x.instante.getTime() > ahora - DIAS_GUARDADOS * 86400000 && x.instante.getTime() < ahora + 3600000)
@@ -147,7 +157,7 @@ export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): P
   );
   const previo = await una<{ instante: string; lat: number; lon: number }>(
     tx,
-    sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante < ${recibidos[0].instante.toISOString()}
+    sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante < ${recibidos[0].instante.toISOString()}
         ORDER BY instante DESC LIMIT 1`,
   );
   let anterior = previo ? { lat: previo.lat, lon: previo.lon, dia: diaDePatty(new Date(previo.instante), p.zona_horaria) } : null;
@@ -155,7 +165,8 @@ export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): P
   let anteriorT = previo ? new Date(previo.instante).getTime() : null;
   for (const x of recibidos) {
     if (!posible(x, anterior, anteriorT)) continue;
-    if (!puntoNuevo(anterior, x, ls)) continue;
+    const delRecorrido = x.recorrido && (!anterior || distanciaMetros(anterior, x) >= DISTANCIA_RECORRIDO_M);
+    if (!delRecorrido && !puntoNuevo(anterior, x, ls)) continue;
     nuevos.push({ persona_id: p.id, instante: x.instante.toISOString(), fecha: x.dia, lat: x.lat, lon: x.lon, precision_m: x.precision });
     anterior = x;
     anteriorT = x.instante.getTime();
@@ -197,15 +208,15 @@ export const rutasUbicacion = new Hono<Env>()
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const fecha = c.req.query('fecha');
     const dia = esFecha(fecha) ? fecha : diaDePatty(new Date(), p.zona_horaria);
-    const ps = await filas<{ instante: string; lat: number; lon: number }>(
+    const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
       c.var.db,
-      sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia}`,
+      sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia}`,
     );
     const ls = await filas<LugarZona & { nombre: string }>(
       c.var.db,
       sql`SELECT l.id, l.lat, l.lon, l.radio_m, c.nombre FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.persona_id = ${p.id}`,
     );
-    const r = resumirDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), ls);
+    const r = resumirDia(ps.map(puntoDeFila), ls);
     const nombre = new Map(ls.map((l) => [l.id, l.nombre]));
     const res: DiaUbicacion = {
       fecha: dia,
@@ -229,22 +240,22 @@ export const rutasUbicacion = new Hono<Env>()
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const fecha = c.req.query('fecha');
     const dia = esFecha(fecha) ? fecha : diaDePatty(new Date(), p.zona_horaria);
-    const ps = await filas<{ instante: string; lat: number; lon: number }>(
+    const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
       c.var.db,
-      sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia} ORDER BY instante`,
+      sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia} ORDER BY instante`,
     );
     const BORDE_H = 3;
     const antes = ps.length
       ? await una<{ instante: string; lat: number; lon: number }>(
           c.var.db,
-          sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante < ${ps[0].instante}
+          sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante < ${ps[0].instante}
                 AND instante > ${ps[0].instante}::timestamptz - make_interval(hours => ${BORDE_H}) ORDER BY instante DESC LIMIT 1`,
         )
       : null;
     const despues = ps.length
       ? await una<{ instante: string; lat: number; lon: number }>(
           c.var.db,
-          sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante > ${ps[ps.length - 1].instante}
+          sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante > ${ps[ps.length - 1].instante}
                 AND instante < ${ps[ps.length - 1].instante}::timestamptz + make_interval(hours => ${BORDE_H}) ORDER BY instante LIMIT 1`,
         )
       : null;
@@ -252,10 +263,11 @@ export const rutasUbicacion = new Hono<Env>()
       c.var.db,
       sql`SELECT l.id, l.lat, l.lon, l.radio_m, c.nombre FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.persona_id = ${p.id}`,
     );
-    const r = resumirDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), ls);
+    const delDia = ps.map(puntoDeFila);
+    const r = resumirDia(delDia, ls);
     const visitados = new Set(r.estadias.map((e) => e.lugar_id));
     return c.json({
-      puntos: ps.map((x) => ({ lat: x.lat, lon: x.lon, instante: new Date(x.instante).toISOString() })),
+      puntos: caminoLimpio(sinSaltos(delDia)),
       antes: antes ? { lat: antes.lat, lon: antes.lon, instante: new Date(antes.instante).toISOString() } : null,
       despues: despues ? { lat: despues.lat, lon: despues.lon, instante: new Date(despues.instante).toISOString() } : null,
       lugares: ls.filter((l) => visitados.has(l.id)).map((l) => ({ nombre: l.nombre, lat: l.lat, lon: l.lon, radio_m: l.radio_m })),
@@ -270,15 +282,16 @@ export const rutasUbicacion = new Hono<Env>()
     const desde = leerInstante(c.req.query('desde'), 'desde');
     const hasta = leerInstante(c.req.query('hasta'), 'hasta');
     if (hasta <= desde || hasta.getTime() - desde.getTime() > 24 * 3600000) throw new ErrorApi('El rato tiene que ser de hasta 24 horas.');
-    const ps = await filas<{ instante: string; lat: number; lon: number }>(
+    const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
       c.var.db,
-      sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${desde.toISOString()} AND ${hasta.toISOString()} ORDER BY instante`,
+      sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${desde.toISOString()} AND ${hasta.toISOString()} ORDER BY instante`,
     );
-    const limpio = sinSaltos(ps.map((x) => ({ lat: x.lat, lon: x.lon, instante: Date.parse(x.instante) })));
-    const metros = limpio.slice(1).reduce((s, q, i) => s + distanciaMetros(limpio[i], q), 0);
+    const sinSalto = sinSaltos(ps.map(puntoDeFila));
+    const metros = metrosDe(sinLosMalos(sinSalto));
+    const limpio = caminoLimpio(sinSalto);
     // Con muchísimos puntos alcanza con uno de cada tanto (y siempre el último) para dibujarlo.
     const paso = Math.max(1, Math.ceil(limpio.length / 400));
-    const camino = limpio.filter((_, i) => i % paso === 0 || i === limpio.length - 1).map(({ lat, lon }) => ({ lat, lon }));
+    const camino = limpio.filter((_, i) => i % paso === 0 || i === limpio.length - 1);
     return c.json({ camino, km: Math.round(metros / 100) / 10 });
   })
   .get('/viajes', async (c) => {
@@ -287,7 +300,7 @@ export const rutasUbicacion = new Hono<Env>()
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const fecha = c.req.query('fecha');
     const dia = esFecha(fecha) ? fecha : diaDePatty(new Date(), p.zona_horaria);
-    const ps = await filas<{ instante: string; lat: number; lon: number }>(c.var.db, sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia}`);
+    const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(c.var.db, sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND fecha = ${dia}`);
     const contados = new Set(
       (await filas<{ inicio: string }>(
         c.var.db,
@@ -297,15 +310,19 @@ export const rutasUbicacion = new Hono<Env>()
     );
     const lugaresP = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
     // Los viajes de las últimas semanas, para saber cuánto tarda habitualmente cada recorrido.
-    const antes = await filas<{ instante: string; lat: number; lon: number; fecha: string }>(
+    const antes = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null; fecha: string }>(
       c.var.db,
-      sql`SELECT instante, lat, lon, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos
+      sql`SELECT instante, lat, lon, precision_m, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos
           WHERE persona_id = ${p.id} AND fecha < ${dia} AND fecha >= ${dia}::date - 45`,
     );
     const porDia = new Map<string, Punto[]>();
-    for (const x of antes) porDia.set(x.fecha, [...(porDia.get(x.fecha) ?? []), { instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon }]);
+    for (const x of antes) {
+      const l = porDia.get(x.fecha);
+      if (l) l.push(puntoDeFila(x));
+      else porDia.set(x.fecha, [puntoDeFila(x)]);
+    }
     const anteriores = [...porDia.values()].flatMap((l) => viajesDelDia(l, lugaresP));
-    const delDia = viajesDelDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), lugaresP);
+    const delDia = viajesDelDia(ps.map(puntoDeFila), lugaresP);
     // Los viajes en Uber, Cabify o DiDi que se vieron en sus avisos (con «Viajes en apps» prendido en el teléfono).
     const enApps = delDia.length ? await viajesEnApps(c.var.db, p.id, delDia[0].inicio, delDia[delDia.length - 1].fin) : [];
     const r: ViajeDelDia[] = delDia.map((v) => {
@@ -364,15 +381,15 @@ export const rutasUbicacion = new Hono<Env>()
           LEFT JOIN mediciones m ON m.concepto_id = l.concepto_id AND m.persona_id = l.persona_id AND m.fecha > ${hoy}::date - ${dias}::int
           WHERE l.persona_id = ${p.id} GROUP BY l.id, c.nombre ORDER BY 6 DESC`,
     );
-    const ps = await filas<{ instante: string; lat: number; lon: number; fecha: string }>(
+    const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null; fecha: string }>(
       c.var.db,
-      sql`SELECT instante, lat, lon, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${p.id} AND fecha > ${hoy}::date - ${dias}::int`,
+      sql`SELECT instante, lat, lon, precision_m, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${p.id} AND fecha > ${hoy}::date - ${dias}::int`,
     );
     const ls = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
     const grupos: Array<{ lat: number; lon: number; minutos: number; dias: Set<string> }> = [];
     for (const f of [...new Set(ps.map((x) => x.fecha))]) {
       const fin = f === hoy ? Date.now() : localAInstante(f, '23:59', p.zona_horaria).getTime();
-      const delDia = ps.filter((x) => x.fecha === f).map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon }));
+      const delDia = ps.filter((x) => x.fecha === f).map(puntoDeFila);
       for (const x of paradasSinNombre(delDia, ls, fin)) {
         const g = grupos.find((y) => distanciaMetros(y, x) < RADIO_LUGAR_M * 2);
         if (g) {
@@ -398,14 +415,15 @@ export const rutasUbicacion = new Hono<Env>()
   })
   .get('/calor', async (c) => {
     // ?persona=1&dias=30: el mapa de calor de Descubrir. Los puntos guardados, juntados en cuadraditos de ~150 m, con
-    // cuántos hay en cada uno (más puntos: más tiempo o más idas y vueltas por ahí).
+    // cuántas veces anduvo por cada uno (ratos de 10 minutos con algún punto: más tiempo o más idas y vueltas por ahí; si
+    // contara puntos, una caminata pesaría mucho más que un viaje, solo por guardar más).
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const dias = Math.min(365, Math.max(1, Number(c.req.query('dias')) || 30));
     const hoy = diaDePatty(new Date(), p.zona_horaria);
     const PASO = 0.0015;
     const celdas = await filas<{ lat: number; lon: number; n: number }>(
       c.var.db,
-      sql`SELECT (floor(lat / ${PASO}) + 0.5) * ${PASO} AS lat, (floor(lon / ${PASO}) + 0.5) * ${PASO} AS lon, count(*)::int AS n
+      sql`SELECT (floor(lat / ${PASO}) + 0.5) * ${PASO} AS lat, (floor(lon / ${PASO}) + 0.5) * ${PASO} AS lon, count(DISTINCT floor(extract(epoch FROM instante) / 600))::int AS n
           FROM puntos WHERE persona_id = ${p.id} AND fecha > ${hoy}::date - ${dias}::int
           GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 2000`,
     );
@@ -418,18 +436,17 @@ export const rutasUbicacion = new Hono<Env>()
     const fecha = c.req.query('fecha');
     const hoy = diaDePatty(new Date(), p.zona_horaria);
     const dia = esFecha(fecha) ? fecha : hoy;
-    const ps = await filas<{ instante: string; lat: number; lon: number; fecha: string }>(
+    const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null; fecha: string }>(
       c.var.db,
-      sql`SELECT instante, lat, lon, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${p.id} AND fecha > ${dia}::date - 30 AND fecha <= ${dia}`,
+      sql`SELECT instante, lat, lon, precision_m, to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${p.id} AND fecha > ${dia}::date - 30 AND fecha <= ${dia}`,
     );
     const ls = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
-    const aPunto = (x: { instante: string; lat: number; lon: number }) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon });
     // El último punto del día cuenta hasta ahora (si es hoy) o hasta el fin del día.
     const finDe = (f: string) => (f === hoy ? Date.now() : localAInstante(f, '23:59', p.zona_horaria).getTime());
-    const paradas = paradasSinNombre(ps.filter((x) => x.fecha === dia).map(aPunto), ls, finDe(dia));
+    const paradas = paradasSinNombre(ps.filter((x) => x.fecha === dia).map(puntoDeFila), ls, finDe(dia));
     // Los otros días del mes con una parada cerca de cada una (para decir "estuviste acá 4 días").
     const otrosDias = [...new Set(ps.map((x) => x.fecha))].filter((f) => f !== dia);
-    const paradasOtros = otrosDias.map((f) => ({ f, l: paradasSinNombre(ps.filter((x) => x.fecha === f).map(aPunto), ls, finDe(f)) }));
+    const paradasOtros = otrosDias.map((f) => ({ f, l: paradasSinNombre(ps.filter((x) => x.fecha === f).map(puntoDeFila), ls, finDe(f)) }));
     const r: ParadaSinNombre[] = [];
     for (const x of paradas.slice(0, 5)) {
       r.push({

@@ -33,7 +33,7 @@ import { diaDePatty, fechaLocal, localAInstante, minutosDelDia, sumarDias } from
 import { texto } from '../lib/http.js';
 import { obtenerOCrearConcepto } from '../routes/conceptos.js';
 import { conceptoMedido, type Fuente } from '../routes/ingesta.js';
-import { viajesDelDia, type LugarZona } from '../ubicacion/resumen.js';
+import { puntoDeFila, viajesDelDia, type LugarZona } from '../ubicacion/resumen.js';
 
 const DIAS_GUARDADOS = 90;
 const MIN = 60000;
@@ -386,10 +386,10 @@ export function appDelViaje(v: { inicio: number; fin: number }, enApps: Array<{ 
 
 /** Los viajes que vio la ubicación en un día (sin lo que se adivina). */
 async function viajesDetectados(db: Db | Tx, personaId: number, fecha: string): Promise<Array<{ inicio: number; fin: number }>> {
-  const ps = await filas<{ instante: string; lat: number; lon: number }>(db, sql`SELECT instante, lat, lon FROM puntos WHERE persona_id = ${personaId} AND fecha = ${fecha}`);
+  const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(db, sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${personaId} AND fecha = ${fecha}`);
   if (ps.length < 2) return [];
   const lugares = await filas<LugarZona>(db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${personaId}`);
-  return viajesDelDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), lugares);
+  return viajesDelDia(ps.map(puntoDeFila), lugares);
 }
 
 /**

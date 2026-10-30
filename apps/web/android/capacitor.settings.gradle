@@ -18,7 +18,7 @@ include ':capacitor-share'
 project(':capacitor-share').projectDir = new File('../../../node_modules/.pnpm/@capacitor+share@8.0.3_@capacitor+core@8.5.3/node_modules/@capacitor/share/android')
 
 include ':capgo-background-geolocation'
-project(':capgo-background-geolocation').projectDir = new File('../../../node_modules/.pnpm/@capgo+background-geolocation@8.4.14_patch_hash=d46147b610223582cd581d8287eebba95cf817b_382875472e4e10f3a646dc230b260d68/node_modules/@capgo/background-geolocation/android')
+project(':capgo-background-geolocation').projectDir = new File('../../../node_modules/.pnpm/@capgo+background-geolocation@8.4.14_patch_hash=0054c504487dc26da1bd9d8d5e23fc361ce33bf_394509407262792a25e5538d182d7e24/node_modules/@capgo/background-geolocation/android')
 
 include ':capgo-capacitor-health'
 project(':capgo-capacitor-health').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-health@8.11.12_@capacitor+core@8.5.3/node_modules/@capgo/capacitor-health/android')

@@ -67,8 +67,9 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   horas.
 - **Clima con Patty cerrada**: la ubicación que llega a `POST /api/ingesta/ubicacion` (la manda el teléfono solo) también
   pide el clima y el aire de esa hora, con ese lugar (`climaDespues`, sin hacer esperar; una lectura por hora). Si el
-  clima está apagado en ese teléfono, la app arma la dirección con `?clima=no`. Es solo en movimiento: el teléfono quieto
-  no manda puntos, y esas horas las completa la web al abrirse (hasta 48 h atrás).
+  clima está apagado en ese teléfono, la app arma la dirección con `?clima=no`. Con el teléfono quieto manda un punto cada
+  15 min (la API no lo guarda si no se movió, pero sirve para esto); las horas sin nada las completa la web al abrirse
+  (hasta 48 h atrás).
 - **Sol y luna** (`clima/cielo.ts`, fuente «Sol y luna»): «Horas de luz» (de la latitud y la fecha) y «Luna iluminada»
   (%, fase media) salen de cuentas, sin consultar a nadie y sin depender de que el clima esté prendido. Se completan
   antes de cada análisis para los días con datos, y con cada `POST /api/clima`. La latitud es la del teléfono o la
@@ -81,7 +82,16 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     cerrada o la pantalla apagada (ni iOS ni Android lo permiten). Para eso: un atajo del teléfono (iPhone: Atajos →
     Automatización «al llegar / al salir») que manda `{ lat, lon }` a `POST /api/ingesta/ubicacion` con el token de una
     fuente, y más adelante la app nativa con ubicación en segundo plano.
-  - Tabla `puntos`: coordenadas redondeadas a 4 decimales (~11 m), se borran solas a los 90 días.
+  - Tabla `puntos`: coordenadas redondeadas a 4 decimales (~11 m; los del recorrido en movimiento, a 5: ~1 m, para que no
+    dibujen una escalera), con la precisión que dio el GPS (`precision_m`). Se borran solas a los 90 días.
+  - **Dos clases de punto, en la misma tabla.** Los que dicen dónde está (primero del día, más de 150 m o cambio de lugar:
+    `puntoNuevo`, para todas las fuentes) y los del recorrido, que la app nativa marca con `movimiento: true` (precisión de
+    50 m o mejor; se guardan desde los 10 m). Lo que pasó (viajes, paseos, paradas) se decide siempre con
+    `puntosDeMovimiento` (uno cada ~150 m o cambio de lugar), así no depende de cuántos puntos hay y el temblor del GPS no
+    arma km ni caminatas. Los finos se usan para dibujar (`caminoLimpio`: sin puntos malos ni picos, suavizado leve a pie,
+    sin pegarse a las calles porque el OSRM público solo tiene autos y puede inventar) y para los km de un viaje ya
+    detectado (`metrosDe`: solo suma a más de 25 m del punto anterior). Pasar por un lugar con nombre en menos de 5 min no
+    corta el viaje, y en menos de 2 no cuenta como estadía.
   - Tabla `lugares` (Casa, Supermercado…: centro y radio, 150 m de entrada). Cada lugar es un concepto de la categoría
     «Lugares y salidas» (rol causa, tipo duración).
   - Con los puntos de cada día se recalculan las mediciones de la fuente «Ubicación»: «Viajes» (tramos de más de 1 km),
@@ -97,8 +107,15 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   - La app crea sola una fuente «App de Android» / «App de iPhone» (tipo `telefono`) y guarda su token en el teléfono
     (`lib/fuenteApp.ts`): con él manda lo que junta sin la web a la vista.
   - Ubicación con la app cerrada: plugin `@capgo/background-geolocation` (servicio en primer plano en Android, con
-    notificación fija; modo de fondo `location` en iOS). Cada punto (como mucho cada 2 min y 100 m) lo manda el código
-    nativo directo a `POST /api/ingesta/ubicacion`, que también acepta su formato (`latitude`, `longitude`, `time`).
+    notificación fija; modo de fondo `location` en iOS). Los puntos los manda el código nativo directo a
+    `POST /api/ingesta/ubicacion`, que también acepta su formato (`latitude`, `longitude`, `time`).
+    En Android, con `adaptive: true` (`AdaptiveTracker.java`, en el parche del plugin): quieto, GPS una vez por minuto y
+    solo se manda un punto cada 15 min (para el clima) o si se alejó 100 m; al moverse (se alejó 40 m o más de lo que
+    duda el fix, y la velocidad del GPS lo confirma), GPS cada 5 s y un punto cada 15 m a pie, más separados con la
+    velocidad (distancia de 6 s, hasta 150 m), con precisión de 50 m o mejor; salen juntos una vez por minuto para no
+    tener prendida la radio. Vuelve a quieto tras 2 min sin avanzar 30 m. Sin reconocimiento de actividad: pediría otro
+    permiso y la velocidad del GPS alcanza. Los puntos de la red (hasta 300 m de error) solo se aceptan si el GPS lleva un
+    rato callado, y no se dibujan. iPhone y las apps viejas siguen con 100 m entre puntos.
     Android no deja arrancarlo con la app en segundo plano: si hace falta, espera a que vuelva a estar a la vista.
   - Datos del teléfono (solo Android, plugin propio `TelefonoPlugin.java`): minutos en primer plano de cada app
     (eventos de UsageStats, permiso «Acceso a datos de uso» que se da en Ajustes) y llamadas (entrantes + salientes,

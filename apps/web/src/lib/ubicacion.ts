@@ -1,6 +1,6 @@
 // Seguimiento de la ubicación para contar viajes y saber en qué lugares con nombre estuvo la persona.
 // Viene apagado: se prende por dispositivo en Más. Mientras Patty está abierta se sigue el movimiento y se manda un
-// punto solo cuando hace falta (primero del día, más de 1 km, o entrar o salir de un lugar); la API vuelve a filtrar.
+// punto solo cuando hace falta (primero del día, más de 150 m, o entrar o salir de un lugar); la API vuelve a filtrar.
 // Una web no puede seguir la ubicación con la app cerrada o la pantalla apagada: para eso está la app nativa (que la
 // sigue en segundo plano y la manda sola a POST /api/ingesta/ubicacion) o el atajo del teléfono.
 import { BackgroundGeolocation } from '@capgo/background-geolocation';
@@ -110,9 +110,9 @@ export function seguir(personaId: number): () => void {
 
 /**
  * En la app nativa: el teléfono sigue la ubicación aunque Patty esté cerrada (Android muestra una notificación fija
- * mientras tanto) y manda cada punto directo a la ingesta, sin pasar por la web. La API se queda solo con los que
- * sirven (primero del día, más de 1 km, entrar o salir de un lugar). No se corta al salir de la pantalla: solo al
- * apagarlo en Más.
+ * mientras tanto) y manda los puntos directo a la ingesta, sin pasar por la web. La API se queda con los que sirven
+ * (los del recorrido en movimiento, y los que dicen dónde está: primero del día, más de 150 m, entrar o salir de un
+ * lugar). No se corta al salir de la pantalla: solo al apagarlo en Más.
  */
 let siguiendoNativo: string | null = null;
 
@@ -141,8 +141,12 @@ export async function seguirNativo(personaId: number, alFallar: (mensaje: string
         backgroundMessage: t('Anotando tus viajes y los lugares donde estás'),
         requestPermissions: true,
         stale: false,
+        // En una app con el plugin nuevo (`adaptive`), el código nativo decide según cómo se mueve: quieto, GPS una vez por
+        // minuto y casi nada para mandar; en movimiento, GPS cada 5 s y un punto cada 15 m a pie, más separados con la
+        // velocidad, que salen juntos una vez por minuto. Una app vieja ignora `adaptive` y sigue con estos valores (la web
+        // llega sola, la app no): uno por minuto como mucho y con 100 m de por medio.
+        adaptive: true,
         distanceFilter: 100,
-        // Uno por minuto como mucho al moverse (con 100 m de por medio): alcanza para dibujar una caminata entera.
         minIntervalMs: 60000,
         networkFallback: true,
         url,

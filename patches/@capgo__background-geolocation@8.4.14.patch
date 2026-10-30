@@ -1,5 +1,451 @@
+diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/AdaptiveTracker.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/AdaptiveTracker.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..6b11db0b3dcc70619d1d748815db94846be73a6d
+--- /dev/null
++++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/AdaptiveTracker.java
+@@ -0,0 +1,187 @@
++package com.capgo.capacitor_background_geolocation;
++
++// Patty: decides, fix by fix, how often the GPS should run and which fixes are worth sending, using only what the fixes
++// say (no activity recognition: no extra permission, and it keeps working on phones that kill Play Services callbacks).
++// Still: GPS at the slow interval, nothing is sent except a rare heartbeat or a real displacement. Moving: GPS every few
++// seconds and a point every 15 m on foot, more spaced out with speed. No Android classes here, so it can be unit tested.
++final class AdaptiveTracker {
++
++    static final int NONE = 0;
++    // Good enough only to know where the phone is (presence at places, stops).
++    static final int COARSE = 1;
++    // Good enough to draw the route.
++    static final int ROUTE = 2;
++
++    static final long MOVING_GPS_INTERVAL_MS = 5000L;
++    // Worse than this, a fix only says roughly where the phone is, it can't be drawn.
++    static final float ROUTE_MAX_ACCURACY_M = 50f;
++
++    // To start moving: this far from where it was resting (and beyond what the fix itself is unsure of), and the fix's own
++    // speed, which comes from the Doppler shift and barely reacts to the position wandering indoors, has to agree.
++    private static final double START_MIN_M = 40;
++    private static final double START_ACCURACY_FACTOR = 1.5;
++    private static final float START_MIN_SPEED_MS = 0.5f;
++
++    // To keep moving: this much progress every STILL_AFTER_MS (a long red light goes back to the slow GPS)...
++    private static final double PROGRESS_M = 30;
++    private static final long STILL_AFTER_MS = 2 * 60000L;
++    // ...and this much net displacement every NET_WINDOW_MS, so that a position wandering indoors can't keep the GPS on.
++    private static final double NET_MIN_M = 50;
++    private static final long NET_WINDOW_MS = 5 * 60000L;
++
++    // Spacing between points: what is covered in SPACING_S at this speed, within these limits (15 m on foot, ~60 m at
++    // 36 km/h, 150 m on the highway).
++    private static final double SPACING_S = 6;
++    private static final double SPACING_MIN_M = 15;
++    private static final double SPACING_MAX_M = 150;
++
++    private static final double COARSE_MIN_M = 100;
++    private static final long COARSE_WHILE_MOVING_MS = 60000L;
++    // Still and with nothing new: one point every this long, so the server keeps getting the weather's location.
++    private static final long HEARTBEAT_MS = 15 * 60000L;
++
++    private boolean moving = false;
++
++    private boolean hasAnchor = false;
++    private double anchorLat;
++    private double anchorLon;
++    private long anchorAtMs;
++
++    private double windowLat;
++    private double windowLon;
++    private long windowAtMs;
++
++    private boolean hasSent = false;
++    private double sentLat;
++    private double sentLon;
++    private long sentAtMs;
++
++    private boolean hasLast = false;
++    private double lastLat;
++    private double lastLon;
++    private long lastAtMs;
++
++    synchronized boolean isMoving() {
++        return moving;
++    }
++
++    // accuracy and speed: negative when the fix doesn't have them. nowMs: a monotonic clock.
++    synchronized int onGpsFix(double lat, double lon, float accuracy, float speed, long nowMs) {
++        boolean good = accuracy >= 0 && accuracy <= ROUTE_MAX_ACCURACY_M;
++        int result = moving ? whileMoving(lat, lon, accuracy, speed, good, nowMs) : whileStill(lat, lon, accuracy, speed, good, nowMs);
++        hasLast = true;
++        lastLat = lat;
++        lastLon = lon;
++        lastAtMs = nowMs;
++        return remember(result, lat, lon, nowMs);
++    }
++
++    // A fix from the network provider (the GPS has been silent for a while): only for presence.
++    synchronized int onCoarseFix(double lat, double lon, long nowMs) {
++        return remember(coarseIfUseful(lat, lon, nowMs), lat, lon, nowMs);
++    }
++
++    // No fix may arrive when moving stops (indoors): called when the GPS goes silent. True if it just went back to still.
++    synchronized boolean expire(long nowMs) {
++        if (moving && nowMs - anchorAtMs >= STILL_AFTER_MS) {
++            moving = false;
++            return true;
++        }
++        return false;
++    }
++
++    private int remember(int result, double lat, double lon, long nowMs) {
++        if (result != NONE) {
++            hasSent = true;
++            sentLat = lat;
++            sentLon = lon;
++            sentAtMs = nowMs;
++        }
++        return result;
++    }
++
++    private int whileStill(double lat, double lon, float accuracy, float speed, boolean good, long nowMs) {
++        if (good && !hasAnchor) {
++            setAnchor(lat, lon, nowMs);
++        } else if (good) {
++            double needed = Math.max(START_MIN_M, accuracy * START_ACCURACY_FACTOR);
++            boolean speedAgrees = speed < 0 || speed >= START_MIN_SPEED_MS;
++            if (speedAgrees && distanceM(anchorLat, anchorLon, lat, lon) >= needed) {
++                moving = true;
++                setAnchor(lat, lon, nowMs);
++                windowLat = lat;
++                windowLon = lon;
++                windowAtMs = nowMs;
++                return ROUTE;
++            }
++        }
++        return coarseIfUseful(lat, lon, nowMs);
++    }
++
++    private int whileMoving(double lat, double lon, float accuracy, float speed, boolean good, long nowMs) {
++        if (!good) {
++            expire(nowMs);
++            boolean late = !hasSent || nowMs - sentAtMs >= COARSE_WHILE_MOVING_MS;
++            return late && movedFromSent(lat, lon, COARSE_MIN_M) ? COARSE : NONE;
++        }
++        if (distanceM(anchorLat, anchorLon, lat, lon) >= Math.max(PROGRESS_M, accuracy)) {
++            setAnchor(lat, lon, nowMs);
++        }
++        if (nowMs - windowAtMs >= NET_WINDOW_MS) {
++            if (distanceM(windowLat, windowLon, lat, lon) < NET_MIN_M) {
++                moving = false;
++                setAnchor(lat, lon, nowMs);
++                return NONE;
++            }
++            windowLat = lat;
++            windowLon = lon;
++            windowAtMs = nowMs;
++        }
++        if (expire(nowMs)) {
++            setAnchor(lat, lon, nowMs);
++            return NONE;
++        }
++        return movedFromSent(lat, lon, spacingM(speedOf(lat, lon, speed, nowMs))) ? ROUTE : NONE;
++    }
++
++    private int coarseIfUseful(double lat, double lon, long nowMs) {
++        if (!hasSent || nowMs - sentAtMs >= HEARTBEAT_MS || movedFromSent(lat, lon, COARSE_MIN_M)) {
++            return COARSE;
++        }
++        return NONE;
++    }
++
++    private boolean movedFromSent(double lat, double lon, double meters) {
++        return !hasSent || distanceM(sentLat, sentLon, lat, lon) >= meters;
++    }
++
++    private double speedOf(double lat, double lon, float speed, long nowMs) {
++        if (speed >= 0) {
++            return speed;
++        }
++        if (!hasLast || nowMs <= lastAtMs) {
++            return 0;
++        }
++        return distanceM(lastLat, lastLon, lat, lon) / ((nowMs - lastAtMs) / 1000.0);
++    }
++
++    static double spacingM(double speedMs) {
++        return Math.min(SPACING_MAX_M, Math.max(SPACING_MIN_M, speedMs * SPACING_S));
++    }
++
++    private void setAnchor(double lat, double lon, long nowMs) {
++        hasAnchor = true;
++        anchorLat = lat;
++        anchorLon = lon;
++        anchorAtMs = nowMs;
++    }
++
++    static double distanceM(double lat1, double lon1, double lat2, double lon2) {
++        double dLat = Math.toRadians(lat2 - lat1);
++        double dLon = Math.toRadians(lon2 - lon1);
++        double a =
++            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
++            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
++        return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(a)));
++    }
++}
+diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocation.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocation.java
+index 7b2952bdd69a5fb7b9e3cdeb125da4afe114cd27..361769d9393523261b4633363ac45b9ccab199b7 100644
+--- a/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocation.java
++++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocation.java
+@@ -152,7 +152,8 @@ public class BackgroundGeolocation extends Plugin {
+                 call.getString("url", null),
+                 headersFromCall(call),
+                 longOptionFromCall(call, "minIntervalMs", 0L),
+-                call.getBoolean("networkFallback", false)
++                call.getBoolean("networkFallback", false),
++                call.getBoolean("adaptive", false)
+             );
+         });
+         serviceStartedFuture.exceptionally((throwable) -> {
+diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocationService.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocationService.java
+index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31881b3ac7 100644
+--- a/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocationService.java
++++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocationService.java
+@@ -76,6 +76,12 @@ public class BackgroundGeolocationService extends Service {
+     // option. Defaults to off, so GPS-only accuracy is unchanged unless a caller asks for it.
+     private volatile boolean networkFallbackEnabled = false;
+ 
++    // Patty: set via the "adaptive" start option: GPS and points according to how the phone is moving (see
++    // AdaptiveTracker). Null otherwise, and everything works as it did before.
++    private volatile AdaptiveTracker adaptiveTracker = null;
++    // Still, the GPS asks for a fix a minute: the watchdog has to wait for more than that, or it would restart it forever.
++    private static final long STILL_WATCHDOG_MS = 150000L;
++
+     // When set (via the "url" start option), each location is also POSTed to
+     // this URL directly from native code so delivery survives the WebView being
+     // destroyed. Delivery runs on postExecutor to keep it off the main thread.
+@@ -146,6 +152,7 @@ public class BackgroundGeolocationService extends Service {
+             currentDistanceFilter = LocationStore.getDistanceFilter(context);
+             currentMinIntervalMs = LocationStore.getMinIntervalMs(context);
+             networkFallbackEnabled = LocationStore.getNetworkFallback(context);
++            adaptiveTracker = LocationStore.getAdaptive(context) ? new AdaptiveTracker() : null;
+             locationCallback = createLocationListener(this);
+             lastGpsFixAtMs = SystemClock.elapsedRealtime();
+             requestLocationUpdates();
+@@ -221,6 +228,11 @@ public class BackgroundGeolocationService extends Service {
+         if (client == null || locationCallback == null) {
+             return;
+         }
++        // Moving stopped somewhere without sky: back to the slow GPS, and what was waiting goes out.
++        AdaptiveTracker tracker = adaptiveTracker;
++        if (tracker != null && tracker.expire(SystemClock.elapsedRealtime())) {
++            flushPendingNatively();
++        }
+         client.removeUpdates(locationCallback);
+         if (restartRunnable != null) {
+             watchdogHandler.removeCallbacks(restartRunnable);
+@@ -240,7 +252,8 @@ public class BackgroundGeolocationService extends Service {
+         if (watchdogRunnable == null) {
+             watchdogRunnable = this::restartLocationUpdates;
+         }
+-        watchdogHandler.postDelayed(watchdogRunnable, 60000);
++        AdaptiveTracker tracker = adaptiveTracker;
++        watchdogHandler.postDelayed(watchdogRunnable, tracker != null && !tracker.isMoving() ? STILL_WATCHDOG_MS : 60000);
+     }
+ 
+     private void stopWatchdog() {
+@@ -252,7 +265,57 @@ public class BackgroundGeolocationService extends Service {
+         }
+     }
+ 
++    // Patty: the same as handleLocationChanged, but deciding with AdaptiveTracker. The original network fallback only
++    // dropped network fixes for 20 s after a GPS fix, while the GPS delivered one every minute at best (with a 100 m
++    // filter on top): most network fixes, up to 300 m off, got through as if they were as good.
++    private void handleLocationAdaptive(android.location.Location location, AdaptiveTracker tracker) {
++        long now = SystemClock.elapsedRealtime();
++        boolean wasMoving = tracker.isMoving();
++        int decision;
++        if (LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
++            lastGpsFixAtMs = now;
++            startWatchdog();
++            decision = tracker.onGpsFix(
++                location.getLatitude(),
++                location.getLongitude(),
++                location.hasAccuracy() ? location.getAccuracy() : -1f,
++                location.hasSpeed() ? location.getSpeed() : -1f,
++                now
++            );
++        } else {
++            boolean gpsStillFresh = now - lastGpsFixAtMs < Math.max(NETWORK_FALLBACK_GRACE_MS, (gpsIntervalMs() * 5) / 2);
++            boolean tooImprecise = !location.hasAccuracy() || location.getAccuracy() > NETWORK_FIX_MAX_ACCURACY_M;
++            if (gpsStillFresh || tooImprecise) {
++                return;
++            }
++            decision = tracker.onCoarseFix(location.getLatitude(), location.getLongitude(), now);
++            if (decision == AdaptiveTracker.NONE) {
++                return;
++            }
++            startWatchdog();
++        }
++        boolean moving = tracker.isMoving();
++        if (decision != AdaptiveTracker.NONE) {
++            if (nativePostUrl != null) {
++                postLocationNatively(location, decision == AdaptiveTracker.ROUTE, !moving);
++            }
++            LocalEvents.emitLocation(callbackId, location);
++        }
++        if (moving != wasMoving) {
++            requestGpsUpdates();
++            startWatchdog();
++            if (!moving) {
++                flushPendingNatively();
++            }
++        }
++    }
++
+     private void handleLocationChanged(android.location.Location location) {
++        AdaptiveTracker tracker = adaptiveTracker;
++        if (tracker != null) {
++            handleLocationAdaptive(location, tracker);
++            return;
++        }
+         if (LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
+             lastGpsFixAtMs = SystemClock.elapsedRealtime();
+         } else if (LocationManager.NETWORK_PROVIDER.equals(location.getProvider())) {
+@@ -266,7 +329,7 @@ public class BackgroundGeolocationService extends Service {
+         }
+         startWatchdog();
+         if (nativePostUrl != null) {
+-            postLocationNatively(location);
++            postLocationNatively(location, false, false);
+         }
+         if (mediaPlayer != null) {
+             double[] point = { location.getLongitude(), location.getLatitude() };
+@@ -281,21 +344,46 @@ public class BackgroundGeolocationService extends Service {
+ 
+     // Delivers a location to the configured URL from native code, so it works
+     // even when the WebView/JavaScript layer no longer exists.
+-    private void postLocationNatively(android.location.Location location) {
++    private void postLocationNatively(android.location.Location location, boolean route, boolean force) {
+         if (postExecutor == null) {
+             postExecutor = Executors.newSingleThreadExecutor();
+         }
+         Context context = getApplicationContext();
+         JSONObject payload = locationToJson(location);
++        if (route) {
++            try {
++                // Patty: tells the API this fix was taken while moving and is good enough to draw the route.
++                payload.put("movimiento", true);
++            } catch (org.json.JSONException e) {
++                Logger.error("Could not serialize location", e);
++            }
++        }
+         postExecutor.execute(() -> {
+             try {
+-                LocationStore.sendLocation(context, payload);
++                LocationStore.sendLocation(context, payload, force);
+             } catch (Exception e) {
+                 Logger.error("Native location POST failed", e);
+             }
+         });
+     }
+ 
++    private void flushPendingNatively() {
++        if (nativePostUrl == null) {
++            return;
++        }
++        if (postExecutor == null) {
++            postExecutor = Executors.newSingleThreadExecutor();
++        }
++        Context context = getApplicationContext();
++        postExecutor.execute(() -> {
++            try {
++                LocationStore.flushPending(context);
++            } catch (Exception e) {
++                Logger.error("Native location flush failed", e);
++            }
++        });
++    }
++
+     private static JSONObject locationToJson(android.location.Location location) {
+         JSONObject obj = new JSONObject();
+         try {
+@@ -330,14 +418,30 @@ public class BackgroundGeolocationService extends Service {
+         return currentMinIntervalMs > 0 ? currentMinIntervalMs : 1000L;
+     }
+ 
+-    private void requestLocationUpdates() {
++    private long gpsIntervalMs() {
++        AdaptiveTracker tracker = adaptiveTracker;
++        return tracker != null && tracker.isMoving() ? AdaptiveTracker.MOVING_GPS_INTERVAL_MS : locationIntervalMs();
++    }
++
++    // Asking again for the same provider and listener replaces the previous request.
++    private void requestGpsUpdates() {
++        if (client == null || locationCallback == null) {
++            return;
++        }
++        // In adaptive mode the distance is decided in AdaptiveTracker: it has to see every fix. The GPS works the same with
++        // or without a distance here: Android filters by distance after getting the fix.
++        float distance = adaptiveTracker != null ? 0f : currentDistanceFilter;
+         try {
+-            client.requestLocationUpdates(LocationManager.GPS_PROVIDER, locationIntervalMs(), currentDistanceFilter, locationCallback);
++            client.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsIntervalMs(), distance, locationCallback);
+         } catch (SecurityException ignore) {
+             // According to Android Studio, this method can throw a Security Exception if
+             // permissions are not yet granted. Rather than check the permissions, which is fiddly,
+             // we simply ignore the exception.
+         }
++    }
++
++    private void requestLocationUpdates() {
++        requestGpsUpdates();
+         if (!networkFallbackEnabled) {
+             return;
+         }
+@@ -396,7 +500,8 @@ public class BackgroundGeolocationService extends Service {
+             final String url,
+             final Map<String, String> headers,
+             final long minIntervalMs,
+-            final boolean networkFallback
++            final boolean networkFallback,
++            final boolean adaptive
+         ) {
+             // The plugin starts this service with startForegroundService(). If the setup
+             // below throws (for example 'provider "gps" does not exist' on a device without
+@@ -411,6 +516,7 @@ public class BackgroundGeolocationService extends Service {
+             currentDistanceFilter = distanceFilter;
+             currentMinIntervalMs = Math.max(0L, minIntervalMs);
+             networkFallbackEnabled = networkFallback;
++            adaptiveTracker = adaptive ? new AdaptiveTracker() : null;
+ 
+             nativePostUrl = url == null || url.isEmpty() ? null : url;
+             LocationStore.saveSetup(
+@@ -421,7 +527,8 @@ public class BackgroundGeolocationService extends Service {
+                 distanceFilter,
+                 headers,
+                 currentMinIntervalMs,
+-                networkFallback
++                networkFallback,
++                adaptive
+             );
+ 
+             // The service may already be running (for example after a sticky
+@@ -441,7 +548,14 @@ public class BackgroundGeolocationService extends Service {
+         }
+ 
+         String stop() {
++            Runnable lastPoints = LocationStore.pendingSender(getApplicationContext());
+             LocationStore.clear(getApplicationContext());
++            if (lastPoints != null) {
++                if (postExecutor == null) {
++                    postExecutor = Executors.newSingleThreadExecutor();
++                }
++                postExecutor.execute(lastPoints);
++            }
+             nativePostUrl = null;
+             stopWatchdog();
+             // stop() can reach a bound service whose start() has not run yet
 diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
-index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..e2e4c6d9e2c7f88d10a24697ad22e7b35c51c072 100644
+index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..7063d1a05913c4837f234892ab9766f79ce7d0fc 100644
 --- a/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
 +++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
 @@ -12,6 +12,7 @@ import java.util.Collections;
@@ -10,10 +456,50 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..e2e4c6d9e2c7f88d10a24697ad22e7b3
  import org.json.JSONException;
  import org.json.JSONObject;
  
-@@ -129,6 +130,35 @@ final class LocationStore {
+@@ -31,6 +32,7 @@ final class LocationStore {
+     private static final String KEY_MIN_INTERVAL_MS = "minIntervalMs";
+     private static final String KEY_NETWORK_FALLBACK = "networkFallback";
+     private static final String KEY_LAST_POST_TIME = "lastPostTime";
++    private static final String KEY_ADAPTIVE = "adaptive";
+ 
+     private LocationStore() {}
+ 
+@@ -47,7 +49,8 @@ final class LocationStore {
+         float distanceFilter,
+         Map<String, String> headers,
+         long minIntervalMs,
+-        boolean networkFallback
++        boolean networkFallback,
++        boolean adaptive
+     ) {
+         SharedPreferences.Editor editor = prefs(context).edit();
+         if (url == null || url.isEmpty()) {
+@@ -62,6 +65,7 @@ final class LocationStore {
+                 .putString(KEY_HEADERS, headersToJson(headers))
+                 .putLong(KEY_MIN_INTERVAL_MS, Math.max(0L, minIntervalMs))
+                 .putBoolean(KEY_NETWORK_FALLBACK, networkFallback)
++                .putBoolean(KEY_ADAPTIVE, adaptive)
+                 .remove(KEY_LAST_POST_TIME);
+         }
+         editor.apply();
+@@ -104,6 +108,10 @@ final class LocationStore {
+         return prefs(context).getBoolean(KEY_NETWORK_FALLBACK, false);
+     }
+ 
++    static boolean getAdaptive(Context context) {
++        return prefs(context).getBoolean(KEY_ADAPTIVE, false);
++    }
++
+     static Map<String, String> getHeaders(Context context) {
+         return headersFromJson(prefs(context).getString(KEY_HEADERS, null));
+     }
+@@ -129,21 +137,132 @@ final class LocationStore {
          prefs(context).edit().putLong(KEY_LAST_POST_TIME, locationTimeMs).apply();
      }
  
+-    // POSTs a single location as JSON to the configured url. Runs synchronously,
+-    // so callers must invoke it off the main thread.
+-    static void sendLocation(Context context, JSONObject data) throws IOException {
 +    // Patty: locations that could not be delivered (no signal on the road) are kept
 +    // and sent with the next one as {"puntos": [...]}, instead of being lost.
 +    private static final String KEY_PENDING = "pendingLocations";
@@ -43,29 +529,100 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..e2e4c6d9e2c7f88d10a24697ad22e7b3
 +        savePending(context, list);
 +    }
 +
-     // POSTs a single location as JSON to the configured url. Runs synchronously,
-     // so callers must invoke it off the main thread.
-     static void sendLocation(Context context, JSONObject data) throws IOException {
-@@ -140,10 +170,26 @@ final class LocationStore {
-         if (!shouldPost(context, locationTimeMs)) {
++    // Patty: in adaptive mode the points of a walk are collected and go out together, once per minIntervalMs: a POST per
++    // point would keep the cellular radio on the whole time. `force` skips the wait (the phone is still, nothing else is
++    // coming soon).
++    static void sendLocation(Context context, JSONObject data, boolean force) throws IOException {
+         String urlString = getUrl(context);
+         if (urlString == null || urlString.isEmpty()) {
              return;
          }
+         long locationTimeMs = data.optLong("time", System.currentTimeMillis());
+-        if (!shouldPost(context, locationTimeMs)) {
++        if (!force && !shouldPost(context, locationTimeMs)) {
++            if (getAdaptive(context)) {
++                addPending(context, data);
++            }
++            return;
++        }
++        post(context, urlString, data, locationTimeMs);
++    }
++
++    // Patty: sends what was waiting, with nothing new to add (moving just stopped). On failure it stays in the queue.
++    static void flushPending(Context context) throws IOException {
++        String urlString = getUrl(context);
++        if (urlString == null || urlString.isEmpty() || pending(context).length() == 0) {
+             return;
+         }
++        post(context, urlString, null, System.currentTimeMillis());
++    }
++
++    // POSTs a location (and what was waiting) as JSON to the configured url. Runs synchronously, so callers must invoke
++    // it off the main thread. `data` can be null: only what was waiting goes out.
++    private static void post(Context context, String urlString, JSONObject data, long locationTimeMs) throws IOException {
 +        JSONArray waiting = pending(context);
 +        int sentPending = Math.min(waiting.length(), BATCH);
 +        String payload;
 +        if (sentPending > 0) {
 +            JSONArray batch = new JSONArray();
 +            for (int i = 0; i < sentPending; i++) batch.put(waiting.opt(i));
-+            batch.put(data);
++            if (data != null) batch.put(data);
 +            try {
 +                payload = new JSONObject().put("puntos", batch).toString();
 +            } catch (JSONException e) {
++                if (data == null) return;
 +                payload = data.toString();
 +                sentPending = 0;
 +            }
-+        } else {
++        } else if (data != null) {
 +            payload = data.toString();
++        } else {
++            return;
 +        }
++        try {
++            postBody(urlString, getHeaders(context), payload);
++            markPosted(context, locationTimeMs);
++            if (sentPending > 0) {
++                JSONArray rest = new JSONArray();
++                JSONArray now = pending(context);
++                for (int i = sentPending; i < now.length(); i++) rest.put(now.opt(i));
++                savePending(context, rest);
++            }
++        } catch (IOException e) {
++            if (data != null) addPending(context, data);
++            markPosted(context, locationTimeMs);
++            throw e;
++        }
++    }
++
++    // Patty: the app stops and starts tracking every time it opens, and stopping clears everything: with points waiting
++    // for the next minute's POST, that lost them. This takes them along, with where they were going, before the clear.
++    // Null if there's nothing waiting.
++    static Runnable pendingSender(Context context) {
++        String urlString = getUrl(context);
++        JSONArray waiting = pending(context);
++        if (urlString == null || urlString.isEmpty() || waiting.length() == 0) {
++            return null;
++        }
++        Map<String, String> headers = getHeaders(context);
++        JSONArray batch = new JSONArray();
++        for (int i = 0; i < Math.min(waiting.length(), BATCH); i++) batch.put(waiting.opt(i));
++        String payload;
++        try {
++            payload = new JSONObject().put("puntos", batch).toString();
++        } catch (JSONException e) {
++            return null;
++        }
++        return () -> {
++            try {
++                postBody(urlString, headers, payload);
++            } catch (IOException e) {
++                Logger.error("Last locations POST failed", e);
++            }
++        };
++    }
++
++    private static void postBody(String urlString, Map<String, String> headers, String payload) throws IOException {
          HttpURLConnection connection = null;
          try {
              URL url = new URL(urlString);
@@ -74,20 +631,39 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..e2e4c6d9e2c7f88d10a24697ad22e7b3
              connection = (HttpURLConnection) url.openConnection();
              connection.setRequestMethod("POST");
              connection.setConnectTimeout(15000);
-@@ -164,6 +210,16 @@ final class LocationStore {
+@@ -152,7 +271,7 @@ final class LocationStore {
+             connection.setRequestProperty("Accept", "application/json");
+             connection.setRequestProperty("Content-Type", "application/json");
+             connection.setRequestProperty("Content-Length", String.valueOf(body.length));
+-            for (Map.Entry<String, String> header : getHeaders(context).entrySet()) {
++            for (Map.Entry<String, String> header : headers.entrySet()) {
+                 connection.setRequestProperty(header.getKey(), header.getValue());
+             }
+             try (OutputStream outputStream = connection.getOutputStream()) {
+@@ -163,7 +282,6 @@ final class LocationStore {
+             if (responseCode < HttpURLConnection.HTTP_OK || responseCode >= HttpURLConnection.HTTP_MULT_CHOICE) {
                  throw new IOException("Location POST failed with response code: " + responseCode);
              }
-             markPosted(context, locationTimeMs);
-+            if (sentPending > 0) {
-+                JSONArray rest = new JSONArray();
-+                JSONArray now = pending(context);
-+                for (int i = sentPending; i < now.length(); i++) rest.put(now.opt(i));
-+                savePending(context, rest);
-+            }
-+        } catch (IOException e) {
-+            addPending(context, data);
-+            markPosted(context, locationTimeMs);
-+            throw e;
+-            markPosted(context, locationTimeMs);
          } finally {
              if (connection != null) {
                  connection.disconnect();
+diff --git a/dist/esm/definitions.d.ts b/dist/esm/definitions.d.ts
+index bffc5f1c1e58edbde7def3b17caa13c26124d10b..381bca3a6891a290e97bcabf7b88faced70ab1fe 100644
+--- a/dist/esm/definitions.d.ts
++++ b/dist/esm/definitions.d.ts
+@@ -206,6 +206,14 @@ export interface StartOptions {
+      * networkFallback: true
+      */
+     networkFallback?: boolean;
++    /**
++     * Android only (Patty): GPS and points according to how the phone is moving. Still, slow GPS and almost nothing sent.
++     * Moving, GPS every few seconds and a point every 15 m on foot, more spaced out with speed; the points go out together
++     * once per `minIntervalMs`.
++     *
++     * @default false
++     */
++    adaptive?: boolean;
+ }
+ /**
+  * Represents a geographical location with various attributes.

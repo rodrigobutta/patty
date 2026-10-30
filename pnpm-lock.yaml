@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@capgo/background-geolocation@8.4.14':
-    hash: d46147b610223582cd581d8287eebba95cf817b9bb7c3ae04bbf82bb483662d2
+    hash: 0054c504487dc26da1bd9d8d5e23fc361ce33bfa0b8f17ce97bee55654210e8a
     path: patches/@capgo__background-geolocation@8.4.14.patch
 
 importers:
@@ -87,7 +87,7 @@ importers:
         version: 8.0.3(@capacitor/core@8.5.3)
       '@capgo/background-geolocation':
         specifier: 8.4.14
-        version: 8.4.14(patch_hash=d46147b610223582cd581d8287eebba95cf817b9bb7c3ae04bbf82bb483662d2)(@capacitor/core@8.5.3)
+        version: 8.4.14(patch_hash=0054c504487dc26da1bd9d8d5e23fc361ce33bfa0b8f17ce97bee55654210e8a)(@capacitor/core@8.5.3)
       '@capgo/capacitor-health':
         specifier: 8.11.12
         version: 8.11.12(@capacitor/core@8.5.3)
@@ -4080,7 +4080,7 @@ snapshots:
 
   '@capacitor/synapse@1.0.4': {}
 
-  '@capgo/background-geolocation@8.4.14(patch_hash=d46147b610223582cd581d8287eebba95cf817b9bb7c3ae04bbf82bb483662d2)(@capacitor/core@8.5.3)':
+  '@capgo/background-geolocation@8.4.14(patch_hash=0054c504487dc26da1bd9d8d5e23fc361ce33bfa0b8f17ce97bee55654210e8a)(@capacitor/core@8.5.3)':
     dependencies:
       '@capacitor/core': 8.5.3
 
