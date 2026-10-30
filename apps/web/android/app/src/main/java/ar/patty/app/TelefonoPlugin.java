@@ -82,13 +82,18 @@ public class TelefonoPlugin extends Plugin {
     }
 
     // ---- Tiempo de uso ----
+    // Lo que lee cada cosa está en métodos estáticos: los usa también SincroFondo (con Patty cerrada).
+
+    static boolean tienePermisoUso(Context ctx) {
+        AppOpsManager ops = (AppOpsManager) ctx.getSystemService(Context.APP_OPS_SERVICE);
+        int modo = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            ? ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), ctx.getPackageName())
+            : ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), ctx.getPackageName());
+        return modo == AppOpsManager.MODE_ALLOWED;
+    }
 
     private boolean tienePermisoUso() {
-        AppOpsManager ops = (AppOpsManager) getContext().getSystemService(Context.APP_OPS_SERVICE);
-        int modo = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-            ? ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), getContext().getPackageName())
-            : ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), getContext().getPackageName());
-        return modo == AppOpsManager.MODE_ALLOWED;
+        return tienePermisoUso(getContext());
     }
 
     @PluginMethod
@@ -116,16 +121,16 @@ public class TelefonoPlugin extends Plugin {
     }
 
     /** Las apps que no cuentan como "uso": el escritorio del teléfono y la interfaz del sistema. */
-    private Set<String> ignoradas() {
+    private static Set<String> ignoradas(Context ctx) {
         Set<String> s = new HashSet<>();
         s.add("com.android.systemui");
         Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-        for (ResolveInfo ri : getContext().getPackageManager().queryIntentActivities(home, 0)) s.add(ri.activityInfo.packageName);
+        for (ResolveInfo ri : ctx.getPackageManager().queryIntentActivities(home, 0)) s.add(ri.activityInfo.packageName);
         return s;
     }
 
-    private String nombreDeApp(String paquete) {
-        PackageManager pm = getContext().getPackageManager();
+    private static String nombreDeApp(Context ctx, String paquete) {
+        PackageManager pm = ctx.getPackageManager();
         try {
             ApplicationInfo ai = pm.getApplicationInfo(paquete, 0);
             return pm.getApplicationLabel(ai).toString();
@@ -144,11 +149,14 @@ public class TelefonoPlugin extends Plugin {
             call.reject("Falta el permiso de acceso a datos de uso.", "SIN_PERMISO");
             return;
         }
-        long desde = call.getLong("desde", 0L);
-        long hasta = call.getLong("hasta", System.currentTimeMillis());
-        UsageStatsManager usm = (UsageStatsManager) getContext().getSystemService(Context.USAGE_STATS_SERVICE);
+        call.resolve(usoDeApps(getContext(), call.getLong("desde", 0L), call.getLong("hasta", System.currentTimeMillis())));
+    }
+
+    /** { minutos, apps: [{ paquete, nombre, minutos }] } (sin revisar el permiso). */
+    static JSObject usoDeApps(Context ctx, long desde, long hasta) {
+        UsageStatsManager usm = (UsageStatsManager) ctx.getSystemService(Context.USAGE_STATS_SERVICE);
         UsageEvents eventos = usm.queryEvents(desde, hasta);
-        Set<String> fuera = ignoradas();
+        Set<String> fuera = ignoradas(ctx);
         Map<String, Long> abiertoDesde = new HashMap<>();
         Map<String, Long> total = new HashMap<>();
         UsageEvents.Event e = new UsageEvents.Event();
@@ -180,23 +188,23 @@ public class TelefonoPlugin extends Plugin {
             suma += t.getValue();
             JSObject a = new JSObject();
             a.put("paquete", t.getKey());
-            a.put("nombre", nombreDeApp(t.getKey()));
+            a.put("nombre", nombreDeApp(ctx, t.getKey()));
             a.put("minutos", t.getValue() / 60000.0);
             apps.put(a);
         }
         JSObject r = new JSObject();
         r.put("apps", apps);
         r.put("minutos", suma / 60000.0);
-        call.resolve(r);
+        return r;
     }
 
     // ---- Llamadas ----
 
-    private boolean declarado(String permiso) {
+    private static boolean declarado(Context ctx, String permiso) {
         try {
-            String[] pedidos = getContext()
+            String[] pedidos = ctx
                 .getPackageManager()
-                .getPackageInfo(getContext().getPackageName(), PackageManager.GET_PERMISSIONS)
+                .getPackageInfo(ctx.getPackageName(), PackageManager.GET_PERMISSIONS)
                 .requestedPermissions;
             if (pedidos != null) for (String x : pedidos) if (permiso.equals(x)) return true;
         } catch (Exception e) {
@@ -205,21 +213,37 @@ public class TelefonoPlugin extends Plugin {
         return false;
     }
 
+    private static boolean dado(Context ctx, String permiso) {
+        return androidx.core.content.ContextCompat.checkSelfPermission(ctx, permiso) == PackageManager.PERMISSION_GRANTED;
+    }
+
     /** El registro de llamadas (puede no estar en el manifiesto, si Play Store no lo aprueba). */
+    static boolean tieneRegistro(Context ctx) {
+        return declarado(ctx, Manifest.permission.READ_CALL_LOG) && dado(ctx, Manifest.permission.READ_CALL_LOG);
+    }
+
+    static boolean tieneEstado(Context ctx) {
+        return declarado(ctx, Manifest.permission.READ_PHONE_STATE) && dado(ctx, Manifest.permission.READ_PHONE_STATE);
+    }
+
+    static boolean tieneCalendario(Context ctx) {
+        return dado(ctx, Manifest.permission.READ_CALENDAR);
+    }
+
     private boolean tieneRegistro() {
-        return declarado(Manifest.permission.READ_CALL_LOG) && getPermissionState("llamadas") == PermissionState.GRANTED;
+        return tieneRegistro(getContext());
     }
 
     private boolean tieneEstado() {
-        return declarado(Manifest.permission.READ_PHONE_STATE) && getPermissionState("estadoLlamadas") == PermissionState.GRANTED;
+        return tieneEstado(getContext());
     }
 
     /** Pide los dos: si se da el del registro se usa ese (tiene el historial); si no, alcanza con el del estado. */
     @PluginMethod
     public void pedirPermisoLlamadas(PluginCall call) {
         java.util.List<String> faltan = new java.util.ArrayList<>();
-        if (declarado(Manifest.permission.READ_CALL_LOG) && !tieneRegistro()) faltan.add("llamadas");
-        if (declarado(Manifest.permission.READ_PHONE_STATE) && !tieneEstado()) faltan.add("estadoLlamadas");
+        if (declarado(getContext(), Manifest.permission.READ_CALL_LOG) && !tieneRegistro()) faltan.add("llamadas");
+        if (declarado(getContext(), Manifest.permission.READ_PHONE_STATE) && !tieneEstado()) faltan.add("estadoLlamadas");
         if (tieneRegistro() || faltan.isEmpty()) permisos(call);
         else requestPermissionForAliases(faltan.toArray(new String[0]), call, "alPedirLlamadas");
     }
@@ -252,8 +276,17 @@ public class TelefonoPlugin extends Plugin {
             call.reject("Falta el permiso para leer el calendario.", "SIN_PERMISO");
             return;
         }
-        long desde = call.getLong("desde", 0L);
-        long hasta = call.getLong("hasta", System.currentTimeMillis());
+        try {
+            JSObject r = new JSObject();
+            r.put("eventos", eventosEntre(getContext(), call.getLong("desde", 0L), call.getLong("hasta", System.currentTimeMillis())));
+            call.resolve(r);
+        } catch (SecurityException ex) {
+            call.reject("Falta el permiso para leer el calendario.", "SIN_PERMISO");
+        }
+    }
+
+    /** Los eventos entre dos instantes, como en `eventos` (sin revisar el permiso: tira SecurityException). */
+    static JSArray eventosEntre(Context ctx, long desde, long hasta) {
         Uri.Builder b = android.provider.CalendarContract.Instances.CONTENT_URI.buildUpon();
         android.content.ContentUris.appendId(b, desde);
         android.content.ContentUris.appendId(b, hasta);
@@ -268,7 +301,7 @@ public class TelefonoPlugin extends Plugin {
             android.provider.CalendarContract.Instances.VISIBLE,
         };
         JSArray lista = new JSArray();
-        try (Cursor c = getContext().getContentResolver().query(b.build(), columnas, null, null, android.provider.CalendarContract.Instances.BEGIN)) {
+        try (Cursor c = ctx.getContentResolver().query(b.build(), columnas, null, null, android.provider.CalendarContract.Instances.BEGIN)) {
             while (c != null && c.moveToNext()) {
                 if (c.getInt(7) == 0) continue; // calendarios ocultos
                 long evento = c.getLong(0);
@@ -279,21 +312,16 @@ public class TelefonoPlugin extends Plugin {
                 e.put("libre", c.getInt(4) == android.provider.CalendarContract.Events.AVAILABILITY_FREE);
                 e.put("rechazado", c.getInt(5) == android.provider.CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED);
                 e.put("cuenta", c.getString(6));
-                e.put("invitados", invitados(evento));
+                e.put("invitados", invitados(ctx, evento));
                 lista.put(e);
             }
-        } catch (SecurityException ex) {
-            call.reject("Falta el permiso para leer el calendario.", "SIN_PERMISO");
-            return;
         }
-        JSObject r = new JSObject();
-        r.put("eventos", lista);
-        call.resolve(r);
+        return lista;
     }
 
     /** Cuántas personas hay invitadas a un evento (sin sus datos). */
-    private int invitados(long evento) {
-        try (Cursor c = android.provider.CalendarContract.Attendees.query(getContext().getContentResolver(), evento, new String[] { android.provider.CalendarContract.Attendees._ID })) {
+    private static int invitados(Context ctx, long evento) {
+        try (Cursor c = android.provider.CalendarContract.Attendees.query(ctx.getContentResolver(), evento, new String[] { android.provider.CalendarContract.Attendees._ID })) {
             return c == null ? 0 : c.getCount();
         } catch (Exception ex) {
             return 0;
@@ -303,19 +331,23 @@ public class TelefonoPlugin extends Plugin {
     /** Cuántas llamadas hubo entre `desde` y `hasta` y cuántos segundos se habló. */
     @PluginMethod
     public void llamadas(PluginCall call) {
-        long desde = call.getLong("desde", 0L);
-        long hasta = call.getLong("hasta", System.currentTimeMillis());
-        if (!tieneRegistro()) {
-            if (tieneEstado()) llamadasEnVivo(call, desde, hasta);
-            else call.reject("Falta el permiso para leer las llamadas.", "SIN_PERMISO");
-            return;
-        }
+        JSObject r = llamadasEntre(getContext(), call.getLong("desde", 0L), call.getLong("hasta", System.currentTimeMillis()));
+        if (r == null) call.reject("Falta el permiso para leer las llamadas.", "SIN_PERMISO");
+        else call.resolve(r);
+    }
+
+    /**
+     * { entrantes, salientes, perdidas, segundos, porHora, de }: del registro si hay permiso; si no, de lo que anotó
+     * LlamadasReceiver mientras pasaban. Null sin ningún permiso.
+     */
+    static JSObject llamadasEntre(Context ctx, long desde, long hasta) {
+        if (!tieneRegistro(ctx)) return tieneEstado(ctx) ? llamadasEnVivo(ctx, desde, hasta) : null;
         int entrantes = 0, salientes = 0, perdidas = 0;
         long segundos = 0;
         Map<Long, Integer> porHora = new HashMap<>();
         String[] columnas = { CallLog.Calls.TYPE, CallLog.Calls.DURATION, CallLog.Calls.DATE };
         try (
-            Cursor c = getContext()
+            Cursor c = ctx
                 .getContentResolver()
                 .query(
                     CallLog.Calls.CONTENT_URI,
@@ -342,17 +374,17 @@ public class TelefonoPlugin extends Plugin {
         r.put("perdidas", perdidas);
         r.put("segundos", segundos);
         r.put("de", "registro");
-        call.resolve(r);
+        return r;
     }
 
     /** Lo mismo con lo que anotó LlamadasReceiver mientras pasaban (solo desde que se dio el permiso). */
-    private void llamadasEnVivo(PluginCall call, long desde, long hasta) {
+    private static JSObject llamadasEnVivo(Context ctx, long desde, long hasta) {
         int entrantes = 0, salientes = 0, perdidas = 0;
         long segundos = 0;
         Map<Long, Integer> porHora = new HashMap<>();
         try {
             org.json.JSONArray lista = new org.json.JSONArray(
-                getContext().getSharedPreferences(LlamadasReceiver.PREFS, Context.MODE_PRIVATE).getString(LlamadasReceiver.LISTA, "[]")
+                ctx.getSharedPreferences(LlamadasReceiver.PREFS, Context.MODE_PRIVATE).getString(LlamadasReceiver.LISTA, "[]")
             );
             for (int i = 0; i < lista.length(); i++) {
                 org.json.JSONObject l = lista.getJSONObject(i);
@@ -375,7 +407,7 @@ public class TelefonoPlugin extends Plugin {
         r.put("perdidas", perdidas);
         r.put("segundos", segundos);
         r.put("de", "en_vivo");
-        call.resolve(r);
+        return r;
     }
 
     /** Suma una llamada a la hora en que empezó (la hora del teléfono, en punto). */

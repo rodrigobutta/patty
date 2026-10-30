@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { api } from '../api';
 import { ingesta } from './fuenteApp';
 import { esNativa } from './nativo';
+import { avisarAlFondo, pedirSaludEnSegundoPlano } from './sincroFondo';
 
 const CLAVE = 'salud';
 const ULTIMA = 'salud-ultima';
@@ -36,6 +37,7 @@ export function ponerSalud(activa: boolean): void {
   } catch {
     /* sin almacenamiento */
   }
+  avisarAlFondo();
 }
 
 export interface Medicion { concepto: string; categoria: string; unidad: string | null; valor: number; inicio: string; fin: string }
@@ -178,6 +180,9 @@ export async function pedirPermisoSalud(): Promise<{ disponible: boolean; motivo
   const a = await Health.isAvailable();
   if (!a.available) return { disponible: false, motivo: a.reason, permitidos: [] };
   const r = await Health.requestAuthorization({ read: LEER });
+  // Y, si el teléfono lo deja, leer con Patty cerrada: así el sueño llega a la mañana sin abrir la app.
+  if (r.readAuthorized.length) await pedirSaludEnSegundoPlano();
+  avisarAlFondo();
   return { disponible: true, permitidos: r.readAuthorized };
 }
 
@@ -254,6 +259,9 @@ export async function sincronizarSalud(personaId: number): Promise<number> {
     }
   }
 
+  // Las etapas con su hora (para el gráfico de la noche y los despertares que se repiten), antes que el sueño: al
+  // llegar la noche, el servidor arma el resumen (y el buen día) con ellas.
+  if (noches.length) await api('POST', '/api/sueno/etapas', { persona_id: personaId, noches }).catch(() => {});
   if (lista.length) await ingesta(personaId, '', { mediciones: lista }, 'salud');
   // Las caminatas de cada día (de las muestras de pasos, con su hora).
   if (permitidos.has('steps')) {
@@ -268,8 +276,6 @@ export async function sincronizarSalud(personaId: number): Promise<number> {
       /* sin muestras de pasos */
     }
   }
-  // Las etapas con su hora (para el gráfico de la noche y los despertares que se repiten).
-  if (noches.length) await api('POST', '/api/sueno/etapas', { persona_id: personaId, noches }).catch(() => {});
   try {
     localStorage.setItem(ULTIMA, String(Date.now()));
   } catch {

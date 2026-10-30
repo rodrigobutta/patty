@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { ingesta } from './fuenteApp';
 import { plataforma } from './nativo';
 import { calendarioActivado, reunionesDelDia, type EventoCalendario } from './calendario';
+import { avisarAlFondo } from './sincroFondo';
 
 type Estado = 'granted' | 'denied';
 interface Permisos { uso: Estado; llamadas: Estado; llamadasDe?: 'registro' | 'en_vivo' | 'nada'; calendario?: Estado }
@@ -61,6 +62,7 @@ export function ponerDatos(activo: boolean): void {
   } catch {
     /* sin almacenamiento */
   }
+  avisarAlFondo();
 }
 
 export interface Medicion { concepto: string; categoria: string; unidad: string | null; valor: number; inicio: string; fin: string }

@@ -62,6 +62,9 @@ dependencies {
     implementation "com.google.firebase:firebase-messaging:25.0.1"
     // WorkManager usa ListenableFuture de Guava; el plugin de salud deja una versión vacía de esa clase.
     implementation "com.google.guava:guava:33.3.1-android"
+    // Leer Health Connect con la app cerrada (SincroFondo, SaludFondo): las mismas versiones que el plugin de salud.
+    implementation "androidx.health.connect:connect-client:1.1.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

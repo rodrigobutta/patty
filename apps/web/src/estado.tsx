@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Categoria, Persona, Sesion, Usuario } from 'shared';
 import { olvidarGuardado } from './lib/guardado';
 import { guardarSesionNativa, olvidarDispositivo } from './lib/push';
+import { configurarFondo } from './lib/sincroFondo';
 import { guardarApodo } from './lib/apodo';
 import { api, cuandoSePierdaLaSesion, guardarToken } from './api';
 import type { Cara } from './mascota/dibujo';
@@ -115,6 +116,7 @@ export function EstadoProvider({ children }: { children: ReactNode }) {
     await api('POST', '/api/salir').catch(() => {});
     guardarToken(null);
     guardarSesionNativa(false);
+    void configurarFondo(null);
     setFase('entrar');
   }, []);
 

@@ -9,6 +9,7 @@ import { api } from '../api';
 import { ingesta } from './fuenteApp';
 import { t } from './idioma';
 import { plataforma } from './nativo';
+import { avisarAlFondo } from './sincroFondo';
 
 interface PluginEscucha {
   permiso(): Promise<{ acceso: 'granted' | 'denied' }>;
@@ -55,6 +56,7 @@ export async function ponerEscuchas(activo: boolean): Promise<string | void> {
   } catch {
     /* sin almacenamiento */
   }
+  avisarAlFondo();
   try {
     await Escucha.activar({ activo });
   } catch {

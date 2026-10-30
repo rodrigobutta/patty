@@ -38,7 +38,12 @@ public class EscuchaPlugin extends Plugin {
     }
 
     private boolean tieneAcceso() {
-        return NotificationManagerCompat.getEnabledListenerPackages(getContext()).contains(getContext().getPackageName());
+        return tieneAcceso(getContext());
+    }
+
+    /** Si Patty tiene el acceso a las notificaciones (lo usa también SincroFondo, con Patty cerrada). */
+    static boolean tieneAcceso(Context ctx) {
+        return NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.getPackageName());
     }
 
     @PluginMethod
@@ -110,12 +115,17 @@ public class EscuchaPlugin extends Plugin {
     /** Los tramos cerrados, lo que está sonando ahora (el que empezó último, o null) y si la función está prendida. */
     @PluginMethod
     public void escuchas(PluginCall call) {
+        call.resolve(escuchasJuntadas(getContext()));
+    }
+
+    /** { escuchas, ahora, activo }: los tramos cerrados, lo que suena ahora y si la función está prendida. */
+    static JSObject escuchasJuntadas(Context ctx) {
         long ahora = System.currentTimeMillis();
         JSArray lista = new JSArray();
         JSObject actual = null;
         boolean activo;
         synchronized (EscuchaService.CANDADO) {
-            SharedPreferences p = prefs();
+            SharedPreferences p = ctx.getSharedPreferences(EscuchaService.PREFS, Context.MODE_PRIVATE);
             activo = p.getBoolean(EscuchaService.ACTIVO, false);
             JSONArray cerrados = EscuchaService.leerLista(p);
             for (int i = 0; i < cerrados.length(); i++) {
@@ -139,16 +149,22 @@ public class EscuchaPlugin extends Plugin {
         r.put("escuchas", lista);
         r.put("ahora", actual == null ? JSONObject.NULL : actual);
         r.put("activo", activo);
-        call.resolve(r);
+        return r;
     }
 
     /** Borra los tramos cerrados que terminaron hasta `hasta` (ms), los que ya se mandaron, por ejemplo. */
     @PluginMethod
     public void borrar(PluginCall call) {
-        long hasta = call.getLong("hasta", 0L);
+        JSObject r = new JSObject();
+        r.put("quedan", borrarEscuchas(getContext(), call.getLong("hasta", 0L)));
+        call.resolve(r);
+    }
+
+    /** Borra los tramos cerrados que terminaron hasta `hasta`. Devuelve cuántos quedan. */
+    static int borrarEscuchas(Context ctx, long hasta) {
         int quedan;
         synchronized (EscuchaService.CANDADO) {
-            SharedPreferences p = prefs();
+            SharedPreferences p = ctx.getSharedPreferences(EscuchaService.PREFS, Context.MODE_PRIVATE);
             JSONArray viejos = EscuchaService.leerLista(p);
             JSONArray lista = new JSONArray();
             for (int i = 0; i < viejos.length(); i++) {
@@ -158,9 +174,7 @@ public class EscuchaPlugin extends Plugin {
             p.edit().putString(EscuchaService.LISTA, lista.toString()).apply();
             quedan = lista.length();
         }
-        JSObject r = new JSObject();
-        r.put("quedan", quedan);
-        call.resolve(r);
+        return quedan;
     }
 
     /** Borra todo: los tramos cerrados y lo que estaba abierto. */
@@ -203,12 +217,17 @@ public class EscuchaPlugin extends Plugin {
      */
     @PluginMethod
     public void avisos(PluginCall call) {
+        call.resolve(avisosJuntados(getContext()));
+    }
+
+    /** { conteos, eventos, hasta, funciones }: lo que juntó AvisosTelefono hasta ahora. */
+    static JSObject avisosJuntados(Context ctx) {
         JSArray conteos = new JSArray();
         JSArray eventos = new JSArray();
         long hasta;
         JSObject f;
         synchronized (AvisosTelefono.CANDADO) {
-            SharedPreferences p = AvisosTelefono.prefs(getContext());
+            SharedPreferences p = AvisosTelefono.prefs(ctx);
             hasta = System.currentTimeMillis();
             JSONObject c = AvisosTelefono.leerObjeto(p, AvisosTelefono.CONTEOS);
             Iterator<String> it = c.keys();
@@ -228,7 +247,7 @@ public class EscuchaPlugin extends Plugin {
         r.put("eventos", eventos);
         r.put("hasta", hasta);
         r.put("funciones", f);
-        call.resolve(r);
+        return r;
     }
 
     /**
@@ -237,9 +256,14 @@ public class EscuchaPlugin extends Plugin {
      */
     @PluginMethod
     public void borrarAvisos(PluginCall call) {
-        long hasta = call.getLong("hasta", 0L);
+        borrarAvisos(getContext(), call.getLong("hasta", 0L));
+        call.resolve();
+    }
+
+    /** Borra lo de los avisos ya mandado hasta `hasta` (ver borrarAvisos de arriba). */
+    static void borrarAvisos(Context ctx, long hasta) {
         synchronized (AvisosTelefono.CANDADO) {
-            SharedPreferences p = AvisosTelefono.prefs(getContext());
+            SharedPreferences p = AvisosTelefono.prefs(ctx);
             JSONObject c = AvisosTelefono.leerObjeto(p, AvisosTelefono.CONTEOS);
             JSONObject quedan = new JSONObject();
             Iterator<String> it = c.keys();
@@ -261,7 +285,6 @@ public class EscuchaPlugin extends Plugin {
             }
             p.edit().putString(AvisosTelefono.CONTEOS, quedan.toString()).putString(AvisosTelefono.EVENTOS, siguen.toString()).apply();
         }
-        call.resolve();
     }
 
     /** Borra todo lo juntado de los avisos (los interruptores quedan como estaban). */

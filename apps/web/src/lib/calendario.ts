@@ -3,6 +3,7 @@
 // terminan, y cuántas caen fuera de horario. Del teléfono solo se leen horarios y cantidad de invitados (nunca
 // títulos ni nombres) y al servidor van únicamente estos números del día. Se manda junto con los datos del teléfono.
 import { Telefono } from './telefono';
+import { avisarAlFondo } from './sincroFondo';
 
 export interface EventoCalendario {
   inicio: number;
@@ -34,6 +35,7 @@ export function ponerCalendario(activo: boolean): void {
   } catch {
     /* sin almacenamiento */
   }
+  avisarAlFondo();
 }
 
 /** Una reunión: un evento con horario, ocupado, no rechazado, de 5 minutos a 8 horas, con gente o de una cuenta de trabajo. */

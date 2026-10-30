@@ -145,6 +145,8 @@
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- Leer Health Connect con Patty cerrada (SincroFondo): el sueño de la noche llega a la mañana sin abrir la app. -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
     <!-- La encuesta de la noche llega a la hora justa (Android lo da al instalar, sin pedir nada). -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

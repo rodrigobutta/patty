@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(TelefonoPlugin.class);
         registerPlugin(MascotaPlugin.class);
         registerPlugin(EscuchaPlugin.class);
+        registerPlugin(SincroFondoPlugin.class);
         super.onCreate(savedInstanceState);
         // El vigía que vuelve a levantar el seguimiento de la ubicación si el teléfono lo apaga.
         VigiaUbicacion.programar(this);

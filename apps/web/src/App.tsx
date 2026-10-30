@@ -12,6 +12,7 @@ import { useSalud } from './lib/salud';
 import { useDatosDelTelefono } from './lib/telefono';
 import { useEscuchas } from './lib/escuchas';
 import { useAvisosTelefono } from './lib/avisosTelefono';
+import { useSincroFondo } from './lib/sincroFondo';
 import { useCara } from './mascota/cara';
 import { Festejo } from './mascota/Festejo';
 import { Mascota } from './mascota/Mascota';
@@ -90,6 +91,8 @@ export function App() {
   useEscuchas(deEsteTelefono);
   useAvisosTelefono(deEsteTelefono);
   useSalud(deEsteTelefono);
+  // Y lo mismo con Patty cerrada (el trabajo nativo de Android): qué está prendido y los tokens.
+  useSincroFondo(deEsteTelefono);
   useClimaDeLasUltimasHoras(deEsteTelefono);
   const cara = useCara(fase === 'listo' ? persona : null);
   useEncuesta(fase === 'listo');

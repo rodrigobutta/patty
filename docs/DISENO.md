@@ -97,6 +97,19 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     mucho cada 30 min) manda los últimos 7 días calendario a `POST /api/ingesta`: «Tiempo de pantalla», «Uso de
     <app>» (si pasó 5 min en el día), «Llamadas», «Llamadas perdidas», «Minutos en llamadas». Mandar de nuevo un día
     actualiza el valor.
+  - **Con Patty cerrada** (solo Android, `SincroFondo.java`): un trabajo de WorkManager cada 30 min (con conexión;
+    Android lo corre cuando le conviene a la batería) manda lo mismo que la web al abrirse, a los mismos lugares:
+    Health Connect (`SaludFondo.java`: valores del día, sueño con etapas, entrenamientos y caminatas; necesita el permiso
+    `READ_HEALTH_DATA_IN_BACKGROUND`, Android 14+ o un Health Connect que lo tenga, que se pide junto con los de salud),
+    uso de apps y llamadas, calendario, lo que sonó y los avisos de las apps. Manda los últimos 2 días (la web, la
+    semana). Los interruptores viven en la web: `lib/sincroFondo.ts` se los copia al teléfono (con los tokens de las
+    fuentes «App de Android» y «Reloj y salud») al abrir Patty y al cambiarlos. Con Patty a la vista, lo que sonó y los
+    avisos los manda solo la web. Lo de la ingesta se actualiza si llega dos veces; etapas y caminatas, con la sesión.
+  - **Buen día** (`push/buenDia.ts`): cuando la ingesta trae las «Horas de sueño» de hoy y es la mañana de la persona
+    (5 a 13 h), arma el resumen de la noche con la IA (si no estaba; sin IA, igual) y manda un aviso por día («☀️ Buen
+    día», "Rodri, dormiste 7 h 12 min (nota 8)…", `tipo: buen_dia`) a quienes anotan a la persona y no lo apagaron
+    (`usuarios.avisar_buen_dia`, Más → Avisos). No hace esperar la respuesta de la ingesta. En el Día, a la mañana,
+    la tarjeta «Tu reporte de sueño está listo» abre la hoja del sueño; se va al verla (en ese teléfono) o al mediodía.
 - En el Día, debajo de lo anotado, se ve lo que llegó solo ese día (`GET /api/registros/automaticos`): un grupo por
   fuente y una línea por concepto (el clima, rango del día; la lluvia, el total; los minutos, en horas y minutos).
 - **Cantidades**: la primera vez que se anota un concepto de comida, bebida o medicación se pregunta si lleva cantidad
