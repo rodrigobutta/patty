@@ -54,3 +54,48 @@ export function conCambio(dias: number, corte: number, semilla = 7, antes = 0.5,
   }
   return { filas, conceptos, desde: DESDE, hasta: sumarDias(DESDE, dias - 1), fecha: sumarDias(DESDE, corte) };
 }
+
+/** Otro generador: los de `azar` son todos tramos de una misma secuencia, y a veces dos semillas se parecen demasiado. */
+const otroAzar = (semilla: number) => {
+  let s = semilla;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+/**
+ * Datos al azar más una combinación plantada: comida frita + fase menstrual + calor → dolor de panza al día siguiente, con
+ * cada cosa sola casi sin efecto. Los ids plantados son `base` + 1 a 3 (causas) y `base` + 10 (efecto). `racha`: esas cosas van
+ * juntas solo en esos días (una temporada rara) y el resto del tiempo no se dan más que por azar.
+ */
+export function conCombinada(dias: number, conceptos: number, semilla = 42, opciones: { base?: number; racha?: [number, number] } = {}) {
+  const { base = 1000, racha } = opciones;
+  const h = historia(dias, conceptos, semilla);
+  const r = otroAzar(semilla + base);
+  const lista: ConceptoInfo[] = [
+    ...h.conceptos,
+    { id: base + 1, nombre: `Comida frita ${base}`, tipo_valor: 'evento', rol: 'causa', categoria: 'comida' },
+    { id: base + 2, nombre: `Fase menstrual ${base}`, tipo_valor: 'evento', rol: 'causa', categoria: 'ciclo' },
+    { id: base + 3, nombre: `Temperatura máxima ${base}`, tipo_valor: 'medida', rol: 'causa', categoria: 'clima' },
+    { id: base + 10, nombre: `Dolor de panza ${base}`, tipo_valor: 'intensidad', rol: 'efecto', categoria: 'sintoma' },
+  ];
+  const filas = [...h.filas];
+  let ayer = false;
+  for (let d = 0; d < dias; d++) {
+    const fecha = sumarDias(DESDE, d);
+    const t = Date.parse(`${fecha}T12:00:00Z`);
+    const enRacha = racha ? d >= racha[0] && d < racha[1] : true;
+    const periodo = racha ? r() < (enRacha ? 0.7 : 0.15) : d % 29 < 5;
+    const calor = r() < 0.5;
+    const frito = r() < (racha ? (enRacha ? 0.7 : 0.15) : periodo ? 0.6 : 0.3);
+    if (frito) filas.push(fila(fecha, base + 1, { primera: t + 3600000 }));
+    if (periodo) filas.push(fila(fecha, base + 2, { primera: t - 3600000 }));
+    filas.push(fila(fecha, base + 3, { promedio: calor ? 28 + r() * 3 : 18 + r() * 6, primera: null }));
+    if (r() < (ayer ? 0.95 : 0.06)) filas.push(fila(fecha, base + 10, { intensidad: 4, primera: t - 7200000 }));
+    ayer = frito && periodo && calor && enRacha;
+  }
+  return { ...h, filas, conceptos: lista };
+}

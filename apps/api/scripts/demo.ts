@@ -1,5 +1,6 @@
-// Una persona de ejemplo ("Sofía") con unas seis semanas de datos creíbles, para las capturas y los videos de la página
-// de presentación. Usa la API de verdad (en el mismo proceso) sobre una base aparte: nunca la de producción.
+// Una persona de ejemplo ("Sofía") con seis meses de datos creíbles, para las capturas y los videos de la página de
+// presentación (con menos, el motor todavía no se anima al patrón combinado, que es lo que cuentan). Los últimos 70 días
+// son siempre los mismos: lo de antes solo está para que el combinado tenga con qué sostenerse. Usa la API de verdad (en el mismo proceso) sobre una base aparte: nunca la de producción.
 //   createdb patty_demo
 //   DATABASE_URL=postgres://localhost/patty_demo npx tsx --conditions=source scripts/demo.ts
 // Deja un usuario "sofia" (clave "patty-demo") y escribe el token de su sesión en la salida.
@@ -12,10 +13,12 @@ import { diaDePatty, localAInstante, sumarDias } from '../src/lib/fechas.js';
 
 if (!/patty_(demo|e2e)/.test(process.env.DATABASE_URL ?? '')) throw new Error('Solo sobre una base de demo o de pruebas (patty_demo, patty_e2e).');
 const ZONA = 'America/Argentina/Buenos_Aires';
-const DIAS = 70;
+const DIAS = 180;
+const DIAS_RECIENTES = 70;
+const SEMILLA = 7;
 
 // Azar repetible (así los datos salen iguales cada vez).
-let semilla = 7;
+let semilla = SEMILLA;
 const azar = () => ((semilla = (semilla * 16807) % 2147483647) - 1) / 2147483646;
 const entre = (a: number, b: number) => a + azar() * (b - a);
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -69,13 +72,19 @@ const medClima: unknown[] = [];
 const caminatas: Array<{ fecha: string; caminatas: Array<{ inicio: string; fin: string; pasos: number }> }> = [];
 const etapas: Array<{ noche: string; etapas: Array<{ inicio: string; fin: string; etapa: string }> }> = [];
 
-// Tres períodos de 5 días (ciclos de 29 días, así no empiezan siempre el mismo día de la semana); el número es qué día
-// del período es (0 a 4).
-const menstruacion = new Map([-71, -42, -13].flatMap((ini) => [0, 1, 2, 3, 4].map((j) => [sumarDias(hoy, ini + j), j] as const)));
+// Períodos de 5 días (ciclos de 29 días, así no empiezan siempre el mismo día de la semana); el número es qué día del
+// período es (0 a 4). El último empezó hace 13 días.
+const iniciosPeriodo = Array.from({ length: Math.ceil((DIAS + 5 - 13) / 29) }, (_, i) => -13 - 29 * i);
+const menstruacion = new Map(iniciosPeriodo.flatMap((ini) => [0, 1, 2, 3, 4].map((j) => [sumarDias(hoy, ini + j), j] as const)));
 // Lo de ayer, para el patrón combinado: frito + período + calor → dolor de panza al día siguiente (cada cosa sola casi no).
 let ayer = { frito: false, periodo: false, calor: false };
 let pantallaAyer = 220;
 for (let k = -DIAS; k <= 0; k++) {
+  if (k === -DIAS_RECIENTES) {
+    semilla = SEMILLA;
+    ayer = { frito: false, periodo: false, calor: false };
+    pantallaAyer = 220;
+  }
   const f = sumarDias(hoy, k);
   const dia = new Date(`${f}T12:00:00Z`).getUTCDay(); // 0 domingo
   const finde = dia === 0 || dia === 6;
@@ -226,8 +235,16 @@ for (let k = -9; k <= 0; k++) {
 }
 for (let i = 0; i < puntos.length; i += 400) await pedir('POST', '/api/ubicacion', { persona_id: P, puntos: puntos.slice(i, i + 400) });
 
-// Los patrones (con los textos del motor) y, encima, lo que en producción escribe la IA.
+// Los patrones (con los textos del motor) y, encima, lo que en producción escribe la IA. Primero toda la historia, de donde
+// sale el combinado (lo que ya tiene una opinión sobrevive al análisis siguiente), y después los últimos 70 días, de donde
+// salen los simples que se muestran: con toda la historia, los de sueño y ánimo no dejan lugar a los demás.
 await pedir('POST', '/api/analisis', { persona_id: P });
+const COMBINADO = sql`h.combo <> '' AND h.efecto_id = (SELECT id FROM conceptos WHERE nombre = 'Dolor de panza')`;
+const combinado = await una<{ causas: string; p_valor: number }>(db, sql`SELECT h.combo AS causas, h.p_valor FROM hallazgos h WHERE h.persona_id = ${P} AND ${COMBINADO}`);
+if (!combinado) throw new Error('El motor no encontró el combinado de Dolor de panza: las capturas y los videos lo necesitan.');
+await db.execute(sql`UPDATE hallazgos h SET estado = 'obvio' WHERE h.persona_id = ${P} AND ${COMBINADO}`);
+await pedir('POST', '/api/analisis', { persona_id: P, desde: sumarDias(hoy, -DIAS_RECIENTES), hasta: hoy });
+await db.execute(sql`UPDATE hallazgos h SET estado = 'nuevo' WHERE h.persona_id = ${P} AND ${COMBINADO}`);
 const ex = async (causa: string, efecto: string, texto: string, estado = 'nuevo') =>
   db.execute(sql`UPDATE hallazgos h SET explicacion = ${texto}, estado = ${estado} FROM conceptos ca, conceptos ef
                  WHERE h.causa_id = ca.id AND h.efecto_id = ef.id AND h.persona_id = ${P} AND ca.nombre = ${causa} AND ef.nombre = ${efecto}`);

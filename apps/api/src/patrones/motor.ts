@@ -14,7 +14,8 @@
 //
 // Además, combinaciones: dos o tres causas el mismo día ("comida frita + fase menstrual + calor → dolor de panza al día
 // siguiente"). Solo se combinan las causas que ya muestran algo de relación con ese efecto, y una combinación queda si
-// explica bastante más que cada una de sus partes sola (si no, alcanza con la simple).
+// explica bastante más que cada una de sus partes sola (si no, alcanza con la simple). Mientras los datos de la persona no
+// alcancen para creerle a una combinación, no se muestra ninguna (ver `pCombinadas`, `sostenida` y `combinadasMax`).
 //
 // Y tres búsquedas más finas, que la persona puede apagar en Más (`Opciones.umbrales`, `proteccion`, `desfasesLargos`):
 //   - Umbrales ("a partir de 3 cafés"): para lo que tiene cantidad o medida, prueba unos pocos cortes y se queda con el
@@ -45,6 +46,20 @@ export interface FilaDiaria {
 }
 
 const anotada = (f: FilaDiaria) => f.primera !== null && !f.automatica;
+
+/** Cuántas combinaciones se le pueden mostrar a una persona según cuántos días anotó (ninguna al principio). */
+export const combinadasMax = (diasActivos: number) => Math.min(COMBINADAS_MAX, Math.floor(diasActivos / DIAS_POR_COMBINADA));
+
+/**
+ * El p que tiene que tener una combinación, según lo que anota esta persona. Se corrige (Bonferroni) por todas las
+ * combinaciones posibles de sus causas con sus efectos y desfases, no solo por las que se llegaron a contar: las que se
+ * cuentan son las de las causas que mejor salieron con esos mismos datos, así que elegir ya fue probar todas. Corrigiendo
+ * solo por las contadas (o con un p fijo), en datos al azar seguían saliendo varias por persona.
+ */
+export function pCombinadas(causas: number, efectos: number, desfases: number): number {
+  const posibles = efectos * desfases * ((causas * (causas - 1)) / 2 + (causas * (causas - 1) * (causas - 2)) / 6);
+  return ALFA_COMBINADAS / Math.max(posibles, 1);
+}
 
 export interface ConceptoInfo {
   id: number;
@@ -120,12 +135,18 @@ export const OPCIONES: Opciones = {
 
 /** Cuántas causas (las más relacionadas con cada efecto) se prueban de a dos y de a tres. */
 const PARA_COMBINAR = 16;
-/** El p que tiene que tener una combinación (se prueban cientos por efecto). */
-const P_COMBINADA = 0.001;
+/** Con menos días anotados que esto no se muestra ninguna combinación, y cada tantos días más se muestra una más. */
+export const DIAS_POR_COMBINADA = 90;
+/** Cuántas combinaciones quedan como mucho en un análisis, por más historia que haya. */
+const COMBINADAS_MAX = 8;
+/** La probabilidad que se acepta de que a una persona le salga alguna combinación por casualidad en todo su análisis. */
+const ALFA_COMBINADAS = 0.05;
 /** Con menos veces que esto, una combinación de varias cosas es fácil que sea casualidad. */
 const SOPORTE_COMBINADA = 5;
-/** Cuántas combinaciones quedan como mucho en un análisis. */
-const COMBINADAS_MAX = 8;
+/** Lo que se le pide a una combinación en cada parte de la historia (ver `sostenida`): al menos estas veces, y esta parte de todas, con este p. */
+const SOPORTE_MITAD = 2;
+const PARTE_MITAD = 0.25;
+const P_MITAD = 0.05;
 /** Una combinación tiene que superar a la mejor de sus partes por esto (en lift) para quedar. */
 const MEJORA_COMBINADA = 1.25;
 
@@ -519,6 +540,10 @@ export function buscarPatrones(
   const crudos: Array<Omit<Candidato, 'q_valor' | 'puntaje'>> = [];
   let pares = 0;
   let paresCombinadas = 0;
+  // Con pocos días no se buscan combinaciones: no se le podría creer a ninguna.
+  const topeCombinadas = combinadasMax(diasActivos);
+  const combinable = (B: Rasgo) => B.concepto.rol === 'efecto' || B.concepto.tipo_valor === 'intensidad';
+  const pTopeCombinada = pCombinadas(causas.filter((A) => !A.soloCausa).length, efectos.filter(combinable).length, desfaseMax + 1);
   /** Por efecto y desfase, las causas que muestran algo de relación (para probar combinaciones). */
   const relacionadas = new Map<string, Array<{ A: Rasgo; lift: number; probCon: number; p: number }>>();
 
@@ -554,8 +579,8 @@ export function buscarPatrones(
   ) => {
     if (t.a < o.soporteMin || t.lift < o.liftMin) return false;
     const p = fisherMayor(t.a, t.n1, t.a + t.c, t.n1 + t.n0);
-    // Las combinaciones se prueban muchas más veces: se les pide mucho más. Y a un umbral, según cuántos cortes se probaron.
-    if (p > (mas.pTope ?? (extra.length ? P_COMBINADA : o.pMax))) return false;
+    // A una combinación, según todas las posibles de esta persona. Y a un umbral, según cuántos cortes se probaron.
+    if (p > (mas.pTope ?? o.pMax)) return false;
     const { mejora, umbral } = mas;
     crudos.push({
       causa_id: A.concepto.id,
@@ -621,7 +646,7 @@ export function buscarPatrones(
         pares++;
         // Se combinan causas solo para síntomas y ánimo: lo que la persona siente, que es lo que quiere entender.
         // Las tendencias de la semana no se combinan: se parecen mucho entre sí y sumarían casualidades.
-        if (t.a >= 2 && t.lift > 1.05 && !A.soloCausa && (B.concepto.rol === 'efecto' || B.concepto.tipo_valor === 'intensidad')) {
+        if (topeCombinadas && t.a >= 2 && t.lift > 1.05 && !A.soloCausa && combinable(B)) {
           const clave = `${efectos.indexOf(B)}|${k}`;
           let l = relacionadas.get(clave);
           if (!l) relacionadas.set(clave, (l = []));
@@ -704,7 +729,8 @@ export function buscarPatrones(
       if (new Set(g.map((x) => x.A.concepto.id)).size < g.length) continue;
       // Dos partes que casi siempre van juntas (pasos y km caminados) son la misma cosa: no es una combinación.
       if (g.some((x, i) => g.some((y, j) => j > i && yaParecidos(x.A, y.A)))) continue;
-      const t = probar(juntar(g.map((x) => x.A)), B, k);
+      const junta = juntar(g.map((x) => x.A));
+      const t = probar(junta, B, k);
       if (!t) continue;
       pares++;
       paresCombinadas++;
@@ -718,8 +744,9 @@ export function buscarPatrones(
       // Días con la mejor parte: t.n1 con todo (t.a con efecto) y el resto sin las otras partes.
       const pAporte = fisherMayor(t.a, t.n1, solo.a, solo.n1);
       if (pAporte > 0.05) continue;
+      if (t.a < SOPORTE_COMBINADA || !sostenida(junta, destino(B), k, n, t.a)) continue;
       const [primero, ...resto] = g.map((x) => x.A);
-      guardar(primero, resto.map((x) => ({ id: x.concepto.id, modo: x.modo })), B, k, t, { mejora: t.lift / mejor.lift });
+      guardar(primero, resto.map((x) => ({ id: x.concepto.id, modo: x.modo })), B, k, t, { mejora: t.lift / mejor.lift, pTope: pTopeCombinada });
     }
   }
 
@@ -813,13 +840,13 @@ export function buscarPatrones(
     }
     sinRepetir.sort((a, b) => b.puntaje - a.puntaje);
   }
-  // Las combinaciones se prueban de a cientos: solo quedan las muy firmes (p muy chico, ver `guardar`), y como mucho
-  // unas pocas, así no tapan a las simples.
-  // Primero las mejor sostenidas por los números, y como mucho una por efecto (si no, el mismo "dormir poco + …"
-  // aparece con cada cosa que va con dormir poco).
+  // Las combinaciones se prueban de a cientos: solo quedan las muy firmes (p muy chico, ver `pCombinadas`), y como mucho
+  // unas pocas, según los días que anotó esta persona, así no tapan a las simples.
+  // De cada efecto, la mejor sostenida por los números (si no, el mismo "dormir poco + …" aparece con cada cosa que va con
+  // dormir poco). Y si no entran todas, las que más agregan a sus partes, que son las que no se veían sin combinar.
   const porEfecto = new Set<string>();
   const combinadas = sinRepetir
-    .filter((x) => x.causas_extra.length && x.soporte >= SOPORTE_COMBINADA)
+    .filter((x) => x.causas_extra.length)
     .sort((a, b) => a.p_valor - b.p_valor)
     .filter((x) => {
       const k = `${x.efecto_id}|${x.efecto_modo}`;
@@ -827,7 +854,8 @@ export function buscarPatrones(
       porEfecto.add(k);
       return true;
     })
-    .slice(0, COMBINADAS_MAX);
+    .sort((a, b) => (b.mejora ?? 0) - (a.mejora ?? 0))
+    .slice(0, topeCombinadas);
   const simples = sinRepetir.filter((x) => !x.causas_extra.length).slice(0, o.limite - combinadas.length);
   const candidatos = [...simples, ...combinadas].sort((a, b) => b.puntaje - a.puntaje);
   return { candidatos, pares_evaluados: pares, dias: n, dias_activos: diasActivos };
@@ -931,6 +959,27 @@ function parecidos(a: Rasgo, b: Rasgo): boolean {
   }
   if (!alguno) return false;
   return juntos / alguno > 0.75 || juntos / Math.max(1, Math.min(enA, enB)) > 0.9;
+}
+
+/**
+ * Si una combinación se sostiene a lo largo de la historia, cortada de dos maneras entre los días que cuentan para ella: la
+ * primera mitad contra la segunda, y los dos cuartos del medio contra las dos puntas (una racha justo en el corte del medio
+ * pasaría la primera). En cada parte tiene que haberse visto bastantes de las veces (`soporte` en total) y más seguido que
+ * sin ella. Lo que pasó en una sola temporada (una semana rara, un mes enfermo) da un p chiquísimo pero no es un patrón. Con
+ * datos parejos casi no descarta nada: lo que frena a las casualidades es `pCombinadas`.
+ */
+function sostenida(A: Fuente, B: Destino, k: number, n: number, soporte: number): boolean {
+  contar(A, B, k); // deja listo el efecto corrido
+  const { universo } = B.porDesfase.get(k)!;
+  const dias: number[] = [];
+  for (let d = 0; d < n; d++) if ((A.universo[d >>> 5] & universo[d >>> 5] & (1 << (d & 31))) !== 0) dias.push(d);
+  const [c1, c2, c3] = [1, 2, 3].map((q) => dias[(dias.length * q) >> 2]);
+  const puntas = mascaraDias(n, 0, c1 - 1);
+  mascaraDias(n, c3, n - 1).forEach((w, i) => (puntas[i] |= w));
+  return [mascaraDias(n, 0, c2 - 1), mascaraDias(n, c2, n - 1), mascaraDias(n, c1, c3 - 1), puntas].every((mascara) => {
+    const t = contar(A, B, k, false, mascara);
+    return t.a >= Math.max(SOPORTE_MITAD, soporte * PARTE_MITAD) && fisherMayor(t.a, t.n1, t.a + t.c, t.n1 + t.n0) <= P_MITAD;
+  });
 }
 
 const partes = (x: Pick<Candidato, 'causa_id' | 'causa_modo' | 'causas_extra'>) => [`${x.causa_id}:${x.causa_modo}`, ...x.causas_extra.map((c) => `${c.id}:${c.modo}`)];

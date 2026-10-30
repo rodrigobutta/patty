@@ -305,7 +305,23 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
      efecto ya no va con ella, o hace más de un año que no se ven juntos, el hallazgo se marca `ya_no`: se avisa en la tarjeta,
      va más abajo, y no entra al aviso preventivo ni al informe.
    - El q de las simples se calcula aparte de las combinaciones (cuyos p, elegidos sobre los mismos datos, inflaban los
-     demás). Las combinaciones siguen teniendo falsos positivos en datos al azar: por eso quedan pocas y una por efecto.
+     demás).
+   - **Combinaciones, según los datos de cada persona**: mientras no alcancen para creerles, no se muestran.
+     - *Días*: con menos de 90 días anotados, ninguna; después, una cada 90 días (`combinadasMax`), hasta 8. Una por efecto y, si
+       no entran todas, las que más agregan a sus partes.
+     - *Firmeza*: p ≤ 0,05 / todas las combinaciones posibles de sus causas de a dos y de a tres, por efecto y desfase
+       (`pCombinadas`). Se corrige por las posibles y no por las contadas porque las contadas (hasta 680 por efecto y desfase)
+       son las de las causas que mejor salieron con esos mismos datos: corrigiendo solo por ellas seguían saliendo de 1 a 3 por
+       persona al azar con 300 conceptos. Quien anota más cosas necesita más evidencia.
+     - *Que se sostenga* (`sostenida`): cortando la historia en dos mitades, y en los cuartos del medio contra las puntas, en cada
+       parte tiene que verse al menos el 25 % de las veces (2 como mínimo) con Fisher p ≤ 0,05. Esto no frena casualidades de
+       datos parejos (eso lo hace la firmeza): frena lo que pasó en una sola temporada, que da un p chiquísimo.
+     - Además, como siempre: 5 veces o más, 1,25 veces el lift de la mejor parte, 10 puntos más de probabilidad y Fisher
+       contra los días con la mejor parte sola.
+     - En datos al azar da hasta 0,01 por persona (antes, de 2 a 8). Una combinación fuerte (20 veces por año, casi siempre seguida
+       del efecto) aparece en la mitad de las personas a los 6 meses y en 8 de cada 10 al año; una más floja (70 % contra
+       10 %) tarda unos 2 años. Antes de 90 días no aparece nunca. Lo confirmado no se pierde: el análisis solo borra los
+       hallazgos en estado `nuevo`.
 4. Con menos de 14 días anotados no se analiza.
 5. La **IA** (Claude, misma cuenta que Quincho) recibe los mejores 25 candidatos con sus números y devuelve, en JSON con
    esquema: una explicación clara de cada uno con su plausibilidad (marca los que pueden ser casualidad o tener otra
