@@ -66,4 +66,7 @@ Ver "Pendiente / ideas" en docs/DISENO.md. Lo más pedido por Rodrigo: que la ap
   siempre `pnpm --filter web movil:publicar`: compila, instala en el teléfono conectado y sube el APK a GitHub Releases
   (de ahí sale patty.today/descargar/android y el aviso a quienes tienen una vieja). Si dice que no hay teléfono
   conectado, no quedó instalada: avisarle a Rodrigo.
+- **Antes de decir que algo ya está para probar**: `pnpm --filter web movil:versiones` (repo, producción, APK publicado,
+  teléfono y cambios nativos sin publicar; sale con error si algo quedó atrás). Rodrigo prueba sobre esto: si una versión
+  no llegó, lo que prueba no sirve.
 - El web typecheck de verdad es `npx tsc --noEmit -p tsconfig.app.json` (el `tsconfig.json` de la web no tiene archivos).
