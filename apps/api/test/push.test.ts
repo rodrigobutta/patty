@@ -122,8 +122,7 @@ describe('avisos de permisos que faltan', () => {
     });
     const { revisarPermisos } = await import('../src/push/recordatorios.js');
     const db = obtenerDb();
-    expect(await revisarPermisos(db, new Date())).toBeGreaterThanOrEqual(0); // fuera de hora no importa
-    enviados.length = 0;
+    expect(await revisarPermisos(db, new Date('2026-10-26T03:00:00.000Z'))).toBe(0); // fuera de hora, nada (a medianoche de Buenos Aires)
     // 12:01 en Buenos Aires = 15:01 UTC
     expect(await revisarPermisos(db, new Date('2026-10-26T15:01:00.000Z'))).toBe(1);
     expect(await revisarPermisos(db, new Date('2026-10-26T15:02:00.000Z'))).toBe(0); // uno por día
