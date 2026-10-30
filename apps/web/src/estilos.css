@@ -1609,13 +1609,19 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .aviso-pendiente p { margin: 0 0 8px; }
 .botones-aviso { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .botones-aviso .btn { display: inline-flex; align-items: center; gap: 6px; }
-.avisos-dia .detalle-avisos { display: flex; flex-direction: column; gap: 6px; }
-.barras-hora { display: flex; align-items: flex-end; gap: 2px; height: 64px; padding: 4px 0; border-bottom: 1px solid var(--borde); }
-.barras-hora .barra { flex: 1; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--acento); }
-.barras-hora .barra.de-noche { background: var(--ambar); }
+.avisos-telefono { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.avisos-telefono h4 { margin: 8px 0 0; font-size: 14px; color: var(--suave); }
+.avisos-cifras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.avisos-cifra { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px; border-radius: 14px; background: var(--panel); border: 1px solid var(--borde); }
+.avisos-cifra strong { font-size: 20px; }
+.avisos-cifra .icono { display: inline-flex; width: 22px; height: 22px; }
+.barras-hora { display: flex; align-items: flex-end; gap: 2px; height: 72px; width: 100%; padding: 4px 0; border-bottom: 1px solid var(--borde); box-sizing: border-box; }
+.barras-hora .hora-barra { flex: 1 1 0; min-width: 0; height: 2px; border-radius: 3px 3px 0 0; background: var(--acento); }
+.barras-hora .hora-barra.vacia { opacity: 0.25; }
+.barras-hora .hora-barra.de-noche { background: var(--ambar); }
 .horas-barras { display: flex; justify-content: space-between; }
-.apps-avisos { margin: 0; padding-left: 20px; }
-.apps-avisos li { display: flex; justify-content: space-between; gap: 8px; }
+.apps-avisos { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.apps-avisos li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 /* Personas guardadas: qué es cada una (familia, trabajo…). */
 .relacion-gente { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 10px; border: 1px solid var(--borde); background: var(--panel); color: var(--texto); max-width: 120px; }
 .relacion-gente.sin { color: var(--acento); border-style: dashed; }

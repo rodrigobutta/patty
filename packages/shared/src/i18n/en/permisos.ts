@@ -1023,4 +1023,9 @@ export const PERMISOS: Record<string, string> = {
   "Con profesionales de la salud": "With health professionals",
   "Con otra gente": "With other people",
   "Con quién estás, qué es cada una y de quién se anota": "Who you're with, what each one is, and whose day is logged",
+  "Mensajes por app": "Messages by app",
+  "sonó de noche": "rang at night",
+  "sonaron de noche": "rang at night",
+  "1 notificación": "1 notification",
+  "{n} notificaciones": "{n} notifications",
 };

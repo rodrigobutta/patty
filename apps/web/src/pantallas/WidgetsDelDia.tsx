@@ -5,6 +5,7 @@ import { Fragment, useState, type ReactNode } from 'react';
 import { IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
 import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
+import { AvisosDelTelefono } from './AvisosDelDia';
 import { ClimaDelDia } from './ClimaDelDia';
 import { GraficoSueno, ResumenNoche } from './GraficoSueno';
 import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
@@ -112,17 +113,22 @@ function widgetReuniones(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Wi
   };
 }
 
+/** Lo de las notificaciones (ver AvisosDelTelefono): va en su propia parte del detalle, no en la lista. */
+const AVISOS = new Set(['Notificaciones', 'Notificaciones de noche', 'Mensajes recibidos']);
+
 function widgetTelefono(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
   const pantalla = dato(todos, 'telefono', 'Tiempo de pantalla');
   const llamadas = dato(todos, 'telefono', 'Llamadas');
-  if (!pantalla && !llamadas) return null;
+  const avisos = dato(todos, 'telefono', 'Notificaciones');
+  if (!pantalla && !llamadas && !avisos) return null;
   const n = Math.round(llamadas?.suma ?? 0);
+  const notif = Math.round(avisos?.suma ?? 0);
   return {
     lugar: 'telefono',
     icono: <IconoCelular />,
-    linea: pantalla ? duracion(pantalla.suma) : '—',
-    sub: llamadas ? (n === 1 ? t('1 llamada') : t('{n} llamadas', { n })) : undefined,
-    grupos: grupos.filter((g) => g.tipo === 'telefono').map((g) => ({ ...g, lineas: g.lineas.filter((l) => !REUNIONES.has(l.concepto)) })),
+    linea: pantalla ? duracion(pantalla.suma) : notif === 1 ? t('1 notificación') : t('{n} notificaciones', { n: notif }),
+    sub: llamadas ? (n === 1 ? t('1 llamada') : t('{n} llamadas', { n })) : pantalla && avisos ? (notif === 1 ? t('1 notificación') : t('{n} notificaciones', { n: notif })) : undefined,
+    grupos: grupos.filter((g) => g.tipo === 'telefono').map((g) => ({ ...g, lineas: g.lineas.filter((l) => !REUNIONES.has(l.concepto) && !AVISOS.has(l.concepto)) })),
     nombre: t('Uso del teléfono'),
   };
 }
@@ -243,6 +249,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                     </>
                   ) : null}
                   {w.lugar === 'clima' ? <ClimaDelDia persona={persona} fecha={fecha} todos={automaticos} /> : null}
+                  {w.lugar === 'telefono' ? <AvisosDelTelefono persona={persona} fecha={fecha} /> : null}
                   {w.grupos.length && w.lugar !== 'clima' ? (
                     <ul className="detalle-auto">
                       {w.grupos.flatMap((g) => g.lineas).map((x) => (

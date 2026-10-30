@@ -55,7 +55,7 @@ import { Frase } from '../ui/Frase';
 import { Sentir } from './Sentir';
 import { detalleDelMedio } from '../lib/medios';
 import { EscuchasDelDia } from './EscuchasDelDia';
-import { AvisosDelDia, AvisosPendientes } from './AvisosDelDia';
+import { AvisosPendientes } from './AvisosDelDia';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
 const HORAS_SIN_PREGUNTAR = 3;
@@ -626,7 +626,6 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {/* Lo que sonó o se miró en el teléfono (Spotify, Netflix…), si está prendido: en sesiones, con los temas. */}
       <EscuchasDelDia persona={persona} fecha={fecha} vuelta={vuelta} />
       {/* Cuántas notificaciones y mensajes llegaron (con «Lo que avisan las apps» prendido), por hora y por app. */}
-      <AvisosDelDia persona={persona} fecha={fecha} vuelta={vuelta} />
       {/* Lo que llegó solo (clima, ubicación, teléfono, sueño y salud): widgets chicos, distintos de lo anotado. */}
       <WidgetsDelDia
         automaticos={automaticos}

@@ -110,15 +110,17 @@ export function AvisosPendientes({ persona, vuelta, alAnotar, alFoto }: { person
   );
 }
 
-/** Cuántos avisos y mensajes llegaron en el día; al tocarlo, por hora y por app. */
-export function AvisosDelDia({ persona, fecha, vuelta }: { persona: Persona; fecha: string; vuelta: number }) {
+/**
+ * Lo que avisó el teléfono, adentro del detalle del widget de uso del teléfono: cuántas notificaciones llegaron, por
+ * hora (las de noche en otro color), qué apps avisaron más, las de anoche y los mensajes recibidos (solo cuántos).
+ */
+export function AvisosDelTelefono({ persona, fecha }: { persona: Persona; fecha: string }) {
   const { avisar, usuario } = useEstado();
   const [d, setD] = useState<Datos | null>(null);
-  const [abierto, setAbierto] = useState(false);
   const traer = useCallback(() => {
     api<Datos>('GET', `/api/avisos/dia?persona=${persona.id}&fecha=${fecha}`).then(setD).catch(() => setD(null));
   }, [persona.id, fecha]);
-  useEffect(() => traer(), [traer, vuelta]);
+  useEffect(() => traer(), [traer]);
   useEffect(() => {
     window.addEventListener(EVENTO_LLEGARON, traer);
     return () => window.removeEventListener(EVENTO_LLEGARON, traer);
@@ -140,70 +142,75 @@ export function AvisosDelDia({ persona, fecha, vuelta }: { persona: Persona; fec
   };
 
   return (
-    <div className="tarjeta avisos-dia">
-      <h3>{t('Lo que avisó el teléfono')}</h3>
-      <ul className="lista">
+    <div className="avisos-telefono">
+      <div className="avisos-cifras">
         {n ? (
-          <li className="tocable" onClick={() => setAbierto(!abierto)} aria-expanded={abierto}>
+          <div className="avisos-cifra">
             <span className="icono"><IconoCampana /></span>
-            <span className="que">
-              <span className="frase">
-                <span className="frase-cant">{n.total}</span> <span className="frase-que">{n.total === 1 ? t('notificación') : t('notificaciones')}</span>
-              </span>
-              <span className="frase-extra">
-                {[
-                  n.apps.slice(0, 3).map((a) => `${a.app} ${a.n}`).join(' · '),
-                  n.noche ? (n.noche.sonoras === 1 ? t('1 sonó de noche') : t('{n} sonaron de noche', { n: n.noche.sonoras })) : '',
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </span>
-          </li>
+            <strong>{n.total}</strong>
+            <span className="suave chico">{n.total === 1 ? t('notificación') : t('notificaciones')}</span>
+          </div>
         ) : null}
-        {abierto && n ? (
-          <li className="detalle-avisos">
-            <span className="rotulo-campo">{t('Por hora')}</span>
-            <span className="barras-hora" role="img" aria-label={t('Notificaciones por hora')}>
-              {n.por_hora.map((x, h) => (
-                <span key={h} className={`barra${h >= 23 || h < 7 ? ' de-noche' : ''}`} style={{ height: `${Math.round((x / maximo) * 100)}%` }} title={`${h} h: ${x}`} />
-              ))}
-            </span>
-            <span className="horas-barras suave chico">
-              <span>0</span>
-              <span>6</span>
-              <span>12</span>
-              <span>18</span>
-              <span>23</span>
-            </span>
-            <span className="rotulo-campo">{t('Las apps que más avisaron')}</span>
-            <ol className="apps-avisos">
-              {n.apps.map((a) => (
-                <li key={a.app}>
-                  <span>{a.app}</span> <span className="suave">{a.n}</span>
-                </li>
-              ))}
-            </ol>
-            {n.noche ? (
-              <p className="suave chico">
-                {t('Anoche (de 23 a 7) llegaron {n}: {s} sonaron y {a} con la pantalla apagada.', { n: n.noche.total, s: n.noche.sonoras, a: n.noche.apagada })}
-              </p>
-            ) : null}
-            {usuario?.rol !== 'lector' ? <button className="enlace chico" onClick={() => void borrar()}>{t('Borrar todo lo de los avisos')}</button> : null}
-          </li>
+        {n?.noche ? (
+          <div className="avisos-cifra">
+            <span className="icono"><IconoCampana /></span>
+            <strong>{n.noche.sonoras}</strong>
+            <span className="suave chico">{n.noche.sonoras === 1 ? t('sonó de noche') : t('sonaron de noche')}</span>
+          </div>
         ) : null}
         {m ? (
-          <li>
+          <div className="avisos-cifra">
             <span className="icono"><IconoMensajes /></span>
-            <span className="que">
-              <span className="frase">
-                <span className="frase-cant">{m.total}</span> <span className="frase-que">{m.total === 1 ? t('mensaje recibido') : t('mensajes recibidos')}</span>
-              </span>
-              <span className="frase-extra">{m.apps.map((a) => `${a.app} ${a.n}`).join(' · ')}</span>
-            </span>
-          </li>
+            <strong>{m.total}</strong>
+            <span className="suave chico">{m.total === 1 ? t('mensaje recibido') : t('mensajes recibidos')}</span>
+          </div>
         ) : null}
-      </ul>
+      </div>
+      {n ? (
+        <>
+          <h4>{t('Notificaciones por hora')}</h4>
+          <div className="barras-hora" role="img" aria-label={t('Notificaciones por hora')}>
+            {n.por_hora.map((x, h) => (
+              <div key={h} className={`hora-barra${h >= 23 || h < 7 ? ' de-noche' : ''}${x ? '' : ' vacia'}`} style={{ height: x ? `${Math.max(6, Math.round((x / maximo) * 100))}%` : undefined }} title={`${h} h: ${x}`} />
+            ))}
+          </div>
+          <div className="horas-barras suave chico">
+            <span>0</span>
+            <span>6</span>
+            <span>12</span>
+            <span>18</span>
+            <span>23</span>
+          </div>
+          <h4>{t('Las apps que más avisaron')}</h4>
+          <ul className="apps-avisos">
+            {n.apps.map((a) => (
+              <li key={a.app}>
+                <span>{a.app}</span>
+                <span className="valor-chip">{a.n}</span>
+              </li>
+            ))}
+          </ul>
+          {n.noche ? (
+            <p className="suave chico">
+              {t('Anoche (de 23 a 7) llegaron {n}: {s} sonaron y {a} con la pantalla apagada.', { n: n.noche.total, s: n.noche.sonoras, a: n.noche.apagada })}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+      {m?.apps.length ? (
+        <>
+          <h4>{t('Mensajes por app')}</h4>
+          <ul className="apps-avisos">
+            {m.apps.map((a) => (
+              <li key={a.app}>
+                <span>{a.app}</span>
+                <span className="valor-chip">{a.n}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {usuario?.rol !== 'lector' ? <button className="enlace chico" onClick={() => void borrar()}>{t('Borrar todo lo de los avisos')}</button> : null}
     </div>
   );
 }
