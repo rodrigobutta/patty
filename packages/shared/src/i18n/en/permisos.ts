@@ -1009,4 +1009,5 @@ export const PERMISOS: Record<string, string> = {
   "Mi nivel en Patty 🦉": "My level on Patty 🦉",
   "Lo anoté con Patty 🦉": "Logged with Patty 🦉",
   "Cómo dormí, con Patty 🦉": "How I slept, with Patty 🦉",
+  "Avisos, ubicación, uso del teléfono, lo que escuchás y salud": "Notifications, location, phone use, what you listen to and health",
 };
