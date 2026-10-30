@@ -17,7 +17,7 @@ export async function averiguarMarca(): Promise<Marca> {
   }
   return marcaDelTelefono();
 }
-export type PermisoGuia = 'avisos' | 'ubicacion' | 'telefono' | 'salud';
+export type PermisoGuia = 'avisos' | 'ubicacion' | 'telefono' | 'salud' | 'escuchas';
 
 export function marcaDelTelefono(ua = `${delSistema ?? ''} ${typeof navigator === 'undefined' ? '' : navigator.userAgent}`): Marca {
   if (plataforma() === 'ios' || /iPhone|iPad/.test(ua)) return 'iphone';
@@ -81,6 +81,17 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
         t('Entrá a «Acceso a datos de uso», buscá Patty y activá «Permitir acceso al uso».'),
         t('Para las llamadas: {abrir} Después {permisos} → Registro de llamadas (o Teléfono) → «Permitir».', { abrir: abrirPatty, permisos }),
         buscar('acceso de uso'),
+      ];
+    case 'escuchas':
+      return [
+        marca === 'samsung'
+          ? t('Abrí Ajustes → Notificaciones → Configuración avanzada → Acceso a notificaciones (o «Leer notificaciones»).')
+          : marca === 'xiaomi'
+            ? t('Abrí Ajustes → Privacidad (o Contraseñas y seguridad) → Acceso especial → Acceso a notificaciones.')
+            : t('Abrí Ajustes → Apps → Acceso especial de apps → Acceso a notificaciones (o «Notificaciones del dispositivo y la app»).'),
+        t('Buscá Patty, prendelo y aceptá el aviso de Android.'),
+        t('Patty solo mira qué música, podcast o video está sonando: no lee tus mensajes ni tus notificaciones.'),
+        buscar('acceso a notificaciones'),
       ];
     case 'salud':
       return [

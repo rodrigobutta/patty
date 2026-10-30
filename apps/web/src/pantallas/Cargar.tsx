@@ -2,7 +2,7 @@
 import { medir } from '../lib/analytics';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde, type Porcion, type TipoComida } from 'shared';
+import { MUSICA, PODCAST, TELE, conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde, type Porcion, type TipoComida, type Medio } from 'shared';
 import { api, type ErrorApi } from '../api';
 import { guardarContado, sacarContado, type ContadoPendiente } from '../lib/cola';
 import { idioma, t } from '../lib/idioma';
@@ -14,13 +14,14 @@ import { sacarFoto, type Foto } from '../lib/foto';
 import { escuchar, hayVoz, type Escucha } from '../lib/voz';
 import { tomasCambiaron } from '../lib/remedios';
 import { resumenTomas } from './Remedios';
-import { Tele } from './Tele';
+import { Tele, type QueMedio } from './Tele';
+import { detalleDelMedio } from '../lib/medios';
 import { Atajos } from '../ui/Atajos';
 import { PreguntasDetalle } from '../ui/PreguntasDetalle';
 import { comoDetalles, usePreguntas } from '../lib/preguntas';
 import { DondeComida, etiquetaDonde, etiquetaPlato } from '../ui/DondeComida';
 import { IconoCalendario, IconoCamara, IconoGaleria, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
-import { IconoCategoria } from '../ui/IconosPatty';
+import { IconoCategoria, IconoTele } from '../ui/IconosPatty';
 import { OndaVoz } from '../ui/OndaVoz';
 import { Mascota } from '../mascota/Mascota';
 
@@ -67,6 +68,8 @@ interface Propuesta {
   /** Un remedio: el malestar abierto para el que se tomó. */
   para_registro_id?: number | null;
   para?: string | null;
+  /** Tele, música o podcast: qué fue (con la tapa, si Patty la encontró). */
+  medio?: Medio | null;
 }
 
 export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, foto, pista, contado }: {
@@ -91,8 +94,15 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [elegido, setElegido] = useState<Elegido | null>(null);
   const [pidiendoCategoria, setPidiendoCategoria] = useState<string | null>(null);
+  /** La tele, la música y los podcasts se anotan con su propia hoja (qué fue, género, título, tapa). */
+  const [queMedio, setQueMedio] = useState<QueMedio>('tele');
 
   const elegir = (c: Concepto) => {
+    const medio: QueMedio | null = c.nombre === TELE ? 'tele' : c.nombre === MUSICA ? 'musica' : c.nombre === PODCAST ? 'podcast' : null;
+    if (medio) {
+      setQueMedio(medio);
+      return setModo('tele');
+    }
     const cat = categorias.find((k) => k.id === c.categoria_id)!;
     setElegido({ concepto_id: c.id, nombre: c.nombre, categoria: cat, tipo_valor: c.tipo_valor, unidad: c.unidad, cantidad_decidida: c.cantidad_decidida });
   };
@@ -111,7 +121,10 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
         ) : (
           <div className="segmentos">
             <button className={modo === 'rapido' ? 'activa' : ''} onClick={() => setModo('rapido')}>{t('Rápido')}</button>
-            <button className={modo === 'tele' ? 'activa' : ''} onClick={() => setModo('tele')}>{t('📺 Tele')}</button>
+            {/* Solo los dibujos (la tele y los auriculares): con "Contarlo" al lado, el texto no entra en un teléfono chico. */}
+            <button className={`solo-iconos${modo === 'tele' ? ' activa' : ''}`} onClick={() => setModo('tele')} aria-label={t('Tele y música')} title={t('Tele y música')}>
+              <IconoTele tamano={20} /><IconoCategoria clave="musica" tamano={20} />
+            </button>
             {sesion?.ia ? <button className={modo === 'texto' ? 'activa' : ''} onClick={() => setModo('texto')}>{t('Contarlo ✨')}</button> : null}
           </div>
         )}
@@ -121,7 +134,7 @@ export function Cargar({ persona, fecha, alGuardar, alCerrar, contar = false, fo
       {modo === 'texto' ? (
         <TextoLibre persona={persona} fecha={contado?.fecha ?? fecha} alGuardar={alGuardar} dictarAlAbrir={contar && !foto && !contado} fotoInicial={foto} sinFoto={contar && !foto} pista={pista} contado={contado} />
       ) : modo === 'tele' ? (
-        <Tele persona={persona} fecha={fecha} alGuardar={alGuardar} />
+        <Tele key={queMedio} persona={persona} fecha={fecha} alGuardar={alGuardar} inicial={queMedio} />
       ) : elegido ? (
         <Valor persona={persona} fecha={fecha} elegido={elegido} alVolver={() => setElegido(null)} alGuardar={() => { medir('anotar', { metodo: 'rapido' }); festejar(t('¡Anotado! {que}', { que: t(elegido.nombre) })); alGuardar(); }} />
       ) : (
@@ -620,8 +633,10 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
                   {etiquetaDonde(p.donde, p.lugar) ? <span className="etiqueta-donde">{etiquetaDonde(p.donde, p.lugar)}</span> : null}
                   {etiquetaPlato(p.porcion, p.tipos) ? <span className="etiqueta-donde">{etiquetaPlato(p.porcion, p.tipos)}</span> : null}
                   {p.para_registro_id && p.para ? <span className="etiqueta-donde">{t('para {que}', { que: t(p.para).toLowerCase() })}</span> : null}
+                  {p.medio && detalleDelMedio(p.medio).length ? <span className="etiqueta-donde">{detalleDelMedio(p.medio).join(' · ')}</span> : null}
                   {p.nota ? <span className="suave chico"> — {p.nota}</span> : null}
                 </span>
+                {p.medio?.tapa ? <img className="tapa-mini" src={p.medio.tapa} alt="" /> : null}
               </li>
             );
           })}

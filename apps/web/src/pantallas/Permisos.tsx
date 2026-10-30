@@ -16,6 +16,9 @@ import { hayDatosDelTelefono, ponerDatos, sincronizar, Telefono } from '../lib/t
 import { ponerSeguimiento } from '../lib/ubicacion';
 import { Mascota } from '../mascota/Mascota';
 import { t } from '../lib/idioma';
+import { escuchasActivadas, hayEscuchas, permisoEscuchas, ponerEscuchas, sincronizarEscuchas } from '../lib/escuchas';
+import { IconoCategoria } from '../ui/IconosPatty';
+import type { ReactNode } from 'react';
 import { averiguarMarca, marcaDelTelefono, NOMBRE_MARCA, pasosPara } from '../lib/guiasPermisos';
 
 const CLAVE = 'permisos-ofrecidos';
@@ -38,6 +41,8 @@ const yaOfrecido = () => {
 };
 
 export type Paso = 'avisos' | 'ubicacion' | 'telefono' | 'salud';
+/** Las filas de esta pantalla: los pasos y, aparte (no es una fuente del Día), lo que suena en el teléfono. */
+type Fila = Paso | 'escuchas';
 
 /** El aviso push de un permiso que falta se tocó: Más abre los permisos con los pasos de ese a la vista. */
 let guiaPendiente: Paso | null = null;
@@ -113,14 +118,19 @@ export function permisoListo(paso: Paso, e: EstadoTelefono | null): boolean {
 }
 
 export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { persona: Persona; bienvenida?: boolean; guia?: Paso; alTerminar(): void }) {
-  const [abierta, setAbierta] = useState<Paso | null>(guia ?? null);
+  const [abierta, setAbierta] = useState<Fila | null>(guia ?? null);
   const [marca, setMarca] = useState(marcaDelTelefono());
   useEffect(() => void averiguarMarca().then(setMarca), []);
   const [estado, setEstado] = useState<EstadoTelefono | null>(null);
-  const [ocupado, setOcupado] = useState<Paso | null>(null);
-  const [nota, setNota] = useState<Partial<Record<Paso, string>>>({});
+  const [ocupado, setOcupado] = useState<Fila | null>(null);
+  const [nota, setNota] = useState<Partial<Record<Fila, string>>>({});
+  /** Lo que suena: si el teléfono dio el acceso a las notificaciones y si está prendido en Patty. */
+  const [escuchas, setEscuchas] = useState({ permiso: false, activo: escuchasActivadas() });
 
-  const mirar = useCallback(() => void leerEstado().then(setEstado), []);
+  const mirar = useCallback(() => {
+    void leerEstado().then(setEstado);
+    void permisoEscuchas().then((permiso) => setEscuchas({ permiso, activo: escuchasActivadas() }));
+  }, []);
   // Al volver de los ajustes del teléfono se vuelve a mirar.
   useEffect(() => {
     mirar();
@@ -129,7 +139,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
     return () => document.removeEventListener('visibilitychange', f);
   }, [mirar]);
 
-  const hacer = async (paso: Paso, f: () => Promise<string | void>) => {
+  const hacer = async (paso: Fila, f: () => Promise<string | void>) => {
     setOcupado(paso);
     try {
       const n = await f();
@@ -146,6 +156,13 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
   const ubicacion = () => hacer('ubicacion', () => activarPermiso('ubicacion', persona));
   const telefono = () => hacer('telefono', () => activarPermiso('telefono', persona));
   const salud = () => hacer('salud', () => activarPermiso('salud', persona));
+  const escuchar = () =>
+    hacer('escuchas', async () => {
+      const n = await ponerEscuchas(true);
+      if (!n) void sincronizarEscuchas(persona.id).catch(() => {});
+      return n;
+    });
+  const dejarDeEscuchar = () => hacer('escuchas', async () => void (await ponerEscuchas(false)));
 
   const terminar = () => {
     yaOfrecido();
@@ -154,7 +171,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
   };
 
   const p = estado?.permisos;
-  const filas: Array<{ paso: Paso; icono: string; titulo: string; para: string; ejemplo: string; listo: boolean; parcial?: boolean; accion(): void; mostrar: boolean }> = [
+  const filas: Array<{ paso: Fila; icono: ReactNode; titulo: string; para: string; ejemplo: string; listo: boolean; parcial?: boolean; accion(): void; apagar?(): void; mostrar: boolean }> = [
     {
       paso: 'avisos',
       ejemplo: t('💡 Así no se te pasa ningún remedio, y contestás cómo te sentís desde el mismo aviso.'),
@@ -186,6 +203,18 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
       parcial: p?.uso_apps === 'si' || p?.llamadas === 'si',
       accion: telefono,
       mostrar: hayDatosDelTelefono(),
+    },
+    {
+      paso: 'escuchas',
+      ejemplo: t('💡 Así Patty puede ver cosas como «los días que escuchás más música dormís mejor». Solo mira qué suena: nunca lee tus mensajes ni tus notificaciones.'),
+      icono: <IconoCategoria clave="musica" tamano={28} />,
+      titulo: t('Qué estás escuchando o mirando'),
+      para: t('La música, los podcasts y las series que suenan en el teléfono (Spotify, YouTube Music, Netflix…): título, artista y cuánto. Android lo llama «acceso a las notificaciones».'),
+      listo: escuchas.permiso && escuchas.activo,
+      parcial: escuchas.activo,
+      accion: escuchar,
+      apagar: dejarDeEscuchar,
+      mostrar: hayEscuchas(),
     },
     {
       paso: 'salud',
@@ -232,7 +261,10 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
               ) : null}
             </span>
             {f.listo ? (
-              <span className="tilde" aria-label={t('Activado')}>✓</span>
+              <span className="listo-permiso">
+                <span className="tilde" aria-label={t('Activado')}>✓</span>
+                {f.apagar ? <button className="enlace chico" disabled={ocupado !== null} onClick={f.apagar}>{t('Apagar')}</button> : null}
+              </span>
             ) : (
               <button className={`btn chico ${f.parcial ? '' : 'primario'}`} disabled={ocupado !== null} onClick={f.accion}>
                 {ocupado === f.paso ? '…' : f.parcial ? t('Completar') : t('Activar')}

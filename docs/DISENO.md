@@ -130,10 +130,45 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   (MediaRecorder) y `POST /api/voz` lo pasa a texto con OpenAI (`gpt-4o-transcribe`): anda en cualquier teléfono sin
   instalar nada. Si no, usa el reconocedor del teléfono (`@capgo/capacitor-speech-recognition`) o Web Speech. El texto
   aparece mientras se habla y al terminar se ordena solo con la IA; la persona revisa y anota.
-- **Tele** (pestaña «📺 Tele» al anotar, `pantallas/Tele.tsx`): tipo de contenido, cuánto tiempo y canal o plataforma
-  (los ya usados primero). Se guardan tres duraciones en «Pantalla y redes»: «Tele» (total, con el detalle en la nota),
-  «Tele: Noticias» y «Tele en TN», para que los patrones separen tipos y canales. En el Día se ve solo «Tele» y se
-  borran juntas.
+- **Tele, películas, series, deportes, música y podcasts** (pestaña de la tele y los auriculares al anotar,
+  `pantallas/Tele.tsx`; tipos y reglas en `shared/src/medios.ts`): en la tele, qué tipo de contenido, canal o
+  plataforma y cuánto; si fue una película, una serie o algo en una plataforma (no un canal de aire), el género y, si
+  quiere, cuál (`ui/BuscarMedio.tsx`); si fueron deportes, cuál y qué equipo. En la música, qué (artista o disco),
+  género y dónde; en un podcast, cuál. Se guarda **un** registro («Tele» en «Pantalla y redes»; «Escuchar música» o
+  «Podcast» en la categoría nueva «Música y podcasts», rol causa) con el detalle en `datos.medio` (`tipo`, `contenido`,
+  `servicio`, `genero`, `titulo`, `anio`, `tapa`, `artista`, `album`, `deporte`, `equipo`, `itunes_id`). Con eso la API
+  arma conceptos que entran a los patrones con los minutos del registro, en `datos.medio_concepto_ids` (la vista
+  `serie_diaria` los suma desde la migración 0045): «Tele: Películas», «Tele: Terror», «Tele: Fútbol», «Tele: River»,
+  «Tele en Netflix», «Música: Rock». Así puede salir "los días que mirás terror dormís peor". Lo anotado antes (tres
+  registros: «Tele», «Tele: Noticias», «Tele en TN») se sigue mostrando como uno solo en el Día.
+  - Contarlo entiende "miré Duna en Netflix 2 horas" o "escuché Soda Stereo" (`medio` en la respuesta de la IA) y, si
+    fue una película o serie sin género, lo pregunta (y cuál, sin insistir).
+  - **Tapas**: `GET /api/medios/buscar?tipo=&q=` busca en la API de búsqueda de iTunes (gratis, sin clave; tienda AR y,
+    para series, la de EE.UU., que es la que las tiene; los filtros `media` de iTunes a veces no devuelven nada, así
+    que se filtra por el tipo de cada resultado) y agranda la tapa a 600x600. Cada búsqueda queda un mes en
+    `medios_cache`; si iTunes no contesta, se anota sin tapa. Al contarlo, la API busca sola la tapa del título.
+  - En el Día, la tapa chiquita a la derecha del renglón y el detalle ("Duna · Ciencia ficción · Netflix"); al tocarlo,
+    la tapa grande, **Compartir** (tarjeta `medio` en `lib/tarjetaCompartir.ts`: tapa, título, género y "Lo vi hoy ·
+    2 h") y cambiar el género o cuál fue. La tapa para el canvas pasa por `GET /api/medios/tapa?u=` (sin sesión, solo
+    imágenes de mzstatic.com, con CORS abierto y en memoria): si no, el canvas queda "manchado" y no se puede exportar.
+- **Qué estás escuchando o mirando** (solo Android, Más → Permisos; apagado por defecto): `EscuchaService.java` es un
+  lector de notificaciones (`NotificationListenerService`, el permiso «Acceso a las notificaciones» se da en Ajustes)
+  que solo usa `MediaSessionManager`: ve qué suena en Spotify, YouTube Music, Deezer, Netflix, YouTube, podcasts…
+  (título, artista, disco, app y si está sonando) sin conectar cada servicio, y nunca lee el contenido de las
+  notificaciones. Anota tramos de al menos 30 s (un tema o capítulo) en el teléfono; `EscuchaPlugin` los da a la web,
+  que al abrir Patty (como mucho cada 20 min, `lib/escuchas.ts`) los manda a `POST /api/ingesta/escuchas` con el token
+  de la fuente de la app y los borra del teléfono. La API los guarda en `escuchas` (se borran a los 90 días) y, por
+  cada día tocado, rehace una medición por **sesión** (los tramos del mismo tipo con menos de 10 min de corte van
+  juntos: un disco entero es una cosa, no doce): «Música escuchada», «Podcasts escuchados» o «Series y videos en el
+  teléfono» (por la app, `tipoDeEscucha`), en minutos. En el Día, la tarjeta «Lo que sonó en el teléfono» muestra las
+  sesiones con sus temas, y ahí se puede borrar todo (`DELETE /api/medios/escuchas`). Se apaga en Permisos.
+  - **Spotify (pendiente, no está hecho)**: la Web API de Spotify daría también lo escuchado en la compu o el parlante
+    (`GET /v1/me/player/recently-played`, alcance `user-read-recently-played`). Hace falta que Rodrigo cree una app en
+    developer.spotify.com (ID de cliente y la URL de vuelta `https://patty.today/api/spotify/vuelta`). Se enchufaría
+    así: una tabla con el token de cada persona (cifrado), un botón "Conectar Spotify" en Más que hace el OAuth con
+    PKCE, y una tarea del servidor que cada hora trae lo reciente y lo pasa a `guardarEscuchas` como tramos con
+    `paquete: 'spotify-web'` (se juntan en sesiones igual que lo del teléfono y mandar dos veces lo mismo no duplica);
+    habría que saltear los tramos que se pisan con los que ya mandó el teléfono desde Spotify.
 - **¿Cómo te sentís?** (arriba del Día, `pantallas/Sentir.tsx`, `lib/sentir.ts`): cuatro caritas (muy bien, bien,
   mal, muy mal) que se guardan como «Cómo me siento» en Ánimo con intensidad 10, 7, 4 y 1 (más alto, mejor: el motor
   compara días buenos y malos). Muy bien y bien se guardan al toque; mal y muy mal preguntan qué pasa: síntomas (los

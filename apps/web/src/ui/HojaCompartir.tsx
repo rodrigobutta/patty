@@ -16,7 +16,7 @@ const AVISOS: Partial<Record<ComoSeCompartio, string>> = {
 
 /** Lo que se puede compartir: la tarjeta (ya traducida) y qué es, para Analytics y el nombre del archivo. */
 export interface Compartible {
-  que: 'patron' | 'racha' | 'semana' | 'nivel';
+  que: 'patron' | 'racha' | 'semana' | 'nivel' | 'medio';
   tarjeta: Tarjeta;
 }
 
