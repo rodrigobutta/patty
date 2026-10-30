@@ -42,6 +42,9 @@ export default defineConfig(({ mode }) => {
     // Rutas relativas: el mismo build sirve desde el servidor o empaquetado con Capacitor.
     base: './',
     define: { __VERSION__: JSON.stringify(VERSION), __COMMIT__: JSON.stringify(commit()) },
+    // Dos páginas: la app (index.html) y la administración (admin/index.html), cada una con su propio código, así lo de la
+    // administración no viaja en la app de todos.
+    build: { rollupOptions: { input: { main: 'index.html', admin: 'admin/index.html' } } },
     // "shared" se usa desde el código fuente (sin compilarlo antes).
     resolve: { conditions: ['source'] },
     server: {
@@ -82,8 +85,8 @@ export default defineConfig(({ mode }) => {
           navigateFallback: 'index.html',
           // Los temas, el sitemap y robots.txt son páginas aparte: el service worker no los reemplaza por la app ni los
           // guarda (se piden siempre al servidor).
-          navigateFallbackDenylist: [/^\/api\//, /^\/descargar\//, RUTAS_TEMAS, /^\/(sitemap\.xml|robots\.txt|privacidad\.html|borrar-cuenta\.html)$/],
-          globIgnores: ['**/node_modules/**/*', ...TEMAS.map((t) => `${t.slug}/**`), 'sitemap.xml', 'robots.txt'],
+          navigateFallbackDenylist: [/^\/api\//, /^\/descargar\//, /^\/admin(\/|$)/, RUTAS_TEMAS, /^\/(sitemap\.xml|robots\.txt|privacidad\.html|borrar-cuenta\.html)$/],
+          globIgnores: ['**/node_modules/**/*', 'admin/**', 'assets/admin-*', ...TEMAS.map((t) => `${t.slug}/**`), 'sitemap.xml', 'robots.txt'],
           skipWaiting: false,
           clientsClaim: true,
           cleanupOutdatedCaches: true,

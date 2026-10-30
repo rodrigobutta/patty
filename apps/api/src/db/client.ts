@@ -19,10 +19,27 @@ export function obtenerDb(): Db {
   return db;
 }
 
+let clienteAdmin: ReturnType<typeof postgres> | undefined;
+let dbAdmin: Db | undefined;
+
+/**
+ * La base para la administración: una conexión aparte y chica (3), con un tiempo máximo por consulta. Así una consulta
+ * pesada del admin (un chequeo de calidad, una tabla grande) nunca le saca conexiones ni tiempo a la app.
+ */
+export function obtenerDbAdmin(): Db {
+  if (!dbAdmin) {
+    clienteAdmin = postgres(config.databaseUrl, { max: 3, onnotice: () => {}, connection: { statement_timeout: 30000, application_name: 'patty-admin' } });
+    dbAdmin = drizzle(clienteAdmin, { schema });
+  }
+  return dbAdmin;
+}
+
 export async function cerrarDb(): Promise<void> {
-  await cliente?.end({ timeout: 5 });
+  await Promise.all([cliente?.end({ timeout: 5 }), clienteAdmin?.end({ timeout: 5 })]);
   cliente = undefined;
   db = undefined;
+  clienteAdmin = undefined;
+  dbAdmin = undefined;
 }
 
 /** Filas de una consulta en SQL crudo. */

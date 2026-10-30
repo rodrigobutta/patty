@@ -16,7 +16,6 @@ import { useCara } from './mascota/cara';
 import { Festejo } from './mascota/Festejo';
 import { Mascota } from './mascota/Mascota';
 import { useSeguirUbicacion } from './lib/ubicacion';
-import { Admin } from './pantallas/Admin';
 import { Bienvenida, bienvenidaVista } from './pantallas/Bienvenida';
 import { Entrar } from './pantallas/Entrar';
 import { Presentacion } from './pantallas/Presentacion';
@@ -44,7 +43,7 @@ import { t } from './lib/idioma';
 import { useMedirUso } from './lib/uso';
 import { alPedirIrAMas } from './lib/navegar';
 
-type Pestana = 'hoy' | 'patrones' | 'mas' | 'admin';
+type Pestana = 'hoy' | 'patrones' | 'mas';
 
 const PESTANAS: Array<{ id: Pestana; nombre: string }> = [
   { id: 'hoy', nombre: t('Día') },
@@ -56,8 +55,7 @@ export function App() {
   const { fase, error, persona, personas, elegirPersona, aviso, sesion, avisar, festejar, recargar } = useEstado();
   // Lo anotado sin señal se sube solo cuando vuelve la conexión.
   useSubirSinSenal();
-  // patty.today/#admin abre la administración directo (para mirarla en la compu).
-  const [pestana, setPestana] = useState<Pestana>(() => (location.hash === '#admin' ? 'admin' : 'hoy'));
+  const [pestana, setPestana] = useState<Pestana>('hoy');
   // Cada pestaña arranca arriba de todo (si no, queda el scroll de la anterior).
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -202,9 +200,7 @@ export function App() {
       {/* El tour de la primera vez (en el Día, ya con lo anotado a la vista). */}
       <Tour listo={pestana === 'hoy' && Boolean(persona)} />
       <main>
-        {pestana === 'admin' && sesion?.usuario?.rol === 'admin' ? (
-          <Admin alVolver={() => { setPestana('mas'); if (location.hash) history.replaceState(null, '', location.pathname); }} />
-        ) : pestana === 'hoy' ? <Hoy persona={persona} cara={cara} /> : pestana === 'patrones' ? <Patrones persona={persona} progreso={progreso} /> : <Mas alAdministrar={() => setPestana('admin')} />}
+        {pestana === 'hoy' ? <Hoy persona={persona} cara={cara} /> : pestana === 'patrones' ? <Patrones persona={persona} progreso={progreso} /> : <Mas alAdministrar={() => location.assign('/admin/')} />}
       </main>
       <nav className="pestanas">
         {PESTANAS.map((p) => (

@@ -8,7 +8,7 @@ import { VERSION } from '../lib/version.js';
 
 /** Cuándo arrancó este servidor (para ver en Salud si se reinició). */
 const ARRANCO = new Date().toISOString();
-import { filas, una } from '../db/client.js';
+import { filas, obtenerDbAdmin, una } from '../db/client.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 import { compararVersiones, limitesDe, PLANES, USOS_IA, type VersionApp } from 'shared';
@@ -26,6 +26,8 @@ const ULTIMOS_DIAS = 14;
 export const rutasAdmin = new Hono<Env>()
   .use('*', async (c, next) => {
     exigirRol(c.var.usuario, 'admin');
+    // Lo del admin va por su propia conexión a la base (db/client.ts: obtenerDbAdmin), aparte de la de la app.
+    c.set('db', obtenerDbAdmin());
     await next();
   })
   .get('/beta', async (c) =>

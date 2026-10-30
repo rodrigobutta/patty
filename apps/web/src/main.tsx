@@ -6,6 +6,9 @@ import './estilos.css';
 import { escucharErrores } from './lib/errores';
 import { prepararActualizaciones } from './lib/actualizar';
 
+// La administración es una página aparte (patty.today/admin, con su propio código): el link viejo #admin lleva ahí.
+if (location.hash === '#admin') location.replace('/admin/');
+
 // Lo que falle sin esperarlo queda anotado en el admin (Salud).
 escucharErrores();
 

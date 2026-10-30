@@ -113,3 +113,4 @@ main:has(.admin-datos) { max-width: 1400px; }
   .admin > .subvistas, .admin-datos .subvistas { overflow-x: auto; scrollbar-width: none; }
   .admin > .subvistas button, .admin-datos .subvistas button { flex: none; white-space: nowrap; }
 }
+.admin-sin-acceso { max-width: 420px; margin: 80px auto; text-align: center; }
