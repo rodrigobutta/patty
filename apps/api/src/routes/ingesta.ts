@@ -14,7 +14,7 @@ import { cuerpo, numeroONulo, texto, type C, type Env } from '../lib/http.js';
 import { obtenerOCrearConcepto } from './conceptos.js';
 import { guardarPuntos } from './ubicacion.js';
 import { guardarEscuchas } from '../medios/escuchas.js';
-import { guardarAvisos } from '../avisos/telefono.js';
+import { guardarAvisos, guardarLlamadasPorHora } from '../avisos/telefono.js';
 
 const CATEGORIA_POR_FUENTE: Record<string, string> = { reloj: 'actividad', telefono: 'pantalla', clima: 'clima', ubicacion: 'lugar', otro: 'otro' };
 
@@ -104,6 +104,15 @@ export const rutasIngesta = new Hono<Env>()
     if (!Array.isArray(conteos) || !Array.isArray(eventos)) throw new ErrorApi('Mandá listas "conteos" y "eventos".');
     const r = await c.var.db.transaction((tx) => guardarAvisos(tx, f, conteos, eventos));
     return c.json({ ok: true, ...r });
+  })
+  // Cuántas llamadas hubo en cada hora (la app de Android; también las horas sin ninguna, con 0): para el gráfico por
+  // hora del Día. Nunca números ni nombres.   { "horas": [{ hora, n }] }
+  .post('/llamadas', async (c) => {
+    const f = await fuenteDelPedido(c);
+    const horas = (await cuerpo(c)).horas;
+    if (!Array.isArray(horas)) throw new ErrorApi('Mandá una lista "horas".');
+    const n = await c.var.db.transaction((tx) => guardarLlamadasPorHora(tx, f, horas));
+    return c.json({ ok: true, horas: n });
   })
   .post('/', async (c) => {
     const f = await fuenteDelPedido(c);

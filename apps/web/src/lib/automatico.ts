@@ -3,7 +3,8 @@
 import { unidadPara, type DatoAutomatico } from 'shared';
 import { idioma, locale, t } from './idioma';
 
-export interface GrupoAutomatico { fuente: string; tipo: string; lineas: Array<{ concepto: string; categoria_id: number; valor: string }> }
+export interface LineaAutomatica { concepto: string; categoria_id: number; valor: string }
+export interface GrupoAutomatico { fuente: string; tipo: string; lineas: LineaAutomatica[] }
 
 const ORDEN = ['telefono', 'ubicacion', 'reloj', 'clima', 'otro'];
 const ORDEN_CLIMA = ['Temperatura', 'Sensación térmica', 'Humedad', 'Punto de rocío', 'Lluvia', 'Nubosidad', 'Minutos de sol',

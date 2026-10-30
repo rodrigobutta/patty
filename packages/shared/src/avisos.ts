@@ -91,11 +91,24 @@ export interface AvisosDelDia {
     apagada: number;
     /** 24 números: cuántos llegaron en cada hora (de 0 a 23, hora de la persona). */
     por_hora: number[];
-    apps: Array<{ app: string; n: number }>;
+    /** El paquete (com.whatsapp…) va para buscar el ícono de la app en el teléfono. */
+    apps: Array<{ app: string; n: number; paquete?: string }>;
     /** La noche que termina este día (de 23 a 7): cuántos llegaron y cuántos sonaron. */
     noche: { total: number; sonoras: number; apagada: number } | null;
   } | null;
-  mensajes: { total: number; apps: Array<{ app: string; n: number }> } | null;
+  mensajes: { total: number; apps: Array<{ app: string; n: number; paquete?: string }> } | null;
+  /**
+   * 24 números: cuántas llamadas hubo en cada hora (entrantes, salientes y perdidas, de 0 a 23, hora de la persona).
+   * Null si el teléfono no mandó las llamadas por hora de ese día (la app vieja, o sin permiso).
+   */
+  llamadas_por_hora: number[] | null;
+}
+
+/** Lo que manda el teléfono de cada hora: cuántas llamadas hubo (también las horas sin ninguna, para saber que son 0). */
+export interface LlamadasDeUnaHora {
+  /** El principio de la hora (ms). */
+  hora: number;
+  n: number;
 }
 
 /** Un pedido o un viaje que Patty vio y pregunta. */

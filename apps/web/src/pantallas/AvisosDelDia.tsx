@@ -2,6 +2,7 @@
 // - Lo que Patty pregunta: un pedido que llegó ("¿Pediste comida? ¿Qué fue?", con lo que más pedís, escrito o con una
 //   foto, y queda como comida pedida) y un viaje en Uber/Cabify/DiDi que no vio la ubicación ("¿Fuiste en Uber?").
 // - Cuántos avisos llegaron (por hora y por app, y los que sonaron de noche) y cuántos mensajes, al tocarlo con el detalle.
+//   En el mismo gráfico por hora, las llamadas (del uso del teléfono).
 import { conApodo } from '../lib/apodo';
 import { useCallback, useEffect, useState } from 'react';
 import { COMO_VIAJE, type AvisoPendiente, type AvisosDelDia as Datos, type Persona } from 'shared';
@@ -11,6 +12,7 @@ import { medir } from '../lib/analytics';
 import { borrarAvisosTelefono, EVENTO_LLEGARON } from '../lib/avisosTelefono';
 import { duracion } from '../lib/automatico';
 import { horaEn } from '../lib/fechas';
+import { useIconosApps } from '../lib/iconosApps';
 import { t } from '../lib/idioma';
 import { IconoCamara } from '../ui/Iconos';
 import { IconoAnimo, IconoCampana, IconoCategoria, IconoMensajes, IconoModo } from '../ui/IconosPatty';
@@ -110,9 +112,27 @@ export function AvisosPendientes({ persona, vuelta, alAnotar, alFoto }: { person
   );
 }
 
+/** Una app con su ícono de verdad (en la app de Android) y cuántas veces. */
+function ListaApps({ apps, iconos }: { apps: Array<{ app: string; n: number }>; iconos: Record<string, string> }) {
+  return (
+    <ul className="apps-avisos">
+      {apps.map((a) => (
+        <li key={a.app}>
+          <span className="app-con-icono">
+            {iconos[a.app] ? <img className="icono-app" src={iconos[a.app]} alt="" /> : <IconoCategoria clave="pantalla" tamano={24} />}
+            {a.app}
+          </span>
+          <span className="valor-chip">{a.n}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * Lo que avisó el teléfono, adentro del detalle del widget de uso del teléfono: cuántas notificaciones llegaron, por
- * hora (las de noche en otro color), qué apps avisaron más, las de anoche y los mensajes recibidos (solo cuántos).
+ * hora (las de noche en otro color) junto con las llamadas de cada hora, qué apps avisaron más, las de anoche y los
+ * mensajes recibidos (solo cuántos).
  */
 export function AvisosDelTelefono({ persona, fecha }: { persona: Persona; fecha: string }) {
   const { avisar, usuario } = useEstado();
@@ -125,10 +145,15 @@ export function AvisosDelTelefono({ persona, fecha }: { persona: Persona; fecha:
     window.addEventListener(EVENTO_LLEGARON, traer);
     return () => window.removeEventListener(EVENTO_LLEGARON, traer);
   }, [traer]);
-  if (!d || (!d.notificaciones && !d.mensajes)) return null;
+  const iconos = useIconosApps([...(d?.notificaciones?.apps ?? []), ...(d?.mensajes?.apps ?? [])].map((a) => ({ nombre: a.app, paquete: a.paquete })));
+  // Las llamadas por hora solo si hubo alguna ese día (un día sin llamadas no suma nada al gráfico).
+  const ll = d?.llamadas_por_hora?.some((x) => x > 0) ? d.llamadas_por_hora : null;
+  if (!d || (!d.notificaciones && !d.mensajes && !ll)) return null;
   const n = d.notificaciones;
   const m = d.mensajes;
   const maximo = n ? Math.max(1, ...n.por_hora) : 1;
+  const titulo = n && ll ? t('Notificaciones y llamadas por hora') : ll ? t('Llamadas por hora') : t('Notificaciones por hora');
+  const totalLlamadas = ll ? ll.reduce((a, b) => a + b, 0) : 0;
 
   const borrar = async () => {
     if (!confirm(t('¿Borrar todo lo que Patty contó de los avisos del teléfono? Lo que ya se anotó (comidas, viajes, ejercicio) queda. No se puede deshacer.'))) return;
@@ -166,14 +191,26 @@ export function AvisosDelTelefono({ persona, fecha }: { persona: Persona; fecha:
           </div>
         ) : null}
       </div>
-      {n ? (
+      {n || ll ? (
         <>
-          <h4>{t('Notificaciones por hora')}</h4>
-          <div className="barras-hora" role="img" aria-label={t('Notificaciones por hora')}>
-            {n.por_hora.map((x, h) => (
-              <div key={h} className={`hora-barra${h >= 23 || h < 7 ? ' de-noche' : ''}${x ? '' : ' vacia'}`} style={{ height: x ? `${Math.max(6, Math.round((x / maximo) * 100))}%` : undefined }} title={`${h} h: ${x}`} />
-            ))}
-          </div>
+          <h4>{titulo}</h4>
+          {n ? (
+            <div className="barras-hora" role="img" aria-label={t('Notificaciones por hora')}>
+              {n.por_hora.map((x, h) => (
+                <div key={h} className={`hora-barra${h >= 23 || h < 7 ? ' de-noche' : ''}${x ? '' : ' vacia'}`} style={{ height: x ? `${Math.max(6, Math.round((x / maximo) * 100))}%` : undefined }} title={`${h} h: ${x}`} />
+              ))}
+            </div>
+          ) : null}
+          {ll ? (
+            // Las llamadas, en una fila abajo de las barras (con la misma hora): un globito verde con cuántas hubo.
+            <div className={`llamadas-hora${n ? '' : ' solas'}`} role="img" aria-label={t('{n} llamadas', { n: totalLlamadas })}>
+              {ll.map((x, h) => (
+                <div key={h} className="hora-llamada" title={`${h} h: ${x}`}>
+                  {x ? <span className="punto-llamada">{x}</span> : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className="horas-barras suave chico">
             <span>0</span>
             <span>6</span>
@@ -181,15 +218,19 @@ export function AvisosDelTelefono({ persona, fecha }: { persona: Persona; fecha:
             <span>18</span>
             <span>23</span>
           </div>
+          {n && ll ? (
+            <div className="leyenda-horas suave chico">
+              <span><i className="muestra-avisos" /> {t('notificaciones')}</span>
+              <span><i className="muestra-avisos de-noche" /> {t('de noche')}</span>
+              <span><i className="muestra-llamadas" /> {t('llamadas')}</span>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {n ? (
+        <>
           <h4>{t('Las apps que más avisaron')}</h4>
-          <ul className="apps-avisos">
-            {n.apps.map((a) => (
-              <li key={a.app}>
-                <span>{a.app}</span>
-                <span className="valor-chip">{a.n}</span>
-              </li>
-            ))}
-          </ul>
+          <ListaApps apps={n.apps} iconos={iconos} />
           {n.noche ? (
             <p className="suave chico">
               {t('Anoche (de 23 a 7) llegaron {n}: {s} sonaron y {a} con la pantalla apagada.', { n: n.noche.total, s: n.noche.sonoras, a: n.noche.apagada })}
@@ -200,17 +241,10 @@ export function AvisosDelTelefono({ persona, fecha }: { persona: Persona; fecha:
       {m?.apps.length ? (
         <>
           <h4>{t('Mensajes por app')}</h4>
-          <ul className="apps-avisos">
-            {m.apps.map((a) => (
-              <li key={a.app}>
-                <span>{a.app}</span>
-                <span className="valor-chip">{a.n}</span>
-              </li>
-            ))}
-          </ul>
+          <ListaApps apps={m.apps} iconos={iconos} />
         </>
       ) : null}
-      {usuario?.rol !== 'lector' ? <button className="enlace chico" onClick={() => void borrar()}>{t('Borrar todo lo de los avisos')}</button> : null}
+      {usuario?.rol !== 'lector' && (n || m) ? <button className="enlace chico" onClick={() => void borrar()}>{t('Borrar todo lo de los avisos')}</button> : null}
     </div>
   );
 }

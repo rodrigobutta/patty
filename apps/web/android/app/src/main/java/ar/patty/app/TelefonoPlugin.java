@@ -10,12 +10,16 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Process;
 import android.provider.CallLog;
 import android.provider.Settings;
+import android.util.Base64;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -25,7 +29,10 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import java.io.ByteArrayOutputStream;
+import java.util.Calendar;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +45,7 @@ import java.util.Set;
  *   permiso del estado del teléfono, que Play Store no restringe).
  * - Las reuniones del calendario del teléfono (todas las cuentas sincronizadas: Google, Outlook, Exchange…): cuándo
  *   empiezan y terminan y cuánta gente hay. Nunca títulos, lugares ni invitados.
+ * - Los íconos de las apps instaladas (para mostrarlos al lado del uso de cada una y de sus avisos).
  * Y, aparte, abrir un enlace en el navegador del teléfono (el PDF del informe para el médico).
  */
 @CapacitorPlugin(
@@ -304,7 +312,8 @@ public class TelefonoPlugin extends Plugin {
         }
         int entrantes = 0, salientes = 0, perdidas = 0;
         long segundos = 0;
-        String[] columnas = { CallLog.Calls.TYPE, CallLog.Calls.DURATION };
+        Map<Long, Integer> porHora = new HashMap<>();
+        String[] columnas = { CallLog.Calls.TYPE, CallLog.Calls.DURATION, CallLog.Calls.DATE };
         try (
             Cursor c = getContext()
                 .getContentResolver()
@@ -323,9 +332,11 @@ public class TelefonoPlugin extends Plugin {
                 else if (tipo == CallLog.Calls.OUTGOING_TYPE) salientes++;
                 else if (tipo == CallLog.Calls.MISSED_TYPE || tipo == CallLog.Calls.REJECTED_TYPE) perdidas++;
                 segundos += dur;
+                contarEnSuHora(porHora, c.getLong(2));
             }
         }
         JSObject r = new JSObject();
+        r.put("porHora", porHora(porHora));
         r.put("entrantes", entrantes);
         r.put("salientes", salientes);
         r.put("perdidas", perdidas);
@@ -338,6 +349,7 @@ public class TelefonoPlugin extends Plugin {
     private void llamadasEnVivo(PluginCall call, long desde, long hasta) {
         int entrantes = 0, salientes = 0, perdidas = 0;
         long segundos = 0;
+        Map<Long, Integer> porHora = new HashMap<>();
         try {
             org.json.JSONArray lista = new org.json.JSONArray(
                 getContext().getSharedPreferences(LlamadasReceiver.PREFS, Context.MODE_PRIVATE).getString(LlamadasReceiver.LISTA, "[]")
@@ -351,16 +363,104 @@ public class TelefonoPlugin extends Plugin {
                 else if ("saliente".equals(tipo)) salientes++;
                 else perdidas++;
                 segundos += l.getLong("segundos");
+                contarEnSuHora(porHora, inicio);
             }
         } catch (Exception e) {
             // Lista rota: cuenta como sin llamadas.
         }
         JSObject r = new JSObject();
+        r.put("porHora", porHora(porHora));
         r.put("entrantes", entrantes);
         r.put("salientes", salientes);
         r.put("perdidas", perdidas);
         r.put("segundos", segundos);
         r.put("de", "en_vivo");
         call.resolve(r);
+    }
+
+    /** Suma una llamada a la hora en que empezó (la hora del teléfono, en punto). */
+    private static void contarEnSuHora(Map<Long, Integer> porHora, long instante) {
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(instante);
+        c.set(Calendar.MINUTE, 0);
+        c.set(Calendar.SECOND, 0);
+        c.set(Calendar.MILLISECOND, 0);
+        long hora = c.getTimeInMillis();
+        porHora.put(hora, porHora.getOrDefault(hora, 0) + 1);
+    }
+
+    /** Solo las horas con llamadas: [{ hora, n }]. */
+    private static JSArray porHora(Map<Long, Integer> porHora) {
+        JSArray l = new JSArray();
+        for (Map.Entry<Long, Integer> h : porHora.entrySet()) {
+            JSObject o = new JSObject();
+            o.put("hora", h.getKey());
+            o.put("n", h.getValue());
+            l.put(o);
+        }
+        return l;
+    }
+
+    // ---- Íconos de las apps ----
+
+    private static String clave(String nombre) {
+        return nombre == null ? "" : nombre.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * El ícono de cada app pedida, como PNG chico (data URL). Se buscan por paquete si viene (`paquetes`, en el mismo
+     * orden que `nombres`) y si no por el nombre que muestra el teléfono («Instagram»: el mismo con que se guardó el uso
+     * de cada app). Las que no están instaladas no vuelven.
+     */
+    @PluginMethod
+    public void iconos(PluginCall call) {
+        JSArray nombres = call.getArray("nombres", new JSArray());
+        JSArray paquetes = call.getArray("paquetes", new JSArray());
+        int tamano = Math.max(24, Math.min(192, call.getInt("tamano", 96)));
+        PackageManager pm = getContext().getPackageManager();
+        // Las apps del escritorio, por su nombre (el de la app y el del acceso, por si no son iguales).
+        Map<String, String> porNombre = new HashMap<>();
+        Intent lanzables = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        for (ResolveInfo ri : pm.queryIntentActivities(lanzables, 0)) {
+            String paquete = ri.activityInfo.packageName;
+            CharSequence deLaApp = pm.getApplicationLabel(ri.activityInfo.applicationInfo);
+            if (deLaApp != null && !porNombre.containsKey(clave(deLaApp.toString()))) porNombre.put(clave(deLaApp.toString()), paquete);
+            CharSequence delAcceso = ri.loadLabel(pm);
+            if (delAcceso != null && !porNombre.containsKey(clave(delAcceso.toString()))) porNombre.put(clave(delAcceso.toString()), paquete);
+        }
+        JSObject r = new JSObject();
+        for (int i = 0; i < nombres.length(); i++) {
+            String nombre = nombres.optString(i, "");
+            if (nombre.isEmpty()) continue;
+            String paquete = paquetes.optString(i, "");
+            if (paquete.isEmpty() || "null".equals(paquete)) paquete = porNombre.get(clave(nombre));
+            // El uso de una app sin nombre se guardó con el paquete («com.algo.app»).
+            if (paquete == null && nombre.matches("[a-zA-Z0-9_]+(\\.[a-zA-Z0-9_]+)+")) paquete = nombre;
+            if (paquete == null) continue;
+            try {
+                String png = aPng(pm.getApplicationIcon(paquete), tamano);
+                if (png != null) r.put(nombre, png);
+            } catch (PackageManager.NameNotFoundException e) {
+                // Ya no está instalada.
+            }
+        }
+        JSObject res = new JSObject();
+        res.put("iconos", r);
+        call.resolve(res);
+    }
+
+    private static String aPng(Drawable d, int tamano) {
+        try {
+            Bitmap b = Bitmap.createBitmap(tamano, tamano, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(b);
+            d.setBounds(0, 0, tamano, tamano);
+            d.draw(c);
+            ByteArrayOutputStream s = new ByteArrayOutputStream();
+            b.compress(Bitmap.CompressFormat.PNG, 100, s);
+            b.recycle();
+            return "data:image/png;base64," + Base64.encodeToString(s.toByteArray(), Base64.NO_WRAP);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

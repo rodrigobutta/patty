@@ -375,6 +375,30 @@ export const avisosConteos = pgTable(
 );
 
 /**
+ * Cuántas llamadas hubo en cada hora (la app de Android, del registro de llamadas o de lo que anotó mientras pasaban):
+ * para el gráfico por hora del Día, junto a los avisos. Las horas sin llamadas también vienen (con 0), así se sabe que
+ * ese día se contó. Nunca números ni nombres. Mandar de nuevo la misma hora la reemplaza; se borran solos a los 90 días.
+ */
+export const llamadasHoras = pgTable(
+  'llamadas_horas',
+  {
+    id: idGrande(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    fuente_id: integer('fuente_id')
+      .notNull()
+      .references(() => fuentes.id, { onDelete: 'cascade' }),
+    /** El principio de la hora. */
+    hora: instante('hora').notNull(),
+    /** Día de la persona (de 5 a 5), como los avisos. */
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    n: integer('n').notNull().default(0),
+  },
+  (t) => [uniqueIndex('llamadas_horas_idx').on(t.persona_id, t.hora), index('llamadas_horas_fecha_idx').on(t.persona_id, t.fecha)],
+);
+
+/**
  * Un pedido de comida, un viaje con chofer o un entrenamiento que se vio en los avisos de su app (leídos en el
  * teléfono: acá llega solo lo que se entendió). Los avisos del mismo pedido o viaje se juntan en una fila (`etapas`:
  * cuándo se vio cada una). Los pedidos y los viajes que no se pueden unir con algo ya anotado quedan pendientes y Patty

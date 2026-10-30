@@ -2,14 +2,15 @@
 // cortito, sin títulos. Cuatro lugares fijos: clima, ubicación, teléfono, sueño y salud. Los que no tienen datos porque
 // falta el permiso van grises (ver FuenteApagada); tocando uno con datos se ve el detalle a lo ancho.
 import { Fragment, useState, type ReactNode } from 'react';
-import { IconoCategoria } from '../ui/IconosPatty';
+import { IconoCampana, IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
 import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
 import { AvisosDelTelefono } from './AvisosDelDia';
 import { ClimaDelDia } from './ClimaDelDia';
 import { GraficoSueno, ResumenNoche } from './GraficoSueno';
 import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
-import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico } from '../lib/automatico';
+import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico, type LineaAutomatica } from '../lib/automatico';
+import { appDelUso, useIconosApps } from '../lib/iconosApps';
 import { locale, t } from '../lib/idioma';
 import { IconoCelular, IconoReuniones, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
 import { WidgetApagado, type Fuente } from './FuenteApagada';
@@ -113,8 +114,25 @@ function widgetReuniones(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Wi
   };
 }
 
-/** Lo de las notificaciones (ver AvisosDelTelefono): va en su propia parte del detalle, no en la lista. */
-const AVISOS = new Set(['Notificaciones', 'Notificaciones de noche', 'Mensajes recibidos']);
+/**
+ * Lo de las notificaciones de noche y los mensajes va en su propia parte del detalle (ver AvisosDelTelefono), no en la
+ * lista. El total de notificaciones sí queda en la lista, junto a las llamadas.
+ */
+const AVISOS = new Set(['Notificaciones de noche', 'Mensajes recibidos']);
+const LLAMADAS = new Set(['Llamadas', 'Llamadas perdidas', 'Minutos en llamadas']);
+
+/** Las notificaciones, justo después de las llamadas (son las dos cosas que interrumpen). */
+function notificacionesConLasLlamadas(lineas: LineaAutomatica[]): LineaAutomatica[] {
+  const notif = lineas.find((l) => l.concepto === 'Notificaciones');
+  if (!notif) return lineas;
+  const resto = lineas.filter((l) => l !== notif);
+  let despues = -1;
+  resto.forEach((l, i) => {
+    if (LLAMADAS.has(l.concepto)) despues = i;
+  });
+  resto.splice(despues + 1, 0, notif);
+  return resto;
+}
 
 function widgetTelefono(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
   const pantalla = dato(todos, 'telefono', 'Tiempo de pantalla');
@@ -128,7 +146,9 @@ function widgetTelefono(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Wid
     icono: <IconoCelular />,
     linea: pantalla ? duracion(pantalla.suma) : notif === 1 ? t('1 notificación') : t('{n} notificaciones', { n: notif }),
     sub: llamadas ? (n === 1 ? t('1 llamada') : t('{n} llamadas', { n })) : pantalla && avisos ? (notif === 1 ? t('1 notificación') : t('{n} notificaciones', { n: notif })) : undefined,
-    grupos: grupos.filter((g) => g.tipo === 'telefono').map((g) => ({ ...g, lineas: g.lineas.filter((l) => !REUNIONES.has(l.concepto) && !AVISOS.has(l.concepto)) })),
+    grupos: grupos
+      .filter((g) => g.tipo === 'telefono')
+      .map((g) => ({ ...g, lineas: notificacionesConLasLlamadas(g.lineas.filter((l) => !REUNIONES.has(l.concepto) && !AVISOS.has(l.concepto))) })),
     nombre: t('Uso del teléfono'),
   };
 }
@@ -250,17 +270,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                   ) : null}
                   {w.lugar === 'clima' ? <ClimaDelDia persona={persona} fecha={fecha} todos={automaticos} /> : null}
                   {w.lugar === 'telefono' ? <AvisosDelTelefono persona={persona} fecha={fecha} /> : null}
-                  {w.grupos.length && w.lugar !== 'clima' ? (
-                    <ul className="detalle-auto">
-                      {w.grupos.flatMap((g) => g.lineas).map((x) => (
-                        <li key={`${x.concepto}-${x.valor}`}>
-                          <span className="icono"><IconoCategoria clave={categorias.find((c) => c.id === x.categoria_id)?.clave} emoji={categorias.find((c) => c.id === x.categoria_id)?.icono} /></span>
-                          <span className="que">{t(x.concepto)}</span>
-                          <span className="valor-chip">{x.valor}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+                  {w.grupos.length && w.lugar !== 'clima' ? <DetalleAuto lineas={w.grupos.flatMap((g) => g.lineas)} categorias={categorias} /> : null}
                 </div>
               </>,
               document.body,
@@ -268,5 +278,31 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
           })()
         : null}
     </div>
+  );
+}
+
+/**
+ * Cada dato del widget, con su ícono: el uso de cada app con el ícono de verdad de la app (en la app de Android; si no,
+ * el de Patty), las notificaciones con la campana y lo demás con el de su categoría.
+ */
+function DetalleAuto({ lineas, categorias }: { lineas: LineaAutomatica[]; categorias: Categoria[] }) {
+  const iconos = useIconosApps(lineas.map((l) => appDelUso(l.concepto)).filter((n): n is string => !!n).map((nombre) => ({ nombre })));
+  return (
+    <ul className="detalle-auto">
+      {lineas.map((x) => {
+        const cat = categorias.find((c) => c.id === x.categoria_id);
+        const app = appDelUso(x.concepto);
+        const icono = app ? iconos[app] : undefined;
+        return (
+          <li key={`${x.concepto}-${x.valor}`}>
+            <span className="icono">
+              {icono ? <img className="icono-app" src={icono} alt="" /> : x.concepto === 'Notificaciones' ? <IconoCampana /> : <IconoCategoria clave={cat?.clave} emoji={cat?.icono} />}
+            </span>
+            <span className="que">{app ? t('Uso de {app}', { app }) : t(x.concepto)}</span>
+            <span className="valor-chip">{x.valor}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

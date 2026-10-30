@@ -11,7 +11,14 @@ type Estado = 'granted' | 'denied';
 interface Permisos { uso: Estado; llamadas: Estado; llamadasDe?: 'registro' | 'en_vivo' | 'nada'; calendario?: Estado }
 interface Periodo { desde: number; hasta: number }
 export interface UsoDeApps { minutos: number; apps: Array<{ paquete: string; nombre: string; minutos: number }> }
-export interface Llamadas { entrantes: number; salientes: number; perdidas: number; segundos: number }
+export interface Llamadas {
+  entrantes: number;
+  salientes: number;
+  perdidas: number;
+  segundos: number;
+  /** Las horas con llamadas (el principio de la hora, en ms). La app vieja no lo manda. */
+  porHora?: Array<{ hora: number; n: number }>;
+}
 
 interface PluginTelefono {
   permisos(): Promise<Permisos>;
@@ -23,6 +30,8 @@ interface PluginTelefono {
   eventos(p: Periodo): Promise<{ eventos: EventoCalendario[] }>;
   /** Abre un enlace en el navegador del teléfono (las apps instaladas antes del informe para el médico no lo tienen). */
   abrirAfuera(o: { url: string }): Promise<void>;
+  /** Los íconos de las apps instaladas (por paquete o por nombre), como data URL. La app vieja no lo tiene. */
+  iconos(o: { nombres: string[]; paquetes?: Array<string | null>; tamano?: number }): Promise<{ iconos: Record<string, string> }>;
 }
 
 export const Telefono = registerPlugin<PluginTelefono>('Telefono');
@@ -74,6 +83,18 @@ export function medicionesDelDia(desde: Date, hasta: Date, uso: UsoDeApps | null
   return r;
 }
 
+/**
+ * Cuántas llamadas hubo en cada hora de un día, para el gráfico por hora del Día: todas las horas, también las que no
+ * tuvieron ninguna (así se sabe que ese día se contó). Null si la app es vieja y no lo sabe.
+ */
+export function llamadasPorHora(desde: Date, hasta: Date, llamadas: Llamadas | null): Array<{ hora: number; n: number }> | null {
+  if (!llamadas?.porHora) return null;
+  const n = new Map(llamadas.porHora.map((h) => [h.hora, h.n]));
+  const r: Array<{ hora: number; n: number }> = [];
+  for (const h = new Date(desde); h < hasta; h.setHours(h.getHours() + 1)) r.push({ hora: h.getTime(), n: n.get(h.getTime()) ?? 0 });
+  return r;
+}
+
 /** Lee los últimos días del teléfono y los manda. Devuelve cuántas mediciones mandó. */
 export async function sincronizar(personaId: number): Promise<number> {
   const p = await Telefono.permisos();
@@ -102,6 +123,7 @@ export async function sincronizar(personaId: number): Promise<number> {
     if (lista.length) await ingesta(personaId, '', { mediciones: lista });
     return lista.length;
   }
+  const horas: Array<{ hora: number; n: number }> = [];
   for (let i = DIAS - 1; i >= 0; i--) {
     const desde = new Date(hoy);
     desde.setDate(hoy.getDate() - i);
@@ -113,8 +135,11 @@ export async function sincronizar(personaId: number): Promise<number> {
       p.llamadas === 'granted' ? Telefono.llamadas(periodo) : null,
     ]);
     lista.push(...medicionesDelDia(desde, hasta, uso, llamadas));
+    horas.push(...(llamadasPorHora(desde, hasta, llamadas) ?? []));
   }
   if (lista.length) await ingesta(personaId, '', { mediciones: lista });
+  // Las llamadas por hora, aparte: si el servidor todavía no las recibe, lo demás ya llegó.
+  if (horas.length) await ingesta(personaId, '/llamadas', { horas }).catch(() => {});
   try {
     localStorage.setItem(ULTIMA, String(Date.now()));
   } catch {

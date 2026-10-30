@@ -23,6 +23,7 @@ import {
   type AvisosDelDia,
   type ConteoAvisos,
   type EventoAviso,
+  type LlamadasDeUnaHora,
   type TipoAviso,
 } from 'shared';
 import { filas, una, type Db, type Tx } from '../db/client.js';
@@ -177,9 +178,9 @@ export async function avisosDelDia(db: Db, personaId: number, fecha: string, zon
   const delDia = l.filter((x) => x.fecha === fecha);
   const sumar = (xs: FilaConteo[], k: 'n' | 'sonoras' | 'apagada' | 'mensajes') => xs.reduce((t, x) => t + x[k], 0);
   const porApp = (xs: FilaConteo[], k: 'n' | 'mensajes', nombre: (x: FilaConteo) => string) => {
-    const m = new Map<string, number>();
-    for (const x of xs) if (x[k]) m.set(nombre(x), (m.get(nombre(x)) ?? 0) + x[k]);
-    return [...m.entries()].map(([app, n]) => ({ app, n })).sort((a, b) => b.n - a.n).slice(0, 8);
+    const m = new Map<string, { n: number; paquete: string }>();
+    for (const x of xs) if (x[k]) m.set(nombre(x), { n: (m.get(nombre(x))?.n ?? 0) + x[k], paquete: m.get(nombre(x))?.paquete ?? x.paquete });
+    return [...m.entries()].map(([app, v]) => ({ app, n: v.n, paquete: v.paquete })).sort((a, b) => b.n - a.n).slice(0, 8);
   };
   const total = sumar(delDia, 'n');
   const deNoche = l.filter((x) => nocheDe(x.hora, zona) === fecha);
@@ -198,7 +199,47 @@ export async function avisosDelDia(db: Db, personaId: number, fecha: string, zon
         }
       : null,
     mensajes: mensajes ? { total: mensajes, apps: porApp(delDia, 'mensajes', (x) => NOMBRES_MENSAJERIA[x.paquete] ?? x.app) } : null,
+    llamadas_por_hora: await llamadasPorHora(db, personaId, fecha, zona),
   };
+}
+
+// ---------- Llamadas por hora ----------
+
+/** Valida lo que manda el teléfono de una hora de llamadas. Lo que no sirve se saltea. */
+export function leerHoraLlamadas(x: unknown, ahora = Date.now()): LlamadasDeUnaHora | null {
+  const d = x as Record<string, unknown> | null;
+  if (!d || typeof d !== 'object') return null;
+  const h = Number(d.hora);
+  const n = Math.round(Number(d.n));
+  if (!Number.isFinite(h) || !Number.isFinite(n) || n < 0) return null;
+  const hora = h - (h % HORA);
+  if (hora < ahora - DIAS_GUARDADOS * 86400000 || hora > ahora + 26 * HORA) return null;
+  return { hora, n: Math.min(n, 500) };
+}
+
+/** Guarda cuántas llamadas hubo en cada hora (la misma hora de nuevo se reemplaza). */
+export async function guardarLlamadasPorHora(tx: Tx, f: Fuente, horas: unknown[]): Promise<number> {
+  if (horas.length > 5000) throw new ErrorApi('Mandá hasta 5000 "horas" por vez.');
+  const ahora = Date.now();
+  const hs = horas.map((x) => leerHoraLlamadas(x, ahora)).filter((x): x is LlamadasDeUnaHora => x !== null);
+  for (const h of hs) {
+    await tx.execute(sql`
+      INSERT INTO llamadas_horas (persona_id, fuente_id, hora, fecha, n)
+      VALUES (${f.persona_id}, ${f.id}, ${new Date(h.hora).toISOString()}, ${diaDePatty(new Date(h.hora), f.zona_horaria)}, ${h.n})
+      ON CONFLICT (persona_id, hora) DO UPDATE SET n = excluded.n, fuente_id = excluded.fuente_id`);
+  }
+  await tx.execute(sql`DELETE FROM llamadas_horas WHERE persona_id = ${f.persona_id} AND hora < now() - make_interval(days => ${DIAS_GUARDADOS})`);
+  await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE id = ${f.id}`);
+  return hs.length;
+}
+
+/** Las 24 horas de un día de la persona (de 0 a 23), o null si el teléfono no mandó nada de ese día. */
+async function llamadasPorHora(db: Db, personaId: number, fecha: string, zona: string): Promise<number[] | null> {
+  const l = await filas<{ hora: string; n: number }>(db, sql`SELECT hora, n FROM llamadas_horas WHERE persona_id = ${personaId} AND fecha = ${fecha}`);
+  if (!l.length) return null;
+  const r = Array.from({ length: 24 }, () => 0);
+  for (const x of l) r[horaLocal(new Date(x.hora).getTime(), zona)] += Number(x.n);
+  return r;
 }
 
 // ---------- Pedidos, viajes y ejercicio ----------

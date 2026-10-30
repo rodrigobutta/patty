@@ -1,4 +1,4 @@
-import { medicionesDelDia } from './telefono';
+import { llamadasPorHora, medicionesDelDia } from './telefono';
 
 const desde = new Date('2026-10-24T03:00:00Z');
 const hasta = new Date('2026-10-25T03:00:00Z');
@@ -25,5 +25,18 @@ describe('datos del teléfono de un día', () => {
   it('sin permiso de uso o de llamadas manda solo lo otro', () => {
     expect(medicionesDelDia(desde, hasta, null, { entrantes: 0, salientes: 0, perdidas: 0, segundos: 0 })).toHaveLength(3);
     expect(medicionesDelDia(desde, hasta, null, null)).toEqual([]);
+  });
+
+  it('las llamadas por hora: todas las horas del día, con 0 las que no tuvieron', () => {
+    const d = new Date(2026, 9, 24);
+    const h = new Date(2026, 9, 25);
+    const diez = new Date(2026, 9, 24, 10).getTime();
+    const r = llamadasPorHora(d, h, { entrantes: 2, salientes: 0, perdidas: 1, segundos: 60, porHora: [{ hora: diez, n: 3 }] });
+    expect(r).toHaveLength(24);
+    expect(r![10]).toEqual({ hora: diez, n: 3 });
+    expect(r!.reduce((t, x) => t + x.n, 0)).toBe(3);
+    // La app vieja no las manda.
+    expect(llamadasPorHora(d, h, { entrantes: 1, salientes: 0, perdidas: 0, segundos: 0 })).toBeNull();
+    expect(llamadasPorHora(d, h, null)).toBeNull();
   });
 });

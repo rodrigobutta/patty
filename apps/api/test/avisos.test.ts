@@ -5,7 +5,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { nocheDe } from '../src/avisos/telefono.js';
 import { cerrarDb, obtenerDb } from '../src/db/client.js';
-import { diaDePatty } from '../src/lib/fechas.js';
+import { diaDePatty, sumarDias } from '../src/lib/fechas.js';
 import { Cliente, conAdmin } from './ayudas.js';
 
 afterAll(() => cerrarDb());
@@ -80,8 +80,9 @@ describe('cuántos avisos y mensajes', () => {
     expect(d.notificaciones.total).toBe(21);
     expect(d.notificaciones.por_hora[17]).toBe(15);
     expect(d.notificaciones.por_hora[23]).toBe(2);
-    expect(d.notificaciones.apps[0]).toEqual({ app: 'WhatsApp', n: 14 });
-    expect(d.mensajes).toEqual({ total: 13, apps: [{ app: 'WhatsApp', n: 13 }] });
+    expect(d.notificaciones.apps[0]).toEqual({ app: 'WhatsApp', n: 14, paquete: 'com.whatsapp' });
+    expect(d.mensajes).toEqual({ total: 13, apps: [{ app: 'WhatsApp', n: 13, paquete: 'com.whatsapp' }] });
+    expect(d.llamadas_por_hora).toBeNull();
     const dm = (await ana.get(`/api/avisos/dia?persona=${personaId}&fecha=${manana}`)).body;
     expect(dm.notificaciones).toBeNull();
 
@@ -103,7 +104,38 @@ describe('cuántos avisos y mensajes', () => {
     // Borrar todo.
     expect((await ana.del(`/api/avisos?persona=${personaId}`)).status).toBe(200);
     expect(await medido(personaId, 'Notificaciones')).toEqual({});
-    expect((await ana.get(`/api/avisos/dia?persona=${personaId}&fecha=${dia}`)).body).toEqual({ notificaciones: null, mensajes: null });
+    expect((await ana.get(`/api/avisos/dia?persona=${personaId}&fecha=${dia}`)).body).toEqual({ notificaciones: null, mensajes: null, llamadas_por_hora: null });
+  });
+
+  it('las llamadas por hora: van al gráfico del día (de 5 a 5) y mandar de nuevo una hora la reemplaza', async () => {
+    const { ana, app, personaId } = await conApp();
+    // Anteayer a las 10 h y 17 h de Buenos Aires (13 y 20 UTC), y a la 1 de la mañana siguiente (es del mismo día de Patty).
+    const base = diaDePatty(new Date(Date.now() - 2 * 86400000), ZONA);
+    const diez = Date.parse(`${base}T13:00:00Z`);
+    const horas = [
+      { hora: diez, n: 2 },
+      { hora: diez + 1 * HORA, n: 0 },
+      { hora: diez + 7 * HORA, n: 1 },
+      { hora: diez + 15 * HORA, n: 1 },
+      // Lo que no sirve se saltea.
+      { hora: Date.now() + 5 * 86400000, n: 1 },
+      { hora: diez, n: -1 },
+      { n: 3 },
+    ];
+    const r = await app.post('/api/ingesta/llamadas', { horas });
+    expect(r.status).toBe(200);
+    expect(r.body.horas).toBe(4);
+    await app.post('/api/ingesta/llamadas', { horas: [{ hora: diez + 7 * HORA + 20 * MIN, n: 3 }] });
+    const d = (await ana.get(`/api/avisos/dia?persona=${personaId}&fecha=${base}`)).body;
+    expect(d.notificaciones).toBeNull();
+    expect(d.llamadas_por_hora).toHaveLength(24);
+    expect(d.llamadas_por_hora[10]).toBe(2);
+    expect(d.llamadas_por_hora[17]).toBe(3);
+    expect(d.llamadas_por_hora[1]).toBe(1);
+    expect(d.llamadas_por_hora.reduce((a: number, b: number) => a + b, 0)).toBe(6);
+    // Un día que el teléfono no mandó: no se sabe.
+    expect((await ana.get(`/api/avisos/dia?persona=${personaId}&fecha=${sumarDias(base, -3)}`)).body.llamadas_por_hora).toBeNull();
+    expect((await app.post('/api/ingesta/llamadas', { horas: 'no' })).status).toBe(400);
   });
 
   it('sin token de una fuente no entra', async () => {

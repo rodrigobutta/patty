@@ -48,6 +48,8 @@ export const AVISOS_TELEFONO: Record<string, string> = {
   '{n} sonaron de noche': '{n} made a sound at night',
   'Por hora': 'By hour',
   'Notificaciones por hora': 'Notifications by hour',
+  'Notificaciones y llamadas por hora': 'Notifications and calls by hour',
+  'Llamadas por hora': 'Calls by hour',
   'Las apps que más avisaron': 'The apps that notified the most',
   'Anoche (de 23 a 7) llegaron {n}: {s} sonaron y {a} con la pantalla apagada.': 'Last night (11 pm to 7 am) {n} arrived: {s} made a sound and {a} with the screen off.',
   'Borrar todo lo de los avisos': 'Delete everything from notifications',
@@ -71,4 +73,6 @@ export const AVISOS_TELEFONO: Record<string, string> = {
   '¿Qué fue?': 'What was it?',
   'Mandá hasta 5000 "conteos" y 500 "eventos" por vez.': 'Send up to 5000 "conteos" and 500 "eventos" at a time.',
   'Mandá listas "conteos" y "eventos".': 'Send "conteos" and "eventos" lists.',
+  'Mandá hasta 5000 "horas" por vez.': 'Send up to 5000 "horas" at a time.',
+  'Mandá una lista "horas".': 'Send an "horas" list.',
 };
