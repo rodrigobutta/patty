@@ -777,7 +777,10 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .icono.sin-nombre { color: #e58bb4; }
 .mapa .mapa-patty { filter: grayscale(1) sepia(0.3) hue-rotate(215deg) saturate(1.6) brightness(1.04) contrast(0.92); }
 .mapa .mapa-patty.oscuro { filter: invert(1) grayscale(1) sepia(0.35) hue-rotate(215deg) saturate(1.8) brightness(0.8) contrast(1.05); }
-.version-app { margin: 28px 0 8px; text-align: center; font-size: 11px; color: var(--suave); opacity: 0.8; }
+.version-app { margin: 28px 0 8px; text-align: center; font-size: 12px; color: var(--suave); }
+.version-app dt { font-weight: 700; margin-top: 8px; }
+.version-app dd { margin: 2px 0 0; }
+.version-app .enlace { font-size: inherit; padding: 0; }
 .version-vieja { color: var(--ambar); font-weight: 700; }
 
 /* ---------- Puntos y tablero ---------- */

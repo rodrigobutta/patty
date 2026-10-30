@@ -1042,4 +1042,10 @@ export const PERMISOS: Record<string, string> = {
   "Horas ocupadas en el calendario": "Busy hours in the calendar",
   "App del teléfono {v}": "Phone app {v}",
   "hay una más nueva ({v}): bajala": "there is a newer one ({v}): get it",
+  "Patty (web)": "Patty (web)",
+  "App del teléfono": "Phone app",
+  "tenés {v}": "you have {v}",
+  "última {v}": "latest {v}",
+  "al día": "up to date",
+  "Bajarla": "Get it",
 };

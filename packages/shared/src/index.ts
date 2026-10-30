@@ -180,6 +180,8 @@ export interface Sesion {
   push: boolean;
   /** La última versión publicada de la app de Android y de dónde bajarla (si la administración la cargó). */
   app?: VersionApp | null;
+  /** La última versión de Patty (la web), la que corre en el servidor. */
+  version?: string;
   /** El ID de Google Analytics (G-…) para medir la página de presentación, si está configurado. */
   analytics?: string | null;
 }

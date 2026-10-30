@@ -10,6 +10,7 @@ import { agregarWidget } from '../lib/push';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
 import { api, API_BASE } from '../api';
+import { actualizarAhora } from '../lib/actualizar';
 import { olvidarPreferenciaBuenDia } from './BuenDia';
 import { IconoSueno } from '../ui/IconosWidget';
 import { useEstado } from '../estado';
@@ -538,22 +539,53 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       ) : null}
       {!instalada() && !esNativa() ? <button className="btn ancho" onClick={instalar}>{t('📲 Instalar Patty en el teléfono')}</button> : null}
       <button className="btn ancho salir" onClick={salir}>{t('Salir ({nombre})', { nombre: usuario?.nombre ?? '' })}</button>
-      <p className="version-app">
-        Patty {VERSION}{COMMIT ? ` · ${COMMIT}` : ''}
-        {/* Lo de Patty se actualiza solo; la app del teléfono cambia solo cuando hay algo nativo, por eso puede ir atrás. */}
-        {nativa ? (
+      <VersionesDePatty nativa={nativa} />
+    </section>
+  );
+}
+
+/**
+ * Abajo de todo en Más, bien explícito: qué versión tenés y cuál es la última, de Patty (la web, se actualiza sola) y de
+ * la app del teléfono (el APK, cambia solo cuando hay algo nativo). Se pregunta de nuevo al servidor al abrir Más.
+ */
+function VersionesDePatty({ nativa }: { nativa: string | null }) {
+  const { sesion } = useEstado();
+  const [ultimas, setUltimas] = useState<{ version?: string; app?: { version: string; url: string } | null }>({ version: sesion?.version, app: sesion?.app });
+  useEffect(() => {
+    void api<{ version?: string; app?: { version: string; url: string } | null }>('GET', '/api/sesion').then(setUltimas).catch(() => {});
+  }, []);
+  const web = ultimas.version;
+  const apk = ultimas.app;
+  const webVieja = Boolean(web && compararVersiones(VERSION, web) < 0);
+  const apkVieja = Boolean(nativa && apk && compararVersiones(nativa, apk.version) < 0);
+  return (
+    <dl className="version-app">
+      <dt>{t('Patty (web)')}</dt>
+      <dd>
+        {t('tenés {v}', { v: VERSION })}{COMMIT ? ` · ${COMMIT}` : ''}
+        {web ? ` · ${t('última {v}', { v: web })}` : ''}
+        {webVieja ? (
           <>
-            <br />
-            {t('App del teléfono {v}', { v: nativa })}
-            {sesion?.app && compararVersiones(nativa, sesion.app.version) < 0 ? (
+            {' · '}
+            <button className="enlace" onClick={() => void actualizarAhora()}>{t('Actualizar')}</button>
+          </>
+        ) : web ? ` · ${t('al día')}` : ''}
+      </dd>
+      {nativa ? (
+        <>
+          <dt>{t('App del teléfono')}</dt>
+          <dd>
+            {t('tenés {v}', { v: nativa })}
+            {apk ? ` · ${t('última {v}', { v: apk.version })}` : ''}
+            {apkVieja ? (
               <>
                 {' · '}
-                <a href={sesion.app.url} target="_blank" rel="noreferrer">{t('hay una más nueva ({v}): bajala', { v: sesion.app.version })}</a>
+                <a href={apk!.url} target="_blank" rel="noreferrer">{t('Bajarla')}</a>
               </>
-            ) : null}
-          </>
-        ) : null}
-      </p>
-    </section>
+            ) : apk ? ` · ${t('al día')}` : ''}
+          </dd>
+        </>
+      ) : null}
+    </dl>
   );
 }

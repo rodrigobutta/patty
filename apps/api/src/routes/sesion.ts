@@ -1,6 +1,7 @@
 // Entrar, salir, primer usuario y Google. Al entrar se devuelve también el token, para la app con Capacitor
 // (que no puede usar la cookie de otro dominio); la web usa la cookie.
 import { limitesDe } from 'shared';
+import { VERSION } from '../lib/version.js';
 import { usoDeHoy } from '../lib/usoIa.js';
 import { setTimeout as esperar } from 'node:timers/promises';
 import { randomBytes } from 'node:crypto';
@@ -39,6 +40,7 @@ export const rutasSesion = new Hono<Env>()
       voz: vozDisponible(),
       push: pushDisponible(),
       app: (await una<{ valor: VersionApp }>(c.var.db, sql`SELECT valor FROM ajustes WHERE clave = 'version_app'`))?.valor ?? null,
+      version: VERSION,
     };
     return c.json(s);
   })
