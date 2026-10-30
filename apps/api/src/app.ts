@@ -100,7 +100,7 @@ function idiomaDelPedido(x: string | undefined, accept: string | undefined): Idi
 /** El APK de la última versión (`gh release create vX.Y.Z patty.apk`). */
 export const APK_ANDROID = 'https://github.com/rodrigobutta/patty/releases/latest/download/patty.apk';
 
-export function crearApp(): Hono<Env> {
+export function crearApp(modo = config.modo): Hono<Env> {
   const app = new Hono<Env>();
 
   app.onError((e, c) => {
@@ -130,6 +130,33 @@ export function crearApp(): Hono<Env> {
   });
   // Sin usuario: sesión, entrar, primer usuario. La ingesta usa el token de cada fuente.
   api.route('/', rutasSesion);
+  if (modo === 'admin') {
+    // El servidor de la administración (admin.patty.today) solo tiene esto: entrar, la administración y los usuarios.
+    api.route('/', rutasErrores);
+    api.use('*', async (c, next) => {
+      const u = await usuarioDeToken(c.var.db, c.var.token);
+      if (!u) throw new ErrorApi('Tenés que entrar con tu usuario.', 401);
+      c.set('usuario', u);
+      await next();
+    });
+    api.route('/admin', rutasAdmin);
+    api.route('/usuarios', rutasUsuarios);
+    api.all('*', () => {
+      throw new ErrorApi('Ruta desconocida.', 404);
+    });
+    app.route('/api', api);
+    app.get('*', async (c) => {
+      // La página de la administración para todo lo que no es un archivo (admin/index.html, con rutas ../assets).
+      const base = config.staticDir;
+      const pedido = path.normalize(path.join(base, decodeURIComponent(new URL(c.req.url).pathname)));
+      if (pedido.startsWith(path.join(base, path.sep)) && pedido.includes(`${path.sep}assets${path.sep}`)) {
+        const a = await archivo(pedido);
+        if (a) return a;
+      }
+      return (await archivo(path.join(base, 'admin', 'index.html'))) ?? c.text('Patty: falta compilar la web (STATIC_DIR).', 404);
+    });
+    return app;
+  }
   api.route('/ingesta', rutasIngesta);
   api.route('/', rutasErrores);
   api.route('/', rutasBeta);
@@ -149,7 +176,8 @@ export function crearApp(): Hono<Env> {
     // Los pedidos a la IA de acá en adelante quedan anotados a nombre de este usuario.
     await conUso({ usuarioId: u.id, tipo: 'otro' }, () => next());
   });
-  api.route('/admin', rutasAdmin);
+  // Con la administración en su propio servidor (MODO=app), este no la tiene.
+  if (modo !== 'app') api.route('/admin', rutasAdmin);
   api.route('/usuarios', rutasUsuarios);
   api.route('/personas', rutasPersonas);
   api.route('/conceptos', rutasConceptos);
@@ -186,6 +214,8 @@ export function crearApp(): Hono<Env> {
 
   // La app de Android, directo (sin Play Store por ahora): el APK firmado de la última versión, en GitHub Releases.
   app.get('/descargar/android', (c) => c.redirect(APK_ANDROID, 302));
+  // Con la administración aparte, patty.today/admin lleva ahí.
+  if (modo === 'app') app.get('/admin/*', (c) => c.redirect(config.urlAdmin, 302)).get('/admin', (c) => c.redirect(config.urlAdmin, 302));
 
   // La web: los archivos que existen, y si no, index.html (la app usa rutas con #).
   app.get('*', async (c) => {

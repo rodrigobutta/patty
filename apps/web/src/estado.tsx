@@ -34,6 +34,9 @@ interface Estado {
 }
 
 const Ctx = createContext<Estado | null>(null);
+/** Para la página de la administración, que arma su propio estado (sin personas ni categorías). */
+export const ContextoEstado = Ctx;
+export type { Estado };
 export const useEstado = (): Estado => {
   const e = useContext(Ctx);
   if (!e) throw new Error('useEstado fuera de EstadoProvider');

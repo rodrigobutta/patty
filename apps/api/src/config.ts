@@ -10,6 +10,18 @@ export const config = {
   get databaseUrl() {
     return env('DATABASE_URL') ?? 'postgres://localhost/patty';
   },
+  /**
+   * Qué sirve este servidor: `completo` (todo, como siempre), `app` (la app y su API, sin la administración) o `admin`
+   * (solo la administración y su API, sin los procesos que corren solos: eso lo hace el de la app).
+   */
+  get modo(): 'completo' | 'app' | 'admin' {
+    const m = env('MODO');
+    return m === 'app' || m === 'admin' ? m : 'completo';
+  },
+  /** Dónde está la administración cuando corre aparte (para mandar ahí a quien entra a /admin en la app). */
+  get urlAdmin() {
+    return env('URL_ADMIN') ?? 'https://admin.patty.today';
+  },
   get port() {
     return Number(env('PORT') ?? 8000);
   },
