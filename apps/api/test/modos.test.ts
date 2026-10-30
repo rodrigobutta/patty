@@ -40,3 +40,14 @@ describe('worker', () => {
     expect((await appWorker().request('/api/personas')).status).toBe(404);
   });
 });
+
+describe('entrar con el mail', () => {
+  it('sirve el usuario o el mail, con la misma clave', async () => {
+    const { ana } = await conAdmin();
+    await ana.post('/api/usuarios', { usuario: 'beto', nombre: 'Beto', email: 'Beto@Mail.com', clave: 'secreta2', rol: 'admin' });
+    const r = await crearApp('admin').request('/api/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: 'beto@mail.com', clave: 'secreta2' }) });
+    expect(r.status).toBe(200);
+    const mal = await crearApp('admin').request('/api/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: 'beto@mail.com', clave: 'otra' }) });
+    expect(mal.status).toBe(401);
+  });
+});

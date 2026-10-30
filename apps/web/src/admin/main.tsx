@@ -71,7 +71,7 @@ function EntrarAdmin({ alEntrar }: { alEntrar(): void }) {
   return (
     <form className="tarjeta admin-sin-acceso" onSubmit={entrar}>
       <h2>🛠️ {t('Administración de Patty')}</h2>
-      <label>{t('Usuario')}<input name="usuario" required autoCapitalize="none" autoComplete="username" /></label>
+      <label>{t('Mail o usuario')}<input name="usuario" required autoCapitalize="none" autoComplete="username" inputMode="email" /></label>
       <label>{t('Clave')}<input name="clave" type="password" required autoComplete="current-password" /></label>
       {error ? <p className="neg">{error}</p> : null}
       <button className="btn primario ancho" disabled={entrando}>{entrando ? t('Entrando…') : t('Entrar')}</button>

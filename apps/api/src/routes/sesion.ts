@@ -59,10 +59,12 @@ export const rutasSesion = new Hono<Env>()
     return conSesion(c, id);
   })
   .post('/entrar', async (c) => {
+    // Con el usuario o con el mail (la administración pide mail y clave).
     const d = await cuerpo(c);
     const fila = await una<{ id: number; clave: string }>(
       c.var.db,
-      sql`SELECT id, clave FROM usuarios WHERE lower(usuario) = lower(${texto(d.usuario)}) AND activo LIMIT 1`,
+      sql`SELECT id, clave FROM usuarios WHERE (lower(usuario) = lower(${texto(d.usuario)}) OR lower(email) = lower(${texto(d.usuario)})) AND activo
+          ORDER BY (lower(usuario) = lower(${texto(d.usuario)})) DESC LIMIT 1`,
     );
     if (!fila || !(await claveOk(d.clave, fila.clave))) {
       await esperar(600);
