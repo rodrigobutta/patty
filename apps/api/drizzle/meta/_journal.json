@@ -330,6 +330,13 @@
       "when": 1793322461688,
       "tag": "0046_avisos_telefono",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793324005831,
+      "tag": "0047_relacion_gente",
+      "breakpoints": true
     }
   ]
 }

@@ -1616,3 +1616,6 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .horas-barras { display: flex; justify-content: space-between; }
 .apps-avisos { margin: 0; padding-left: 20px; }
 .apps-avisos li { display: flex; justify-content: space-between; gap: 8px; }
+/* Personas guardadas: qué es cada una (familia, trabajo…). */
+.relacion-gente { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 10px; border: 1px solid var(--borde); background: var(--panel); color: var(--texto); max-width: 120px; }
+.relacion-gente.sin { color: var(--acento); border-style: dashed; }

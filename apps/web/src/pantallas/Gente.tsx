@@ -1,7 +1,8 @@
-// "Tu gente" (en Más → Personas y datos): las personas con las que solés estar (familia, amigos, compañeros), para
-// anotar con un toque con quién estuviste. Se da de alta, se le cambia el nombre o se saca de la lista.
+// "Personas guardadas" (en Más): las personas con las que solés estar, para anotar con un toque con quién estuviste.
+// Se da de alta, se le cambia el nombre, se dice qué es (familia, pareja, trabajo…) o se saca de la lista. Con qué es
+// cada una, Patty también mira cómo te va según con quién estás ("con la familia", "con gente del trabajo").
 import { useEffect, useState } from 'react';
-import type { Persona } from 'shared';
+import { RELACIONES, type Persona, type Relacion } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { genteGuardada, traerGente, type Alguien } from '../lib/gente';
@@ -32,14 +33,19 @@ export function Gente({ persona, puedeEscribir }: { persona: Persona; puedeEscri
     const n = prompt(t('Nuevo nombre'), a.nombre)?.trim();
     if (n && n !== a.nombre) void hacer(() => api('PUT', `/api/gente/${a.id}`, { persona_id: persona.id, nombre: n }));
   };
+  const relacion = (a: Alguien, r: string) => {
+    const valor = (r || null) as Relacion | null;
+    setLista((l) => l.map((x) => (x.id === a.id ? { ...x, relacion: valor } : x)));
+    void hacer(() => api('PUT', `/api/gente/${a.id}/relacion`, { persona_id: persona.id, relacion: valor }));
+  };
   const sacar = (a: Alguien) => {
     if (confirm(t('¿Sacar a {nombre} de tu gente? Lo ya anotado queda.', { nombre: a.nombre }))) void hacer(() => api('DELETE', `/api/gente/${a.id}?persona=${persona.id}`));
   };
 
   return (
     <div className="tarjeta">
-      <h3>{t('👥 Tu gente')}</h3>
-      <p className="suave chico">{t('Con quién solés estar: así anotás con un toque con quién estuviste, y Patty ve si te hace bien.')}</p>
+      <h3>{t('Personas guardadas')}</h3>
+      <p className="suave chico">{t('Con quién solés estar: así anotás con un toque con quién estuviste. Decí qué es cada una (familia, pareja, trabajo…) y Patty también ve cómo te va según con quién estás.')}</p>
       {lista.length ? (
         <ul className="lista">
           {lista.map((a) => (
@@ -51,6 +57,12 @@ export function Gente({ persona, puedeEscribir }: { persona: Persona; puedeEscri
               </span>
               {puedeEscribir ? (
                 <>
+                  <select className={`relacion-gente${a.relacion ? '' : ' sin'}`} value={a.relacion ?? ''} onChange={(e) => relacion(a, e.target.value)} aria-label={t('Qué es {nombre}', { nombre: a.nombre })}>
+                    <option value="">{t('¿Qué es?')}</option>
+                    {RELACIONES.map((r) => (
+                      <option key={r.clave} value={r.clave}>{t(r.nombre)}</option>
+                    ))}
+                  </select>
                   <button className="btn-icono chico" onClick={() => renombrar(a)} aria-label={t('Renombrar {nombre}', { nombre: a.nombre })}>✏️</button>
                   <button className="btn-icono chico" onClick={() => sacar(a)} aria-label={t('Sacar a {nombre}', { nombre: a.nombre })}>🗑</button>
                 </>

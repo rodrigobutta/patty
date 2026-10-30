@@ -334,6 +334,21 @@ saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), crea
   `llegada_invitacion` y guarda el código; la bienvenida lo manda en `bienvenida_terminada`. También se miden
   `compartir_ver`, `compartir` (qué y cómo, y si iba con el mapa o lo que dijo Patty) e `invitar`.
 
+## Lo que no se puede en iPhone
+
+Límites del propio iOS (no de Patty): Apple no deja que una app lea lo de otras apps ni del sistema. En iPhone, por eso,
+no hay:
+
+- **Llamadas**: ni el historial ni cuánto duró cada una (CallKit solo ve las llamadas de la propia app).
+- **Uso del teléfono**: el tiempo de pantalla por app (Screen Time / DeviceActivity solo deja mostrar resúmenes dentro de
+  una vista de Apple, sin poder leerlos ni guardarlos).
+- **Notificaciones de otras apps**: nada de lo que sale de "Lo que avisan las apps" en Android (cuántas notificaciones y
+  cuáles de noche, mensajes de WhatsApp/Telegram/Instagram, pedidos de PedidosYa/Rappi, viajes de Uber/Cabify/DiDi,
+  entrenamientos terminados de Strava y otras).
+- **Lo que suena en el teléfono**: qué se escucha o mira en otras apps (Spotify, YouTube Music, Netflix…); iOS no expone
+  las sesiones de medios de otras apps.
+- **Cambiar el ícono de la app según la cara del búho sin avisar**: iOS muestra un cartel cada vez que se cambia.
+
 ## Estructura
 
 ```

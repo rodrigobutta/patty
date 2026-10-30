@@ -1593,3 +1593,19 @@ export function rasgosDeFecha(fecha: string): string[] {
   if (dia > ultimo - 5) r.push('Fin de mes');
   return r;
 }
+
+/**
+ * Qué es cada persona de "Personas guardadas" para quien anota: con eso Patty también mira cómo te va según con quién
+ * estás ("Con la familia", "Con compañeros de trabajo"), además de persona por persona.
+ */
+export const RELACIONES = [
+  { clave: 'familia', nombre: 'Familia', grupo: 'Con la familia' },
+  { clave: 'pareja', nombre: 'Pareja', grupo: 'Con tu pareja' },
+  { clave: 'amistad', nombre: 'Amistades', grupo: 'Con amistades' },
+  { clave: 'trabajo', nombre: 'Trabajo', grupo: 'Con gente del trabajo' },
+  { clave: 'estudio', nombre: 'Estudio', grupo: 'Con compañeros de estudio' },
+  { clave: 'salud', nombre: 'Salud', grupo: 'Con profesionales de la salud' },
+  { clave: 'otro', nombre: 'Otro', grupo: 'Con otra gente' },
+] as const;
+export type Relacion = (typeof RELACIONES)[number]['clave'];
+export const esRelacion = (x: unknown): x is Relacion => RELACIONES.some((r) => r.clave === x);

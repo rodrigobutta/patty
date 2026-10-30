@@ -1,11 +1,14 @@
 // La gente de la persona (para anotar con quién estuvo). Se guarda la última lista traída para que los chips aparezcan
 // enseguida.
+import type { Relacion } from 'shared';
 import { api } from '../api';
 
 export interface Alguien {
   id: number;
   nombre: string;
   veces: number;
+  /** Qué es para la persona (familia, trabajo…), si lo dijo. */
+  relacion?: Relacion | null;
 }
 
 const cache = new Map<number, Alguien[]>();

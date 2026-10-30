@@ -1,0 +1,1 @@
+ALTER TABLE "gente" ADD COLUMN "relacion" text;

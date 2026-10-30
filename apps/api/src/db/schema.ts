@@ -675,6 +675,8 @@ export const gente = pgTable(
       .references(() => conceptos.id, { onDelete: 'cascade' }),
     /** Sacado de la lista (lo anotado con esa persona queda, pero ya no se ofrece). */
     oculta: boolean('oculta').notNull().default(false),
+    /** Qué es para la persona: familia, pareja, amistad, trabajo… (ver RELACIONES); null si no se dijo. */
+    relacion: text('relacion'),
     creado: creado(),
   },
   (t) => [primaryKey({ columns: [t.persona_id, t.concepto_id] })],

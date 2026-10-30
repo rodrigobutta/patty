@@ -1,7 +1,7 @@
 // El análisis de patrones de una persona: junta sus datos de cada día, busca relaciones, las hace explicar por la IA (si
 // está) y las guarda. Lo corre la persona con "Buscar patrones" y el servidor solo, de madrugada (patrones/noche.ts).
 import { sql } from 'drizzle-orm';
-import { nombreRasgo, patronesFinos, perfilTexto, traducir, type AjustesPatrones, type Hallazgo, type Idioma, type Persona, type ResultadoAnalisis } from 'shared';
+import { nombreRasgo, patronesFinos, perfilTexto, RELACIONES, traducir, type AjustesPatrones, type RolCategoria, type Hallazgo, type Idioma, type Persona, type ResultadoAnalisis } from 'shared';
 import { filas, una, type Db, type Tx } from '../db/client.js';
 import { analisis, hallazgos } from '../db/schema.js';
 import { explicarHallazgos } from '../ia/analizar.js';
@@ -9,6 +9,7 @@ import { iaDisponible } from '../ia/cliente.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { rasgosDelCalendario } from '../routes/ciclo.js';
 import { climaPorHoraParaPatrones } from '../routes/clima.js';
+import { obtenerOCrearConcepto } from '../routes/conceptos.js';
 import { buscarPatrones, claveCausas, describir, DIAS_MINIMOS, type ConceptoInfo, type FilaDiaria } from './motor.js';
 
 const COLUMNAS = sql`h.id, h.persona_id, h.causa_id, h.efecto_id, ca.nombre AS causa, ef.nombre AS efecto, h.causa_modo, h.efecto_modo,
@@ -94,6 +95,10 @@ export async function datosDePersona(db: Db, p: PersonaAcceso, desde: string, ha
         WHERE c.id IN (SELECT DISTINCT concepto_id FROM serie_diaria WHERE persona_id = ${p.id})`,
   );
   for (const x of calendario.conceptos) if (!conceptos.some((k) => k.id === x.id)) conceptos.push(x);
+  // Con quién, por grupo: los días que estuvo con alguien de la familia, del trabajo… (ver RELACIONES en Personas guardadas).
+  const grupos = await db.transaction((tx) => rasgosDeGente(tx, p.id, desde, hasta));
+  datos.push(...grupos.filas);
+  for (const x of grupos.conceptos) if (!conceptos.some((k) => k.id === x.id)) conceptos.push(x);
   return { datos, conceptos };
 }
 
@@ -215,4 +220,37 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
     sugerencias: ia?.sugerencias ?? [],
   };
   return { ...res, nuevos: resultado.nuevos };
+}
+
+/**
+ * Los días que la persona estuvo con alguien de cada grupo (familia, pareja, trabajo…), según qué es cada uno en sus
+ * Personas guardadas: un rasgo por grupo ("Con la familia"), de la categoría de la gente, que entra como causa.
+ */
+export async function rasgosDeGente(tx: Tx, personaId: number, desde: string, hasta: string): Promise<{ filas: FilaDiaria[]; conceptos: ConceptoInfo[] }> {
+  const l = await filas<{ fecha: string; relacion: string; veces: number }>(
+    tx,
+    sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, g.relacion, count(*)::int AS veces
+        FROM registros r JOIN gente g ON g.persona_id = r.persona_id AND g.concepto_id = r.concepto_id
+        WHERE r.persona_id = ${personaId} AND r.borrado IS NULL AND g.relacion IS NOT NULL AND r.fecha BETWEEN ${desde} AND ${hasta}
+        GROUP BY 1, 2`,
+  );
+  if (!l.length) return { filas: [], conceptos: [] };
+  const cat = await una<{ id: number; rol: RolCategoria }>(tx, sql`SELECT id, rol FROM categorias WHERE clave = 'gente'`);
+  if (!cat) return { filas: [], conceptos: [] };
+  const conceptos: ConceptoInfo[] = [];
+  const ids = new Map<string, number>();
+  const r: FilaDiaria[] = [];
+  for (const x of l) {
+    const grupo = RELACIONES.find((g) => g.clave === x.relacion)?.grupo;
+    if (!grupo) continue;
+    let id = ids.get(grupo);
+    if (id === undefined) {
+      const { concepto } = await obtenerOCrearConcepto(tx, { nombre: grupo, categoriaId: cat.id, tipoValor: 'evento', unidad: null });
+      id = concepto.id;
+      ids.set(grupo, id);
+      conceptos.push({ id, nombre: concepto.nombre, tipo_valor: concepto.tipo_valor, rol: 'causa', categoria: 'gente' });
+    }
+    r.push({ fecha: x.fecha, concepto_id: id, veces: x.veces, suma: null, promedio: null, intensidad: null, primera: null, automatica: true });
+  }
+  return { filas: r, conceptos };
 }

@@ -350,7 +350,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   if (seccion === 'supervision') return pantalla(t('👨‍👩‍👧 Familia'), <>
       <Supervision />
   </>, true);
-  if (seccion === 'personas') return pantalla(t('👥 Tu gente y personas'), <>
+  if (seccion === 'personas') return pantalla(t('Personas guardadas'), <>
       {persona ? <Gente persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
       <div className="tarjeta">
         <p className="suave chico">{t('De quién se anota el día. Tocá una para cambiar.')}</p>
@@ -465,7 +465,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'patrones', icono: <IconoPatrones />, titulo: t('Qué patrones buscar'), sub: t('Umbrales, lo que te protege, efectos a los días'), ver: Boolean(persona) },
     { clave: 'avisos', icono: <IconoAvisos />, titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
     { clave: 'supervision', icono: <IconoFamilia />, titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
-    { clave: 'personas', icono: <IconoGente />, titulo: t('Tu gente y personas'), sub: t('Con quién estás y de quién se anota') },
+    { clave: 'personas', icono: <IconoGente />, titulo: t('Personas guardadas'), sub: t('Con quién estás, qué es cada una y de quién se anota') },
     { clave: 'cuenta', icono: <IconoCuenta />, titulo: t('Tu cuenta'), sub: t('Foto, apodo, tema, idioma') },
     { clave: 'avanzado', icono: <IconoAvanzado />, titulo: t('Otros dispositivos'), sub: t('Relojes y atajos con token'), ver: usuario?.rol !== 'lector' },
   ];
