@@ -693,10 +693,13 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .ciclo-dia .btn.ancho { margin: 4px 0 8px; }
 .datos-ciclo { list-style: none; margin: 10px 0 6px; padding: 0; display: grid; gap: 6px; font-size: 0.92em; }
 
+/* En Más no va la barra de arriba (el búho y los puntos): ese lugar es para el contenido. Queda montada, escondida. */
+.app.sin-barra .barra { display: none; }
+.app.sin-barra main { padding-top: calc(16px + env(safe-area-inset-top)); }
+.app.sin-barra .cabeza-sub { top: 0; padding-top: calc(10px + env(safe-area-inset-top)); margin-top: calc(-16px - env(safe-area-inset-top)); }
+
 /* ---------- Foto y apodo ---------- */
 .avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; object-fit: cover; flex: none; background: var(--acento); color: var(--sobre-acento); font-weight: 700; }
-.btn-avatar { margin-left: 8px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 50%; line-height: 0; }
-.btn-avatar .avatar { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--borde); }
 .cuenta-perfil { display: flex; gap: 14px; align-items: flex-start; }
 .cuenta-perfil .que { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cuenta-perfil .apodo { margin-top: 10px; }

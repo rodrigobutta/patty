@@ -9,7 +9,7 @@ import { Mascota } from '../mascota/Mascota';
 const CLAVE = 'tour-visto';
 const EVENTO = 'patty-tour';
 const PASOS: Array<{ sel: string; titulo: string; texto: string }> = [
-  { sel: '.boton-buho', titulo: '¡Hola! Soy Patty 🦉', texto: 'Tocame cuando quieras contarme cómo te sentís. Mi cara cambia según cuánto me contás.' },
+  { sel: '.buho-puntos', titulo: '¡Hola! Soy Patty 🦉', texto: 'Tocame cuando quieras contarme cómo te sentís. Mi cara cambia según cuánto me contás.' },
   { sel: '.contale', titulo: 'Contame tu día', texto: 'Hablame o escribime como te salga: "desayuné café con tostadas y a la tarde salí a caminar". Yo lo ordeno, con la hora de cada cosa.' },
   { sel: '.camara-flotante', titulo: 'Una foto del plato', texto: 'Sacale una foto a tu comida y reconozco qué es, la porción y si es frito o tiene verdura.' },
   { sel: '.fab', titulo: 'Anotar con un toque', texto: 'Con el + anotás algo puntual, o con un toque: pis, agua, dientes, ducha…' },

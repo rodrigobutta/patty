@@ -177,7 +177,7 @@ export function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app${pestana === 'mas' ? ' sin-barra' : ''}`}>
       <header className="barra">
         {personas.length > 1 ? (
           <select className="persona" value={persona.id} onChange={(e) => elegirPersona(Number(e.target.value))} aria-label={t('Persona')}>
