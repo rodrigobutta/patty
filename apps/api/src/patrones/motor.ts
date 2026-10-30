@@ -84,6 +84,8 @@ export interface Candidato {
   umbral?: number | null;
   /** La causa protege: con ella el efecto aparece menos (lift < 1). */
   protege?: boolean;
+  /** Pasaba antes, pero en los últimos meses ya no se ve (ver `yaNoSeVe`). */
+  ya_no?: boolean;
 }
 
 export interface Opciones {
@@ -134,10 +136,26 @@ const P_DOSIS = 0.05;
 /** Para decir que algo protege hacen falta más días con la causa: que algo no pase dice menos que que pase. */
 const DIAS_PROTECCION = 5;
 
+/**
+ * Topes para que la cantidad de pruebas no crezca sin límite con años de historia y cientos de conceptos: se prueban las
+ * causas y los efectos que más días tienen (quedan afuera los que casi nunca aparecen, que tampoco podrían dar nada firme).
+ * Se eligen sin mirar la relación entre ellos, así que la corrección por pruebas múltiples sigue valiendo: cuenta lo que
+ * de verdad se probó. Como mucho, unas 1,1 millones de pruebas; lo normal son cien mil.
+ */
+export const CAUSAS_MAX = 250;
+export const EFECTOS_MAX = 150;
+/** A cuántas de esas causas (las de más días) se les buscan umbrales: cada una suma hasta 8 cortes por efecto y desfase. */
+export const UMBRALES_MAX = 80;
+
+/** "Últimamente": con más historia que el doble de esto, se mira si el patrón se sigue viendo en estos últimos días. */
+export const DIAS_RECIENTES = 180;
+/** Con menos días con la causa que esto en los últimos meses, no se puede decir que dejó de pasar. */
+const RECIENTES_MIN = 8;
+
 /** Con menos días que esto no se analiza: cualquier coincidencia parecería un patrón. */
 export const DIAS_MINIMOS = 14;
 
-interface Rasgo {
+export interface Rasgo {
   concepto: ConceptoInfo;
   modo: Modo;
   /** por índice de día: 1 si el rasgo está ese día */
@@ -157,6 +175,9 @@ interface Rasgo {
   escala?: 'dosis' | 'medida';
 }
 
+/** Si algo tardó más que esto en aparecer, o no aparece hace más que esto, es que no se anotaba (no que son días sin eso). */
+const DIAS_SIN_APARECER = 60;
+
 /** Las intensidades anotadas al menos en esta proporción de los días activos se tratan como un puntaje diario. */
 const PUNTAJE_DIARIO = 0.6;
 
@@ -164,7 +185,7 @@ const PUNTAJE_DIARIO = 0.6;
  * Las horas dan la vuelta a la medianoche: acostarse a la 1:00 es "más tarde" que a las 23:00. Si los valores están
  * más juntos contando el día desde el mediodía, se usan así.
  */
-function horasContinuas(v: number[]): number[] {
+export function horasContinuas(v: number[]): number[] {
   const corrida = v.map((x) => (x + 720) % 1440);
   const dispersion = (l: number[]) => {
     const m = l.reduce((a, b) => a + b, 0) / l.length;
@@ -228,9 +249,131 @@ export function benjaminiHochberg(ps: number[], m: number): number[] {
   return q;
 }
 
+// ---------- Días como bits ----------
+// Con toda la historia hay miles de días y cientos de miles de pruebas: cada tabla de 2x2 se cuenta de a 32 días por vez.
+
+export type Bits = Uint32Array;
+
+const palabras = (n: number) => (n + 31) >>> 5;
+
+function aBits(v: Uint8Array): Bits {
+  const b = new Uint32Array(palabras(v.length));
+  for (let d = 0; d < v.length; d++) if (v[d]) b[d >>> 5] |= 1 << (d & 31);
+  return b;
+}
+
+/** Bit d del resultado = bit d + k del original: "el efecto, k días después" alineado con el día de la causa. */
+function corrido(b: Bits, k: number): Bits {
+  const r = new Uint32Array(b.length);
+  const salto = k >>> 5;
+  const resto = k & 31;
+  for (let w = 0; w + salto < b.length; w++) {
+    r[w] = b[w + salto] >>> resto;
+    if (resto && w + salto + 1 < b.length) r[w] |= b[w + salto + 1] << (32 - resto);
+  }
+  return r;
+}
+
+function cuentaBits(x: number): number {
+  x -= (x >>> 1) & 0x55555555;
+  x = (x & 0x33333333) + ((x >>> 2) & 0x33333333);
+  x = (x + (x >>> 4)) & 0x0f0f0f0f;
+  return Math.imul(x, 0x01010101) >>> 24;
+}
+
+function yBits(partes: Bits[]): Bits {
+  const r = partes[0].slice();
+  for (const p of partes.slice(1)) for (let w = 0; w < r.length; w++) r[w] &= p[w];
+  return r;
+}
+
+/** Los días de `desdeDia` a `hastaDia` (índices, incluidos), para contar solo una parte de la historia. */
+export function mascaraDias(n: number, desdeDia: number, hastaDia: number): Bits {
+  const b = new Uint32Array(palabras(n));
+  for (let d = Math.max(0, desdeDia); d <= Math.min(n - 1, hastaDia); d++) b[d >>> 5] |= 1 << (d & 31);
+  return b;
+}
+
+/** Lo que hace falta de una causa (simple, un corte o una combinación) para contar: en qué días está y a qué hora. */
+export interface Fuente {
+  universo: Bits;
+  /** Los días en que está y cuenta. */
+  con: Bits;
+  hora: (d: number) => number;
+}
+
+/** Lo que hace falta de un efecto: por desfase, en qué días cuenta y en cuáles está, alineados con el día de la causa. */
+export interface Destino {
+  primera: Float64Array;
+  /** Los días en que está, sin correr (para sacar los días en que ya estaba). */
+  hoy: Bits;
+  porDesfase: Map<number, { universo: Bits; esta: Bits }>;
+  crudos: { universo: Bits; esta: Bits };
+}
+
+export const fuenteDe = (x: Pick<Rasgo, 'esta' | 'universo' | 'primera'>): Fuente => {
+  const universo = aBits(x.universo);
+  const con = aBits(x.esta);
+  for (let w = 0; w < con.length; w++) con[w] &= universo[w];
+  return { universo, con, hora: (d) => x.primera[d] };
+};
+
+export const destinoDe = (x: Rasgo): Destino => {
+  const universo = aBits(x.universo);
+  const hoy = aBits(x.esta);
+  const esta = hoy.slice();
+  for (let w = 0; w < esta.length; w++) esta[w] &= universo[w];
+  return { primera: x.primera, hoy, porDesfase: new Map(), crudos: { universo, esta } };
+};
+
+export interface Tabla {
+  n1: number;
+  a: number;
+  n0: number;
+  c: number;
+}
+
+/**
+ * La tabla de 2x2: de los días que cuentan para los dos, cuántos tienen la causa (n1), cuántos de esos tienen el efecto
+ * k días después (a), y lo mismo sin la causa (n0, c). Con desfase 0, el efecto tiene que venir después de la causa (si
+ * se sabe la hora de los dos). `limpio`: sin los días en que el efecto ya estaba el día de la causa. `mascara`: solo esos días.
+ */
+export function contar(A: Fuente, B: Destino, k: number, limpio = false, mascara?: Bits): Tabla {
+  let en = B.porDesfase.get(k);
+  if (!en) {
+    en = k ? { universo: corrido(B.crudos.universo, k), esta: corrido(B.crudos.esta, k) } : B.crudos;
+    B.porDesfase.set(k, en);
+  }
+  const { universo: ub, esta: eb } = en;
+  let total = 0, n1 = 0, a = 0, conEfecto = 0, tarde = 0;
+  for (let w = 0; w < ub.length; w++) {
+    let u = A.universo[w] & ub[w];
+    if (limpio) u &= ~B.hoy[w];
+    if (mascara) u &= mascara[w];
+    if (!u) continue;
+    const conA = A.con[w] & u;
+    const e = eb[w] & u;
+    const juntos = conA & e;
+    total += cuentaBits(u);
+    n1 += cuentaBits(conA);
+    conEfecto += cuentaBits(e);
+    a += cuentaBits(juntos);
+    if (k === 0 && juntos) {
+      for (let x = juntos; x; x &= x - 1) {
+        const d = (w << 5) + (31 - Math.clz32(x & -x));
+        if (A.hora(d) > B.primera[d]) tarde++;
+      }
+    }
+  }
+  return { n1, a: a - tarde, n0: total - n1, c: conEfecto - a };
+}
+
+/** El lift, con un poco de suavizado para que un 0 no lo rompa. */
+export const liftDe = (t: Tabla) => (t.a + 0.5) / (t.n1 + 1) / ((t.c + 0.5) / (t.n0 + 1));
+
 // ---------- Rasgos ----------
 
-function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, desde: string, n: number): Rasgo[] {
+export function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, desde: string, n: number): Rasgo[] {
   const activo = new Uint8Array(n); // días en que se anotó algo a mano: los demás no cuentan como "no pasó"
   const porConcepto = new Map<number, FilaDiaria[]>();
   for (const f of filas) {
@@ -301,6 +444,18 @@ function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, 
     } else {
       const esta = new Uint8Array(n);
       const primera = new Float64Array(n).fill(Number.NaN);
+      // Los días antes de la primera vez y bastante después de la última no son "días sin esto": la persona todavía no lo
+      // anotaba o ya no. Si contaran, con años de historia todo lo que empezó a anotar en la misma época saldría relacionado.
+      const universo = new Uint8Array(n);
+      let primerDia = n, ultimoDia = -1;
+      for (const f of lista) {
+        const i = diasEntre(desde, f.fecha);
+        if (i < primerDia) primerDia = i;
+        if (i > ultimoDia) ultimoDia = i;
+      }
+      if (primerDia < DIAS_SIN_APARECER) primerDia = 0;
+      if (n - 1 - ultimoDia < DIAS_SIN_APARECER) ultimoDia = n - 1;
+      for (let d = primerDia; d <= ultimoDia; d++) universo[d] = activo[d];
       // Lo que se cuenta (cafés, vasos, minutos de caminata): cuánto hubo cada día, para los umbrales. Un evento cuenta
       // las veces que se anotó; una cantidad, lo anotado (o las veces, si no se puso número).
       const conDosis = concepto.rol !== 'efecto' && (t === 'cantidad' || t === 'evento' || t === 'duracion');
@@ -314,7 +469,7 @@ function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, ConceptoInfo>, 
           if (v !== null && v > 0) valor[i] = v;
         }
       }
-      rasgos.push({ concepto, modo: 'presente', esta, universo: activo, primera, ...(valor ? { valor, escala: 'dosis' as const } : {}) });
+      rasgos.push({ concepto, modo: 'presente', esta, universo, primera, ...(valor ? { valor, escala: 'dosis' as const } : {}) });
     }
   }
   return rasgos;
@@ -358,10 +513,12 @@ export function buscarPatrones(
   const diasActivos = new Set(filas.filter(anotada).map((f) => f.fecha)).size;
   if (diasActivos < DIAS_MINIMOS) return { candidatos: [], pares_evaluados: 0, dias: n, dias_activos: diasActivos };
 
-  const causas = rasgos.filter((r) => r.concepto.rol !== 'efecto');
-  const efectos = rasgos.filter((r) => r.concepto.rol !== 'causa' && !r.soloCausa);
+  const causas = losQueMas(rasgos.filter((r) => r.concepto.rol !== 'efecto'), CAUSAS_MAX);
+  const efectos = losQueMas(rasgos.filter((r) => r.concepto.rol !== 'causa' && !r.soloCausa), EFECTOS_MAX);
+  const conCortes = new Set(losQueMas(causas.filter((r) => r.valor), UMBRALES_MAX));
   const crudos: Array<Omit<Candidato, 'q_valor' | 'puntaje'>> = [];
   let pares = 0;
+  let paresCombinadas = 0;
   /** Por efecto y desfase, las causas que muestran algo de relación (para probar combinaciones). */
   const relacionadas = new Map<string, Array<{ A: Rasgo; lift: number; probCon: number; p: number }>>();
 
@@ -370,25 +527,22 @@ export function buscarPatrones(
    * en que el efecto ya estaba el día de la causa (para lo que protege: el día que duele la cabeza no se sale a caminar,
    * y como un dolor sigue al otro, caminar parecería proteger del de mañana).
    */
-  const probar = (A: Pick<Rasgo, 'esta' | 'universo' | 'primera'>, B: Rasgo, k: number, limpio = false) => {
-    let n1 = 0, a = 0, n0 = 0, c = 0;
-    for (let d = 0; d + k < n; d++) {
-      if (!A.universo[d] || !B.universo[d + k]) continue;
-      if (limpio && B.esta[d]) continue;
-      let efecto = B.esta[d + k] === 1;
-      if (A.esta[d]) {
-        // Mismo día: el efecto tiene que venir después de la causa (si se sabe la hora de los dos).
-        if (k === 0 && efecto && A.primera[d] > B.primera[d]) efecto = false;
-        n1++;
-        if (efecto) a++;
-      } else {
-        n0++;
-        if (efecto) c++;
-      }
-    }
-    if (n1 < o.diasCausaMin || n0 < 3) return null;
-    const lift = (a + 0.5) / (n1 + 1) / ((c + 0.5) / (n0 + 1));
-    return { n1, a, n0, c, lift, probCon: a / n1, probSin: c / n0 };
+  const fuentes = new Map<object, Fuente>();
+  const destinos = new Map<Rasgo, Destino>();
+  const fuente = (x: Pick<Rasgo, 'esta' | 'universo' | 'primera'>) => {
+    let f = fuentes.get(x);
+    if (!f) fuentes.set(x, (f = fuenteDe(x)));
+    return f;
+  };
+  const destino = (x: Rasgo) => {
+    let f = destinos.get(x);
+    if (!f) destinos.set(x, (f = destinoDe(x)));
+    return f;
+  };
+  const probar = (A: Fuente, B: Rasgo, k: number, limpio = false) => {
+    const t = contar(A, destino(B), k, limpio);
+    if (t.n1 < o.diasCausaMin || t.n0 < 3) return null;
+    return { ...t, lift: liftDe(t), probCon: t.a / t.n1, probSin: t.c / t.n0 };
   };
   const guardar = (
     A: Pick<Rasgo, 'concepto' | 'modo'>,
@@ -428,7 +582,7 @@ export function buscarPatrones(
    */
   const protege = (A: Rasgo, B: Rasgo, k: number) => {
     if (k < 1) return;
-    const t = probar(A, B, k, true);
+    const t = probar(fuente(A), B, k, true);
     if (!t) return;
     pares++;
     // Que no aparezca algo que de todos modos casi nunca aparece no dice nada: con la causa se esperaba verlo varias veces.
@@ -462,7 +616,7 @@ export function buscarPatrones(
       for (let k = 0; k <= desfaseMax; k++) {
         // Lo que protege, de lo que se hace o pasa (los rasgos alto / bajo ya lo dicen al revés: "menos pasos → dolor").
         if (o.proteccion && A.modo === 'presente' && !A.soloCausa && malestar(B)) protege(A, B, k);
-        const t = probar(A, B, k);
+        const t = probar(fuente(A), B, k);
         if (!t) continue;
         pares++;
         // Se combinan causas solo para síntomas y ánimo: lo que la persona siente, que es lo que quiere entender.
@@ -481,17 +635,19 @@ export function buscarPatrones(
   // Umbrales: para lo que tiene cantidad o medida, unos pocos cortes. Cada corte es una prueba más (cuenta para el q), el
   // elegido tiene que pasar un p dividido por la cantidad de cortes, y la dosis tiene que importar: entre los días con la
   // causa, los que llegan al corte dan el efecto bastante más que los que se quedan cerca (si no, alcanza con el simple).
+  const cortes = new Map<string, Corte>();
   if (o.umbrales) {
     for (const A of causas) {
-      if (!A.valor) continue;
+      if (!conCortes.has(A)) continue;
       const lista = cortesDe(A, n);
+      for (const c of lista) cortes.set(`${A.concepto.id}|${c.modo}|${c.umbral}`, c);
       if (!lista.length) continue;
       const pTope = o.pMax / lista.length;
       for (const B of efectos) {
         if (A.concepto.id === B.concepto.id) continue;
         for (let k = 0; k <= desfaseMax; k++) {
           for (const corte of lista) {
-            const t = probar(corte, B, k);
+            const t = probar(fuente(corte), B, k);
             if (!t) continue;
             pares++;
             if (t.a < o.soporteMin || t.lift < o.liftMin) continue;
@@ -511,18 +667,25 @@ export function buscarPatrones(
   }
 
   // Combinaciones: de las causas más relacionadas con cada efecto, de a dos y de a tres (de conceptos distintos).
-  const juntar = (partes: Rasgo[]) => {
-    const esta = new Uint8Array(n);
-    const universo = new Uint8Array(n);
-    const primera = new Float64Array(n).fill(Number.NaN);
-    for (let d = 0; d < n; d++) {
-      universo[d] = partes.every((x) => x.universo[d]) ? 1 : 0;
-      esta[d] = partes.every((x) => x.esta[d]) ? 1 : 0;
+  const juntar = (partes: Rasgo[]): Fuente => {
+    const f = partes.map(fuente);
+    return {
+      universo: yBits(f.map((x) => x.universo)),
+      con: yBits(f.map((x) => x.con)),
       // La combinación "pasó" cuando pasó la última de sus partes.
-      const horas = partes.map((x) => x.primera[d]).filter((h) => !Number.isNaN(h));
-      if (horas.length) primera[d] = Math.max(...horas);
-    }
-    return { esta, universo, primera };
+      hora: (d) => {
+        let h = Number.NaN;
+        for (const x of partes) if (!Number.isNaN(x.primera[d]) && !(x.primera[d] <= h)) h = x.primera[d];
+        return h;
+      },
+    };
+  };
+  const parecidosVistos = new Map<string, boolean>();
+  const yaParecidos = (x: Rasgo, y: Rasgo) => {
+    const clave = `${x.concepto.id}${x.modo}|${y.concepto.id}${y.modo}`;
+    let r = parecidosVistos.get(clave);
+    if (r === undefined) parecidosVistos.set(clave, (r = parecidos(x, y)));
+    return r;
   };
   for (const [clave, lista] of relacionadas) {
     const [bi, ks] = clave.split('|');
@@ -540,16 +703,17 @@ export function buscarPatrones(
     for (const g of grupos) {
       if (new Set(g.map((x) => x.A.concepto.id)).size < g.length) continue;
       // Dos partes que casi siempre van juntas (pasos y km caminados) son la misma cosa: no es una combinación.
-      if (g.some((x, i) => g.some((y, j) => j > i && parecidos(x.A, y.A)))) continue;
+      if (g.some((x, i) => g.some((y, j) => j > i && yaParecidos(x.A, y.A)))) continue;
       const t = probar(juntar(g.map((x) => x.A)), B, k);
       if (!t) continue;
       pares++;
+      paresCombinadas++;
       // Tiene que decir bastante más que cada parte sola: si no, es la simple con un agregado de casualidad. Y eso se
       // prueba también: entre los días con la mejor parte, los que además tienen las otras dan el efecto bastante más.
       const mejor = g.reduce((x, y) => (y.lift > x.lift ? y : x));
       const mejorProb = Math.max(...g.map((x) => x.probCon));
       if (t.lift < mejor.lift * MEJORA_COMBINADA || t.probCon < mejorProb + 0.1) continue;
-      const solo = probar(mejor.A, B, k);
+      const solo = probar(fuente(mejor.A), B, k);
       if (!solo) continue;
       // Días con la mejor parte: t.n1 con todo (t.a con efecto) y el resto sin las otras partes.
       const pAporte = fisherMayor(t.a, t.n1, solo.a, solo.n1);
@@ -559,13 +723,18 @@ export function buscarPatrones(
     }
   }
 
-  const q = benjaminiHochberg(
-    crudos.map((x) => x.p_valor),
-    Math.max(pares, 1),
-  );
-  const todos: Candidato[] = crudos.map((x, i) => ({
+  // Las simples, por su lado: las combinaciones salen de causas ya elegidas por parecer relacionadas y dan p tan chicos que,
+  // mezcladas, hacen parecer firmes a las simples que vienen atrás (con cientos de conceptos, decenas de falsas).
+  // Las combinaciones se siguen midiendo contra todo.
+  const simplesCrudos = crudos.filter((x) => !x.causas_extra.length);
+  const qSimples = benjaminiHochberg(simplesCrudos.map((x) => x.p_valor), Math.max(pares - paresCombinadas, 1));
+  const qTodos = benjaminiHochberg(crudos.map((x) => x.p_valor), Math.max(pares, 1));
+  const qDe = new Map<(typeof crudos)[number], number>();
+  crudos.forEach((x, i) => qDe.set(x, qTodos[i]));
+  simplesCrudos.forEach((x, i) => qDe.set(x, qSimples[i]));
+  const todos: Candidato[] = crudos.map((x) => ({
     ...x,
-    q_valor: q[i],
+    q_valor: qDe.get(x)!,
     // Más arriba lo que es fuerte (lift), poco probable por azar (p) y visto muchas veces (soporte). Lo que protege, al
     // revés: cuánto baja, y cuántas veces se esperaba verlo con la causa.
     puntaje: x.protege
@@ -628,6 +797,22 @@ export function buscarPatrones(
       vistos.add(k);
       return true;
     });
+  // Con años de historia, un patrón que ya no pasa no tiene que parecer de hoy: se avisa y va más abajo.
+  if (n >= DIAS_RECIENTES * 2) {
+    const ultimos = mascaraDias(n, n - DIAS_RECIENTES, n - 1);
+    const ultimoAnio = mascaraDias(n, n - 365, n - 1);
+    const rasgo = (id: number, modo: Modo) => rasgos.find((r) => r.concepto.id === id && r.modo === modo);
+    for (const x of sinRepetir) {
+      const B = rasgo(x.efecto_id, x.efecto_modo);
+      const partesX = [{ id: x.causa_id, modo: x.causa_modo }, ...x.causas_extra].map((c) => rasgo(c.id, c.modo));
+      const corte = x.umbral != null ? cortes.get(`${x.causa_id}|${x.causa_modo}|${x.umbral}`) : undefined;
+      if (!B || (corte ? false : partesX.some((r) => !r))) continue;
+      const A = corte ? fuente(corte) : partesX.length > 1 ? juntar(partesX as Rasgo[]) : fuente(partesX[0]!);
+      x.ya_no = yaNoSeVe(x, contar(A, destino(B), x.desfase_dias, Boolean(x.protege), ultimos), contar(A, destino(B), x.desfase_dias, Boolean(x.protege), ultimoAnio));
+      if (x.ya_no) x.puntaje *= 0.25;
+    }
+    sinRepetir.sort((a, b) => b.puntaje - a.puntaje);
+  }
   // Las combinaciones se prueban de a cientos: solo quedan las muy firmes (p muy chico, ver `guardar`), y como mucho
   // unas pocas, así no tapan a las simples.
   // Primero las mejor sostenidas por los números, y como mucho una por efecto (si no, el mismo "dormir poco + …"
@@ -646,6 +831,27 @@ export function buscarPatrones(
   const simples = sinRepetir.filter((x) => !x.causas_extra.length).slice(0, o.limite - combinadas.length);
   const candidatos = [...simples, ...combinadas].sort((a, b) => b.puntaje - a.puntaje);
   return { candidatos, pares_evaluados: pares, dias: n, dias_activos: diasActivos };
+}
+
+/**
+ * Si un patrón de toda la historia dejó de verse: en los últimos meses la causa siguió pasando, pero el efecto ya no va
+ * con ella (bastante menos que en toda la historia, y en esos meses ya no se distingue de los días sin la causa). O, si la
+ * causa casi no pasó últimamente, hace más de un año que no se ven juntos.
+ */
+export function yaNoSeVe(x: Pick<Candidato, 'soporte' | 'dias_causa' | 'protege'>, ultimos: Tabla, ultimoAnio: Tabla): boolean {
+  if (ultimos.n1 < RECIENTES_MIN) return !x.protege && ultimoAnio.a === 0;
+  const total = ultimos.a + ultimos.c;
+  const dias = ultimos.n1 + ultimos.n0;
+  if (x.protege) return fisherMenor(ultimos.a, ultimos.n1, total, dias) > 0.05 && fisherMayor(ultimos.a, ultimos.n1, x.soporte, x.dias_causa) <= 0.1;
+  return fisherMayor(ultimos.a, ultimos.n1, total, dias) > 0.05 && fisherMenor(ultimos.a, ultimos.n1, x.soporte, x.dias_causa) <= 0.1;
+}
+
+/** Los rasgos con más días (si son más que `tope`), en el orden en que estaban. */
+function losQueMas(l: Rasgo[], tope: number): Rasgo[] {
+  if (l.length <= tope) return l;
+  const dias = new Map(l.map((r) => [r, r.esta.reduce((a, b) => a + b, 0)]));
+  const quedan = new Set([...l].sort((a, b) => dias.get(b)! - dias.get(a)!).slice(0, tope));
+  return l.filter((r) => quedan.has(r));
 }
 
 /** Un corte de un umbral: los días que llegan (`esta`), los que cuentan, y los que tienen la causa pero no llegan. */

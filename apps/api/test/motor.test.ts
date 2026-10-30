@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { benjaminiHochberg, buscarPatrones, describir, fisherMayor, type ConceptoInfo, type FilaDiaria } from '../src/patrones/motor.js';
+import { benjaminiHochberg, buscarPatrones, CAUSAS_MAX, contar, describir, destinoDe, EFECTOS_MAX, fisherMayor, fuenteDe, mascaraDias, type ConceptoInfo, type FilaDiaria, type Rasgo } from '../src/patrones/motor.js';
+import { azar as azarLargo, DESDE as DESDE_LARGO, historia } from './sinteticos.js';
 import { sumarDias } from '../src/lib/fechas.js';
 
 /** Números al azar pero siempre los mismos (para que la prueba no dependa de la suerte). */
@@ -363,5 +364,118 @@ describe('nombres de los umbrales', () => {
     expect(nombreRasgo('Temperatura', 'medida', 'hasta', 'es', { valor: 12.34, unidad: '°C' })).toBe('Temperatura: 12,3 °C o menos');
     expect(nombreRasgo('Pasos', 'medida', 'desde', 'es', { valor: 8000, unidad: 'pasos' })).toBe('Pasos: 8.000 pasos o más');
     expect(nombreRasgo('Café', 'cantidad', 'desde', 'en', { valor: 3 })).toMatch(/: 3 or more$/);
+  });
+});
+
+describe('toda la historia', () => {
+  const dia = (d: number) => sumarDias(DESDE_LARGO, d);
+  const ev = (d: number, id: number): FilaDiaria => ({ fecha: dia(d), concepto_id: id, veces: 1, suma: null, promedio: null, intensidad: null, primera: Date.parse(`${dia(d)}T10:00:00Z`) + id });
+  const conceptos: ConceptoInfo[] = [
+    { id: 1, nombre: 'Tomate', tipo_valor: 'evento', rol: 'causa', categoria: 'comida' },
+    { id: 2, nombre: 'Dolor de cabeza', tipo_valor: 'intensidad', rol: 'efecto', categoria: 'sintoma' },
+    { id: 3, nombre: 'Café', tipo_valor: 'evento', rol: 'causa', categoria: 'bebida' },
+  ];
+
+  it('con años de datos el tiempo crece poco y la cantidad de pruebas tiene tope', () => {
+    const uno = historia(365, 300);
+    const cinco = historia(1825, 300);
+    const t0 = performance.now();
+    const r1 = buscarPatrones(uno.filas, uno.conceptos, uno.desde, uno.hasta);
+    const t1 = performance.now();
+    const r5 = buscarPatrones(cinco.filas, cinco.conceptos, cinco.desde, cinco.hasta);
+    const t5 = performance.now();
+    expect(t5 - t1).toBeLessThan(15000);
+    expect(t1 - t0).toBeLessThan(15000);
+    expect(r5.pares_evaluados).toBeLessThan(r1.pares_evaluados * 2);
+    const techo = CAUSAS_MAX * EFECTOS_MAX * 4 * 2 + 80 * 8 * EFECTOS_MAX * 4 + EFECTOS_MAX * 4 * 680;
+    const enorme = historia(1000, 900);
+    expect(buscarPatrones(enorme.filas, enorme.conceptos, enorme.desde, enorme.hasta).pares_evaluados).toBeLessThan(techo);
+  });
+
+  it('lo que empezó a anotarse en la misma época no sale relacionado', () => {
+    // Las dos cosas son independientes, pero las dos recién aparecen a los dos años.
+    const r = azarLargo(5);
+    const filas: FilaDiaria[] = [];
+    for (let d = 0; d < 1460; d++) {
+      filas.push(ev(d, 3));
+      if (d < 730) continue;
+      if (r() < 0.5) filas.push(ev(d, 1));
+      if (r() < 0.3) filas.push({ ...ev(d, 2), intensidad: 3 });
+    }
+    const res = buscarPatrones(filas, conceptos, DESDE_LARGO, dia(1459), { proteccion: false, umbrales: false });
+    expect(res.candidatos.filter((c) => c.causa_id === 1 && c.efecto_id === 2 && c.q_valor <= 0.1)).toEqual([]);
+    expect(res.candidatos.filter((c) => c.causa_id === 3 && c.efecto_id === 2 && c.q_valor <= 0.1)).toEqual([]);
+  });
+
+  const conPatronHasta = (fin: number, total: number, semilla = 9) => {
+    const r = azarLargo(semilla);
+    const filas: FilaDiaria[] = [];
+    for (let d = 0; d < total; d++) {
+      filas.push(ev(d, 3));
+      const tomateAyer = filas.some((f) => f.fecha === dia(d - 1) && f.concepto_id === 1);
+      if (r() < 0.4) filas.push(ev(d, 1));
+      const p = tomateAyer && d < fin ? 0.8 : 0.1;
+      if (r() < p) filas.push({ ...ev(d, 2), intensidad: 3 });
+    }
+    return buscarPatrones(filas, conceptos, DESDE_LARGO, dia(total - 1), { proteccion: false, umbrales: false }).candidatos.find((c) => c.causa_id === 1 && c.efecto_id === 2 && c.desfase_dias === 1);
+  };
+
+  it('un patrón que sigue pasando no se marca', () => {
+    expect(conPatronHasta(1000, 1000)).toMatchObject({ ya_no: false });
+  });
+
+  it('con cualquier azar, lo que sigue no se marca y lo que paró sí', () => {
+    let siguen = 0;
+    let paran = 0;
+    for (let s = 1; s <= 20; s++) {
+      if (conPatronHasta(1000, 1000, s * 7919)?.ya_no) siguen++;
+      if (conPatronHasta(600, 1000, s * 7919)?.ya_no) paran++;
+    }
+    expect(siguen).toBe(0);
+    expect(paran).toBeGreaterThanOrEqual(18);
+  });
+
+  it('un patrón que dejó de pasar se marca como que ya no se ve, y baja su puntaje', () => {
+    const x = conPatronHasta(600, 1000);
+    expect(x?.ya_no).toBe(true);
+    expect(x!.q_valor).toBeLessThan(0.05);
+  });
+
+  it('contar de a bits da lo mismo que contar día por día, con y sin ventana', () => {
+    const n = 700;
+    const r = azarLargo(21);
+    const crear = () => {
+      const esta = new Uint8Array(n);
+      const universo = new Uint8Array(n);
+      const primera = new Float64Array(n).fill(Number.NaN);
+      for (let d = 0; d < n; d++) {
+        universo[d] = r() < 0.85 ? 1 : 0;
+        esta[d] = r() < 0.3 ? 1 : 0;
+        if (r() < 0.7) primera[d] = r();
+      }
+      return { esta, universo, primera } as unknown as Rasgo;
+    };
+    for (let i = 0; i < 40; i++) {
+      const A = crear();
+      const B = crear();
+      const k = i % 16;
+      const limpio = i % 3 === 0;
+      const desde = i % 2 ? 0 : 300;
+      let n1 = 0, a = 0, n0 = 0, c = 0;
+      for (let d = desde; d + k < n; d++) {
+        if (!A.universo[d] || !B.universo[d + k]) continue;
+        if (limpio && B.esta[d]) continue;
+        let efecto = B.esta[d + k] === 1;
+        if (A.esta[d]) {
+          if (k === 0 && efecto && A.primera[d] > B.primera[d]) efecto = false;
+          n1++;
+          if (efecto) a++;
+        } else {
+          n0++;
+          if (efecto) c++;
+        }
+      }
+      expect(contar(fuenteDe(A), destinoDe(B), k, limpio, desde ? mascaraDias(n, desde, n - 1) : undefined)).toEqual({ n1, a, n0, c });
+    }
   });
 });
