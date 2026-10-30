@@ -14,7 +14,9 @@ import { buscarMedios, generoDeItunes } from '../medios/itunes.js';
 
 const nulo = (tipo: 'string' | 'number' | 'integer', descripcion: string) => ({ anyOf: [{ type: tipo }, { type: 'null' }], description: descripcion });
 
-const ESQUEMA = {
+// Anthropic rechaza los esquemas con más de 16 parámetros que aceptan null (error 400, y deja de andar todo lo que se
+// cuenta con la voz): por eso lo del medio va como texto, con "" cuando no se sabe (ver el test de este límite).
+export const ESQUEMA = {
   type: 'object',
   properties: {
     registros: {
@@ -41,15 +43,16 @@ const ESQUEMA = {
             anyOf: [
               {
                 type: 'object',
+                description: 'Lo que no se sepa va como texto vacío',
                 properties: {
                   tipo: { type: 'string', enum: [...TIPOS_MEDIO] },
-                  contenido: nulo('string', 'Solo tele: el tipo de contenido si no es película, serie, deporte ni noticias (Documentales, Entretenimiento, Política y debates, Chimentos, Música, Infantiles)'),
-                  servicio: nulo('string', 'Canal, plataforma o app: TN, Telefe, Netflix, Disney+, Prime Video, Max, YouTube, Flow, Spotify, Radio'),
-                  genero: nulo('string', 'Película o serie: Comedia, Drama, Acción, Terror, Suspenso, Romántica, Ciencia ficción, Animada, Documental, Aventura, Policial, Infantil. Música: Rock, Rock nacional, Pop, Cumbia, Folklore, Tango, Jazz, Clásica, Electrónica, Reggaetón, Trap, Cuarteto'),
-                  titulo: nulo('string', 'La película, la serie, el disco o tema, o el programa o podcast, si se dijo'),
-                  artista: nulo('string', 'Música: el artista o la banda'),
-                  deporte: nulo('string', 'Deporte que miró: Fútbol, Tenis, Básquet, Rugby, Fórmula 1…'),
-                  equipo: nulo('string', 'Deporte: el equipo o jugador que miró, si se dijo (River, Boca, la Selección)'),
+                  contenido: { type: 'string', description: 'Solo tele: el tipo de contenido si no es película, serie, deporte ni noticias (Documentales, Entretenimiento, Política y debates, Chimentos, Música, Infantiles)' },
+                  servicio: { type: 'string', description: 'Canal, plataforma o app: TN, Telefe, Netflix, Disney+, Prime Video, Max, YouTube, Flow, Spotify, Radio' },
+                  genero: { type: 'string', description: 'Película o serie: Comedia, Drama, Acción, Terror, Suspenso, Romántica, Ciencia ficción, Animada, Documental, Aventura, Policial, Infantil. Música: Rock, Rock nacional, Pop, Cumbia, Folklore, Tango, Jazz, Clásica, Electrónica, Reggaetón, Trap, Cuarteto' },
+                  titulo: { type: 'string', description: 'La película, la serie, el disco o tema, o el programa o podcast, si se dijo' },
+                  artista: { type: 'string', description: 'Música: el artista o la banda' },
+                  deporte: { type: 'string', description: 'Deporte que miró: Fútbol, Tenis, Básquet, Rugby, Fórmula 1…' },
+                  equipo: { type: 'string', description: 'Deporte: el equipo o jugador que miró, si se dijo (River, Boca, la Selección)' },
                 },
                 required: ['tipo', 'contenido', 'servicio', 'genero', 'titulo', 'artista', 'deporte', 'equipo'],
                 additionalProperties: false,
