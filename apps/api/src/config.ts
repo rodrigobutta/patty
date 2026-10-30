@@ -20,7 +20,7 @@ export const config = {
    * Las migraciones las aplica el de la app (o el completo).
    */
   get modo(): 'completo' | 'app' | 'admin' | 'worker' {
-    const m = env('MODO');
+    const m = env('MODO')?.trim().toLowerCase();
     return m === 'app' || m === 'admin' || m === 'worker' ? m : 'completo';
   },
   /** Dónde está la administración cuando corre aparte (para mandar ahí a quien entra a /admin en la app). */
