@@ -229,19 +229,14 @@ export function AvisosDelTelefono({ persona, fecha }: { persona: Persona; fecha:
       ) : null}
       {n ? (
         <>
+          {/* Las 5 que más avisaron; el detalle por app y por día queda guardado (para ver el uso de cada una con el tiempo). */}
           <h4>{t('Las apps que más avisaron')}</h4>
-          <ListaApps apps={n.apps} iconos={iconos} />
+          <ListaApps apps={n.apps.slice(0, 5)} iconos={iconos} />
           {n.noche ? (
             <p className="suave chico">
               {t('Anoche (de 23 a 7) llegaron {n}: {s} sonaron y {a} con la pantalla apagada.', { n: n.noche.total, s: n.noche.sonoras, a: n.noche.apagada })}
             </p>
           ) : null}
-        </>
-      ) : null}
-      {m?.apps.length ? (
-        <>
-          <h4>{t('Mensajes por app')}</h4>
-          <ListaApps apps={m.apps} iconos={iconos} />
         </>
       ) : null}
       {usuario?.rol !== 'lector' && (n || m) ? <button className="enlace chico" onClick={() => void borrar()}>{t('Borrar todo lo de los avisos')}</button> : null}
