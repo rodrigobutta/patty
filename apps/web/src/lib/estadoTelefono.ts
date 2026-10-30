@@ -12,6 +12,7 @@ import { recordatoriosActivos } from './remedios';
 import { permisosSalud, saludActivada } from './salud';
 import { datosActivados, hayDatosDelTelefono, Telefono } from './telefono';
 import { seguimientoActivado } from './ubicacion';
+import { calendarioActivado } from './calendario';
 import { COMMIT, VERSION, versionNativa } from './version';
 
 export type SiNo = 'si' | 'no' | 'no_aplica';
@@ -26,6 +27,8 @@ export interface EstadoTelefono {
     llamadas: SiNo;
     /** Cuántos tipos de datos de salud dejó leer (0: ninguno). */
     salud: number | 'no_aplica';
+    /** El calendario del teléfono (reuniones y eventos): si dio el permiso. */
+    calendario?: SiNo;
   };
   /** Lo que tiene prendido en Patty (en este dispositivo). */
   activos: { ubicacion: boolean; clima: boolean; telefono: boolean; salud: boolean; recordatorios: boolean; encuesta: boolean; push: boolean };
@@ -84,6 +87,7 @@ export async function leerEstado(): Promise<EstadoTelefono> {
       uso_apps: tel ? (tel.uso === 'granted' ? 'si' : 'no') : 'no_aplica',
       llamadas: tel ? (tel.llamadas === 'granted' ? 'si' : 'no') : 'no_aplica',
       salud,
+      calendario: tel ? (tel.calendario === 'granted' && calendarioActivado() ? 'si' : 'no') : 'no_aplica',
     },
     activos: {
       ubicacion: seguimientoActivado(),

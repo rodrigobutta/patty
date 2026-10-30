@@ -73,6 +73,25 @@ export function reunionesDelDia(desde: Date, hasta: Date, eventos: EventoCalenda
     { ...base, concepto: 'Reuniones', unidad: null, valor: del.length },
     { ...base, concepto: 'Horas de reuniones', unidad: 'h', valor: Math.round((ms / 3600000) * 10) / 10 },
   ];
+  // Todo lo que hay en la agenda (también lo propio, sin invitados: el dentista, el gimnasio, "llevar a los chicos"):
+  // cuántos eventos y cuántas horas ocupadas, para ver si un día cargado te pega.
+  const agenda = eventos
+    .filter((e) => !e.todoElDia && !e.libre && !e.rechazado && e.fin - e.inicio >= 5 * 60000 && e.fin - e.inicio <= 12 * 3600000)
+    .filter((e) => e.fin > a && e.inicio < b);
+  if (agenda.length) {
+    let msAgenda = 0;
+    let hasta2 = a;
+    for (const e of [...agenda].sort((x, y) => x.inicio - y.inicio)) {
+      const i = Math.max(e.inicio, hasta2);
+      const f = Math.min(e.fin, b);
+      if (f > i) msAgenda += f - i;
+      hasta2 = Math.max(hasta2, f);
+    }
+    r.push(
+      { ...base, categoria: 'otro', concepto: 'Eventos del calendario', unidad: null, valor: agenda.length },
+      { ...base, categoria: 'otro', concepto: 'Horas ocupadas en el calendario', unidad: 'h', valor: Math.round((msAgenda / 3600000) * 10) / 10 },
+    );
+  }
   if (del.length) {
     r.push(
       { ...base, concepto: 'Reuniones seguidas', unidad: null, valor: seguidas },

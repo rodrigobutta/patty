@@ -34,12 +34,13 @@ describe('reuniones del calendario', () => {
     expect(valor(l, 'Reuniones fuera de horario')).toBe(1);
     expect(valor(l, 'Primera reunión')).toBe(9);
     expect(valor(l, 'Última reunión')).toBe(20.5);
-    expect(l.every((x) => x.categoria === 'trabajo')).toBe(true);
+    expect(l.filter((x) => x.concepto.includes('eunion')).every((x) => x.categoria === 'trabajo')).toBe(true);
   });
 
-  it('un día sin reuniones manda cero', () => {
+  it('un día sin reuniones manda cero, y lo propio de la agenda va como eventos', () => {
     const l = reunionesDelDia(dia, fin, [ev(14, 15, { invitados: 1 })]);
-    expect(l.map((x) => [x.concepto, x.valor])).toEqual([['Reuniones', 0], ['Horas de reuniones', 0]]);
+    expect(l.map((x) => [x.concepto, x.valor])).toEqual([['Reuniones', 0], ['Horas de reuniones', 0], ['Eventos del calendario', 1], ['Horas ocupadas en el calendario', 1]]);
+    expect(reunionesDelDia(dia, fin, []).map((x) => x.concepto)).toEqual(['Reuniones', 'Horas de reuniones']);
     expect(esReunion(ev(9, 9.05))).toBe(false); // 3 minutos
   });
 });

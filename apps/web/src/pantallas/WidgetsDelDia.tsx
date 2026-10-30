@@ -97,18 +97,21 @@ function widgetPasos(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget
 }
 
 /** Lo del calendario (llega con lo del teléfono): va en su propio widget. */
-const REUNIONES = new Set(['Reuniones', 'Horas de reuniones', 'Reuniones seguidas', 'Reuniones fuera de horario', 'Primera reunión', 'Última reunión']);
+const REUNIONES = new Set(['Reuniones', 'Horas de reuniones', 'Reuniones seguidas', 'Reuniones fuera de horario', 'Primera reunión', 'Última reunión', 'Eventos del calendario', 'Horas ocupadas en el calendario']);
 
 function widgetReuniones(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
   const n = dato(todos, 'telefono', 'Reuniones');
-  if (!n) return null;
+  const ev = dato(todos, 'telefono', 'Eventos del calendario');
+  if (!n && !ev) return null;
   const horas = dato(todos, 'telefono', 'Horas de reuniones');
-  const cuantas = Math.round(n.suma ?? 0);
+  const cuantas = Math.round(n?.suma ?? 0);
+  const eventos = Math.round(ev?.suma ?? 0);
   return {
     lugar: 'reuniones',
     icono: <IconoReuniones />,
-    linea: cuantas === 0 ? t('Sin reuniones') : cuantas === 1 ? t('1 reunión') : t('{n} reuniones', { n: cuantas }),
-    sub: horas && cuantas ? duracion((horas.suma ?? 0) * 60) : undefined,
+    // Sin reuniones con gente, lo que haya en la agenda (el dentista, el gimnasio…).
+    linea: cuantas === 0 ? (eventos ? (eventos === 1 ? t('1 evento') : t('{n} eventos', { n: eventos })) : t('Sin reuniones')) : cuantas === 1 ? t('1 reunión') : t('{n} reuniones', { n: cuantas }),
+    sub: horas && cuantas ? duracion((horas.suma ?? 0) * 60) : cuantas && eventos > cuantas ? t('{n} eventos en total', { n: eventos }) : undefined,
     grupos: grupos.filter((g) => g.tipo === 'telefono').map((g) => ({ ...g, lineas: g.lineas.filter((l) => REUNIONES.has(l.concepto)) })),
     nombre: t('Reuniones'),
   };

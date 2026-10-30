@@ -1028,4 +1028,12 @@ export const PERMISOS: Record<string, string> = {
   "sonaron de noche": "rang at night",
   "1 notificación": "1 notification",
   "{n} notificaciones": "{n} notifications",
+  "Tus reuniones y eventos de todas las cuentas del teléfono (Google, Outlook…): cuántos, cuántas horas y a qué hora. Nunca los títulos ni con quién.": "Your meetings and events from every account on the phone (Google, Outlook…): how many, how many hours and when. Never titles or who with.",
+  "💡 Por ejemplo: «los días con más de 4 h de reuniones dormís peor» o «las semanas con la agenda llena te duele más la cabeza».": "💡 For example: «on days with more than 4 h of meetings you sleep worse» or «weeks with a packed calendar you get more headaches».",
+  "Sin el permiso del calendario no puedo leer tus reuniones ni tus eventos. Podés darlo cuando quieras.": "Without calendar permission I can't read your meetings or events. You can grant it any time.",
+  "1 evento": "1 event",
+  "{n} eventos": "{n} events",
+  "{n} eventos en total": "{n} events in total",
+  "Eventos del calendario": "Calendar events",
+  "Horas ocupadas en el calendario": "Busy hours in the calendar",
 };

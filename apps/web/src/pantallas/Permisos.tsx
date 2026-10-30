@@ -7,6 +7,7 @@ import { BackgroundGeolocation } from '@capgo/background-geolocation';
 import { useCallback, useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { permisoAvisos } from '../lib/avisos';
+import { calendarioActivado, ponerCalendario } from '../lib/calendario';
 import { ponerClima } from '../lib/clima';
 import { leerEstado, reportarEstado, type EstadoTelefono } from '../lib/estadoTelefono';
 import { esNativa, plataforma } from '../lib/nativo';
@@ -47,7 +48,7 @@ export type Paso = 'avisos' | 'ubicacion' | 'telefono' | 'salud';
  * Las filas de esta pantalla: los pasos y, aparte (no son una fuente del Día), lo que suena en el teléfono y lo que
  * avisan las apps (los dos con el acceso a las notificaciones de Android).
  */
-type Fila = Paso | 'escuchas' | 'notificaciones';
+type Fila = Paso | 'calendario' | 'escuchas' | 'notificaciones';
 
 /** Lo que hace cada interruptor de «Lo que avisan las apps» y qué lee exactamente. */
 const FUNCIONES: Record<FuncionAvisos, { titulo: string; lee: string }> = {
@@ -194,6 +195,15 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
       if (!n) void sincronizarEscuchas(persona.id).catch(() => {});
       return n;
     });
+  /** El calendario: se prende en Patty, se pide el permiso de leerlo y se mandan los números de los últimos días. */
+  const calendario = () =>
+    hacer('calendario', async () => {
+      ponerCalendario(true);
+      const p = await Telefono.pedirPermisoCalendario().catch(() => null);
+      if (p?.calendario !== 'granted') return t('Sin el permiso del calendario no puedo leer tus reuniones ni tus eventos. Podés darlo cuando quieras.');
+      void sincronizar(persona.id).catch(() => {});
+    });
+  const apagarCalendario = () => hacer('calendario', async () => void ponerCalendario(false));
   const dejarDeEscuchar = () => hacer('escuchas', async () => void (await ponerEscuchas(false)));
   /** Lo que avisan las apps: el permiso es el mismo que el de lo que suena (se da en Ajustes). */
   const leerAvisos = () =>
@@ -251,6 +261,18 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
       listo: p?.uso_apps === 'si' && p?.llamadas === 'si',
       parcial: p?.uso_apps === 'si' || p?.llamadas === 'si',
       accion: telefono,
+      mostrar: hayDatosDelTelefono(),
+    },
+    {
+      paso: 'calendario',
+      ejemplo: t('💡 Por ejemplo: «los días con más de 4 h de reuniones dormís peor» o «las semanas con la agenda llena te duele más la cabeza».'),
+      icono: <IconoCategoria clave="trabajo" tamano={28} />,
+      titulo: t('Calendario'),
+      para: t('Tus reuniones y eventos de todas las cuentas del teléfono (Google, Outlook…): cuántos, cuántas horas y a qué hora. Nunca los títulos ni con quién.'),
+      listo: p?.calendario === 'si',
+      parcial: calendarioActivado(),
+      accion: calendario,
+      apagar: apagarCalendario,
       mostrar: hayDatosDelTelefono(),
     },
     {
@@ -323,12 +345,12 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
               <span className="chico renglon-sub ejemplo-permiso">{f.ejemplo}</span>
               {nota[f.paso] ? <span className="chico renglon-sub nota-permiso">{nota[f.paso]}</span> : null}
               {f.extra}
-              {pasosPara(f.paso === 'notificaciones' ? 'escuchas' : f.paso, marca).length ? (
+              {f.paso !== 'calendario' && pasosPara(f.paso === 'notificaciones' ? 'escuchas' : f.paso, marca).length ? (
                 <button className="enlace chico como-activar" onClick={() => setAbierta(abierta === f.paso ? null : f.paso)} aria-expanded={abierta === f.paso}>
                   {abierta === f.paso ? t('Ocultar los pasos') : t('¿Cómo lo activo?')}
                 </button>
               ) : null}
-              {abierta === f.paso ? (
+              {abierta === f.paso && f.paso !== 'calendario' ? (
                 <span className="guia-permiso" ref={(el) => { if (el && guia === f.paso) el.scrollIntoView({ block: 'center' }); }}>
                   <span className="suave chico">{t('En tu {marca}:', { marca: NOMBRE_MARCA[marca] })}</span>
                   <ol>{pasosPara(f.paso === 'notificaciones' ? 'escuchas' : f.paso, marca).map((x) => <li key={x}>{x}</li>)}</ol>
