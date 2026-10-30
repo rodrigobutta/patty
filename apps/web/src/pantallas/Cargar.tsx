@@ -529,7 +529,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       for (const tr of nuevos) await api('POST', '/api/tratamientos', { ...tr, persona_id: persona.id });
       if (nuevos.length) tomasCambiaron();
       const lista = propuesta!.filter((_, i) => !quitar.has(i)).map((p) => ({ ...p, persona_id: persona.id }));
-      const hechos = lista.length ? await api<Registro[]>('POST', '/api/registros/varios', { registros: lista }) : [];
+      const hechos = lista.length ? await api<Registro[]>('POST', '/api/registros/varios', { registros: lista, ...(fotoRef.current ? { via: 'foto' } : {}) }) : [];
       void anotarClima(persona.id, lista.map((p) => p.inicio));
       const dias = [...new Set(hechos.map((h) => h.fecha))];
       const otroDia = dias.length === 1 && dias[0] !== fecha ? dias[0] : undefined;

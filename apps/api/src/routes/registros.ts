@@ -155,7 +155,7 @@ export async function guardarRegistro(
   u: Usuario,
   d: NuevoRegistro,
   origen = 'manual',
-  opciones: { sinVincular?: boolean } = {},
+  opciones: { sinVincular?: boolean; via?: 'foto' } = {},
 ): Promise<Registro> {
   const p = await persona(tx, u, Number(d.persona_id), true);
   const c = await conceptoDe(tx, d, u);
@@ -164,7 +164,9 @@ export async function guardarRegistro(
   const detalles = await datosDetalles(tx, u, d, c);
   const para = await datosPara(tx, d, p.id);
   const medio = await datosMedio(tx, u, d, c);
-  const datos = comida || plato || detalles || para || medio ? { ...comida, ...plato, ...detalles, ...para, ...medio } : null;
+  // `via`: de dónde salió lo que propuso la IA, si no fue contándolo (para la administración).
+  const via = opciones.via ? { via: opciones.via } : null;
+  const datos = comida || plato || detalles || para || medio || via ? { ...comida, ...plato, ...detalles, ...para, ...medio, ...via } : null;
   const [r] = await tx
     .insert(registros)
     .values({ persona_id: p.id, concepto_id: c.id, ...valores(d, c, p), origen, creado_por: u.id, ...(datos ? { datos } : {}) })
@@ -358,11 +360,13 @@ export const rutasRegistros = new Hono<Env>()
   })
   .post('/varios', async (c) => {
     // Varios de una vez (lo que propone la IA a partir de un texto, una vez que la persona lo revisó).
-    const lista = (await cuerpo(c)).registros;
+    const d0 = await cuerpo(c);
+    const lista = d0.registros;
+    const via = d0.via === 'foto' ? 'foto' : undefined;
     if (!Array.isArray(lista) || !lista.length || lista.length > 50) throw new ErrorApi('Mandá entre 1 y 50 registros.');
     const r = await c.var.db.transaction(async (tx) => {
       const hechos: Registro[] = [];
-      for (const d of lista as NuevoRegistro[]) hechos.push(await guardarRegistro(tx, c.var.usuario, d, 'ia'));
+      for (const d of lista as NuevoRegistro[]) hechos.push(await guardarRegistro(tx, c.var.usuario, d, 'ia', { via }));
       return hechos;
     });
     return c.json(r, 201);

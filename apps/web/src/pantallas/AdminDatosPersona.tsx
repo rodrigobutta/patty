@@ -6,7 +6,7 @@ import { api } from '../api';
 import { locale, t } from '../lib/idioma';
 import { Grilla, fechaHora, hace, useEditor, usePersonas, type Fila, type PedidoTabla } from './AdminDatos';
 
-interface Cobertura { hoy: string; dias: Array<Record<string, number | string> & { fecha: string }> }
+interface Cobertura { hoy: string; origenes: string[]; dias: Array<Record<string, number | string> & { fecha: string }> }
 interface Ultimos {
   datos: Array<{ clave: string; dato: string | null; recibido: string | null; semana: number }>;
   fuentes: Array<{ id: number; tipo: string; nombre: string; activo: boolean; ultimo_uso: string | null; creado: string; ultimo_dato: string | null; semana: number }>;
@@ -33,7 +33,7 @@ interface Dia {
 const FUENTES: Array<[string, string]> = [
   ['manual', 'Anotado a mano'],
   ['ia', 'Contado a Patty'],
-  ['otros', 'Anotado de otra forma'],
+  ['foto', 'Con la cámara'],
   ['telefono', 'Teléfono'],
   ['reloj', 'Reloj / salud'],
   ['clima', 'Clima'],
@@ -49,7 +49,7 @@ const FUENTES: Array<[string, string]> = [
 const NOMBRE_DATO: Record<string, string> = {
   manual: 'Anotado a mano',
   ia: 'Contado a Patty',
-  otros: 'Anotado de otra forma',
+  foto: 'Con la cámara',
   puntos: 'Puntos GPS',
   sueno: 'Etapas de sueño',
   escuchas: 'Escuchas',
@@ -58,6 +58,16 @@ const NOMBRE_DATO: Record<string, string> = {
   comentarios: 'Comentarios de Patty',
   analisis: 'Análisis de patrones',
 };
+
+/** Cómo se llama cada forma de anotar que no es a mano ni contándole a Patty (otras nuevas se ven con su nombre crudo). */
+const NOMBRE_ORIGEN: Record<string, string> = {
+  recordatorio: 'Remedio, desde el recordatorio',
+  aviso: 'Detectado en avisos de apps',
+  noche: 'Encuesta de la noche',
+  importado: 'Importado',
+  ejemplo: 'Datos de ejemplo',
+};
+const nombreOrigen = (o: string) => NOMBRE_ORIGEN[o] ?? o;
 
 const sumarDias = (fecha: string, n: number) => {
   const d = new Date(`${fecha}T12:00:00Z`);
@@ -118,9 +128,12 @@ export function AdminDatosPersona({ persona: pedida, fecha: fechaPedida, alCambi
   const { abrir, editor } = useEditor(traerDia);
 
   const p = gente.find((x) => x.id === persona);
-  const maximos = Object.fromEntries(FUENTES.map(([k]) => [k, Math.max(1, ...(cob?.dias.map((d) => Number(d[k])) ?? [0]))]));
-  // Una fuente que mandó algo en el período: sus días en cero se marcan como hueco.
-  const activa = Object.fromEntries(FUENTES.map(([k]) => [k, Boolean(cob?.dias.some((d) => Number(d[k]) > 0))]));
+  // Las filas del mapa: las fijas, con los otros orígenes que haya justo después de lo anotado por la persona.
+  const filasMapa: Array<[string, string]> = [...FUENTES.slice(0, 3), ...(cob?.origenes ?? []).map((o): [string, string] => [`origen:${o}`, nombreOrigen(o)]), ...FUENTES.slice(3)];
+  const cantidad = (d: Cobertura['dias'][number], k: string) => Number(d[k] ?? 0);
+  const maximos = Object.fromEntries(filasMapa.map(([k]) => [k, Math.max(1, ...(cob?.dias.map((d) => cantidad(d, k)) ?? [0]))]));
+  // Desde qué día manda cada fuente: lo vacío de antes no es un hueco (todavía no existía), lo de después sí.
+  const desde = Object.fromEntries(filasMapa.map(([k]) => [k, cob?.dias.findIndex((d) => cantidad(d, k) > 0) ?? -1]));
 
   return (
     <>
@@ -192,7 +205,7 @@ export function AdminDatosPersona({ persona: pedida, fecha: fechaPedida, alCambi
                 <tbody>
                   {ultimos.datos.map((d) => (
                     <tr key={d.clave}>
-                      <td>{t(NOMBRE_DATO[d.clave] ?? d.clave)}</td>
+                      <td>{d.clave.startsWith('origen:') ? t(nombreOrigen(d.clave.slice(7))) : t(NOMBRE_DATO[d.clave] ?? d.clave)}</td>
                       <td className={d.dato ? undefined : 'vacio'}>{cuando(d.dato)}</td>
                       <td className={d.recibido ? undefined : 'vacio'}>{d.recibido ? hace(d.recibido) : '—'}</td>
                       <td>{d.semana}</td>
@@ -208,16 +221,16 @@ export function AdminDatosPersona({ persona: pedida, fecha: fechaPedida, alCambi
       {cob ? (
         <div className="tarjeta">
           <h3>{t('Qué llegó cada día')}</h3>
-          <p className="suave chico">{t('Cada cuadradito es un día; más oscuro, más datos. En rojo, un día vacío de una fuente que sí manda. Tocá un día para verlo entero.')}</p>
+          <p className="suave chico">{t('Cada cuadradito es un día; más oscuro, más datos. En rojo, un día vacío de una fuente que ya venía mandando. Tocá un día para verlo entero.')}</p>
           <div className="cobertura-caja">
             <table className="cobertura">
               <tbody>
-                {FUENTES.map(([k, nombre]) => (
+                {filasMapa.map(([k, nombre]) => (
                   <tr key={k}>
                     <th>{t(nombre)}</th>
-                    {cob.dias.map((d) => {
-                      const n = Number(d[k]);
-                      const hueco = n === 0 && activa[k];
+                    {cob.dias.map((d, i) => {
+                      const n = cantidad(d, k);
+                      const hueco = n === 0 && desde[k] >= 0 && i > desde[k];
                       return (
                         <td
                           key={d.fecha}

@@ -197,4 +197,24 @@ describe('administración → datos', () => {
     await db.transaction((tx) => recalcularTodo(tx, { id: personaId, zona_horaria: 'America/Argentina/Buenos_Aires' }));
     expect(await uso()).toBe(viejo);
   });
+
+  it('la cobertura separa la cámara y cada otra forma de anotar', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const r = { persona_id: personaId, concepto_nombre: 'Tomate', categoria_id: categorias.comida, inicio: new Date(Date.now() - 3600e3).toISOString() };
+    await ana.post('/api/registros', r);
+    await ana.post('/api/registros/varios', { registros: [r] });
+    await ana.post('/api/registros/varios', { registros: [r, r], via: 'foto' });
+    await ana.post('/api/registros/varios', { registros: [r], via: 'cualquiera' });
+    await obtenerDb().execute(sql`INSERT INTO registros (persona_id, concepto_id, inicio, fecha, origen) SELECT persona_id, concepto_id, inicio, fecha, 'aviso' FROM registros LIMIT 1`);
+    const cob = (await ana.get(`/api/admin/datos/personas/${personaId}/cobertura?dias=7`)).body;
+    expect(cob.origenes).toEqual(['aviso']);
+    const suma = (k: string) => cob.dias.reduce((n: number, d: any) => n + (d[k] ?? 0), 0);
+    expect([suma('manual'), suma('ia'), suma('foto'), suma('origen:aviso')]).toEqual([1, 2, 2, 1]);
+    const ultimos = (await ana.get(`/api/admin/datos/personas/${personaId}/ultimos`)).body.datos.map((d: any) => d.clave);
+    expect(ultimos).toEqual(expect.arrayContaining(['manual', 'ia', 'foto', 'origen:aviso']));
+    const dia = (await ana.get(`/api/admin/datos/personas/${personaId}/dia?fecha=${cob.hoy}`)).body.registros;
+    expect(dia.filter((x: any) => x.origen === 'cámara')).toHaveLength(2);
+    // Para la app sigue siendo lo mismo que contarlo.
+    expect((await ana.get(`/api/registros?persona=${personaId}&desde=${cob.hoy}`)).body.filter((x: any) => x.origen === 'ia')).toHaveLength(4);
+  });
 });

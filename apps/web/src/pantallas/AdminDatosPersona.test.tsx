@@ -13,7 +13,7 @@ vi.mock('../estado', () => ({ useEstado: () => ({ avisar: () => {} }) }));
 import { AdminDatosPersona } from './AdminDatosPersona';
 
 const ultimos = (nombre: string) => ({ datos: [], telefonos: [], fuentes: [{ id: 1, tipo: 'telefono', nombre, activo: true, ultimo_uso: null, creado: '', ultimo_dato: null, semana: 0 }] });
-const cobertura = { hoy: '2026-10-30', dias: [{ fecha: '2026-10-30' }] };
+const cobertura = { hoy: '2026-10-30', origenes: [], dias: [{ fecha: '2026-10-30' }] };
 const props = { fecha: null, alCambiar: () => {}, abrirTabla: () => {} };
 const llega = (ruta: string, x: unknown) => act(async () => pendientes.get(ruta)?.(x));
 

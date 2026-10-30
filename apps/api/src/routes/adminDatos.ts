@@ -52,8 +52,8 @@ export const rutasAdminDatos = new Hono<Env>()
       sql`WITH d AS (SELECT (${hoy}::date - g)::date AS fecha FROM generate_series(0, ${dias - 1}::int) g)
           SELECT to_char(d.fecha, 'YYYY-MM-DD') AS fecha,
                  (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen = 'manual')::int AS manual,
-                 (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen = 'ia')::int AS ia,
-                 (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen NOT IN ('manual', 'ia'))::int AS otros,
+                 (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen = 'ia' AND r.datos->>'via' IS DISTINCT FROM 'foto')::int AS ia,
+                 (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen = 'ia' AND r.datos->>'via' = 'foto')::int AS foto,
                  (SELECT count(*) FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id WHERE m.persona_id = ${id} AND m.fecha = d.fecha AND f.tipo = 'telefono')::int AS telefono,
                  (SELECT count(*) FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id WHERE m.persona_id = ${id} AND m.fecha = d.fecha AND f.tipo = 'reloj')::int AS reloj,
                  (SELECT count(*) FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id WHERE m.persona_id = ${id} AND m.fecha = d.fecha AND f.tipo = 'clima')::int AS clima,
@@ -66,7 +66,17 @@ export const rutasAdminDatos = new Hono<Env>()
                  (SELECT count(*) FROM comentarios k WHERE k.persona_id = ${id} AND k.fecha = d.fecha)::int AS comentarios
           FROM d ORDER BY d.fecha`,
     );
-    return c.json({ hoy, dias: filasDias });
+    // Lo anotado de otras formas (toma de un remedio, detectado en un aviso…): una fila por cada origen que haya.
+    const otros = await filas<{ origen: string; fecha: string; n: number }>(
+      db,
+      sql`SELECT origen, to_char(fecha, 'YYYY-MM-DD') AS fecha, count(*)::int AS n FROM registros
+          WHERE persona_id = ${id} AND borrado IS NULL AND origen NOT IN ('manual', 'ia') AND fecha > ${hoy}::date - ${dias}::int GROUP BY 1, 2`,
+    );
+    for (const o of otros) {
+      const d = filasDias.find((x) => x.fecha === o.fecha);
+      if (d) d[`origen:${o.origen}`] = o.n;
+    }
+    return c.json({ hoy, dias: filasDias, origenes: [...new Set(otros.map((o) => o.origen))].sort() });
   })
   .get('/personas/:id/ultimos', async (c) => {
     // Lo último que llegó de cada cosa de ESTA persona: el dato más nuevo (cuándo pasó) y cuándo lo recibió el servidor.
@@ -79,8 +89,9 @@ export const rutasAdminDatos = new Hono<Env>()
     const datos = await filas(
       db,
       sql`SELECT 'manual' AS clave, max(inicio) AS dato, max(creado) AS recibido, count(*) FILTER (WHERE inicio > ${semana})::int AS semana FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen = 'manual'
-          UNION ALL SELECT 'ia', max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen = 'ia'
-          UNION ALL SELECT 'otros', max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen NOT IN ('manual', 'ia')
+          UNION ALL SELECT 'ia', max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen = 'ia' AND datos->>'via' IS DISTINCT FROM 'foto'
+          UNION ALL SELECT 'foto', max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen = 'ia' AND datos->>'via' = 'foto'
+          UNION ALL (SELECT 'origen:' || origen, max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen NOT IN ('manual', 'ia') GROUP BY origen)
           UNION ALL SELECT 'puntos', max(instante), max(creado), count(*) FILTER (WHERE instante > ${semana})::int FROM puntos WHERE persona_id = ${id}
           UNION ALL SELECT 'sueno', max(fin), NULL, count(*) FILTER (WHERE fin > ${semana})::int FROM sueno_etapas WHERE persona_id = ${id}
           UNION ALL SELECT 'escuchas', max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM escuchas WHERE persona_id = ${id}
@@ -117,7 +128,7 @@ export const rutasAdminDatos = new Hono<Env>()
     const [registros, mediciones, sueno, resumenNoche, escuchas, puntos, tomas, comentarios, fuera, paseos, contextos, avisos] = await Promise.all([
       filas(
         db,
-        sql`SELECT r.id, ${hora('inicio')} AS hora, r.inicio, r.fin, r.valor, r.intensidad, r.unidad, r.nota, r.origen, r.datos, r.borrado, r.creado,
+        sql`SELECT r.id, ${hora('inicio')} AS hora, r.inicio, r.fin, r.valor, r.intensidad, r.unidad, r.nota, CASE WHEN r.datos->>'via' = 'foto' THEN 'cámara' ELSE r.origen END AS origen, r.datos, r.borrado, r.creado,
                    c.id AS concepto_id, c.nombre AS concepto, k.icono, k.nombre AS categoria, u.nombre AS creado_por
             FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id LEFT JOIN usuarios u ON u.id = r.creado_por
             WHERE r.persona_id = ${id} AND r.fecha = ${fecha} ORDER BY r.inicio`,
