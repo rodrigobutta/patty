@@ -4,6 +4,7 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { filas, obtenerDb } from '../src/db/client.js';
 import { usarClientePrueba } from '../src/ia/cliente.js';
 import { cerrarDb } from '../src/db/client.js';
+import { resumirNochesDeHoy } from '../src/patrones/noche.js';
 import { despertarRepetido, type EtapaNoche } from '../src/patrones/despertares.js';
 import { conAdmin } from './ayudas.js';
 
@@ -46,6 +47,39 @@ describe('despertares que se repiten', () => {
 });
 
 describe('resumen de la noche', () => {
+  it('el proceso lo arma aunque el sueño llegue tarde, sin gastar el intento antes de que llegue', async () => {
+    const { ana, personaId } = await conAdmin();
+    let pedidos = 0;
+    let falla = true;
+    const crear = async () => {
+      pedidos++;
+      if (falla) throw new Error('IA caída');
+      return { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ texto: 'Dormiste bien.', calidad: 8 }) }] };
+    };
+    usarClientePrueba({ messages: { create: crear }, beta: { messages: { create: crear } } } as unknown as Anthropic);
+    // Las 10 en Buenos Aires: con el sueño de anoche, pero todavía sin el de hoy.
+    const noche = (f: string) => ({ noche: f, etapas: [{ inicio: `${f}T03:00:00Z`, fin: `${f}T10:00:00Z`, etapa: 'ligero' }] });
+    await ana.post('/api/sueno/etapas', { persona_id: personaId, noches: [noche('2026-10-25')] });
+    expect(await resumirNochesDeHoy(obtenerDb(), new Date('2026-10-26T13:00:00Z'))).toBe(0);
+    expect(pedidos).toBe(0);
+    // Antes de las 10 no se intenta, aunque ya haya llegado.
+    await ana.post('/api/sueno/etapas', { persona_id: personaId, noches: [noche('2026-10-26')] });
+    expect(await resumirNochesDeHoy(obtenerDb(), new Date('2026-10-26T12:00:00Z'))).toBe(0);
+    expect(pedidos).toBe(0);
+    // Llega a las 15: se arma. Si la IA falla, se reintenta recién a la hora siguiente.
+    expect(await resumirNochesDeHoy(obtenerDb(), new Date('2026-10-26T18:00:00Z'))).toBe(0);
+    const intentos = pedidos;
+    expect(intentos).toBeGreaterThan(0);
+    await resumirNochesDeHoy(obtenerDb(), new Date('2026-10-26T18:01:00Z'));
+    expect(pedidos).toBe(intentos);
+    falla = false;
+    expect(await resumirNochesDeHoy(obtenerDb(), new Date('2026-10-26T19:00:00Z'))).toBe(1);
+    // Ya está: no se vuelve a pedir.
+    const total = pedidos;
+    expect(await resumirNochesDeHoy(obtenerDb(), new Date('2026-10-26T20:00:00Z'))).toBe(0);
+    expect(pedidos).toBe(total);
+  });
+
   it('la IA lo arma una vez, se guarda por noche y la nota entra como «Calidad del sueño»', async () => {
     const { ana, personaId } = await conAdmin();
     const pedidos: any[] = [];

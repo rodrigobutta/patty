@@ -25,7 +25,7 @@ const HORA_ANALISIS = 4;
 const HORA_AVISO = 9;
 /** Los comentarios del día (ia/comentar.ts) se arman temprano, ya con el día nuevo empezado. */
 const HORA_COMENTARIOS = 6;
-/** El resumen de la noche (ia/resumirNoche.ts), cuando ya se suele haber sincronizado el reloj. */
+/** Desde esta hora se arma el resumen de la noche (ia/resumirNoche.ts), cuando ya se suele haber sincronizado el reloj. */
 const HORA_RESUMEN_NOCHE = 10;
 /** Lo que se sale de lo normal (patrones/fueraDeLoNormal.ts), después del resumen de la noche (ya con el sueño). */
 const HORA_FUERA_DE_LO_NORMAL = 11;
@@ -107,7 +107,11 @@ export async function comentarDeManana(db: Db, ahora = new Date()): Promise<numb
   return n;
 }
 
-/** A las 10, el resumen de la noche de quienes tienen datos de sueño de hoy y todavía no lo tienen. */
+/**
+ * Desde las 10 y hasta que termine el día, el resumen de la noche de quienes ya tienen el sueño de hoy y todavía no lo
+ * tienen: el reloj o el teléfono pueden sincronizar a cualquier hora. Se intenta recién cuando llegó el sueño y como
+ * mucho una vez por hora por persona (si la IA falla, no se reintenta cada minuto).
+ */
 export async function resumirNochesDeHoy(db: Db, ahora = new Date()): Promise<number> {
   const lista = await filas<PersonaNoche>(
     db,
@@ -115,13 +119,24 @@ export async function resumirNochesDeHoy(db: Db, ahora = new Date()): Promise<nu
                (SELECT u.idioma FROM persona_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id
                 WHERE pu.persona_id = p.id ORDER BY (pu.rol = 'dueno') DESC, u.id LIMIT 1) AS idioma
         FROM personas p
-        WHERE EXISTS (SELECT 1 FROM sueno_etapas s WHERE s.persona_id = p.id AND s.noche > ${ahora.toISOString()}::date - 2)`,
+        WHERE EXISTS (SELECT 1 FROM sueno_etapas s WHERE s.persona_id = p.id AND s.noche > ${ahora.toISOString()}::date - 2)
+           OR EXISTS (SELECT 1 FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id
+                      WHERE m.persona_id = p.id AND c.nombre = 'Horas de sueño' AND m.fecha > ${ahora.toISOString()}::date - 2)`,
   );
   let n = 0;
   for (const p of lista) {
-    if (!enHora(ahora, p.zona_horaria, HORA_RESUMEN_NOCHE)) continue;
+    const hora = Math.floor(minutosDelDia(ahora, p.zona_horaria) / 60);
+    if (hora < HORA_RESUMEN_NOCHE) continue;
     const hoy = diaDePatty(ahora, p.zona_horaria);
-    if (!(await primeraVez(db, `resumen-noche|${p.id}|${hoy}`))) continue;
+    const falta = await una(
+      db,
+      sql`SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM resumen_noche r WHERE r.persona_id = ${p.id} AND r.noche = ${hoy})
+            AND (EXISTS (SELECT 1 FROM sueno_etapas s WHERE s.persona_id = ${p.id} AND s.noche = ${hoy})
+              OR EXISTS (SELECT 1 FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id
+                         WHERE m.persona_id = ${p.id} AND c.nombre = 'Horas de sueño' AND m.fecha = ${hoy}))`,
+    );
+    if (!falta) continue;
+    if (!(await primeraVez(db, `resumen-noche|${p.id}|${hoy}|${hora}`))) continue;
     try {
       if (await resumirNoche(db, p, hoy, esIdioma(p.idioma) ? p.idioma : 'es')) n++;
     } catch (e) {

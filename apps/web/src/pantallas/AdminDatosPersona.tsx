@@ -221,7 +221,7 @@ export function AdminDatosPersona({ persona: pedida, fecha: fechaPedida, alCambi
       {cob ? (
         <div className="tarjeta">
           <h3>{t('Qué llegó cada día')}</h3>
-          <p className="suave chico">{t('Cada cuadradito es un día; más oscuro, más datos. En rojo, un día vacío de una fuente que ya venía mandando. Tocá un día para verlo entero.')}</p>
+          <p className="suave chico">{t('Cada cuadradito es un día; más oscuro, más datos. En rojo, un día vacío de una fuente que ya venía mandando; hoy, con borde punteado, lo que todavía no llegó. Tocá un día para verlo entero.')}</p>
           <div className="cobertura-caja">
             <table className="cobertura">
               <tbody>
@@ -230,11 +230,13 @@ export function AdminDatosPersona({ persona: pedida, fecha: fechaPedida, alCambi
                     <th>{t(nombre)}</th>
                     {cob.dias.map((d, i) => {
                       const n = cantidad(d, k);
-                      const hueco = n === 0 && desde[k] >= 0 && i > desde[k];
+                      // Hoy todavía no terminó: vacío no es un hueco, es que puede faltar que llegue.
+                      const esHoy = d.fecha === cob.hoy;
+                      const hueco = n === 0 && !esHoy && desde[k] >= 0 && i > desde[k];
                       return (
                         <td
                           key={d.fecha}
-                          className={`${hueco ? 'hueco' : ''} ${d.fecha === fecha ? 'elegido' : ''}`}
+                          className={`${hueco ? 'hueco' : ''} ${esHoy && n === 0 && desde[k] >= 0 ? 'hoy-falta' : ''} ${d.fecha === fecha ? 'elegido' : ''}`}
                           style={n ? { ['--nivel' as string]: String(0.2 + 0.8 * (n / maximos[k])) } : undefined}
                           title={`${d.fecha}: ${n}`}
                           onClick={() => persona && alCambiar(persona, d.fecha)}

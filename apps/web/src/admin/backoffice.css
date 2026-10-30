@@ -222,6 +222,7 @@ details summary { cursor: pointer; padding: 4px 0; }
 .cobertura td { min-width: 10px; height: 14px; border-radius: 2px; cursor: pointer; background: var(--borde); opacity: 0.5; }
 .cobertura td[style] { background: var(--acento); opacity: var(--nivel); }
 .cobertura td.hueco { background: var(--rojo); opacity: 0.3; }
+.cobertura td.hoy-falta { background: none; opacity: 1; border: 1px dashed var(--ambar); }
 .cobertura td.elegido { outline: 2px solid var(--texto); outline-offset: 1px; }
 .seccion-dia summary { margin-bottom: 6px; }
 .clic-texto { cursor: pointer; }

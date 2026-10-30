@@ -16,6 +16,9 @@ interface Salud {
   arranco: string;
 }
 
+/** Los procesos que no corren cada minuto: a los cuántos minutos sin correr se consideran parados (Limpieza: una vez por día). */
+const CADA_CUANTO: Record<string, number> = { Limpieza: 25 * 60 };
+
 const hace = (iso: string | null) => {
   if (!iso) return '—';
   const min = Math.round((Date.now() - Date.parse(iso)) / 60000);
@@ -66,7 +69,7 @@ export function AdminSalud() {
             </thead>
             <tbody>
               {s.procesos.map((p) => {
-                const parado = !p.ultimo_inicio || Date.now() - Date.parse(p.ultimo_inicio) > 5 * 60000;
+                const parado = !p.ultimo_inicio || Date.now() - Date.parse(p.ultimo_inicio) > (CADA_CUANTO[p.nombre] ?? 5) * 60000;
                 return (
                   <tr key={p.nombre} className={!p.ultimo_ok ? 'mal' : parado ? 'parado' : ''}>
                     <td>{t(p.nombre)}</td>
@@ -81,7 +84,7 @@ export function AdminSalud() {
             </tbody>
           </table>
         </div>
-        <p className="suave chico">{t('Corren cada minuto. "Parado": hace más de 5 minutos que no corre (el servidor se reinició o algo lo trabó).')}</p>
+        <p className="suave chico">{t('Corren cada minuto (Limpieza, una vez por día). "Parado": hace rato que no corre (el servidor se reinició o algo lo trabó). "Hizo algo": la última vez que tuvo trabajo; cada uno tiene su hora y sus condiciones (por ejemplo, los patrones necesitan 14 días anotados).')}</p>
       </div>
 
       <div className="tarjeta">
