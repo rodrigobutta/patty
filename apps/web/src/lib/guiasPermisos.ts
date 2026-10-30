@@ -90,7 +90,7 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
             ? t('Abrí Ajustes → Privacidad (o Contraseñas y seguridad) → Acceso especial → Acceso a notificaciones.')
             : t('Abrí Ajustes → Apps → Acceso especial de apps → Acceso a notificaciones (o «Notificaciones del dispositivo y la app»).'),
         t('Buscá Patty, prendelo y aceptá el aviso de Android.'),
-        t('Patty solo mira qué música, podcast o video está sonando: no lee tus mensajes ni tus notificaciones.'),
+        t('El texto de tus mensajes y de tus avisos nunca sale del teléfono: Patty se queda solo con lo que prendas en Permisos.'),
         buscar('acceso a notificaciones'),
       ];
     case 'salud':

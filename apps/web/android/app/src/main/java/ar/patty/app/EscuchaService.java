@@ -13,6 +13,7 @@ import android.media.session.PlaybackState;
 import android.os.Handler;
 import android.os.Looper;
 import android.service.notification.NotificationListenerService;
+import android.service.notification.StatusBarNotification;
 import android.util.Log;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,8 +30,10 @@ import org.json.JSONObject;
  * sesiones de audio y video que hay abiertas (Spotify, YouTube, Netflix, podcasts…) con su título, artista y si están
  * sonando. Con eso se anotan tramos: desde que algo empieza a sonar hasta que se pausa, termina o cambia de tema. Solo
  * se guardan los tramos de al menos 30 segundos, de los últimos 14 días; EscuchaPlugin los lee.
- * Nunca se lee el contenido de las notificaciones: el permiso se usa solo para ver qué suena.
+ * Para esto no se lee el contenido de las notificaciones: el permiso se usa solo para ver qué suena.
  * Si el usuario no lo prendió (preferencia "activo"), no se anota nada.
+ * Con el mismo permiso, cada aviso que llega pasa por AvisosTelefono (cuántos avisos y mensajes, y pedidos, viajes y
+ * ejercicio de algunas apps), que tiene sus propios interruptores.
  */
 public class EscuchaService extends NotificationListenerService {
 
@@ -98,6 +101,21 @@ public class EscuchaService extends NotificationListenerService {
         // Sin el servicio no nos enteramos de cuándo termina: lo que sonaba se cierra ahora.
         cerrarTodos(this, System.currentTimeMillis());
         super.onListenerDisconnected();
+    }
+
+    @Override
+    public void onNotificationPosted(StatusBarNotification sbn, RankingMap ranking) {
+        try {
+            AvisosTelefono.alLlegar(this, sbn, ranking);
+        } catch (Exception e) {
+            // Un aviso raro no puede tirar abajo el servicio (ni lo que suena).
+            Log.w(TAG, "No se pudo mirar el aviso", e);
+        }
+    }
+
+    @Override
+    public void onNotificationPosted(StatusBarNotification sbn) {
+        onNotificationPosted(sbn, getCurrentRanking());
     }
 
     // ---- Sesiones ----

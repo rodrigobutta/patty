@@ -54,6 +54,7 @@ import { Frase } from '../ui/Frase';
 import { Sentir } from './Sentir';
 import { detalleDelMedio } from '../lib/medios';
 import { EscuchasDelDia } from './EscuchasDelDia';
+import { AvisosDelDia, AvisosPendientes } from './AvisosDelDia';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
 const HORAS_SIN_PREGUNTAR = 3;
@@ -515,6 +516,15 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       ) : null}
       {fecha === hoy && registros ? <SeguimientoDelDia persona={persona} registros={registros} categorias={categorias} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
       {fecha === hoy && !persona.supervisada ? <PaseosPendientes persona={persona} vuelta={vuelta} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
+      {/* Un pedido de comida o un viaje en Uber que se vio en los avisos del teléfono: Patty pregunta qué fue. */}
+      {fecha === hoy && !persona.supervisada ? (
+        <AvisosPendientes
+          persona={persona}
+          vuelta={vuelta}
+          alAnotar={() => { void traer(); avisarAnotado(); }}
+          alFoto={sesion?.ia ? (p) => { setPista(p); setEligiendoFoto(true); } : undefined}
+        />
+      ) : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
         <PreguntaDespertar persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
       ) : null}
@@ -614,6 +624,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       )}
       {/* Lo que sonó o se miró en el teléfono (Spotify, Netflix…), si está prendido: en sesiones, con los temas. */}
       <EscuchasDelDia persona={persona} fecha={fecha} vuelta={vuelta} />
+      {/* Cuántas notificaciones y mensajes llegaron (con «Lo que avisan las apps» prendido), por hora y por app. */}
+      <AvisosDelDia persona={persona} fecha={fecha} vuelta={vuelta} />
       {/* Lo que llegó solo (clima, ubicación, teléfono, sueño y salud): widgets chicos, distintos de lo anotado. */}
       <WidgetsDelDia
         automaticos={automaticos}
@@ -687,8 +699,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
             {hayVoz(sesion.voz) ? <IconoMicrofono /> : <IconoLapiz />}
             {t('Contale a Patty')}
           </button>
-          <button className="camara-flotante" onClick={() => setEligiendoFoto(true)} aria-label={t('Sacale una foto a lo que comiste')}><IconoCamara /></button>
-          {eligiendoFoto ? <ElegirFoto alElegir={(o) => void fotoDe(o)} alCancelar={() => setEligiendoFoto(false)} /> : null}
+          <button className="camara-flotante" onClick={() => { setPista(undefined); setEligiendoFoto(true); }} aria-label={t('Sacale una foto a lo que comiste')}><IconoCamara /></button>
+          {eligiendoFoto ? <ElegirFoto alElegir={(o) => void fotoDe(o)} alCancelar={() => { setEligiendoFoto(false); setPista(undefined); }} /> : null}
         </>
       ) : null}
       {/* Un velo suave detrás de los botones de abajo, para que se lean sobre cualquier cosa. */}
@@ -703,7 +715,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {cargando ? (
         <>
           <div className="velo" onClick={() => setCargando(false)} />
-          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} pista={cargando === 'contar' ? pista : undefined} contado={cargando === 'contar' ? revisando : undefined} foto={cargando === 'foto' ? fotoInicial ?? undefined : undefined} alCerrar={() => { setCargando(false); setPista(undefined); setRevisando(undefined); }} alGuardar={(otroDia) => { setCargando(false); setPista(undefined); setRevisando(undefined); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
+          <Cargar persona={persona} fecha={fecha} contar={cargando === 'contar'} pista={cargando === 'contar' || cargando === 'foto' ? pista : undefined} contado={cargando === 'contar' ? revisando : undefined} foto={cargando === 'foto' ? fotoInicial ?? undefined : undefined} alCerrar={() => { setCargando(false); setPista(undefined); setRevisando(undefined); }} alGuardar={(otroDia) => { setCargando(false); setPista(undefined); setRevisando(undefined); if (otroDia) setFecha(otroDia); else void traer(); avisarAnotado(); }} />
         </>
       ) : null}
     </section>

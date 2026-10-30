@@ -23,6 +23,8 @@ import org.json.JSONObject;
  * video. Acá se pide el permiso ("Acceso a notificaciones", se da en Ajustes), se prende o se apaga, y se leen o se
  * borran los tramos. Cada tramo: paquete, app, titulo, artista, album, inicio y fin (ms), y duracion (lo que dura el
  * tema o el video según la app, 0 si no lo dice).
+ * También da lo que junta AvisosTelefono con el mismo permiso (cuántos avisos y mensajes; pedidos, viajes y ejercicio)
+ * y sus interruptores.
  */
 @CapacitorPlugin(name = "Escucha")
 public class EscuchaPlugin extends Plugin {
@@ -166,6 +168,107 @@ public class EscuchaPlugin extends Plugin {
     public void borrarTodo(PluginCall call) {
         synchronized (EscuchaService.CANDADO) {
             prefs().edit().putString(EscuchaService.LISTA, "[]").putString(EscuchaService.ABIERTOS, "{}").apply();
+        }
+        call.resolve();
+    }
+
+    // ---- Lo que avisan las apps (AvisosTelefono) ----
+
+    private static JSObject funciones(SharedPreferences p) {
+        JSObject f = new JSObject();
+        for (String k : AvisosTelefono.FUNCIONES) f.put(k, AvisosTelefono.prendida(p, k));
+        return f;
+    }
+
+    /** Prende o apaga cada función ({interrupciones, social, pedidos, viajes, ejercicio}); lo que no viene queda igual. */
+    @PluginMethod
+    public void configurarAvisos(PluginCall call) {
+        SharedPreferences p = AvisosTelefono.prefs(getContext());
+        JSObject r;
+        synchronized (AvisosTelefono.CANDADO) {
+            SharedPreferences.Editor e = p.edit();
+            for (String k : AvisosTelefono.FUNCIONES) {
+                Boolean v = call.getBoolean(k);
+                if (v != null) e.putBoolean("f_" + k, v);
+            }
+            e.commit();
+            r = funciones(p);
+        }
+        call.resolve(new JSObject().put("funciones", r).put("acceso", tieneAcceso()));
+    }
+
+    /**
+     * Lo juntado: los conteos por hora y app ({paquete, app, hora, n, sonoras, apagada, mensajes}), los eventos
+     * ({tipo, app, evento, instante, deporte, km, minutos}), las funciones y `hasta` (para borrar lo mandado).
+     */
+    @PluginMethod
+    public void avisos(PluginCall call) {
+        JSArray conteos = new JSArray();
+        JSArray eventos = new JSArray();
+        long hasta;
+        JSObject f;
+        synchronized (AvisosTelefono.CANDADO) {
+            SharedPreferences p = AvisosTelefono.prefs(getContext());
+            hasta = System.currentTimeMillis();
+            JSONObject c = AvisosTelefono.leerObjeto(p, AvisosTelefono.CONTEOS);
+            Iterator<String> it = c.keys();
+            while (it.hasNext()) {
+                JSONObject x = c.optJSONObject(it.next());
+                if (x != null) conteos.put(x);
+            }
+            JSONArray l = AvisosTelefono.leerLista(p, AvisosTelefono.EVENTOS);
+            for (int i = 0; i < l.length(); i++) {
+                JSONObject x = l.optJSONObject(i);
+                if (x != null) eventos.put(x);
+            }
+            f = funciones(p);
+        }
+        JSObject r = new JSObject();
+        r.put("conteos", conteos);
+        r.put("eventos", eventos);
+        r.put("hasta", hasta);
+        r.put("funciones", f);
+        call.resolve(r);
+    }
+
+    /**
+     * Borra lo ya mandado: los eventos de antes de `hasta` y los conteos de las horas que ya habían terminado entonces
+     * (la hora en curso sigue sumando y se manda de nuevo, entera).
+     */
+    @PluginMethod
+    public void borrarAvisos(PluginCall call) {
+        long hasta = call.getLong("hasta", 0L);
+        synchronized (AvisosTelefono.CANDADO) {
+            SharedPreferences p = AvisosTelefono.prefs(getContext());
+            JSONObject c = AvisosTelefono.leerObjeto(p, AvisosTelefono.CONTEOS);
+            JSONObject quedan = new JSONObject();
+            Iterator<String> it = c.keys();
+            while (it.hasNext()) {
+                String k = it.next();
+                JSONObject x = c.optJSONObject(k);
+                if (x == null || x.optLong("hora") + 3600_000L <= hasta) continue;
+                try {
+                    quedan.put(k, x);
+                } catch (Exception ignorado) {
+                    // No pasa: la clave es un texto.
+                }
+            }
+            JSONArray l = AvisosTelefono.leerLista(p, AvisosTelefono.EVENTOS);
+            JSONArray siguen = new JSONArray();
+            for (int i = 0; i < l.length(); i++) {
+                JSONObject x = l.optJSONObject(i);
+                if (x != null && x.optLong("instante") >= hasta) siguen.put(x);
+            }
+            p.edit().putString(AvisosTelefono.CONTEOS, quedan.toString()).putString(AvisosTelefono.EVENTOS, siguen.toString()).apply();
+        }
+        call.resolve();
+    }
+
+    /** Borra todo lo juntado de los avisos (los interruptores quedan como estaban). */
+    @PluginMethod
+    public void borrarTodoAvisos(PluginCall call) {
+        synchronized (AvisosTelefono.CANDADO) {
+            AvisosTelefono.prefs(getContext()).edit().putString(AvisosTelefono.CONTEOS, "{}").putString(AvisosTelefono.EVENTOS, "[]").apply();
         }
         call.resolve();
     }

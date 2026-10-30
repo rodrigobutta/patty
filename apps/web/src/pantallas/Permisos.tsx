@@ -16,8 +16,10 @@ import { hayDatosDelTelefono, ponerDatos, sincronizar, Telefono } from '../lib/t
 import { ponerSeguimiento } from '../lib/ubicacion';
 import { Mascota } from '../mascota/Mascota';
 import { t } from '../lib/idioma';
-import { escuchasActivadas, hayEscuchas, permisoEscuchas, ponerEscuchas, sincronizarEscuchas } from '../lib/escuchas';
-import { IconoCategoria } from '../ui/IconosPatty';
+import { Escucha, escuchasActivadas, hayEscuchas, permisoEscuchas, ponerEscuchas, sincronizarEscuchas } from '../lib/escuchas';
+import { IconoCampana, IconoCategoria } from '../ui/IconosPatty';
+import { funcionesAvisos, hayAvisosTelefono, ponerFuncionAvisos, sincronizarAvisos } from '../lib/avisosTelefono';
+import { FUNCIONES_AVISOS, type FuncionAvisos, type FuncionesAvisos } from 'shared';
 import type { ReactNode } from 'react';
 import { averiguarMarca, marcaDelTelefono, NOMBRE_MARCA, pasosPara } from '../lib/guiasPermisos';
 
@@ -41,8 +43,35 @@ const yaOfrecido = () => {
 };
 
 export type Paso = 'avisos' | 'ubicacion' | 'telefono' | 'salud';
-/** Las filas de esta pantalla: los pasos y, aparte (no es una fuente del Día), lo que suena en el teléfono. */
-type Fila = Paso | 'escuchas';
+/**
+ * Las filas de esta pantalla: los pasos y, aparte (no son una fuente del Día), lo que suena en el teléfono y lo que
+ * avisan las apps (los dos con el acceso a las notificaciones de Android).
+ */
+type Fila = Paso | 'escuchas' | 'notificaciones';
+
+/** Lo que hace cada interruptor de «Lo que avisan las apps» y qué lee exactamente. */
+const FUNCIONES: Record<FuncionAvisos, { titulo: string; lee: string }> = {
+  interrupciones: {
+    titulo: 'Interrupciones',
+    lee: 'Cuántos avisos te llegan por día y por hora, qué apps avisan más y cuáles sonaron de noche (de 23 a 7). Solo la app y la hora: nunca el texto.',
+  },
+  social: {
+    titulo: 'Vida social',
+    lee: 'Cuántos mensajes recibís en WhatsApp, Telegram, Instagram, Messenger, Signal y SMS. Solo cuántos: nunca de quién ni qué dicen.',
+  },
+  pedidos: {
+    titulo: 'Comida pedida',
+    lee: 'Cuando PedidosYa, Rappi o Uber Eats avisan que tu pedido está en camino o llegó, Patty te pregunta qué fue para anotarlo. El aviso se lee en el teléfono y solo sale «llegó un pedido».',
+  },
+  viajes: {
+    titulo: 'Viajes en apps',
+    lee: 'Los avisos de Uber, Cabify y DiDi de que llega el auto o terminó el viaje, para marcar tus viajes «en Uber». Se leen en el teléfono y solo sale la app y la hora.',
+  },
+  ejercicio: {
+    titulo: 'Ejercicio',
+    lee: 'Cuando Strava, Nike Run Club, Garmin, Samsung Health, Google Fit o adidas Running avisan que terminaste un entrenamiento, se anota solo (con los minutos y los km si el aviso los dice), salvo que ya esté anotado.',
+  },
+};
 
 /** El aviso push de un permiso que falta se tocó: Más abre los permisos con los pasos de ese a la vista. */
 let guiaPendiente: Paso | null = null;
@@ -126,10 +155,13 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
   const [nota, setNota] = useState<Partial<Record<Fila, string>>>({});
   /** Lo que suena: si el teléfono dio el acceso a las notificaciones y si está prendido en Patty. */
   const [escuchas, setEscuchas] = useState({ permiso: false, activo: escuchasActivadas() });
+  /** Los interruptores de lo que avisan las apps (null: la app instalada es vieja y no los tiene). */
+  const [funciones, setFunciones] = useState<FuncionesAvisos | null>(null);
 
   const mirar = useCallback(() => {
     void leerEstado().then(setEstado);
     void permisoEscuchas().then((permiso) => setEscuchas({ permiso, activo: escuchasActivadas() }));
+    void funcionesAvisos().then(setFunciones);
   }, []);
   // Al volver de los ajustes del teléfono se vuelve a mirar.
   useEffect(() => {
@@ -163,6 +195,22 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
       return n;
     });
   const dejarDeEscuchar = () => hacer('escuchas', async () => void (await ponerEscuchas(false)));
+  /** Lo que avisan las apps: el permiso es el mismo que el de lo que suena (se da en Ajustes). */
+  const leerAvisos = () =>
+    hacer('notificaciones', async () => {
+      if (!funciones) return t('Para esto hace falta la última versión de la app.');
+      if (!(await permisoEscuchas())) {
+        await Escucha.pedirPermiso().catch(() => {});
+        return t('En la lista que se abre, buscá Patty y activá el acceso a las notificaciones. Después volvé acá.');
+      }
+      // Con el acceso dado, si estaban todas apagadas, se prenden todas.
+      if (!FUNCIONES_AVISOS.some((f) => funciones[f])) for (const f of FUNCIONES_AVISOS) setFunciones(await ponerFuncionAvisos(f, true));
+      void sincronizarAvisos(persona.id).catch(() => {});
+    });
+  const cambiarFuncion = async (f: FuncionAvisos, prendida: boolean) => {
+    const r = await ponerFuncionAvisos(f, prendida);
+    if (r) setFunciones(r);
+  };
 
   const terminar = () => {
     yaOfrecido();
@@ -171,7 +219,8 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
   };
 
   const p = estado?.permisos;
-  const filas: Array<{ paso: Fila; icono: ReactNode; titulo: string; para: string; ejemplo: string; listo: boolean; parcial?: boolean; accion(): void; apagar?(): void; mostrar: boolean }> = [
+  const algunaAvisos = funciones !== null && FUNCIONES_AVISOS.some((f) => funciones[f]);
+  const filas: Array<{ paso: Fila; icono: ReactNode; titulo: string; para: string; ejemplo: string; listo: boolean; parcial?: boolean; accion(): void; apagar?(): void; mostrar: boolean; extra?: ReactNode }> = [
     {
       paso: 'avisos',
       ejemplo: t('💡 Así no se te pasa ningún remedio, y contestás cómo te sentís desde el mismo aviso.'),
@@ -206,7 +255,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
     },
     {
       paso: 'escuchas',
-      ejemplo: t('💡 Así Patty puede ver cosas como «los días que escuchás más música dormís mejor». Solo mira qué suena: nunca lee tus mensajes ni tus notificaciones.'),
+      ejemplo: t('💡 Así Patty puede ver cosas como «los días que escuchás más música dormís mejor». Para esto solo mira qué suena.'),
       icono: <IconoCategoria clave="musica" tamano={28} />,
       titulo: t('Qué estás escuchando o mirando'),
       para: t('La música, los podcasts y las series que suenan en el teléfono (Spotify, YouTube Music, Netflix…): título, artista y cuánto. Android lo llama «acceso a las notificaciones».'),
@@ -215,6 +264,31 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
       accion: escuchar,
       apagar: dejarDeEscuchar,
       mostrar: hayEscuchas(),
+    },
+    {
+      paso: 'notificaciones',
+      ejemplo: t('Así Patty puede ver cosas como «los días con muchas notificaciones estás más ansioso», «las noches con avisos dormís peor» o «cuando charlás más, estás de mejor ánimo».'),
+      icono: <IconoCampana tamano={28} />,
+      titulo: t('Lo que avisan las apps'),
+      para: t('Con el mismo «acceso a las notificaciones»: cada cosa se prende o se apaga por separado. El texto de tus avisos nunca sale del teléfono.'),
+      listo: escuchas.permiso && algunaAvisos,
+      parcial: escuchas.permiso,
+      accion: leerAvisos,
+      mostrar: hayAvisosTelefono(),
+      extra:
+        funciones && escuchas.permiso ? (
+          <span className="funciones-avisos">
+            {FUNCIONES_AVISOS.map((f) => (
+              <label key={f} className="opcion">
+                <input type="checkbox" checked={funciones[f]} disabled={ocupado !== null} onChange={(e) => void cambiarFuncion(f, e.target.checked)} />
+                <span>
+                  <strong>{t(FUNCIONES[f].titulo)}</strong>
+                  <span className="suave chico renglon-sub">{t(FUNCIONES[f].lee)}</span>
+                </span>
+              </label>
+            ))}
+          </span>
+        ) : null,
     },
     {
       paso: 'salud',
@@ -248,7 +322,8 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
               <span className="suave chico renglon-sub">{f.para}</span>
               <span className="chico renglon-sub ejemplo-permiso">{f.ejemplo}</span>
               {nota[f.paso] ? <span className="chico renglon-sub nota-permiso">{nota[f.paso]}</span> : null}
-              {pasosPara(f.paso, marca).length ? (
+              {f.extra}
+              {pasosPara(f.paso === 'notificaciones' ? 'escuchas' : f.paso, marca).length ? (
                 <button className="enlace chico como-activar" onClick={() => setAbierta(abierta === f.paso ? null : f.paso)} aria-expanded={abierta === f.paso}>
                   {abierta === f.paso ? t('Ocultar los pasos') : t('¿Cómo lo activo?')}
                 </button>
@@ -256,7 +331,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
               {abierta === f.paso ? (
                 <span className="guia-permiso" ref={(el) => { if (el && guia === f.paso) el.scrollIntoView({ block: 'center' }); }}>
                   <span className="suave chico">{t('En tu {marca}:', { marca: NOMBRE_MARCA[marca] })}</span>
-                  <ol>{pasosPara(f.paso, marca).map((x) => <li key={x}>{x}</li>)}</ol>
+                  <ol>{pasosPara(f.paso === 'notificaciones' ? 'escuchas' : f.paso, marca).map((x) => <li key={x}>{x}</li>)}</ol>
                 </span>
               ) : null}
             </span>

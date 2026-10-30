@@ -264,3 +264,26 @@ export function IconoMedio({ tipo, tamano }: { tipo: 'tele' | 'musica' | 'podcas
   if (tipo === 'podcast') return <IconoPodcast tamano={tamano} />;
   return <IconoTele tamano={tamano} />;
 }
+
+/** Una campana con su badajo y un puntito: los avisos que llegan al teléfono. */
+export function IconoCampana({ tamano }: { tamano?: number }) {
+  return (
+    <Base tamano={tamano}>
+      <path d="M16 4.5 a1.8 1.8 0 0 1 1.8 1.8 v.6 a8 8 0 0 1 6.2 7.8 v5 l2.5 3.3 H5.5 L8 19.7 v-5 a8 8 0 0 1 6.2-7.8 v-.6 A1.8 1.8 0 0 1 16 4.5 Z" fill={V} {...T} />
+      <path d="M13 26 a3 3 0 0 0 6 0" fill={A} {...T} />
+      <path d="M11.5 13.5 a4.5 4.5 0 0 1 3-3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="25" cy="7" r="3" fill={A} {...T} strokeWidth={1.6} />
+    </Base>
+  );
+}
+
+/** Dos globitos de charla: los mensajes que llegan. */
+export function IconoMensajes({ tamano }: { tamano?: number }) {
+  return (
+    <Base tamano={tamano}>
+      <path d="M4 7.5 a3 3 0 0 1 3-3 h11 a3 3 0 0 1 3 3 v6 a3 3 0 0 1-3 3 h-7 l-4.5 3.5 v-3.5 h0 a3 3 0 0 1-2.5-3 Z" fill={V} {...T} />
+      <path d="M8.5 9.5 h8 M8.5 12.5 h5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M23.5 12 h1.5 a3 3 0 0 1 3 3 v5 a3 3 0 0 1-3 3 v3.5 l-4.5-3.5 h-5 a3 3 0 0 1-3-3 v-.5" fill={A} {...T} />
+    </Base>
+  );
+}

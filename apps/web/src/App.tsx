@@ -11,6 +11,7 @@ import { pedirSentir } from './lib/sentir';
 import { useSalud } from './lib/salud';
 import { useDatosDelTelefono } from './lib/telefono';
 import { useEscuchas } from './lib/escuchas';
+import { useAvisosTelefono } from './lib/avisosTelefono';
 import { useCara } from './mascota/cara';
 import { Festejo } from './mascota/Festejo';
 import { Mascota } from './mascota/Mascota';
@@ -89,6 +90,7 @@ export function App() {
   useSeguirUbicacion(deEsteTelefono);
   useDatosDelTelefono(deEsteTelefono);
   useEscuchas(deEsteTelefono);
+  useAvisosTelefono(deEsteTelefono);
   useSalud(deEsteTelefono);
   useClimaDeLasUltimasHoras(deEsteTelefono);
   const cara = useCara(fase === 'listo' ? persona : null);

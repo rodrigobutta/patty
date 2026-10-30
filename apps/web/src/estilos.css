@@ -1600,3 +1600,19 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .escuchas-dia .pistas { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 .listo-permiso { display: grid; justify-items: center; gap: 2px; }
 .segmentos button.solo-iconos { display: inline-flex; align-items: center; gap: 2px; }
+
+/* Lo que avisan las apps del teléfono: los interruptores en Permisos, las preguntas y el detalle en el Día. */
+.funciones-avisos { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.funciones-avisos .opcion { display: flex; align-items: flex-start; gap: 8px; }
+.funciones-avisos .opcion input { margin-top: 3px; flex: none; }
+.aviso-pendiente { border-color: color-mix(in srgb, var(--acento) 40%, var(--borde)); }
+.aviso-pendiente p { margin: 0 0 8px; }
+.botones-aviso { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.botones-aviso .btn { display: inline-flex; align-items: center; gap: 6px; }
+.avisos-dia .detalle-avisos { display: flex; flex-direction: column; gap: 6px; }
+.barras-hora { display: flex; align-items: flex-end; gap: 2px; height: 64px; padding: 4px 0; border-bottom: 1px solid var(--borde); }
+.barras-hora .barra { flex: 1; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--acento); }
+.barras-hora .barra.de-noche { background: var(--ambar); }
+.horas-barras { display: flex; justify-content: space-between; }
+.apps-avisos { margin: 0; padding-left: 20px; }
+.apps-avisos li { display: flex; justify-content: space-between; gap: 8px; }

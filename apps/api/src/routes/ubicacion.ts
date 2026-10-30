@@ -21,6 +21,7 @@ import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
 import { huboTrafico, minutosHabituales, paradasSinNombre, resumirDia, sinSaltos, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
 import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
+import { appDelViaje, viajesEnApps } from '../avisos/telefono.js';
 import { conceptoMedido } from './ingesta.js';
 
 export const NOMBRE_FUENTE = 'Ubicación';
@@ -302,7 +303,11 @@ export const rutasUbicacion = new Hono<Env>()
     const porDia = new Map<string, Punto[]>();
     for (const x of antes) porDia.set(x.fecha, [...(porDia.get(x.fecha) ?? []), { instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon }]);
     const anteriores = [...porDia.values()].flatMap((l) => viajesDelDia(l, lugaresP));
-    const r: ViajeDelDia[] = viajesDelDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), lugaresP).map((v) => {
+    const delDia = viajesDelDia(ps.map((x) => ({ instante: new Date(x.instante).getTime(), lat: x.lat, lon: x.lon })), lugaresP);
+    // Los viajes en Uber, Cabify o DiDi que se vieron en sus avisos (con «Viajes en apps» prendido en el teléfono).
+    const enApps = delDia.length ? await viajesEnApps(c.var.db, p.id, delDia[0].inicio, delDia[delDia.length - 1].fin) : [];
+    const r: ViajeDelDia[] = delDia.map((v) => {
+      const app = appDelViaje(v, enApps);
       const minutos = Math.max(1, Math.round((v.fin - v.inicio) / 60000));
       const km = Math.round(v.metros / 100) / 10;
       const habitual = minutosHabituales(v, anteriores);
@@ -323,8 +328,9 @@ export const rutasUbicacion = new Hono<Env>()
         minutos,
         km,
         velocidad: Math.round(km / (minutos / 60)),
-        modo: g.modo === 'caminando' || g.modo === 'bici' ? g.modo : trafico ? 'auto' : g.modo,
-        pista,
+        modo: app ? 'taxi' : g.modo === 'caminando' || g.modo === 'bici' ? g.modo : trafico ? 'auto' : g.modo,
+        pista: app ? `${traducir(c.var.idioma, 'En {app}, según su aviso', { app })} · ${pista}` : pista,
+        app,
         pesado: g.pesado || trafico,
         contado: [...contados].some((t) => Math.abs(t - v.inicio) < 60000),
         camino: v.camino ?? [],
@@ -336,58 +342,11 @@ export const rutasUbicacion = new Hono<Env>()
     return c.json(r);
   })
   .post('/viajes', async (c) => {
-    // {persona_id, inicio, fin, minutos, km, modo, como}: cómo fue un viaje. Queda como "Viaje en auto" (con los minutos
-    // y cuánto pesó) y, si fue pesado, además "Viaje pesado": así entra en los patrones.
+    // {persona_id, inicio, fin, minutos, km, modo, como, app?}: cómo fue un viaje. Queda como "Viaje en auto" (con los
+    // minutos y cuánto pesó) y, si fue pesado, además "Viaje pesado": así entra en los patrones.
     const d = await cuerpo(c);
     const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
-    const modo = MODOS_VIAJE[d.modo as ModoViaje] ? (d.modo as ModoViaje) : 'auto';
-    const como = COMO_VIAJE.find((x) => x.clave === d.como) ?? COMO_VIAJE[1];
-    const inicio = leerInstante(d.inicio, 'inicio');
-    const fin = leerInstante(d.fin, 'fin');
-    const minutos = Math.max(1, Math.min(24 * 60, Math.round(Number(d.minutos) || (fin.getTime() - inicio.getTime()) / 60000)));
-    const km = Math.max(0, Number(d.km) || 0);
-    await c.var.db.transaction(async (tx) => {
-      const cat = (await una<{ id: number }>(tx, sql`SELECT id FROM categorias WHERE clave = 'viaje'`))!.id;
-      // Si ya se había contado este viaje, se reemplaza.
-      await tx.execute(sql`UPDATE registros r SET borrado = now() FROM conceptos c JOIN categorias k ON k.id = c.categoria_id
-        WHERE c.id = r.concepto_id AND k.clave = 'viaje' AND r.persona_id = ${p.id} AND r.borrado IS NULL
-          AND abs(extract(epoch FROM r.inicio - ${inicio.toISOString()}::timestamptz)) < 60`);
-      const viaje = (await obtenerOCrearConcepto(tx, { nombre: MODOS_VIAJE[modo].concepto, categoriaId: cat, tipoValor: 'duracion', unidad: 'min' })).concepto;
-      const nuevos: Array<{ concepto_id: number; valor: number | null; unidad: string | null; intensidad: number | null; nota: string | null }> = [
-        { concepto_id: viaje.id, valor: minutos, unidad: 'min', intensidad: como.intensidad, nota: km ? `${String(km).replace('.', ',')} km` : null },
-      ];
-      if (como.clave === 'pesado') {
-        const pesado = (await obtenerOCrearConcepto(tx, { nombre: VIAJE_PESADO, categoriaId: cat, tipoValor: 'evento', unidad: null })).concepto;
-        nuevos.push({ concepto_id: pesado.id, valor: null as unknown as number, unidad: null as unknown as string, intensidad: como.intensidad, nota: null });
-      }
-      // El tráfico que vio Patty (tramos lentos o más que lo habitual): queda aparte, para los patrones ("los días con
-      // tráfico dormís peor"), aunque la persona diga que el viaje fue tranquilo.
-      if (d.trafico === true) {
-        const conTrafico = (await obtenerOCrearConcepto(tx, { nombre: VIAJE_CON_TRAFICO, categoriaId: cat, tipoValor: 'evento', unidad: null })).concepto;
-        nuevos.push({ concepto_id: conTrafico.id, valor: null, unidad: null, intensidad: null, nota: null });
-        const habitual = Number(d.habitual_min) || 0;
-        const extra = Math.max(Math.round(Number(d.lento_min) || 0), habitual ? minutos - habitual : 0);
-        if (extra > 0) {
-          const enTrafico = (await obtenerOCrearConcepto(tx, { nombre: MINUTOS_EN_TRAFICO, categoriaId: cat, tipoValor: 'duracion', unidad: 'min' })).concepto;
-          nuevos.push({ concepto_id: enTrafico.id, valor: Math.min(extra, minutos), unidad: 'min', intensidad: null, nota: null });
-        }
-      }
-      for (const n of nuevos) {
-        await tx.insert(registros).values({
-          persona_id: p.id,
-          concepto_id: n.concepto_id,
-          inicio: inicio.toISOString(),
-          fin: fin.toISOString(),
-          fecha: diaDePatty(inicio, p.zona_horaria),
-          valor: n.valor,
-          unidad: n.unidad,
-          intensidad: n.intensidad,
-          nota: n.nota,
-          origen: 'manual',
-          creado_por: c.var.usuario.id,
-        });
-      }
-    });
+    await c.var.db.transaction((tx) => contarViaje(tx, p, c.var.usuario.id, d));
     return c.json({ ok: true }, 201);
   })
   .get('/frecuentes', async (c) => {
@@ -600,4 +559,59 @@ export async function recalcularSiCambio(db: Db, version: string): Promise<void>
         ON CONFLICT (clave) DO UPDATE SET valor = excluded.valor, creado = now()`,
   );
   console.log(`Ubicación recalculada (${version}) para ${personas.length} personas.`);
+}
+
+/**
+ * Anota cómo fue un viaje: {inicio, fin, minutos, km, modo, como, trafico, lento_min, habitual_min, app}. Si ya se había
+ * contado (un viaje a la misma hora), se reemplaza. `app`: si fue en Uber, Cabify o DiDi (va en la nota).
+ */
+export async function contarViaje(tx: Tx, p: { id: number; zona_horaria: string }, usuarioId: number | null, d: Record<string, unknown>): Promise<void> {
+  const modo = MODOS_VIAJE[d.modo as ModoViaje] ? (d.modo as ModoViaje) : 'auto';
+  const como = COMO_VIAJE.find((x) => x.clave === d.como) ?? COMO_VIAJE[1];
+  const inicio = leerInstante(d.inicio, 'inicio');
+  const fin = d.fin ? leerInstante(d.fin, 'fin') : inicio;
+  const minutos = Math.max(1, Math.min(24 * 60, Math.round(Number(d.minutos) || (fin.getTime() - inicio.getTime()) / 60000)));
+  const km = Math.max(0, Number(d.km) || 0);
+  const app = typeof d.app === 'string' ? d.app.trim().slice(0, 30) : '';
+  const cat = (await una<{ id: number }>(tx, sql`SELECT id FROM categorias WHERE clave = 'viaje'`))!.id;
+  // Si ya se había contado este viaje, se reemplaza.
+  await tx.execute(sql`UPDATE registros r SET borrado = now() FROM conceptos c JOIN categorias k ON k.id = c.categoria_id
+    WHERE c.id = r.concepto_id AND k.clave = 'viaje' AND r.persona_id = ${p.id} AND r.borrado IS NULL
+      AND abs(extract(epoch FROM r.inicio - ${inicio.toISOString()}::timestamptz)) < 60`);
+  const viaje = (await obtenerOCrearConcepto(tx, { nombre: MODOS_VIAJE[modo].concepto, categoriaId: cat, tipoValor: 'duracion', unidad: 'min' })).concepto;
+  const nota = [km ? `${String(km).replace('.', ',')} km` : '', app ? `en ${app}` : ''].filter(Boolean).join(' · ') || null;
+  const nuevos: Array<{ concepto_id: number; valor: number | null; unidad: string | null; intensidad: number | null; nota: string | null }> = [
+    { concepto_id: viaje.id, valor: minutos, unidad: 'min', intensidad: como.intensidad, nota },
+  ];
+  if (como.clave === 'pesado') {
+    const pesado = (await obtenerOCrearConcepto(tx, { nombre: VIAJE_PESADO, categoriaId: cat, tipoValor: 'evento', unidad: null })).concepto;
+    nuevos.push({ concepto_id: pesado.id, valor: null, unidad: null, intensidad: como.intensidad, nota: null });
+  }
+  // El tráfico que vio Patty (tramos lentos o más que lo habitual): queda aparte, para los patrones ("los días con
+  // tráfico dormís peor"), aunque la persona diga que el viaje fue tranquilo.
+  if (d.trafico === true) {
+    const conTrafico = (await obtenerOCrearConcepto(tx, { nombre: VIAJE_CON_TRAFICO, categoriaId: cat, tipoValor: 'evento', unidad: null })).concepto;
+    nuevos.push({ concepto_id: conTrafico.id, valor: null, unidad: null, intensidad: null, nota: null });
+    const habitual = Number(d.habitual_min) || 0;
+    const extra = Math.max(Math.round(Number(d.lento_min) || 0), habitual ? minutos - habitual : 0);
+    if (extra > 0) {
+      const enTrafico = (await obtenerOCrearConcepto(tx, { nombre: MINUTOS_EN_TRAFICO, categoriaId: cat, tipoValor: 'duracion', unidad: 'min' })).concepto;
+      nuevos.push({ concepto_id: enTrafico.id, valor: Math.min(extra, minutos), unidad: 'min', intensidad: null, nota: null });
+    }
+  }
+  for (const n of nuevos) {
+    await tx.insert(registros).values({
+      persona_id: p.id,
+      concepto_id: n.concepto_id,
+      inicio: inicio.toISOString(),
+      fin: fin.toISOString(),
+      fecha: diaDePatty(inicio, p.zona_horaria),
+      valor: n.valor,
+      unidad: n.unidad,
+      intensidad: n.intensidad,
+      nota: n.nota,
+      origen: 'manual',
+      creado_por: usuarioId,
+    });
+  }
 }

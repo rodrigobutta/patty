@@ -14,6 +14,7 @@ import { cuerpo, numeroONulo, texto, type C, type Env } from '../lib/http.js';
 import { obtenerOCrearConcepto } from './conceptos.js';
 import { guardarPuntos } from './ubicacion.js';
 import { guardarEscuchas } from '../medios/escuchas.js';
+import { guardarAvisos } from '../avisos/telefono.js';
 
 const CATEGORIA_POR_FUENTE: Record<string, string> = { reloj: 'actividad', telefono: 'pantalla', clima: 'clima', ubicacion: 'lugar', otro: 'otro' };
 
@@ -90,6 +91,18 @@ export const rutasIngesta = new Hono<Env>()
     const lista = (await cuerpo(c)).escuchas;
     if (!Array.isArray(lista)) throw new ErrorApi('Mandá una lista "escuchas" (hasta 3000 por vez).');
     const r = await c.var.db.transaction((tx) => guardarEscuchas(tx, f, lista));
+    return c.json({ ok: true, ...r });
+  })
+  // Lo que avisan las apps del teléfono (la app de Android, con el acceso a las notificaciones): cuántos avisos por
+  // hora y app, y lo que se entendió de los avisos de pedidos, viajes y ejercicio. Nunca el texto. Ver avisos/telefono.ts.
+  //   { "conteos": [{ paquete, app, hora, n, sonoras, apagada, mensajes }], "eventos": [{ tipo, app, evento, instante, deporte?, km?, minutos? }] }
+  .post('/avisos', async (c) => {
+    const f = await fuenteDelPedido(c);
+    const d = await cuerpo(c);
+    const conteos = d.conteos ?? [];
+    const eventos = d.eventos ?? [];
+    if (!Array.isArray(conteos) || !Array.isArray(eventos)) throw new ErrorApi('Mandá listas "conteos" y "eventos".');
+    const r = await c.var.db.transaction((tx) => guardarAvisos(tx, f, conteos, eventos));
     return c.json({ ok: true, ...r });
   })
   .post('/', async (c) => {

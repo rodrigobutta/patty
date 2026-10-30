@@ -3,6 +3,7 @@ import { traducir, type Idioma } from './i18n.js';
 export * from './i18n.js';
 export * from './mascota.js';
 export * from './medios.js';
+export * from './avisos.js';
 import type { Medio } from './medios.js';
 
 /**
@@ -1524,6 +1525,8 @@ export interface ViajeDelDia {
   habitual_min: number | null;
   /** Si Patty vio tráfico (tramos lentos o mucho más que lo habitual). */
   trafico: boolean;
+  /** Si fue en una app de viajes (Uber, Cabify, DiDi), según sus avisos: su nombre. */
+  app?: string | null;
 }
 
 /** Lo que se guarda de un viaje con tráfico (para los patrones). */

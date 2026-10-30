@@ -154,8 +154,8 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
 - **Qué estás escuchando o mirando** (solo Android, Más → Permisos; apagado por defecto): `EscuchaService.java` es un
   lector de notificaciones (`NotificationListenerService`, el permiso «Acceso a las notificaciones» se da en Ajustes)
   que solo usa `MediaSessionManager`: ve qué suena en Spotify, YouTube Music, Deezer, Netflix, YouTube, podcasts…
-  (título, artista, disco, app y si está sonando) sin conectar cada servicio, y nunca lee el contenido de las
-  notificaciones. Anota tramos de al menos 30 s (un tema o capítulo) en el teléfono; `EscuchaPlugin` los da a la web,
+  (título, artista, disco, app y si está sonando) sin conectar cada servicio; para esto no lee el contenido de las
+  notificaciones (lo que sí se saca de los avisos, con su propio interruptor, está en «Lo que avisan las apps»). Anota tramos de al menos 30 s (un tema o capítulo) en el teléfono; `EscuchaPlugin` los da a la web,
   que al abrir Patty (como mucho cada 20 min, `lib/escuchas.ts`) los manda a `POST /api/ingesta/escuchas` con el token
   de la fuente de la app y los borra del teléfono. La API los guarda en `escuchas` (se borran a los 90 días) y, por
   cada día tocado, rehace una medición por **sesión** (los tramos del mismo tipo con menos de 10 min de corte van
@@ -169,6 +169,33 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     PKCE, y una tarea del servidor que cada hora trae lo reciente y lo pasa a `guardarEscuchas` como tramos con
     `paquete: 'spotify-web'` (se juntan en sesiones igual que lo del teléfono y mandar dos veces lo mismo no duplica);
     habría que saltear los tramos que se pisan con los que ya mandó el teléfono desde Spotify.
+- **Lo que avisan las apps** (solo Android, Más → Permisos; con el mismo «Acceso a las notificaciones» de lo que suena):
+  `EscuchaService.onNotificationPosted` le pasa cada aviso a `AvisosTelefono.java`. Son cinco cosas, cada una con su
+  interruptor (prendidas mientras haya acceso; se guardan en el teléfono y la web las cambia con
+  `Escucha.configurarAvisos`):
+  - *Interrupciones*: por hora y app, cuántos avisos llegaron, cuántos sonaron (importancia de sonido y que No molestar
+    no los calle) y cuántos con la pantalla apagada. Nunca el texto. Las actualizaciones de un mismo aviso no cuentan
+    (salvo que cambie su hora, como hacen las apps de mensajes con cada mensaje), ni los fijos ni los resúmenes de grupo.
+  - *Vida social*: cuántos mensajes (WhatsApp, Telegram, Instagram, Messenger, Signal, SMS; categoría «msg» de Android).
+    Nunca de quién ni qué.
+  - *Comida pedida*, *viajes en apps* y *ejercicio*: el texto de los avisos de PedidosYa, Rappi, Uber Eats, Uber,
+    Cabify, DiDi, Strava, Nike Run Club, Garmin, Samsung Health, Google Fit, adidas Running… se lee **en el teléfono**
+    con reglas conservadoras (`LectorAvisos.java`, con pruebas en `LectorAvisosTest`) y sale solo lo entendido:
+    `{tipo, app, evento, instante, deporte, km, minutos}`. Al llegar un pedido, además, el búho pregunta con un aviso.
+  - La web manda todo (al abrir Patty, como mucho cada 20 min, o al toque si hay un evento) a `POST /api/ingesta/avisos`
+    y lo borra del teléfono (`lib/avisosTelefono.ts`). La API (`avisos/telefono.ts`) guarda los conteos en
+    `avisos_conteos` (mandar de nuevo una hora la reemplaza) y rehace por día «Notificaciones», «Mensajes recibidos» y
+    «Notificaciones de noche» (las que sonaron de 23 a 7, en el día en que termina la noche), que entran a los patrones
+    como cualquier medición. Los eventos van a `avisos_detectados`: los del mismo pedido (2 h), viaje (90 min) o
+    entrenamiento (30 min) se juntan en una fila con la hora de cada etapa.
+  - El ejercicio se anota solo como actividad (Correr, Bici, Caminata, Natación, Yoga, Gimnasio o Ejercicio, origen
+    `aviso`, con los minutos y «5,2 km · Strava» en la nota), salvo que a esa hora ya haya una actividad anotada o una
+    caminata del reloj. Un pedido que llegó pregunta en el Día «¿Pediste comida? ¿Qué fue?» (lo que más pide, escrito o
+    con una foto) y queda como comida con `donde: delivery`; si ya hay una comida pedida a esa hora, no pregunta. Un
+    viaje en app que se cruza con uno que vio la ubicación lo marca «en Uber» (modo taxi) en «¿Cómo fue tu viaje?»; si
+    no hay ninguno, el Día pregunta «¿Fuiste en Uber?» (`GET /api/avisos/pendientes`, `POST /api/avisos/:id`).
+  - En el Día, «Lo que avisó el teléfono»: notificaciones y mensajes, y al tocarlo por hora y por app, la noche, y
+    borrar todo (`DELETE /api/avisos`). Los conteos y lo detectado se borran solos a los 90 días.
 - **¿Cómo te sentís?** (arriba del Día, `pantallas/Sentir.tsx`, `lib/sentir.ts`): cuatro caritas (muy bien, bien,
   mal, muy mal) que se guardan como «Cómo me siento» en Ánimo con intensidad 10, 7, 4 y 1 (más alto, mejor: el motor
   compara días buenos y malos). Muy bien y bien se guardan al toque; mal y muy mal preguntan qué pasa: síntomas (los

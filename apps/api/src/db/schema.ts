@@ -341,6 +341,71 @@ export const escuchas = pgTable(
   (t) => [uniqueIndex('escuchas_persona_paquete_inicio_idx').on(t.persona_id, t.paquete, t.inicio), index('escuchas_persona_fecha_idx').on(t.persona_id, t.fecha)],
 );
 
+// ---------- Lo que avisan las apps del teléfono ----------
+
+/**
+ * Cuántos avisos llegaron al teléfono en cada hora, por app (la app de Android, con el acceso a las notificaciones;
+ * ver AvisosTelefono.java): cuántos, cuántos sonaron, cuántos con la pantalla apagada y cuántos eran mensajes. Nunca
+ * el texto ni quién los mandó. Con esto se calculan «Notificaciones», «Notificaciones de noche» y «Mensajes
+ * recibidos». El teléfono manda cada hora entera (la que está en curso, de nuevo, hasta que termina): se reemplaza.
+ * Se borran solos a los 90 días.
+ */
+export const avisosConteos = pgTable(
+  'avisos_conteos',
+  {
+    id: idGrande(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    fuente_id: integer('fuente_id')
+      .notNull()
+      .references(() => fuentes.id, { onDelete: 'cascade' }),
+    paquete: text('paquete').notNull(),
+    app: text('app').notNull(),
+    /** El principio de la hora. */
+    hora: instante('hora').notNull(),
+    /** Día de la persona (de 5 a 5). */
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    n: integer('n').notNull().default(0),
+    sonoras: integer('sonoras').notNull().default(0),
+    apagada: integer('apagada').notNull().default(0),
+    mensajes: integer('mensajes').notNull().default(0),
+  },
+  (t) => [uniqueIndex('avisos_conteos_idx').on(t.persona_id, t.paquete, t.hora), index('avisos_conteos_fecha_idx').on(t.persona_id, t.fecha)],
+);
+
+/**
+ * Un pedido de comida, un viaje con chofer o un entrenamiento que se vio en los avisos de su app (leídos en el
+ * teléfono: acá llega solo lo que se entendió). Los avisos del mismo pedido o viaje se juntan en una fila (`etapas`:
+ * cuándo se vio cada una). Los pedidos y los viajes que no se pueden unir con algo ya anotado quedan pendientes y Patty
+ * pregunta; el ejercicio se anota solo (si no estaba ya). Se borran solos a los 90 días.
+ */
+export const avisosDetectados = pgTable(
+  'avisos_detectados',
+  {
+    id: idGrande(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    fuente_id: integer('fuente_id')
+      .notNull()
+      .references(() => fuentes.id, { onDelete: 'cascade' }),
+    tipo: text('tipo', { enum: ['pedido', 'viaje', 'ejercicio'] }).notNull(),
+    app: text('app').notNull(),
+    /** La etapa más avanzada que se vio (en_camino, entregado; llegando, en_viaje, terminado). */
+    evento: text('evento').notNull(),
+    inicio: instante('inicio').notNull(),
+    fin: instante('fin').notNull(),
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    /** {etapas: {entregado: ms…}, deporte, km, minutos, duplicado} */
+    datos: jsonb('datos').$type<Record<string, unknown>>().notNull().default({}),
+    estado: text('estado', { enum: ['pendiente', 'anotado', 'descartado'] }).notNull().default('pendiente'),
+    registro_id: bigint('registro_id', { mode: 'number' }).references(() => registros.id, { onDelete: 'set null' }),
+    creado: creado(),
+  },
+  (t) => [index('avisos_detectados_idx').on(t.persona_id, t.tipo, t.inicio)],
+);
+
 /** Las búsquedas de títulos en iTunes (para las tapas), guardadas un mes: la misma búsqueda no se repite. */
 export const mediosCache = pgTable('medios_cache', {
   clave: text('clave').primaryKey(),

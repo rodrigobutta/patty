@@ -453,7 +453,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
 
   const opciones: Array<{ clave: Seccion; icono: ReactNode; titulo: string; sub: string; ver?: boolean; accion?: () => void }> = [
     { clave: 'salud', icono: <IconoSalud />, titulo: t('Tus datos de salud'), sub: t('Edad, peso, altura y condiciones'), ver: Boolean(persona) },
-    { clave: 'datos', icono: <IconoPermisos />, titulo: t('Permisos de este teléfono'), sub: t('Avisos, ubicación, uso del teléfono, lo que escuchás y salud'), ver: esNativa() && Boolean(persona), accion: () => setPermisos(true) },
+    { clave: 'datos', icono: <IconoPermisos />, titulo: t('Permisos de este teléfono'), sub: t('Avisos, ubicación, uso del teléfono, lo que escuchás, lo que avisan las apps y salud'), ver: esNativa() && Boolean(persona), accion: () => setPermisos(true) },
     { clave: 'clima', icono: <IconoClima />, titulo: t('Clima'), sub: t('El clima de cada hora donde estás') },
     { clave: 'telefono', icono: <IconoTelefono />, titulo: t('Uso del teléfono'), sub: t('Pantalla, apps y llamadas'), ver: hayDatosDelTelefono() && Boolean(persona) },
     { clave: 'reloj', icono: <IconoReloj />, titulo: t('Reloj y salud'), sub: t('Sueño, pasos y pulso'), ver: esNativa() && Boolean(persona) },

@@ -1,6 +1,7 @@
 // En el Día: los viajes que se detectaron con la ubicación (cuánto duraron, cuántos km y a qué velocidad), con lo que
 // Patty adivina (en qué fue, si parece que hubo tráfico) y la pregunta de cómo fue, para contestar con dos toques.
-// Lo contado entra en los patrones ("los días con viaje pesado te duele la cabeza").
+// Lo contado entra en los patrones ("los días con viaje pesado te duele la cabeza"). Si los avisos de Uber, Cabify o
+// DiDi dicen que fue en una de esas apps, ya viene marcado en taxi y la app queda en la nota.
 import { useCallback, useEffect, useState } from 'react';
 import { IconoAnimo, IconoCategoria, IconoModo } from '../ui/IconosPatty';
 import { COMO_VIAJE, MODOS_VIAJE, type ModoViaje, type Persona, type ViajeDelDia } from 'shared';
@@ -28,7 +29,7 @@ export function ViajesDelDia({ persona, fecha, vuelta, alCambiar }: { persona: P
   const contar = async (v: ViajeDelDia, como: (typeof COMO_VIAJE)[number]['clave']) => {
     const m = modo[v.inicio] ?? v.modo;
     try {
-      await api('POST', '/api/ubicacion/viajes', { persona_id: persona.id, inicio: v.inicio, fin: v.fin, minutos: v.minutos, km: v.km, modo: m, como, trafico: v.trafico, lento_min: v.lento_min, habitual_min: v.habitual_min });
+      await api('POST', '/api/ubicacion/viajes', { persona_id: persona.id, inicio: v.inicio, fin: v.fin, minutos: v.minutos, km: v.km, modo: m, como, trafico: v.trafico, lento_min: v.lento_min, habitual_min: v.habitual_min, app: m === 'taxi' ? v.app ?? null : null });
       festejar(como === 'pesado' ? t('Anotado: viaje pesado 😩 ¡Ya pasó!') : t('Anotado: viaje {modo} 👍', { modo: t(MODOS_VIAJE[m].nombre).toLowerCase() }), como === 'pesado' ? 'espera' : 'feliz');
       avisarAnotado();
       alCambiar();
