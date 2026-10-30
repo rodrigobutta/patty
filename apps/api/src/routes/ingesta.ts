@@ -15,6 +15,7 @@ import { obtenerOCrearConcepto } from './conceptos.js';
 import { guardarPuntos } from './ubicacion.js';
 import { guardarEscuchas } from '../medios/escuchas.js';
 import { guardarAvisos, guardarLlamadasPorHora } from '../avisos/telefono.js';
+import { buenDiaDespues, traeSueno } from '../push/buenDia.js';
 
 const CATEGORIA_POR_FUENTE: Record<string, string> = { reloj: 'actividad', telefono: 'pantalla', clima: 'clima', ubicacion: 'lugar', otro: 'otro' };
 
@@ -154,5 +155,7 @@ export const rutasIngesta = new Hono<Env>()
       await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE id = ${f.id}`);
       return lista.length;
     });
+    // Llegó la noche: si es la mañana, el aviso de buen día con el reporte de sueño (sin hacer esperar la respuesta).
+    if (traeSueno(lista)) buenDiaDespues(c.var.db, f.persona_id);
     return c.json({ ok: true, recibidas: n });
   });

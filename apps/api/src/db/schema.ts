@@ -67,6 +67,8 @@ export const usuarios = pgTable(
     avisar_sin_anotar: boolean('avisar_sin_anotar').notNull().default(true),
     /** Si quiere el aviso preventivo: hoy se juntaron las cosas de uno de sus patrones (patrones/preventivo.ts). */
     avisar_preventivo: boolean('avisar_preventivo').notNull().default(true),
+    /** Si quiere el aviso de buen día con el reporte de sueño, a la mañana apenas llega la noche (push/buenDia.ts). */
+    avisar_buen_dia: boolean('avisar_buen_dia').notNull().default(true),
     /** La última vez que usó la app (se actualiza cada tantos minutos, para la administración). */
     ultimo_acceso: instante('ultimo_acceso'),
     creado: creado(),

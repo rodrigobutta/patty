@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD COLUMN "avisar_buen_dia" boolean DEFAULT true NOT NULL;

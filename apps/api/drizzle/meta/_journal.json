@@ -351,6 +351,13 @@
       "when": 1793327750656,
       "tag": "0049_llamadas_por_hora",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793330291495,
+      "tag": "0050_aviso_buen_dia",
+      "breakpoints": true
     }
   ]
 }
