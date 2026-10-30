@@ -36,6 +36,11 @@ android {
         }
     }
     buildTypes {
+        // La de debug (la que se instala por USB) lleva la misma llave que la de la web: así una se puede instalar
+        // encima de la otra. Con llaves distintas, Android rechaza la actualización.
+        debug {
+            if (firmaRelease.exists()) signingConfig signingConfigs.release
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

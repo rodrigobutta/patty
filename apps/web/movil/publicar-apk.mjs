@@ -18,11 +18,13 @@ console.log(`Patty ${version}: compilando…`);
 correr('npx', ['cap', 'sync', 'android']);
 correr('./gradlew', ['-q', 'assembleDebug', 'assembleRelease'], android);
 
-// En el teléfono de desarrollo va la de debug (firmada con otra llave que la de la web).
+// Por USB va la de debug, firmada con la misma llave que la de la web (una se instala encima de la otra).
 const conectado = (salida('adb', ['devices']).stdout ?? '').split('\n').slice(1).some((l) => /\tdevice$/.test(l));
 if (conectado) {
-  correr('adb', ['install', '-r', path.join(android, 'app/build/outputs/apk/debug/app-debug.apk')]);
-  console.log('✓ Instalada en el teléfono conectado');
+  const r = salida('adb', ['install', '-r', path.join(android, 'app/build/outputs/apk/debug/app-debug.apk')]);
+  if (r.status === 0) console.log('✓ Instalada en el teléfono conectado');
+  else if (/UPDATE_INCOMPATIBLE/.test(`${r.stdout}${r.stderr}`)) console.log('⚠️  El teléfono tiene una app firmada con otra llave: NO se instaló. Hay que desinstalarla una vez y volver a instalar.');
+  else console.log(`⚠️  NO se instaló: ${r.stdout}${r.stderr}`);
 } else {
   console.log('⚠️  No hay ningún teléfono conectado: NO se instaló. Enchufalo y volvé a correr esto (o bajala de la web).');
 }
