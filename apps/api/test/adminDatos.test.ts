@@ -217,4 +217,22 @@ describe('administración → datos', () => {
     // Para la app sigue siendo lo mismo que contarlo.
     expect((await ana.get(`/api/registros?persona=${personaId}&desde=${cob.hoy}`)).body.filter((x: any) => x.origen === 'ia')).toHaveLength(4);
   });
+
+  it('versiones: cada instalación de cada usuario, con las últimas publicadas', async () => {
+    const { ana } = await conAdmin();
+    const beto = await conEditor(ana);
+    expect((await beto.get('/api/admin/versiones')).status).toBe(403);
+    const db = obtenerDb();
+    await db.execute(sql`INSERT INTO ajustes (clave, valor) VALUES ('version_app', ${JSON.stringify({ version: '1.61.0', url: 'https://x' })}::jsonb)`);
+    await db.execute(sql`INSERT INTO instalaciones (id, usuario_id, plataforma, estado) SELECT 'tel', id, 'android', ${JSON.stringify({ version: { web: '1.60.0', commit: 'abc', app: '1.59.0' }, permisos: { avisos: 'si' } })}::jsonb FROM usuarios WHERE usuario = 'ana'`);
+    const r = (await ana.get('/api/admin/versiones')).body;
+    expect(r.app).toBe('1.61.0');
+    expect(r.web).toBeTruthy();
+    const de = (u: string) => r.filas.filter((f: any) => f.usuario === u);
+    expect(de('ana')).toHaveLength(1);
+    expect(de('ana')[0]).toMatchObject({ plataforma: 'android', web: '1.60.0', app: '1.59.0', personas: 'Rodrigo', permisos: { avisos: 'si' } });
+    // Quien nunca abrió la app igual aparece.
+    expect(de('beto')).toHaveLength(1);
+    expect(de('beto')[0].instalacion).toBeNull();
+  });
 });

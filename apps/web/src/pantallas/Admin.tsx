@@ -46,7 +46,7 @@ interface FilaUsuario {
   instalacion: Instalacion | null;
 }
 
-interface Instalacion {
+export interface Instalacion {
   plataforma: string;
   estado: {
     permisos: { avisos?: string; ubicacion?: string; uso_apps?: string; llamadas?: string; salud?: number | string };
@@ -69,7 +69,7 @@ function VersionDe({ v }: { v: NonNullable<Instalacion['estado']['version']> }) 
 }
 
 /** Los permisos de un dispositivo en chips: verde lo dado, ámbar a medias, gris lo que falta. */
-function ChipsPermisos({ i }: { i: Instalacion }) {
+export function ChipsPermisos({ i }: { i: Pick<Instalacion, 'plataforma' | 'estado'> }) {
   const p = i.estado.permisos ?? {};
   const a = i.estado.activos ?? {};
   const chips: Array<[string, 'si' | 'medio' | 'no' | null]> = [

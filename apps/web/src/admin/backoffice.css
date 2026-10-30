@@ -265,3 +265,12 @@ details summary { cursor: pointer; padding: 4px 0; }
 .origen-servidor { border-color: var(--rojo); color: var(--rojo); }
 .origen-proceso { border-color: var(--ambar); color: var(--ambar); }
 .usos-hoy, .limites-propios { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+
+/* Versiones */
+.estado-version { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.estado-version.ok { background: color-mix(in srgb, var(--verde) 13%, transparent); color: var(--verde); }
+.estado-version.vieja { background: color-mix(in srgb, var(--rojo) 12%, transparent); color: var(--rojo); }
+.estado-version.nada { background: var(--panel-2); color: var(--suave); }
+.grilla tr.apagada td { opacity: 0.55; }
+.grilla .chips-permisos { margin: 0; flex-wrap: nowrap; }
+.grilla .chips-permisos .renglon-sub { display: none; }

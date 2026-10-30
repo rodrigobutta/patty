@@ -12,6 +12,7 @@ import { AdminDatosAuditoria, AdminDatosHallazgos, AdminDatosIa } from '../panta
 import { AdminDatosPersona } from '../pantallas/AdminDatosPersona';
 import { AdminSalud } from '../pantallas/AdminSalud';
 import { AdminUsoIa } from '../pantallas/AdminUsoIa';
+import { AdminVersiones } from '../pantallas/AdminVersiones';
 import { Avatar } from '../ui/Avatar';
 
 /** Los íconos del menú (trazos simples, del color del texto). */
@@ -29,6 +30,7 @@ const TRAZOS: Record<string, string> = {
   salud: 'M3 12h4l2-5 4 10 2-5h6',
   planes: 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
   avisos: 'M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 20a2 2 0 0 0 3.4 0',
+  versiones: 'M12 2 3 7l9 5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5',
   beta: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3',
 };
 const Icono = ({ de }: { de: string }) => (
@@ -40,7 +42,7 @@ const Icono = ({ de }: { de: string }) => (
 const MENU: Array<{ grupo: string; items: Array<[string, string]> }> = [
   { grupo: 'General', items: [['resumen', 'Resumen'], ['uso', 'Uso'], ['actividad', 'Actividad'], ['usuarios', 'Usuarios']] },
   { grupo: 'Datos', items: [['persona', 'Persona 360'], ['tablas', 'Tablas'], ['calidad', 'Calidad'], ['ia', 'Lo que hizo la IA'], ['patrones', 'Patrones'], ['auditoria', 'Auditoría']] },
-  { grupo: 'Operación', items: [['salud', 'Salud'], ['planes', 'IA y planes'], ['avisos', 'Avisos'], ['beta', 'Beta']] },
+  { grupo: 'Operación', items: [['salud', 'Salud'], ['versiones', 'Versiones'], ['planes', 'IA y planes'], ['avisos', 'Avisos'], ['beta', 'Beta']] },
 ];
 const TITULOS = Object.fromEntries(MENU.flatMap((g) => g.items));
 
@@ -173,6 +175,7 @@ export function Shell() {
       case 'patrones': return <AdminDatosHallazgos />;
       case 'auditoria': return <AdminDatosAuditoria />;
       case 'salud': return <AdminSalud />;
+      case 'versiones': return <AdminVersiones alElegir={verUsuario} />;
       case 'planes': return <AdminUsoIa />;
       case 'avisos': return <VistaAvisos />;
       case 'beta': return <AdminBeta />;

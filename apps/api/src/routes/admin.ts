@@ -343,6 +343,22 @@ export const rutasAdmin = new Hono<Env>()
     const usuario = d.usuario_id ? Number(d.usuario_id) : null;
     return c.json(await avisarA(c.var.db, usuario ? [usuario] : null, { titulo, cuerpo: mensaje, datos: { tipo: 'anuncio', cara: 'feliz' } }));
   })
+  .get('/versiones', async (c) => {
+    // Qué versión tiene cada usuario en cada teléfono o navegador (lo cuenta la app al abrirse) y cuáles son las últimas:
+    // la web es la de este servidor; la de Android, la publicada. Los usuarios que nunca abrieron la app van sin instalación.
+    const db = c.var.db;
+    const app = (await una<{ valor: VersionApp }>(db, sql`SELECT valor FROM ajustes WHERE clave = 'version_app'`))?.valor ?? null;
+    const filasV = await filas(
+      db,
+      sql`SELECT u.id AS usuario_id, u.nombre, u.usuario, u.email, u.foto, u.ultimo_acceso,
+                 (SELECT string_agg(p.nombre, ', ' ORDER BY p.nombre) FROM persona_usuarios pu JOIN personas p ON p.id = pu.persona_id WHERE pu.usuario_id = u.id AND pu.rol = 'dueno') AS personas,
+                 i.id AS instalacion, i.plataforma, i.actualizado, i.creado, i.estado->'version'->>'web' AS web, i.estado->'version'->>'commit' AS commit,
+                 i.estado->'version'->>'app' AS app, i.estado->'permisos' AS permisos, i.estado->'activos' AS activos
+          FROM usuarios u LEFT JOIN instalaciones i ON i.usuario_id = u.id
+          WHERE u.activo ORDER BY u.nombre, i.actualizado DESC NULLS LAST`,
+    );
+    return c.json({ web: VERSION, app: app?.version ?? null, filas: filasV });
+  })
   .get('/version-app', async (c) => {
     const v = (await una<{ valor: VersionApp }>(c.var.db, sql`SELECT valor FROM ajustes WHERE clave = 'version_app'`))?.valor ?? null;
     return c.json({ actual: v, desactualizados: v ? (await desactualizados(c.var.db, v.version)).length : null });

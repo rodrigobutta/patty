@@ -183,11 +183,11 @@ export function AdminDatosPersona({ persona: pedida, fecha: fechaPedida, alCambi
                 <h3 className="sub">{t('Teléfonos de sus dueños')}</h3>
                 <div className="grilla-caja">
                   <table className="grilla">
-                    <thead><tr><th>{t('Usuario')}</th><th>{t('Plataforma')}</th><th>{t('Versión')}</th><th>{t('Abrió la app')}</th><th>{t('Mandó uso')}</th><th>{t('Mandó salud')}</th></tr></thead>
+                    <thead><tr><th>{t('Usuario')}</th><th>{t('Plataforma')}</th><th>{t('Versión web')}</th><th>{t('App instalada')}</th><th>{t('Abrió la app')}</th><th>{t('Mandó uso')}</th><th>{t('Mandó salud')}</th></tr></thead>
                     <tbody>
                       {ultimos.telefonos.map((x, i) => (
                         <tr key={i}>
-                          <td>{x.usuario}</td><td>{x.plataforma}</td><td>{x.version ?? '—'}{x.version_app && x.version_app !== x.version ? ` (app ${x.version_app})` : ''}</td>
+                          <td>{x.usuario}</td><td>{x.plataforma}</td><td>{x.version ?? '—'}</td><td>{x.version_app ?? '—'}</td>
                           <td>{hace(x.actualizado)}</td><td>{x.ultimo_telefono ? hace(x.ultimo_telefono) : '—'}</td><td>{x.ultimo_salud ? hace(x.ultimo_salud) : '—'}</td>
                         </tr>
                       ))}
