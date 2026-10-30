@@ -20,7 +20,7 @@ import { configEncuesta, ponerEncuesta } from '../lib/encuesta';
 import { esNativa, plataforma } from '../lib/nativo';
 import { ponerRecordatorios, recordatoriosActivos } from '../lib/remedios';
 import { hayDatosDelTelefono } from '../lib/telefono';
-import { perfilTexto } from 'shared';
+import { compararVersiones, perfilTexto } from 'shared';
 import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { idioma, idiomaElegido, locale, ponerIdioma, t } from '../lib/idioma';
 import { Cuenta } from './Cuenta';
@@ -539,7 +539,20 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       {!instalada() && !esNativa() ? <button className="btn ancho" onClick={instalar}>{t('📲 Instalar Patty en el teléfono')}</button> : null}
       <button className="btn ancho salir" onClick={salir}>{t('Salir ({nombre})', { nombre: usuario?.nombre ?? '' })}</button>
       <p className="version-app">
-        Patty {VERSION}{COMMIT ? ` · ${COMMIT}` : ''}{nativa && nativa !== VERSION ? ` · ${t('app instalada {v}', { v: nativa })}` : ''}
+        Patty {VERSION}{COMMIT ? ` · ${COMMIT}` : ''}
+        {/* Lo de Patty se actualiza solo; la app del teléfono cambia solo cuando hay algo nativo, por eso puede ir atrás. */}
+        {nativa ? (
+          <>
+            <br />
+            {t('App del teléfono {v}', { v: nativa })}
+            {sesion?.app && compararVersiones(nativa, sesion.app.version) < 0 ? (
+              <>
+                {' · '}
+                <a href={sesion.app.url} target="_blank" rel="noreferrer">{t('hay una más nueva ({v}): bajala', { v: sesion.app.version })}</a>
+              </>
+            ) : null}
+          </>
+        ) : null}
       </p>
     </section>
   );

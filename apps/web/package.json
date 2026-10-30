@@ -16,6 +16,7 @@
     "movil:abrir:android": "cap open android",
     "movil:abrir:ios": "cap open ios",
     "movil:iconos": "pnpm --filter api exec tsx ../web/movil/iconos.ts",
+    "movil:publicar": "node movil/publicar-apk.mjs",
     "e2e": "node e2e/correr.mjs"
   },
   "dependencies": {

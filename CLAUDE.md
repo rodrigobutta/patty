@@ -61,4 +61,9 @@ Ver "Pendiente / ideas" en docs/DISENO.md. Lo más pedido por Rodrigo: que la ap
   En cada cambio que se sube, subir el último número (1.1.0 → 1.1.1); un cambio grande o que pide reinstalar la app,
   el del medio (1.1.x → 1.2.0). Se ve abajo de todo en Más y en la administración, y la app de Android toma su
   `versionName` de ahí al compilar.
+- **Dos versiones**: la de Patty (la web, llega sola, es la que anuncia el cartel naranja "Actualizar") y la de la app del
+  teléfono (el APK, cambia solo si se toca algo nativo: `apps/web/android`, plugins). Después de subir un cambio nativo,
+  siempre `pnpm --filter web movil:publicar`: compila, instala en el teléfono conectado y sube el APK a GitHub Releases
+  (de ahí sale patty.today/descargar/android y el aviso a quienes tienen una vieja). Si dice que no hay teléfono
+  conectado, no quedó instalada: avisarle a Rodrigo.
 - El web typecheck de verdad es `npx tsc --noEmit -p tsconfig.app.json` (el `tsconfig.json` de la web no tiene archivos).
