@@ -443,6 +443,14 @@ Para auditar qué tan bien se guardan los datos y corregirlos (solo administrado
   `llegada_invitacion` y guarda el código; la bienvenida lo manda en `bienvenida_terminada`. También se miden
   `compartir_ver`, `compartir` (qué y cómo, y si iba con el mapa o lo que dijo Patty) e `invitar`.
 
+## Firma de la app de Android y Google
+
+El APK de la web y el de USB llevan la misma llave (`~/patty-release/`). Su huella SHA-1 es
+`37:9F:30:0E:02:05:99:A4:FC:17:65:E5:FD:13:49:84:71:0F:18:F7` y tiene que estar en un cliente OAuth de tipo Android de
+Google Cloud (paquete `ar.patty.app`), en el mismo proyecto que `GOOGLE_CLIENT_ID`. Si falta, "Continuar con Google" en
+la app falla con `[16] Account reauth failed`. Si un día se publica en Play Store con la firma de Google, hay que sumar
+también la huella de esa firma.
+
 ## Lo que no se puede en iPhone
 
 Límites del propio iOS (no de Patty): Apple no deja que una app lea lo de otras apps ni del sistema. En iPhone, por eso,
