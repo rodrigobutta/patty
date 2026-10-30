@@ -340,7 +340,49 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
    - Lo que pasa es un hallazgo con `origen = 'hipotesis'`; lo demás queda en la tabla `hipotesis` y no se repropone en 180 días.
      Lo confirmado se vuelve a medir cada semana y se va si deja de pasar. Si la IA falta o falla, el análisis sigue igual.
    - Para probarlo a mano (administración): `GET /api/admin/hipotesis/:persona` (perfil, sin gastar) y `POST` (corre ya).
-8. **Aviso preventivo** (`patrones/preventivo.ts`): de 16 a 21 (hora de la persona), una vez por hora, se mira si hoy
+8. **Componentes de lo que se come** (`apps/api/src/componentes/`, `patrones/componentes.ts`): para encontrar patrones entre comidas
+   distintas ("los días con mucha sal → dolor de cabeza") sin ser una app de dieta y sin pedirle nada más a la persona.
+   - **Los 16 componentes** (`componentes/lista.ts`). De la tabla: calorías, grasa, grasa saturada, azúcar, harinas refinadas, fibra,
+     proteína, sal (mg de sodio), alcohol, cafeína. Los estima la IA por plato, de 0 a 3, porque las tablas casi no los traen: lactosa,
+     gluten, FODMAP, histamina, picante, ultraprocesado. Cada uno es un rasgo "Días con mucho…" (más "Días con poca fibra"): 17 causas
+     como mucho. Se eligieron los que la gente relaciona con cómo se siente; vitaminas, minerales y colesterol suman pruebas sin sumar nada.
+   - **Tabla de ingredientes**: foto chica de USDA FoodData Central (Foundation Foods + SR Legacy, dominio público CC0) en
+     `componentes/datos/ingredientes.json` (unos 4.300 ingredientes por 100 g, 390 KB), con nombres en castellano a mano para los
+     comunes (`nombres.json`). Se regenera con `apps/api/scripts/tablaAlimentos.ts`. Sin clave ni API en funcionamiento. "Harinas" no
+     existe en la tabla: son los hidratos sin azúcar ni fibra de lo que viene de grano refinado (ver el script). Argenfoods (UNLu) no se usa:
+     no publica ninguna licencia que permita reutilizarla. Open Food Facts queda para más adelante.
+   - **Tabla compartida de comidas** (`alimentos`, y `conceptos.alimento_id`): por comida, sus ingredientes con gramos de una porción
+     típica y sus componentes, una sola vez para todos. La clave es `claveAlimento` (sin tildes, en singular, sin "de"/"con"). Viene con una
+     semilla revisada a mano de 166 comidas argentinas y latinas (`datos/semilla.json`, unos 500 nombres), que se carga al arrancar. Las
+     correcciones de una persona quedan afuera por ahora.
+   - **Cómo se resuelve una comida nueva** (`componentes/resolver.ts`), en el worker, nunca al anotar: (a) enlazar si ya está; (b) la IA la
+     desarma en ingredientes y elige cada uno de una lista corta de la tabla (8 candidatos: nunca ve la tabla), y los números **se calculan de
+     la tabla**; (c) lo que no está, lo estima ella por 100 g, marcado `estimado`; (d) sin IA o si falla, queda pendiente, los días se arman con
+     los tipos del plato (frito, harinas…) y se reintenta a las 6, 12, 24… horas, 5 veces, después `fallido`. `confianza` = 0,9 por gramo de
+     tabla y 0,5 por gramo estimado. "Almuerzo" queda `generico` y lo que no se come `no_comida`.
+   - **Gasto**: una comida cuesta unos 900 tokens (dos pedidos en lotes de 8, esfuerzo bajo), más o menos US$ 0,01. Tope de 60.000 tokens por
+     día entre todos (`TOKENS_POR_DIA`, anotados en `uso_ia` como `componentes`): unas 65 comidas por día y US$ 1,50 como mucho. Un lote cada 10
+     minutos como mucho. Lo ya anotado se rellena solo con el mismo tope, de lo más usado a lo menos.
+   - **El nivel de cada día** (`componentes/niveles.ts`, puro): se suman las comidas del día, escaladas por porción (chica 0,7, grande 1,4) o por lo
+     anotado ("3 empanadas", "500 ml"). "Mucho" es relativo a la persona: el cuarto de arriba de sus días, 25 % sobre su día típico y por encima de un
+     piso para que lo insignificante no cuente; "poco", el cuarto de abajo. **Un día que no se sabe no cuenta como poco**: si lo conocido no llega al
+     60 % de lo comido (por gramos, con lo aproximado pesando 0,4 y lo desconocido 0), o si anotó mucho menos que lo que suele anotar, el día queda afuera
+     del universo del rasgo (`ConceptoInfo.universo`). Hacen falta 21 días con datos y 5 con el rasgo. Se recalcula en cada análisis: una comida que se
+     resuelve después cambia los días viejos.
+   - **En el motor**: conceptos en la categoría "otro" (no se sugieren al escribir), solo causa, y todas las pruebas cuentan para el q. La hora del
+     rasgo es la de la comida con que se llegó a "mucho": lo que vino después no pudo causar lo de antes. **Sin repetir** (`podarComponentes`): por efecto, un
+     componente sobra si ya quedó algo más firme que va con él (45 % de los días en común, o 70 % adentro del otro), y una comida sobra si la explica un
+     componente más firme; 2 por efecto y 6 en total; y solo aparecen si son firmes (q ≤ 0,1): nunca como "posibles".
+   - **Falsos positivos** (`MEDIR_COMPONENTES=1 vitest run test/medirComponentes.test.ts`, datos al azar con composiciones de la semilla): firmes por persona con
+     y sin componentes, 365 días y 60 conceptos 0,03 contra 0 (una persona de 40); 730 días y 150 conceptos 0,05 contra 0,05; 5 años y 300 conceptos 0
+     contra 0; igual con días anotados muy dispares. Suma de 3 a 7 mil pruebas, y al motor le agrega de 5 a 25 ms por persona; armar los rasgos de 5 años, 22 ms.
+   - **Lo que ve la persona**: nada, salvo que haya un patrón: "Días con mucha sal → Dolor de cabeza", con "Sobre todo: Milanesa, Empanadas. Es una
+     estimación…" (`hallazgos.componente`). Sin gramos ni calorías en ninguna parte. Se apaga en Qué patrones buscar (`personas.patrones.componentes`). No entra al aviso
+     preventivo: "hoy comiste mucha sal, cuidate" sería un consejo de dieta. En el informe va marcado "(estimación)". A la IA (hipótesis y explicaciones) le
+     llegan como conceptos del perfil, y se le pide que no dé consejos.
+   - Para probarlo a mano (administración): `POST /api/admin/componentes/probar` con `{ "nombre": "Pastel de papa" }` (la IA de verdad, sin guardar),
+     `POST /api/admin/componentes/lote` (un lote ya) y `GET /api/admin/componentes` (cómo viene y cuánto se gastó hoy).
+9. **Aviso preventivo** (`patrones/preventivo.ts`): de 16 a 21 (hora de la persona), una vez por hora, se mira si hoy
    están todas las causas de un patrón firme o confirmado (no descartado ni obvio) que mira a otro día (desfase ≥ 1),
    con los mismos rasgos del motor (`rasgosDelDia`). Si sí, el búho avisa por push ("Hoy se juntaron «Comida frita» y
    «Día de calor»…"), una vez por día por efecto (si varios patrones dan el mismo efecto, el que junta más cosas), y se

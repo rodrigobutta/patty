@@ -47,6 +47,7 @@ export const GRUPO_TABLA: Record<string, 'persona' | 'automatico' | 'ia' | 'cata
   conceptos: 'catalogo',
   concepto_alias: 'catalogo',
   medios_cache: 'catalogo',
+  alimentos: 'catalogo',
 };
 
 /** Tablas que no se muestran: son llaves de entrada. */

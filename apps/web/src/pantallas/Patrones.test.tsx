@@ -41,6 +41,21 @@ describe('la tarjeta de un patrón', () => {
     expect(screen.getByText(/menos dolor de cabeza/)).toBeTruthy();
   });
 
+  it('uno de componentes dice qué comidas fueron y que es una estimación, sin gramos ni calorías', async () => {
+    lista = [{ ...base, causa: 'Días con mucha sal', componente: { clave: 'sal', nivel: 'mucho', alimentos: ['Milanesa', 'Empanadas'] } }];
+    render(<Patrones persona={persona} progreso={null} />);
+    const detalle = await screen.findByText(/Sobre todo: Milanesa, Empanadas\./);
+    expect(detalle.textContent).toContain('Es una estimación');
+    expect(detalle.textContent).not.toMatch(/\d|kcal|gramos/);
+  });
+
+  it('los demás no llevan esa aclaración', async () => {
+    lista = [{ ...base }];
+    render(<Patrones persona={persona} progreso={null} />);
+    await screen.findByText('Algo de la IA.');
+    expect(screen.queryByText(/Es una estimación/)).toBeNull();
+  });
+
   it('lo que ya no se ve se avisa', async () => {
     lista = [{ ...base, ya_no: true }];
     render(<Patrones persona={persona} progreso={null} />);

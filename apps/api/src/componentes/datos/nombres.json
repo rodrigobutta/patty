@@ -1,0 +1,653 @@
+{
+"168894": [
+"harina de trigo",
+"harina",
+"harina 000"
+],
+"168944": [
+"harina integral"
+],
+"169698": [
+"fecula de maiz",
+"maicena"
+],
+"169695": [
+"harina de maiz"
+],
+"168867": [
+"polenta"
+],
+"174928": [
+"pan rallado"
+],
+"325871": [
+"pan blanco",
+"pan de molde",
+"pan lactal"
+],
+"172675": [
+"pan frances",
+"pan",
+"pan de campo"
+],
+"335240": [
+"pan integral"
+],
+"172796": [
+"pan de hamburguesa",
+"pan de pancho"
+],
+"174925": [
+"tostada",
+"tostadas",
+"pan tostado"
+],
+"172746": [
+"galletitas de agua",
+"galletas de agua"
+],
+"174974": [
+"galletitas dulces",
+"galletitas"
+],
+"172790": [
+"masa de hojaldre",
+"hojaldre"
+],
+"172802": [
+"tapa de empanada",
+"masa de empanada",
+"masa de tarta"
+],
+"175036": [
+"tortilla de maiz"
+],
+"175037": [
+"tortilla de trigo",
+"rapidita"
+],
+"168878": [
+"arroz blanco",
+"arroz"
+],
+"169704": [
+"arroz integral"
+],
+"169751": [
+"fideos",
+"pasta",
+"tallarines",
+"spaghetti"
+],
+"168910": [
+"fideos integrales"
+],
+"168555": [
+"pure de papa",
+"pure"
+],
+"170520": [
+"papa",
+"papas",
+"papa hervida"
+],
+"169264": [
+"papa frita",
+"papas fritas"
+],
+"168484": [
+"batata"
+],
+"168525": [
+"choclo",
+"maiz"
+],
+"173905": [
+"avena"
+],
+"171646": [
+"granola"
+],
+"168917": [
+"quinoa"
+],
+"175254": [
+"lentejas"
+],
+"173799": [
+"garbanzos"
+],
+"175249": [
+"porotos",
+"porotos blancos"
+],
+"175237": [
+"porotos negros"
+],
+"174299": [
+"soja"
+],
+"174287": [
+"milanesa de soja",
+"hamburguesa de soja"
+],
+"172475": [
+"tofu"
+],
+"174032": [
+"carne de vaca",
+"carne"
+],
+"2514744": [
+"carne picada"
+],
+"168613": [
+"asado",
+"tira de asado"
+],
+"169457": [
+"bife",
+"bife de chorizo",
+"churrasco"
+],
+"170234": [
+"peceto",
+"nalga",
+"cuadrada"
+],
+"173859": [
+"chorizo crudo"
+],
+"746781": [
+"chorizo"
+],
+"171618": [
+"morcilla"
+],
+"174614": [
+"salchicha",
+"pancho"
+],
+"168626": [
+"higado de vaca",
+"higado"
+],
+"173864": [
+"jamon cocido",
+"jamon"
+],
+"167875": [
+"jamon crudo"
+],
+"167914": [
+"panceta",
+"bacon",
+"tocino"
+],
+"174603": [
+"salame",
+"salamin"
+],
+"173856": [
+"mortadela"
+],
+"167821": [
+"cerdo",
+"carre de cerdo"
+],
+"167844": [
+"bondiola"
+],
+"171054": [
+"pollo"
+],
+"171477": [
+"pechuga de pollo"
+],
+"171448": [
+"pollo frito"
+],
+"172480": [
+"cordero"
+],
+"171481": [
+"pavo"
+],
+"171956": [
+"merluza",
+"pescado blanco",
+"pescado"
+],
+"175168": [
+"salmon"
+],
+"334194": [
+"atun",
+"atun en lata"
+],
+"173708": [
+"atun en aceite"
+],
+"175139": [
+"sardinas"
+],
+"175180": [
+"camarones",
+"langostinos"
+],
+"174223": [
+"calamar"
+],
+"171982": [
+"rabas",
+"calamar frito"
+],
+"171287": [
+"huevo",
+"huevos"
+],
+"173424": [
+"huevo duro"
+],
+"173423": [
+"huevo frito"
+],
+"172183": [
+"clara de huevo"
+],
+"746782": [
+"leche entera",
+"leche"
+],
+"746776": [
+"leche descremada"
+],
+"170876": [
+"leche en polvo"
+],
+"2259793": [
+"yogur natural",
+"yogur"
+],
+"170889": [
+"yogur con frutas",
+"yogur saborizado"
+],
+"170859": [
+"crema de leche",
+"crema"
+],
+"173410": [
+"manteca"
+],
+"172347": [
+"margarina"
+],
+"170845": [
+"muzzarella",
+"mozzarella",
+"queso cremoso",
+"queso"
+],
+"325036": [
+"queso rallado"
+],
+"170848": [
+"queso parmesano"
+],
+"170850": [
+"provolone",
+"provoleta"
+],
+"328637": [
+"queso cheddar",
+"cheddar"
+],
+"172223": [
+"queso fresco"
+],
+"173418": [
+"queso untable",
+"queso crema"
+],
+"746766": [
+"ricota"
+],
+"173461": [
+"dulce de leche"
+],
+"167575": [
+"helado"
+],
+"171025": [
+"aceite de girasol",
+"aceite"
+],
+"171413": [
+"aceite de oliva"
+],
+"171009": [
+"mayonesa"
+],
+"168556": [
+"ketchup"
+],
+"326698": [
+"mostaza"
+],
+"174277": [
+"salsa de soja"
+],
+"170054": [
+"salsa de tomate"
+],
+"170460": [
+"pure de tomate"
+],
+"171186": [
+"salsa picante"
+],
+"172240": [
+"vinagre"
+],
+"173468": [
+"sal"
+],
+"746784": [
+"azucar"
+],
+"168833": [
+"azucar negra"
+],
+"169640": [
+"miel"
+],
+"169641": [
+"mermelada"
+],
+"167587": [
+"chocolate con leche",
+"chocolate"
+],
+"170273": [
+"chocolate amargo"
+],
+"169593": [
+"cacao en polvo",
+"cacao"
+],
+"168000": [
+"crema de avellanas"
+],
+"170457": [
+"tomate"
+],
+"168429": [
+"lechuga"
+],
+"170000": [
+"cebolla"
+],
+"170005": [
+"cebolla de verdeo",
+"verdeo"
+],
+"1104647": [
+"ajo"
+],
+"170108": [
+"morron"
+],
+"170106": [
+"aji picante",
+"aji"
+],
+"170393": [
+"zanahoria"
+],
+"170130": [
+"zapallo",
+"calabaza"
+],
+"169291": [
+"zapallito",
+"zucchini"
+],
+"2685577": [
+"berenjena"
+],
+"168462": [
+"espinaca"
+],
+"169991": [
+"acelga"
+],
+"747447": [
+"brocoli"
+],
+"2685573": [
+"coliflor"
+],
+"169975": [
+"repollo"
+],
+"2346406": [
+"pepino"
+],
+"2685576": [
+"remolacha"
+],
+"2346405": [
+"apio"
+],
+"2346400": [
+"chaucha",
+"chauchas"
+],
+"170102": [
+"arvejas"
+],
+"169251": [
+"hongos",
+"champiñones"
+],
+"171705": [
+"palta"
+],
+"169094": [
+"aceitunas"
+],
+"168558": [
+"pepinillos"
+],
+"1750340": [
+"manzana"
+],
+"173944": [
+"banana"
+],
+"169097": [
+"naranja"
+],
+"169105": [
+"mandarina"
+],
+"167746": [
+"limon"
+],
+"169118": [
+"pera"
+],
+"325430": [
+"durazno"
+],
+"2346409": [
+"frutilla"
+],
+"174682": [
+"uva"
+],
+"167765": [
+"sandia"
+],
+"746770": [
+"melon"
+],
+"169124": [
+"anana"
+],
+"327046": [
+"kiwi"
+],
+"169949": [
+"ciruela"
+],
+"168164": [
+"pasas de uva"
+],
+"174262": [
+"mani"
+],
+"170187": [
+"nueces"
+],
+"170567": [
+"almendras"
+],
+"169421": [
+"castañas de caju"
+],
+"170554": [
+"semillas de chia",
+"chia"
+],
+"170562": [
+"semillas de girasol"
+],
+"169677": [
+"papas fritas de paquete",
+"papitas"
+],
+"167555": [
+"palitos salados",
+"pretzels"
+],
+"167959": [
+"pochoclo"
+],
+"173647": [
+"agua"
+],
+"174852": [
+"gaseosa",
+"coca cola"
+],
+"174850": [
+"gaseosa dietetica",
+"coca zero"
+],
+"169098": [
+"jugo de naranja",
+"jugo"
+],
+"174861": [
+"agua saborizada"
+],
+"174108": [
+"bebida energizante"
+],
+"171890": [
+"cafe"
+],
+"174130": [
+"cafe instantaneo"
+],
+"174125": [
+"espresso"
+],
+"173227": [
+"te"
+],
+"168746": [
+"cerveza"
+],
+"173190": [
+"vino tinto",
+"vino"
+],
+"174837": [
+"vino blanco"
+],
+"174815": [
+"fernet",
+"gin",
+"vodka",
+"ron"
+],
+"174819": [
+"whisky"
+],
+"173168": [
+"licor"
+],
+"174987": [
+"medialuna",
+"medialunas",
+"croissant"
+],
+"172758": [
+"donas",
+"berlinesa",
+"factura"
+],
+"174967": [
+"galletitas de manteca",
+"tapita de alfajor"
+],
+"175024": [
+"masa de tarta dulce"
+],
+"172720": [
+"galletitas rellenas"
+],
+"172717": [
+"galletitas con chips"
+],
+"169379": [
+"pickles"
+],
+"174266": [
+"manteca de mani"
+],
+"174915": [
+"pan arabe"
+],
+"174982": [
+"galletitas saladas"
+],
+"168778": [
+"postrecito",
+"postre"
+],
+"171914": [
+"jugo en polvo",
+"jugo de sobre"
+],
+"171579": [
+"pesto"
+],
+"174156": [
+"te de hierbas",
+"manzanilla",
+"tilo"
+],
+"174648": [
+"cereal",
+"cereales",
+"copos de maiz"
+],
+"172704": [
+"bizcochuelo",
+"budin"
+]
+}

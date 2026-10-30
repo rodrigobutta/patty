@@ -42,7 +42,8 @@ export interface Preventivo {
  * Los patrones que se pueden adelantar: firmes o confirmados, que no se descartaron ni son obvios, miran a otro día, se siguen
  * viendo y valen para cualquier fecha (no un antes y después).
  */
-const FILTRO = sql`h.desfase_dias >= 1 AND h.fecha_desde IS NULL AND NOT h.ya_no AND (h.estado = 'confirmado' OR (h.estado = 'nuevo' AND h.q_valor <= ${Q_FIRME}))`;
+// Los de componentes no: son una estimación, y "hoy comiste mucha sal, cuidate" se leería como un consejo de dieta.
+const FILTRO = sql`h.componente IS NULL AND h.desfase_dias >= 1 AND h.fecha_desde IS NULL AND NOT h.ya_no AND (h.estado = 'confirmado' OR (h.estado = 'nuevo' AND h.q_valor <= ${Q_FIRME}))`;
 
 /**
  * Los patrones de la persona cuyas causas están todas hoy. Si varios llevan al mismo efecto (el simple y la
@@ -62,7 +63,7 @@ export async function preventivosDeHoy(db: Db, p: { id: number; nombre: string; 
   if (!patrones.length) return [];
   const hoy = diaDePatty(ahora, p.zona_horaria);
   const desde = sumarDias(hoy, -364);
-  const { datos, conceptos } = await datosDePersona(db, { ...p, rol: 'dueno' }, desde, hoy);
+  const { datos, conceptos } = await datosDePersona(db, { ...p, rol: 'dueno' }, desde, hoy, { componentes: false });
   const presentes = rasgosDelDia(datos, conceptos, desde, hoy);
   const porEfecto = new Map<string, Preventivo>();
   for (const x of patrones) {

@@ -12,6 +12,7 @@ import { armarContexto, pendientes } from '../ia/contexto.js';
 import { resumirNoche } from '../ia/resumirNoche.js';
 import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
 import { analizarPersona, primerDiaDe } from './analizar.js';
+import { componentesPendientes } from '../componentes/resolver.js';
 import { correrHipotesis } from './hipotesis.js';
 import { correr, registrarError } from '../lib/salud.js';
 import { guardarFueraDeLoNormal } from './fueraDeLoNormal.js';
@@ -306,6 +307,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await correr(db, 'Paseos detectados', () => sugerirPaseos(db));
       await correr(db, 'Avisos preventivos', () => avisarPreventivos(db));
       await correr(db, '¿Qué pasó antes?', () => contextosPendientes(db));
+      await correr(db, 'Componentes de la comida', () => componentesPendientes(db));
     } finally {
       corriendo = false;
     }

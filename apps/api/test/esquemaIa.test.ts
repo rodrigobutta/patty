@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ESQUEMA_DESCOMPOSICION, ESQUEMA_ELECCION } from '../src/ia/componentes.js';
 import { ESQUEMA_HIPOTESIS } from '../src/ia/hipotesis.js';
 import { ESQUEMA } from '../src/ia/interpretar.js';
 
@@ -20,5 +21,12 @@ describe('el esquema de lo que se cuenta con la voz', () => {
 describe('el esquema de las hipótesis', () => {
   it('no pasa el límite de Anthropic: ningún parámetro acepta null', () => {
     expect(uniones(ESQUEMA_HIPOTESIS)).toBe(0);
+  });
+});
+
+describe('los esquemas de los componentes de lo que se come', () => {
+  it('no pasan el límite de Anthropic: ningún parámetro acepta null', () => {
+    expect(uniones(ESQUEMA_DESCOMPOSICION)).toBe(0);
+    expect(uniones(ESQUEMA_ELECCION)).toBe(0);
   });
 });

@@ -26,7 +26,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import type { AjustesPatrones, Modo } from 'shared';
+import type { AjustesPatrones, ComponenteHallazgo, Modo } from 'shared';
 
 const id = () => integer('id').primaryKey().generatedByDefaultAsIdentity();
 const idGrande = () => bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity();
@@ -161,6 +161,8 @@ export const conceptos = pgTable(
     padre_id: integer('padre_id'),
     /** Si se unió con otro (dos nombres para lo mismo), a cuál. Sus registros pasan al otro. */
     unido_a: integer('unido_a'),
+    /** Si es una comida o una bebida: qué es en la tabla compartida (componentes/resolver.ts). */
+    alimento_id: integer('alimento_id').references(() => alimentos.id, { onDelete: 'set null' }),
     usos: integer('usos').notNull().default(0),
     ultimo_uso: instante('ultimo_uso'),
     creado_por: integer('creado_por').references(() => usuarios.id, { onDelete: 'set null' }),
@@ -171,6 +173,35 @@ export const conceptos = pgTable(
     index('conceptos_trgm_idx').using('gin', sql`${t.nombre_norm} gin_trgm_ops`),
     index('conceptos_usos_idx').on(t.usos.desc()),
   ],
+);
+
+/**
+ * La tabla compartida de comidas: de qué está hecha cada una y sus componentes en una porción típica. Es de todos (cada comida se
+ * paga una sola vez): `clave` sale de claveAlimento(nombre). `estado`: pendiente (falta resolverla, se sigue intentando), resuelto,
+ * generico ("Almuerzo": no se sabe qué fue), no_comida, fallido (se acabaron los intentos). `fuente`: semilla o ia. `confianza`: de 0 a
+ * 1, según cuántos gramos salen de la tabla de USDA (0,9) o estimados (0,5). Nada de esto se le muestra a la persona.
+ */
+export const alimentos = pgTable(
+  'alimentos',
+  {
+    id: id(),
+    clave: text('clave').notNull().unique(),
+    nombre: text('nombre').notNull(),
+    estado: text('estado', { enum: ['pendiente', 'resuelto', 'generico', 'no_comida', 'fallido'] }).notNull().default('pendiente'),
+    fuente: text('fuente', { enum: ['semilla', 'ia'] }),
+    confianza: doublePrecision('confianza').notNull().default(0),
+    /** Gramos de una porción típica, y de una unidad si se cuenta (una empanada, un vaso). */
+    gramos: doublePrecision('gramos'),
+    gramos_unidad: doublePrecision('gramos_unidad'),
+    ingredientes: jsonb('ingredientes').$type<Array<{ nombre: string; gramos: number; fuente: string; ref: number | null; en?: string }>>().notNull().default([]),
+    componentes: jsonb('componentes').$type<Record<string, number>>().notNull().default({}),
+    intentos: smallint('intentos').notNull().default(0),
+    proximo_intento: instante('proximo_intento').notNull().defaultNow(),
+    error: text('error'),
+    creado: creado(),
+    actualizado: instante('actualizado').notNull().defaultNow(),
+  },
+  (t) => [index('alimentos_pendientes_idx').on(t.estado, t.proximo_intento)],
 );
 
 /** Otros nombres de un concepto (sinónimos, plurales, el nombre viejo de uno que se unió). */
@@ -657,6 +688,8 @@ export const hallazgos = pgTable(
     protege: boolean('protege').notNull().default(false),
     /** motor = lo encontró la búsqueda de siempre; hipotesis = lo sospechó la IA y el motor lo verificó (patrones/hipotesis.ts). */
     origen: text('origen', { enum: ['motor', 'hipotesis'] }).notNull().default('motor'),
+    /** Si una de sus causas es un componente de lo que se come ("Días con mucha sal"): cuál, y qué comidas aportaron más. */
+    componente: jsonb('componente').$type<ComponenteHallazgo>(),
     /** Pasaba antes, pero en los últimos meses ya no se ve. */
     ya_no: boolean('ya_no').notNull().default(false),
     /** De una hipótesis: con las dos, la relación se ve en ese período; con `fecha_desde` sola, es un antes y después de esa fecha. */

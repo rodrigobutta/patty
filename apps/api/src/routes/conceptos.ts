@@ -4,12 +4,15 @@ import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { nombreLindo, normalizar, TIPOS_VALOR, type Categoria, type Concepto, type Sugerencia, type TipoValor } from 'shared';
 import { exigirRol } from '../auth/sesion.js';
+import { CONCEPTOS_COMPONENTES_NORM } from '../componentes/lista.js';
 import { filas, una, type Tx } from '../db/client.js';
 import { categorias, conceptoAlias, conceptos } from '../db/schema.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 
 const COLUMNAS = sql`c.id, c.categoria_id, c.nombre, c.tipo_valor, c.unidad, c.cantidad_decidida, c.usos`;
+/** Lo que entra solo a los patrones y no se anota nunca ("Días con mucha sal"): no se sugiere. */
+const SIN_COMPONENTES = sql`AND c.nombre_norm NOT IN ${CONCEPTOS_COMPONENTES_NORM}`;
 const escaparLike = (s: string) => s.replace(/[%_\\]/g, '\\$&');
 
 export async function buscarConceptos(
@@ -24,7 +27,7 @@ export async function buscarConceptos(
     // Sin texto: los más usados (y los usados hace poco primero, a igual uso).
     return filas<Sugerencia>(
       tx,
-      sql`SELECT ${COLUMNAS}, 'empieza' AS coincide FROM conceptos c WHERE c.unido_a IS NULL ${cat}
+      sql`SELECT ${COLUMNAS}, 'empieza' AS coincide FROM conceptos c WHERE c.unido_a IS NULL ${cat} ${SIN_COMPONENTES}
           ORDER BY c.usos DESC, c.ultimo_uso DESC NULLS LAST, c.nombre LIMIT ${limite}`,
     );
   }
@@ -43,7 +46,7 @@ export async function buscarConceptos(
           WHERE ca.concepto_id = c.id AND (ca.alias_norm LIKE ${prefijo} OR ${t} <% ca.alias_norm)
           LIMIT 1
         ) a ON true
-        WHERE c.unido_a IS NULL ${cat}
+        WHERE c.unido_a IS NULL ${cat} ${SIN_COMPONENTES}
           AND (c.nombre_norm LIKE ${prefijo} OR c.nombre_norm LIKE ${palabra} OR ${t} <% c.nombre_norm OR ${t} % c.nombre_norm OR a.alias_norm IS NOT NULL)
         ORDER BY (c.nombre_norm = ${t}) DESC,
                  (c.nombre_norm LIKE ${prefijo}) DESC,
@@ -131,6 +134,8 @@ export const rutasConceptos = new Hono<Env>()
       if (texto(d.nombre)) {
         cambios.nombre = nombreLindo(texto(d.nombre));
         cambios.nombre_norm = normalizar(cambios.nombre);
+        // Si ahora es otra cosa, es otra comida para la tabla compartida.
+        if (cambios.nombre_norm !== normalizar(antes.nombre)) cambios.alimento_id = null;
       }
       if ('unidad' in d) cambios.unidad = texto(d.unidad) || null;
       if ('padre_id' in d) cambios.padre_id = Number(d.padre_id) || null;

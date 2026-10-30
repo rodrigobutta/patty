@@ -139,7 +139,9 @@ export function armarPerfil(filas: FilaDiaria[], conceptos: ConceptoInfo[], desd
       }
     });
     const sigue = dias[dias.length - 1] >= n - 90;
-    series.push({ c, nombre, modos: ms, continua, dias, valores, texto, semDias, semSuma, semN, relevancia: relevanciaBase(dias.length, c.rol, sigue) });
+    // Los componentes son pocos y resumen muchas comidas: que entren aunque haya cientos de conceptos.
+    const extra = c.componente ? 2 : 0;
+    series.push({ c, nombre, modos: ms, continua, dias, valores, texto, semDias, semSuma, semN, relevancia: relevanciaBase(dias.length, c.rol, sigue) + extra });
   }
 
   // Lo que más dice va primero: lo que se siente, lo que sigue pasando, lo que cambió.

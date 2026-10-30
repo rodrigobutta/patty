@@ -240,6 +240,7 @@ async function guardar(db: Db, p: PersonaAcceso, veredictos: Veredicto[], porId:
       const efecto = porId.get(h.efecto_id)!;
       const stats = {
         origen: 'hipotesis' as const,
+        componente: causa.componente ?? null,
         protege: h.tipo === 'relacion' && h.sentido === 'baja',
         ya_no: v.ya_no,
         fecha_desde: h.fecha_desde,

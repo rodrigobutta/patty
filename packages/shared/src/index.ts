@@ -729,18 +729,20 @@ export type Modo = 'presente' | 'alto' | 'bajo' | 'alto_semana' | 'bajo_semana' 
  * - proteccion: lo que hace que un malestar aparezca menos ("los días que caminás, menos dolor de cabeza")
  * - desfases_largos: efectos que llegan a los dos o tres días (si no, solo el mismo día y el siguiente)
  * - hipotesis: una vez por semana, la IA mira el resumen de los datos y sospecha cosas; el motor las verifica
+ * - componentes: los componentes de lo que come ("los días con mucha sal → dolor de cabeza"), estimados de sus comidas
  */
 export interface AjustesPatrones {
   umbrales?: boolean;
   proteccion?: boolean;
   desfases_largos?: boolean;
   hipotesis?: boolean;
+  componentes?: boolean;
 }
-export const PATRONES_FINOS = ['umbrales', 'proteccion', 'desfases_largos', 'hipotesis'] as const;
+export const PATRONES_FINOS = ['umbrales', 'proteccion', 'desfases_largos', 'hipotesis', 'componentes'] as const;
 export type PatronFino = (typeof PATRONES_FINOS)[number];
 /** Los ajustes completos (lo que no se eligió, prendido). */
 export function patronesFinos(a?: AjustesPatrones | null): Record<PatronFino, boolean> {
-  return { umbrales: a?.umbrales !== false, proteccion: a?.proteccion !== false, desfases_largos: a?.desfases_largos !== false, hipotesis: a?.hipotesis !== false };
+  return { umbrales: a?.umbrales !== false, proteccion: a?.proteccion !== false, desfases_largos: a?.desfases_largos !== false, hipotesis: a?.hipotesis !== false, componentes: a?.componentes !== false };
 }
 
 /** Un umbral dicho para una persona: "3", "30 min", "1 h 30 min", "28 °C", "8.000 pasos". */
@@ -796,6 +798,13 @@ export function nombreRasgo(
   return `${modo === 'alto' ? 'Más' : 'Menos'} ${nombre.toLocaleLowerCase('es')}`;
 }
 
+/** Lo que hay detrás de un patrón de componentes: cuál es, si fue mucho o poco, y las comidas que más aportaron. */
+export interface ComponenteHallazgo {
+  clave: string;
+  nivel: 'mucho' | 'poco';
+  alimentos: string[];
+}
+
 export interface Hallazgo {
   id: number;
   persona_id: number;
@@ -816,6 +825,8 @@ export interface Hallazgo {
   protege?: boolean;
   /** motor = lo encontró la búsqueda de siempre; hipotesis = lo sospechó la IA y el motor lo verificó. */
   origen?: 'motor' | 'hipotesis';
+  /** Si una de sus causas es un componente de lo que se come ("Días con mucha sal"): siempre es una estimación. */
+  componente?: ComponenteHallazgo | null;
   /** Pasaba antes, pero en los últimos meses ya no se ve. */
   ya_no?: boolean;
   /**

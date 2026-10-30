@@ -1,5 +1,5 @@
 // Más → Qué patrones buscar: prender o apagar las búsquedas más finas de Patty (umbrales, lo que protege, efectos que
-// llegan a los dos o tres días, las hipótesis de Patty). Se guarda en la persona: lo respeta el análisis, también el de la madrugada.
+// llegan a los dos o tres días, las hipótesis de Patty, los componentes de lo que comés). Se guarda en la persona: lo respeta el análisis, también el de la madrugada.
 import { useState } from 'react';
 import { patronesFinos, type PatronFino, type Persona } from 'shared';
 import { api } from '../api';
@@ -30,6 +30,12 @@ const OPCIONES: Array<{ clave: PatronFino; titulo: string; texto: string; ejempl
     titulo: '🦉 Hipótesis de Patty',
     texto: 'Una vez por semana Patty mira el resumen de todos tus datos y sospecha cosas. Solo te muestra las que los números confirman.',
     ejemplo: 'Por ejemplo: «desde que empezaste con el mate, te duele menos la cabeza».',
+  },
+  {
+    clave: 'componentes',
+    titulo: '🧂 Componentes de lo que comés',
+    texto: 'Patty estima de qué están hechas tus comidas (sal, harinas, azúcar, alcohol…) para encontrar patrones entre comidas distintas. No tenés que anotar nada más, y nunca vas a ver calorías ni gramos.',
+    ejemplo: 'Por ejemplo: «los días con mucha sal, al día siguiente te duele la cabeza».',
   },
 ];
 

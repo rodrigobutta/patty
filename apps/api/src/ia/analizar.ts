@@ -1,6 +1,6 @@
 // La IA mira los candidatos que encontró el motor y los explica en palabras: cuáles parecen razonables, qué otra cosa
 // podría explicarlos (un confusor) y qué convendría anotar o probar para confirmarlos.
-import type { Idioma } from 'shared';
+import type { ComponenteHallazgo, Idioma } from 'shared';
 import type { Candidato } from '../patrones/motor.js';
 import { pedirJson } from './cliente.js';
 
@@ -41,7 +41,7 @@ export function explicarHallazgos(datos: {
   hasta: string;
   diasActivos: number;
   paresEvaluados: number;
-  candidatos: Array<Candidato & { causa: string; efecto: string }>;
+  candidatos: Array<Candidato & { causa: string; efecto: string; componente?: ComponenteHallazgo | null }>;
   frecuentes: Array<{ nombre: string; dias: number }>;
   /** Lo que la persona opinó de patrones anteriores: para aprender qué le sirve y qué no. */
   opiniones?: Array<{ causa: string; efecto: string; opinion: 'le sirvió' | 'ya lo sabía' | 'no tiene sentido' }>;
@@ -61,6 +61,8 @@ export function explicarHallazgos(datos: {
     'cuidarla ("los días que caminás, al día siguiente te duele menos la cabeza"), sin prometer nada. Una causa con ' +
     '"N o más" / "N o menos" es un umbral: el efecto aparece a partir de esa cantidad ("a partir de 3 cafés"); decilo así. ' +
     'Con 2 o 3 días de desfase decí "a los dos días" / "a los tres días". ' +
+    'Las causas "Días con mucha sal", "Días con muchas harinas" y parecidas son estimaciones de lo que comió, relativas a sus días de siempre: contalas como estimaciones, nombrá las ' +
+    'comidas que se indican, nunca des gramos, calorías ni consejos de dieta o de nutrición. ' +
     'Los marcados YA NO SE VE se ven en toda la historia pero no en los últimos meses: contalo en pasado ("antes pasaba"). ' +
     '"Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.' +
     (datos.idioma === 'en'
@@ -84,7 +86,7 @@ export function explicarHallazgos(datos: {
     'Candidatos:',
     ...datos.candidatos.map(
       (c, i) =>
-        `${i}. ${c.ya_no ? 'YA NO SE VE: ' : ''}${c.protege ? 'PROTEGE: ' : ''}${c.causa} → ${c.efecto}, ${c.desfase_dias} día(s) después: ` +
+        `${i}. ${c.ya_no ? 'YA NO SE VE: ' : ''}${c.protege ? 'PROTEGE: ' : ''}${c.causa}${c.componente?.alimentos.length ? ` (sobre todo: ${c.componente.alimentos.join(', ')})` : ''} → ${c.efecto}, ${c.desfase_dias} día(s) después: ` +
         `${c.soporte} de ${c.dias_causa} días con la causa (${Math.round(c.prob_con * 100)}%) vs ${Math.round(c.prob_sin * 100)}% sin la causa; ` +
         `lift ${c.lift.toFixed(2)}, p ${c.p_valor.toPrecision(2)}, q ${c.q_valor.toPrecision(2)}`,
     ),

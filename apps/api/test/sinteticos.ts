@@ -1,5 +1,6 @@
 // Datos armados para las pruebas de toda la historia: azar repetible, sin base de datos.
 import { sumarDias } from '../src/lib/fechas.js';
+import { rasgosDeComidas, type ComidaDia } from '../src/componentes/niveles.js';
 import type { ConceptoInfo, FilaDiaria } from '../src/patrones/motor.js';
 
 export const azar = (semilla: number) => {
@@ -98,4 +99,48 @@ export function conCombinada(dias: number, conceptos: number, semilla = 42, opci
     ayer = frito && periodo && calor && enRacha;
   }
   return { ...h, filas, conceptos: lista };
+}
+
+/** Una comida armada a mano para probar componentes: suma lo que se le diga, con la hora del día. */
+export const comidaDePrueba = (fecha: string, nombre: string, componentes: ComidaDia['componentes'], extra: Partial<ComidaDia> = {}): ComidaDia => ({
+  fecha,
+  hora: Date.parse(`${fecha}T13:00:00Z`),
+  nombre,
+  gramos: 300,
+  peso: 1,
+  conocidos: null,
+  componentes,
+  ...extra,
+});
+
+/**
+ * A datos al azar (`historia`) les agrega los componentes: a cada comida le toca una composición de la lista, y con eso se arman los
+ * rasgos de cada día igual que en producción. Causas y efectos siguen siendo independientes: lo que salga es falso. `dispareja`: unos
+ * días se anota mucho más que otros, y eso sube a la vez las comidas y los malestares anotados (la trampa de sumar por día).
+ */
+export function conComponentes(dias: number, conceptos: number, semilla: number, composiciones: Array<ComidaDia['componentes']>, o: { dispareja?: boolean } = {}) {
+  const h = historia(dias, conceptos, semilla);
+  const r = otroAzar(semilla + 77);
+  let filas = h.filas;
+  if (o.dispareja) {
+    const ganas = new Map<string, number>();
+    for (let d = 0; d < dias; d++) ganas.set(sumarDias(DESDE, d), r() < 0.5 ? 1 : 0.35);
+    filas = filas.filter((f) => f.primera === null || r() < ganas.get(f.fecha)!);
+  }
+  const lista = [...h.conceptos];
+  const composicionDe = new Map(lista.filter((c) => c.categoria === 'comida').map((c) => [c.id, composiciones[Math.floor(r() * composiciones.length)]]));
+  const nombre = new Map(lista.map((c) => [c.id, c.nombre]));
+  const comidas: ComidaDia[] = [];
+  for (const f of filas) {
+    const comp = composicionDe.get(f.concepto_id);
+    if (comp) comidas.push(comidaDePrueba(f.fecha, nombre.get(f.concepto_id)!, comp, { hora: f.primera }));
+  }
+  const extra: ConceptoInfo[] = [];
+  const mas: FilaDiaria[] = [];
+  rasgosDeComidas(comidas).forEach((x, i) => {
+    const id = 50000 + i;
+    extra.push({ id, nombre: x.concepto, tipo_valor: 'evento', rol: 'causa', categoria: 'componente', universo: x.universo, componente: { clave: x.clave, nivel: x.nivel, alimentos: x.alimentos } });
+    for (const d of x.dias) mas.push({ fecha: d.fecha, concepto_id: id, veces: 1, suma: null, promedio: null, intensidad: null, primera: d.primera, automatica: true });
+  });
+  return { ...h, filas, sinComponentes: lista, conceptos: [...lista, ...extra], conFilas: [...filas, ...mas] };
 }

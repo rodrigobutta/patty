@@ -25,7 +25,7 @@
 //   - Lo que protege ("los días que caminás, menos dolor de cabeza"): la otra cola del test, solo para malestares, y
 //     solo si con la causa se esperaba ver el malestar varias veces y casi no apareció.
 //   - Desfases de 2 y 3 días ("a los dos días"): se prueban con todo lo demás; apagados, solo el mismo día y el siguiente.
-import { traducir, type Idioma, type Modo, type RolCategoria, type TipoValor } from 'shared';
+import { traducir, type ComponenteHallazgo, type Idioma, type Modo, type RolCategoria, type TipoValor } from 'shared';
 import { diasEntre } from '../lib/fechas.js';
 
 export interface FilaDiaria {
@@ -68,6 +68,13 @@ export interface ConceptoInfo {
   rol: RolCategoria;
   /** La clave de su categoría ("sintoma"): lo que protege se busca solo contra malestares. */
   categoria?: string;
+  /**
+   * Los días en que se puede decir si este rasgo estuvo o no. Para lo calculado que no siempre se sabe ("Días con mucha sal"): un
+   * día del que no se sabe qué se comió no es un día sin mucha sal. Sin esto, cuentan los días anotados.
+   */
+  universo?: Set<string>;
+  /** Si es un componente de lo que se come: cuál, y lo que más aportó. */
+  componente?: ComponenteHallazgo;
 }
 
 /** Una causa más de una combinación (la primera va en causa_id / causa_modo). */
@@ -476,10 +483,15 @@ export function armarRasgos(filas: FilaDiaria[], conceptos: Map<number, Concepto
       }
       if (primerDia < DIAS_SIN_APARECER) primerDia = 0;
       if (n - 1 - ultimoDia < DIAS_SIN_APARECER) ultimoDia = n - 1;
-      for (let d = primerDia; d <= ultimoDia; d++) universo[d] = activo[d];
+      if (concepto.universo) {
+        for (const f of concepto.universo) {
+          const i = diasEntre(desde, f);
+          if (i >= 0 && i < n) universo[i] = 1;
+        }
+      } else for (let d = primerDia; d <= ultimoDia; d++) universo[d] = activo[d];
       // Lo que se cuenta (cafés, vasos, minutos de caminata): cuánto hubo cada día, para los umbrales. Un evento cuenta
       // las veces que se anotó; una cantidad, lo anotado (o las veces, si no se puso número).
-      const conDosis = concepto.rol !== 'efecto' && (t === 'cantidad' || t === 'evento' || t === 'duracion');
+      const conDosis = !concepto.universo && concepto.rol !== 'efecto' && (t === 'cantidad' || t === 'evento' || t === 'duracion');
       const valor = conDosis ? new Float64Array(n).fill(Number.NaN) : undefined;
       for (const f of lista) {
         const i = diasEntre(desde, f.fecha);
@@ -824,6 +836,7 @@ export function buscarPatrones(
       vistos.add(k);
       return true;
     });
+  sinRepetir.splice(0, sinRepetir.length, ...podarComponentes(sinRepetir, rasgos, conceptos));
   // Con años de historia, un patrón que ya no pasa no tiene que parecer de hoy: se avisa y va más abajo.
   if (n >= DIAS_RECIENTES * 2) {
     const ultimos = mascaraDias(n, n - DIAS_RECIENTES, n - 1);
@@ -961,6 +974,85 @@ function parecidos(a: Rasgo, b: Rasgo): boolean {
   return juntos / alguno > 0.75 || juntos / Math.max(1, Math.min(enA, enB)) > 0.9;
 }
 
+/** Cuántos patrones de componentes quedan como mucho, por efecto y en total: son estimaciones, no tienen que tapar lo demás. */
+export const COMPONENTES_POR_EFECTO = 2;
+export const COMPONENTES_MAX = 6;
+/**
+ * Un componente solo aparece si hay un patrón firme (el mismo corte con que la app separa "patrones" de "posibles"): no se muestra
+ * como "posible", que en datos al azar serían unos 5 por persona de cosas como "Días con muchas calorías".
+ */
+const Q_COMPONENTE = 0.1;
+
+/**
+ * Si dos rasgos van bastante juntos, aunque no alcance para `parecidos`: "Días con mucha grasa", "Días con muchas calorías" y
+ * "Comida frita" son casi lo mismo dicho de tres maneras, aunque cada uno tenga días que el otro no.
+ */
+function emparentados(a: Rasgo, b: Rasgo): boolean {
+  let juntos = 0;
+  let alguno = 0;
+  let enA = 0;
+  let enB = 0;
+  for (let d = 0; d < a.esta.length; d++) {
+    if (!a.universo[d] || !b.universo[d]) continue;
+    if (a.esta[d] || b.esta[d]) alguno++;
+    if (a.esta[d] && b.esta[d]) juntos++;
+    enA += a.esta[d];
+    enB += b.esta[d];
+  }
+  if (!alguno) return false;
+  return juntos / alguno >= 0.45 || juntos / Math.max(1, Math.min(enA, enB)) >= 0.7;
+}
+
+const esComponente = (c?: ConceptoInfo) => Boolean(c?.universo);
+const esDeComida = (c?: ConceptoInfo) => c?.categoria === 'comida' || c?.categoria === 'bebida';
+
+/**
+ * Que un componente no llene la lista de casi lo mismo. Por efecto, del más firme al menos: un componente sobra si ya quedó algo
+ * que va con él (otro componente, una comida, lo que sea); y una comida sobra si ya quedó un componente que la explica ("Milanesa"
+ * adentro de "Días con mucha grasa"), que además cuenta en su tarjeta qué comidas fueron. Lo demás no se toca: sin componentes no
+ * hace nada. Las combinaciones quedan como están.
+ */
+function podarComponentes(lista: Candidato[], rasgos: Rasgo[], conceptos: Map<number, ConceptoInfo>): Candidato[] {
+  if (!lista.some((x) => esComponente(conceptos.get(x.causa_id)))) return lista;
+  const rasgo = (x: Candidato) => {
+    const modo = x.causa_modo === 'desde' ? 'presente' : x.causa_modo === 'hasta' ? 'bajo' : x.causa_modo;
+    return rasgos.find((r) => r.concepto.id === x.causa_id && r.modo === modo) ?? (x.causa_modo === 'desde' ? rasgos.find((r) => r.concepto.id === x.causa_id && r.modo === 'alto') : undefined);
+  };
+  const quedan: Candidato[] = [];
+  const porEfecto = new Map<string, number>();
+  let total = 0;
+  for (const x of [...lista].sort((a, b) => b.puntaje - a.puntaje)) {
+    if (x.causas_extra.length) {
+      quedan.push(x);
+      continue;
+    }
+    const c = conceptos.get(x.causa_id);
+    const comp = esComponente(c);
+    if (comp && x.q_valor > Q_COMPONENTE) continue;
+    if (comp || esDeComida(c)) {
+      const clave = `${x.efecto_id}|${x.efecto_modo}|${x.protege ? 'p' : ''}`;
+      const a = rasgo(x);
+      const sobra =
+        a &&
+        quedan.some((y) => {
+          if (y.causas_extra.length || y.efecto_id !== x.efecto_id || y.efecto_modo !== x.efecto_modo || Boolean(y.protege) !== Boolean(x.protege) || y.causa_id === x.causa_id) return false;
+          if (!comp && !esComponente(conceptos.get(y.causa_id))) return false;
+          const b = rasgo(y);
+          return b ? emparentados(a, b) : false;
+        });
+      if (sobra) continue;
+      if (comp) {
+        const enEfecto = porEfecto.get(clave) ?? 0;
+        if (enEfecto >= COMPONENTES_POR_EFECTO || total >= COMPONENTES_MAX) continue;
+        porEfecto.set(clave, enEfecto + 1);
+        total++;
+      }
+    }
+    quedan.push(x);
+  }
+  return quedan;
+}
+
 /**
  * Si una combinación se sostiene a lo largo de la historia, cortada de dos maneras entre los días que cuentan para ella: la
  * primera mitad contra la segunda, y los dos cuartos del medio contra las dos puntas (una racha justo en el corte del medio
@@ -1003,6 +1095,8 @@ export function cuandoTexto(desfase: number, idioma: Idioma = 'es'): string {
 export function describir(x: Candidato, causa: string, efecto: string, idioma: Idioma = 'es'): string {
   const t = (texto: string, vars?: Record<string, string | number>) => traducir(idioma, texto, vars);
   const cuando = cuandoTexto(x.desfase_dias, idioma);
+  // "Días con mucha sal" ya dice que son días: "Los días con «mucha sal»".
+  causa = causa.replace(/^(Días con|Days with) /, '');
   const pct = (v: number) => `${Math.round(v * 100)}%`;
   if (x.protege) {
     return t('Los días con «{causa}», {cuando} hubo «{efecto}» solo el {con} de las veces ({soporte} de {dias}); el resto de los días, el {sin}. Parece que te protege.', {

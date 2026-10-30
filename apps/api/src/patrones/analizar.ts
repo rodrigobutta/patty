@@ -5,6 +5,7 @@ import { nombreRasgo, patronesFinos, perfilTexto, RELACIONES, traducir, type Aju
 import { filas, una, type Db, type Tx } from '../db/client.js';
 import { sumarDias } from '../lib/fechas.js';
 import { analisis, hallazgos } from '../db/schema.js';
+import { rasgosDeComponentes } from './componentes.js';
 import { explicarHallazgos } from '../ia/analizar.js';
 import { iaDisponible } from '../ia/cliente.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
@@ -15,7 +16,7 @@ import { buscarPatrones, claveCausas, describir, DIAS_MINIMOS, type ConceptoInfo
 
 const COLUMNAS = sql`h.id, h.persona_id, h.causa_id, h.efecto_id, ca.nombre AS causa, ef.nombre AS efecto, h.causa_modo, h.efecto_modo,
   ca.tipo_valor AS causa_tipo, ef.tipo_valor AS efecto_tipo,
-  h.umbral, h.protege, ca.unidad AS causa_unidad, h.origen, h.ya_no,
+  h.umbral, h.protege, ca.unidad AS causa_unidad, h.origen, h.ya_no, h.componente,
   to_char(h.fecha_desde, 'YYYY-MM-DD') AS fecha_desde, to_char(h.fecha_hasta, 'YYYY-MM-DD') AS fecha_hasta,
   h.desfase_dias, h.soporte, h.dias_causa, h.dias_evaluados, h.prob_con, h.prob_sin, h.lift, h.p_valor, h.q_valor, h.puntaje,
   h.explicacion, h.estado, h.detectado,
@@ -34,6 +35,7 @@ export function listarHallazgos(tx: Tx, personaId: number, ids?: number[]): Prom
           AND NOT (h.protege AND coalesce(pe.patrones->>'proteccion', '') = 'false')
           AND NOT (h.desfase_dias >= 2 AND coalesce(pe.patrones->>'desfases_largos', '') = 'false')
           AND NOT (h.origen = 'hipotesis' AND coalesce(pe.patrones->>'hipotesis', '') = 'false')
+          AND NOT (h.componente IS NOT NULL AND coalesce(pe.patrones->>'componentes', '') = 'false')
         ORDER BY (h.estado = 'descartado'), h.puntaje DESC`,
   );
 }
@@ -70,7 +72,7 @@ export async function primerDiaDe(db: Db | Tx, personaId: number, hasta: string)
  * Los datos de cada día de una persona, como los usa el motor: la serie diaria (sin el clima por hora, que va resumido),
  * con la hora de lo que se anotó, y la estación y la fase del ciclo. También los usa el aviso preventivo.
  */
-export async function datosDePersona(db: Db, p: PersonaAcceso, desde: string, hasta: string): Promise<{ datos: FilaDiaria[]; conceptos: Array<ConceptoInfo & { unidad?: string | null }> }> {
+export async function datosDePersona(db: Db, p: PersonaAcceso, desde: string, hasta: string, o: { componentes?: boolean } = {}): Promise<{ datos: FilaDiaria[]; conceptos: Array<ConceptoInfo & { unidad?: string | null }> }> {
   const porHora = await db.transaction(async (tx) => {
     await completarSolYLuna(tx, p, desde, hasta);
     return climaPorHoraParaPatrones(tx, p, desde, hasta);
@@ -124,6 +126,12 @@ export async function datosDePersona(db: Db, p: PersonaAcceso, desde: string, ha
   const grupos = await db.transaction((tx) => rasgosDeGente(tx, p.id, desde, hasta));
   datos.push(...grupos.filas);
   for (const x of grupos.conceptos) if (!conceptos.some((k) => k.id === x.id)) conceptos.push(x);
+  // Los componentes de lo que comió, si no los apagó: "Días con mucha sal". Como los anteriores, solo como causa.
+  if (o.componentes !== false && patronesFinos((await una<{ patrones: AjustesPatrones }>(db, sql`SELECT patrones FROM personas WHERE id = ${p.id}`))?.patrones).componentes) {
+    const comp = await db.transaction((tx) => rasgosDeComponentes(tx, p.id, desde, hasta));
+    datos.push(...comp.filas);
+    conceptos.push(...comp.conceptos);
+  }
   return { datos, conceptos };
 }
 
@@ -141,6 +149,7 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
     desfasesLargos: finos.desfases_largos,
   });
   const nombre = new Map(conceptos.map((x) => [x.id, x.nombre]));
+  const conComponente = new Map(conceptos.filter((x) => x.componente).map((x) => [x.id, x.componente!]));
   const tipo = new Map(conceptos.map((x) => [x.id, x.tipo_valor]));
   const unidad = new Map(conceptos.map((x) => [x.id, x.unidad ?? null]));
   // Lo que la persona ya opinó. Un par que marcó como obvio o sin sentido no vuelve como novedad con otro desfase u otro
@@ -172,6 +181,7 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
     fecha_desde: null,
     fecha_hasta: null,
     combo: combo(x),
+    componente: [x.causa_id, ...x.causas_extra.map((c) => c.id)].map((id) => conComponente.get(id)).find(Boolean) ?? null,
     causa: [{ id: x.causa_id, modo: x.causa_modo }, ...x.causas_extra]
       .map((c) => nombreRasgo(nombre.get(c.id)!, tipo.get(c.id)!, c.modo, idioma, { valor: x.umbral ?? null, unidad: unidad.get(c.id) }))
       .join(' + '),

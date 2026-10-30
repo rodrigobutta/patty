@@ -290,7 +290,7 @@ export async function datosInforme(tx: Tx, p: PersonaAcceso, dias: number, idiom
         }
       : null,
     hallazgos: hallazgos.map((h) => ({
-      causa: causaDe(h),
+      causa: h.componente ? t('{causa} (estimación)', { causa: causaDe(h) }) : causaDe(h),
       efecto: nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma),
       cuando: cuando(h.desfase_dias),
       detalle: t('Pasó {n} de {total} veces: {con}% de las veces, contra {sin}% sin eso.', {

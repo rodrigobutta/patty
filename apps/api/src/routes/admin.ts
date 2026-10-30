@@ -10,6 +10,7 @@ import { VERSION } from '../lib/version.js';
 const ARRANCO = new Date().toISOString();
 import { filas, obtenerDbAdmin, una, type Db } from '../db/client.js';
 import { diaDePatty } from '../lib/fechas.js';
+import { enlazarConceptos, estadoAlimentos, probarAlimento, resolverLote } from '../componentes/resolver.js';
 import { correrHipotesis, verHipotesis } from '../patrones/hipotesis.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
@@ -48,6 +49,15 @@ export const rutasAdmin = new Hono<Env>()
     const p = await personaParaHipotesis(c.var.db, idParam(c, 'persona'));
     return c.json(await correrHipotesis(c.var.db, p, { hasta: diaDePatty(new Date(), p.zona_horaria), idioma: c.var.idioma, forzar: true }));
   })
+  .get('/componentes', async (c) => c.json(await estadoAlimentos(c.var.db)))
+  .post('/componentes/probar', async (c) => {
+    // La IA de verdad con una comida, sin guardar nada (gasta). Para ver cómo la desarma.
+    const d = await cuerpo(c);
+    const nombre = texto(d.nombre);
+    if (!nombre) throw new ErrorApi('Decí qué comida.');
+    return c.json(await probarAlimento(nombre, d.categoria === 'bebida' ? 'bebida' : 'comida'));
+  })
+  .post('/componentes/lote', async (c) => c.json({ enlazadas: await enlazarConceptos(c.var.db), resueltas: await resolverLote(c.var.db) }))
   .get('/beta', async (c) =>
     // Los pedidos de invitación a la beta, los nuevos primero.
     c.json(

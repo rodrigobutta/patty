@@ -132,6 +132,12 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
         <div><span style={{ width: `${h.prob_sin * 100}%` }} className="sin" />{t(esCambio(h) ? 'antes {n}%' : 'sin {n}%', { n: Math.round(h.prob_sin * 100) })}</div>
       </div>
       {h.explicacion ? <p>{h.explicacion}</p> : null}
+      {h.componente ? (
+        <p className="suave chico">
+          {h.componente.alimentos.length ? `${t('Sobre todo: {alimentos}.', { alimentos: h.componente.alimentos.join(', ') })} ` : ''}
+          {t('Es una estimación, según lo que anotaste y relativa a tus días de siempre.')}
+        </p>
+      ) : null}
       {usuario?.rol !== 'lector' ? (
         <div className="opinion-hallazgo">
           <span className="suave chico">{t('¿Te sirve?')}</span>
