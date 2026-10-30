@@ -51,3 +51,12 @@ describe('entrar con el mail', () => {
     expect(mal.status).toBe(401);
   });
 });
+
+describe('app.patty.today', () => {
+  it('la raíz abre la app; en patty.today sigue la presentación', async () => {
+    const r = await crearApp('app').request('https://app.patty.today/');
+    expect(r.status).toBe(302);
+    expect(r.headers.get('Location')).toBe('/app/');
+    expect((await crearApp('app').request('https://patty.today/')).status).not.toBe(302);
+  });
+});

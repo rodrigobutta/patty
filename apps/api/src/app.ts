@@ -220,6 +220,8 @@ export function crearApp(modo = config.modo): Hono<Env> {
 
   // La app de Android, directo (sin Play Store por ahora): el APK firmado de la última versión, en GitHub Releases.
   app.get('/descargar/android', (c) => c.redirect(APK_ANDROID, 302));
+  // app.patty.today es la app (patty.today es la presentación): la raíz lleva a /app/.
+  app.get('/', async (c, next) => (new URL(c.req.url).hostname.startsWith('app.') ? c.redirect('/app/', 302) : next()));
   // Con la administración aparte, patty.today/admin lleva ahí.
   if (modo === 'app') app.get('/admin/*', (c) => c.redirect(config.urlAdmin, 302)).get('/admin', (c) => c.redirect(config.urlAdmin, 302));
 
