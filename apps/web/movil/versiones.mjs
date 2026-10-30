@@ -21,7 +21,9 @@ const nativos = etiqueta ? (correr('git', ['diff', '--name-only', etiqueta, 'HEA
 // El nativo del teléfono: el commit de su versión no se sabe, así que se compara contra el último cambio nativo.
 const versionDelUltimoNativo = correr('git', ['log', '-1', '--format=%H', '--', 'android', 'capacitor.config.ts']);
 const pkgEn = (c) => { try { return JSON.parse(correr('git', ['show', `${c}:./package.json`]) ?? '{}').version ?? null; } catch { return null; } };
-const minimoNativo = versionDelUltimoNativo ? pkgEn(versionDelUltimoNativo) : null;
+// La versión sube en el commit siguiente al cambio: el mínimo es el del primer commit después de ese.
+const siguiente = versionDelUltimoNativo ? (correr('git', ['rev-list', '--ancestry-path', `${versionDelUltimoNativo}..HEAD`]) ?? '').split('\n').filter(Boolean).at(-1) : null;
+const minimoNativo = versionDelUltimoNativo ? pkgEn(siguiente ?? versionDelUltimoNativo) : null;
 
 const n = (v) => (v ?? '0').split('.').map(Number);
 const menor = (a, b) => { const x = n(a); const y = n(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] < y[i]; return false; };
