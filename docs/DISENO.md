@@ -65,6 +65,15 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   estos y no las horas (el promedio de las horas mezcla la noche con el día): `climaPorHoraParaPatrones` saca los
   conceptos horarios y completa el resumen de días viejos que no lo tengan. En el Día se ve el resumen en vez de las
   horas.
+- **Clima con Patty cerrada**: la ubicación que llega a `POST /api/ingesta/ubicacion` (la manda el teléfono solo) también
+  pide el clima y el aire de esa hora, con ese lugar (`climaDespues`, sin hacer esperar; una lectura por hora). Si el
+  clima está apagado en ese teléfono, la app arma la dirección con `?clima=no`. Es solo en movimiento: el teléfono quieto
+  no manda puntos, y esas horas las completa la web al abrirse (hasta 48 h atrás).
+- **Sol y luna** (`clima/cielo.ts`, fuente «Sol y luna»): «Horas de luz» (de la latitud y la fecha) y «Luna iluminada»
+  (%, fase media) salen de cuentas, sin consultar a nadie y sin depender de que el clima esté prendido. Se completan
+  antes de cada análisis para los días con datos, y con cada `POST /api/clima`. La latitud es la del teléfono o la
+  última conocida (puntos o lugares); sin ninguna, solo la luna.
+- **Polen: no está.** Open-Meteo solo lo tiene para Europa (en Buenos Aires devuelve todo vacío, probado el 2026-10-30).
 - **Ubicación y lugares** (apagado por defecto, se prende por dispositivo en Más):
   - Con Patty abierta, la web sigue la ubicación (`watchPosition`, se corta al ocultarse) y manda un punto a
     `POST /api/ubicacion` solo si es el primero del día, si se movió más de 1 km o si entró o salió de un lugar con
@@ -409,5 +418,4 @@ docs/           Este documento.
 - Recordatorios para anotar (notificaciones) y carga por voz.
 - Modo sin conexión con cola de cambios, como Quincho.
 - Exportar los datos (CSV) y un respaldo descargable.
-- Más cosas automáticas: horas de luz y fase lunar (sin pedir nada), calidad del aire y polen (Open-Meteo Air Quality,
-  gratis, con la misma ubicación del clima), sugerir lugares a partir de dónde se repiten los puntos.
+- Polen en Argentina: hace falta otra fuente (Open-Meteo solo cubre Europa).

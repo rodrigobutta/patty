@@ -7,6 +7,7 @@ import { BackgroundGeolocation } from '@capgo/background-geolocation';
 import { useEffect, useState } from 'react';
 import { puntoNuevo, type Coordenadas, type Lugar } from 'shared';
 import { api } from '../api';
+import { CAMBIO_CLIMA, climaActivado } from './clima';
 import { ingestaUrl, tokenDeLaApp } from './fuenteApp';
 import { t } from './idioma';
 import { esNativa } from './nativo';
@@ -113,10 +114,13 @@ export function seguir(personaId: number): () => void {
  * sirven (primero del día, más de 1 km, entrar o salir de un lugar). No se corta al salir de la pantalla: solo al
  * apagarlo en Más.
  */
-let siguiendoNativo: number | null = null;
+let siguiendoNativo: string | null = null;
 
 export async function seguirNativo(personaId: number, alFallar: (mensaje: string) => void = () => {}): Promise<void> {
-  if (siguiendoNativo === personaId) return;
+  // Con el clima apagado, la API no lo pide con estos puntos (la dirección se fija al arrancar: si cambia, se rearranca).
+  const url = ingestaUrl(`/ubicacion${climaActivado() ? '' : '?clima=no'}`);
+  const clave = `${personaId}|${url}`;
+  if (siguiendoNativo === clave) return;
   // Android no deja arrancar el seguimiento con la app en segundo plano: se espera a que vuelva a estar a la vista.
   if (document.visibilityState !== 'visible') {
     const alVolver = () => {
@@ -127,7 +131,7 @@ export async function seguirNativo(personaId: number, alFallar: (mensaje: string
     document.addEventListener('visibilitychange', alVolver);
     return;
   }
-  siguiendoNativo = personaId;
+  siguiendoNativo = clave;
   try {
     const token = await tokenDeLaApp(personaId);
     await BackgroundGeolocation.stop().catch(() => {});
@@ -141,7 +145,7 @@ export async function seguirNativo(personaId: number, alFallar: (mensaje: string
         // Uno por minuto como mucho al moverse (con 100 m de por medio): alcanza para dibujar una caminata entera.
         minIntervalMs: 60000,
         networkFallback: true,
-        url: ingestaUrl('/ubicacion'),
+        url,
         headers: { Authorization: `Bearer ${token}` },
       },
       (_punto, error) => {
@@ -157,14 +161,20 @@ export async function seguirNativo(personaId: number, alFallar: (mensaje: string
 /** Mientras el seguimiento esté prendido en este dispositivo, sigue la ubicación de la persona elegida. */
 export function useSeguirUbicacion(personaId: number | undefined): void {
   const [activo, setActivo] = useState(seguimientoActivado);
+  const [clima, setClima] = useState(climaActivado);
   useEffect(() => {
     const f = () => setActivo(seguimientoActivado());
+    const g = () => setClima(climaActivado());
     window.addEventListener(EVENTO, f);
-    return () => window.removeEventListener(EVENTO, f);
+    window.addEventListener(CAMBIO_CLIMA, g);
+    return () => {
+      window.removeEventListener(EVENTO, f);
+      window.removeEventListener(CAMBIO_CLIMA, g);
+    };
   }, []);
   useEffect(() => {
     if (!activo || !personaId) return;
     if (esNativa()) void seguirNativo(personaId);
     else return seguir(personaId);
-  }, [activo, personaId]);
+  }, [activo, personaId, clima]);
 }

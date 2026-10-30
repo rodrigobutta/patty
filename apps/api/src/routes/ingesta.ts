@@ -12,6 +12,7 @@ import { ErrorApi } from '../lib/errores.js';
 import { fechaLocal, leerInstante } from '../lib/fechas.js';
 import { cuerpo, numeroONulo, texto, type C, type Env } from '../lib/http.js';
 import { obtenerOCrearConcepto } from './conceptos.js';
+import { climaDespues } from './clima.js';
 import { guardarPuntos } from './ubicacion.js';
 import { guardarEscuchas } from '../medios/escuchas.js';
 import { guardarAvisos, guardarLlamadasPorHora } from '../avisos/telefono.js';
@@ -79,10 +80,13 @@ export const rutasIngesta = new Hono<Env>()
     const f = await fuenteDelPedido(c);
     const d = await cuerpo(c);
     const lista = (Array.isArray(d.puntos) ? d.puntos : [d]).map(puntoDeLaApp);
-    const r = await c.var.db.transaction(async (tx) => {
+    const p = { id: f.persona_id, zona_horaria: f.zona_horaria };
+    const { ultimo, ...r } = await c.var.db.transaction(async (tx) => {
       await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE id = ${f.id}`);
-      return guardarPuntos(tx, { id: f.persona_id, zona_horaria: f.zona_horaria }, lista);
+      return guardarPuntos(tx, p, lista);
     });
+    // Con Patty cerrada nadie pide el clima: lo pide la ubicación, salvo que esté apagado en ese teléfono (?clima=no).
+    if (ultimo && c.req.query('clima') !== 'no') climaDespues(c.var.db, p, ultimo);
     return c.json({ ok: true, ...r });
   })
   // Lo que sonó o se miró en el teléfono (la app de Android, con el acceso a las notificaciones): un tramo por tema o

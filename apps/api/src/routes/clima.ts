@@ -5,9 +5,10 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { filas, una, type Tx } from '../db/client.js';
+import { filas, una, type Db, type Tx } from '../db/client.js';
 import { fuentes, mediciones } from '../db/schema.js';
-import { climaPorHora, comienzoDeHora, MINIMO_POR_HORA } from '../clima/openMeteo.js';
+import { horasDeLuz, lunaIluminada } from '../clima/cielo.js';
+import { climaPorHora, comienzoDeHora, MINIMO_POR_HORA, type LecturaClima } from '../clima/openMeteo.js';
 import { resumirClimaDelDia } from '../clima/resumenDiario.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -21,9 +22,13 @@ export const NOMBRE_FUENTE = 'Clima automático';
 export const NOMBRE_FUENTE_DIA = 'Clima del día';
 /** Lo anotado hace más de esto no lleva clima: la ubicación de ahora ya no dice dónde estaba la persona. */
 const MAXIMO_ATRAS_MS = 48 * 3600000;
+/** Las horas de luz y la luna: no dependen del clima ni de que esté prendido, y van en su propia fuente. */
+export const NOMBRE_FUENTE_CIELO = 'Sol y luna';
+
+type PersonaZona = Pick<PersonaAcceso, 'id' | 'zona_horaria'>;
 
 /** La fuente de clima automático de la persona (se crea la primera vez; no tiene token porque no manda nada por ingesta). */
-async function fuenteClima(tx: Tx, p: PersonaAcceso, nombre = NOMBRE_FUENTE) {
+async function fuenteClima(tx: Tx, p: PersonaZona, nombre = NOMBRE_FUENTE) {
   const ya = await una<{ id: number }>(tx, sql`SELECT id FROM fuentes WHERE persona_id = ${p.id} AND tipo = 'clima' AND nombre = ${nombre}`);
   if (ya) return ya.id;
   const [f] = await tx
@@ -34,7 +39,7 @@ async function fuenteClima(tx: Tx, p: PersonaAcceso, nombre = NOMBRE_FUENTE) {
 }
 
 /** Vuelve a calcular el resumen del clima de esos días con las horas que hay. */
-export async function resumirDias(tx: Tx, p: PersonaAcceso, fuenteHoras: number, fechas: string[]) {
+export async function resumirDias(tx: Tx, p: PersonaZona, fuenteHoras: number, fechas: string[]) {
   if (!fechas.length) return;
   const fuenteDia = await fuenteClima(tx, p, NOMBRE_FUENTE_DIA);
   const horas = await filas<{ fecha: string; hora: string; concepto: string; valor: number }>(
@@ -121,19 +126,28 @@ export const rutasClima = new Hono<Env>()
   }
   if (!horas.size) return c.json({ ok: true, nuevas: 0 });
 
-  const fuenteId = await c.var.db.transaction((tx) => fuenteClima(tx, p));
+  const r = await guardarClima(c.var.db, p, lat, lon, [...horas.values()]);
+  const fechas = [...horas.values()].map((h) => diaDePatty(h, p.zona_horaria)).sort();
+  await c.var.db.transaction((tx) => completarSolYLuna(tx, p, fechas[0], fechas[fechas.length - 1], lat));
+  return c.json({ ok: true, ...r });
+});
+
+/** Trae de Open-Meteo el clima de esas horas en ese lugar (las que falten) y lo guarda con el resumen del día. */
+export async function guardarClima(db: Db, p: PersonaZona, lat: number, lon: number, lista: Date[]): Promise<{ nuevas: number; lecturas?: LecturaClima[] }> {
+  const horas = new Map(lista.map((h) => [h.getTime(), h]));
+  const fuenteId = await db.transaction((tx) => fuenteClima(tx, p));
   const orden = [...horas.values()].sort((a, b) => a.getTime() - b.getTime());
   const fechas = [...new Set(orden.map((h) => diaDePatty(h, p.zona_horaria)))];
   const ya = await filas<{ inicio: string }>(
-    c.var.db,
+    db,
     sql`SELECT inicio FROM mediciones WHERE fuente_id = ${fuenteId}
         AND inicio BETWEEN ${orden[0].toISOString()} AND ${orden[orden.length - 1].toISOString()}
         GROUP BY inicio HAVING count(*) >= ${MINIMO_POR_HORA}`,
   );
   for (const r of ya) horas.delete(new Date(r.inicio).getTime());
   if (!horas.size) {
-    await c.var.db.transaction((tx) => resumirDias(tx, p, fuenteId, fechas));
-    return c.json({ ok: true, nuevas: 0 });
+    await db.transaction((tx) => resumirDias(tx, p, fuenteId, fechas));
+    return { nuevas: 0 };
   }
 
   let lecturas;
@@ -143,7 +157,7 @@ export const rutasClima = new Hono<Env>()
     console.error('Clima:', e);
     throw new ErrorApi('No se pudo consultar el clima.', 502);
   }
-  const nuevas = await c.var.db.transaction(async (tx) => {
+  const nuevas = await db.transaction(async (tx) => {
     const f = { id: fuenteId, persona_id: p.id, tipo: 'clima', zona_horaria: p.zona_horaria };
     const cache = new Map<string, number>();
     const valores: Array<typeof mediciones.$inferInsert> = [];
@@ -166,8 +180,60 @@ export const rutasClima = new Hono<Env>()
     await resumirDias(tx, p, fuenteId, fechas);
     return valores.length;
   });
-  return c.json({ ok: true, nuevas, lecturas });
-});
+  return { nuevas, lecturas };
+}
+
+let enCurso: Promise<unknown> = Promise.resolve();
+
+/**
+ * Lo dispara la ubicación que manda el teléfono con Patty cerrada: guarda el clima y el aire de esa hora donde está de
+ * verdad, sin hacer esperar la respuesta. Más de una lectura por hora no pide. Si falla, ya lo completará otro punto.
+ */
+export function climaDespues(db: Db, p: PersonaZona, punto: { lat: number; lon: number; instante: Date }): void {
+  if (process.env.CLIMA_DE_FONDO === 'no') return;
+  if (punto.instante.getTime() < Date.now() - MAXIMO_ATRAS_MS) return;
+  const hecho = guardarClima(db, p, punto.lat, punto.lon, [comienzoDeHora(punto.instante)]).catch((e) => console.error('Clima de fondo:', e instanceof Error ? e.message : e));
+  enCurso = Promise.all([enCurso, hecho]);
+}
+
+/** Para las pruebas: espera a que termine el clima disparado por la ubicación. */
+export const esperarClima = (): Promise<unknown> => enCurso;
+
+/**
+ * Las horas de luz y la luna de los días que tienen algo anotado o medido y todavía no las tienen. La latitud es la
+ * que se pase (POST /api/clima) o la última conocida de la persona; sin ninguna, solo la luna.
+ */
+export async function completarSolYLuna(tx: Tx, p: PersonaZona, desde: string, hasta: string, latConocida: number | null = null): Promise<void> {
+  const lat =
+    latConocida ??
+    (await una<{ lat: number }>(
+      tx,
+      sql`SELECT lat FROM (SELECT lat, instante AS orden FROM puntos WHERE persona_id = ${p.id}
+                           UNION ALL SELECT lat, creado AS orden FROM lugares WHERE persona_id = ${p.id}) x ORDER BY orden DESC LIMIT 1`,
+    ))?.lat ?? null;
+  const dias = await filas<{ fecha: string }>(
+    tx,
+    sql`SELECT DISTINCT to_char(fecha, 'YYYY-MM-DD') AS fecha FROM serie_diaria WHERE persona_id = ${p.id} AND fecha BETWEEN ${desde} AND ${hasta}`,
+  );
+  if (!dias.length) return;
+  const fuenteId = await fuenteClima(tx, p, NOMBRE_FUENTE_CIELO);
+  const ya = await filas<{ fecha: string }>(
+    tx,
+    sql`SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha FROM mediciones WHERE fuente_id = ${fuenteId} AND fecha BETWEEN ${desde} AND ${hasta}
+        GROUP BY fecha HAVING count(*) >= ${lat === null ? 1 : 2}`,
+  );
+  const completos = new Set(ya.map((x) => x.fecha));
+  const f = { id: fuenteId, persona_id: p.id, tipo: 'clima', zona_horaria: p.zona_horaria };
+  const cache = new Map<string, number>();
+  const valores: Array<typeof mediciones.$inferInsert> = [];
+  for (const { fecha } of dias) {
+    if (completos.has(fecha)) continue;
+    const base = { persona_id: p.id, fuente_id: fuenteId, fecha, inicio: `${fecha}T12:00:00.000Z` };
+    valores.push({ ...base, concepto_id: await conceptoMedido(tx, f, 'Luna iluminada', 'clima', '%', cache), valor: lunaIluminada(fecha), unidad: '%' });
+    if (lat !== null) valores.push({ ...base, concepto_id: await conceptoMedido(tx, f, 'Horas de luz', 'clima', 'h', cache), valor: horasDeLuz(lat, fecha), unidad: 'h' });
+  }
+  if (valores.length) await tx.insert(mediciones).values(valores).onConflictDoNothing();
+}
 
 /**
  * Los conceptos que solo vienen hora por hora del clima: para los patrones se usan los del resumen del día (el promedio

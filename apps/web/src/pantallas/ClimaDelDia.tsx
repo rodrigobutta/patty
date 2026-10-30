@@ -26,6 +26,7 @@ const ICONOS: Record<string, ReactNode> = {
   uv: <Svg><path d="M4 18h16" {...trazo} /><path d="M7 18a5 5 0 0 1 10 0" {...trazo} /><path d="M12 6v3M5.5 9.5l2 2M18.5 9.5l-2 2" {...trazo} /></Svg>,
   presion: <Svg><circle cx="12" cy="13" r="8" {...trazo} /><path d="M12 13l4-4" {...trazo} /><path d="M8 17h8" {...trazo} /></Svg>,
   aire: <Svg><path d="M5 19c8 0 14-6 14-14C11 5 5 10 5 19Z" {...trazo} /><path d="M5 19 13 11" {...trazo} /></Svg>,
+  luna: <Svg><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" {...trazo} /></Svg>,
   nubes: <Svg><path d="M7 18a4 4 0 0 1 .5-8A5 5 0 0 1 17 11a3.5 3.5 0 0 1 0 7Z" {...trazo} /></Svg>,
 };
 
@@ -61,6 +62,8 @@ export function ClimaDelDia({ persona, fecha, todos }: { persona: Persona; fecha
   const presion = valor(todos, 'Presión media', 'Presión');
   const cambioPresion = valor(todos, 'Cambio de presión', null);
   const aire = valor(todos, 'Calidad del aire media', 'Calidad del aire');
+  const luz = valor(todos, 'Horas de luz', null);
+  const luna = valor(todos, 'Luna iluminada', null);
   const amplitud = valor(todos, 'Amplitud térmica', null) ?? (max !== null && min !== null ? max - min : null);
 
   const tarjetas: Array<{ icono: ReactNode; titulo: string; valor: string; sub?: string }> = [];
@@ -74,6 +77,8 @@ export function ClimaDelDia({ persona, fecha, todos }: { persona: Persona; fecha
   if (uv !== null) tarjetas.push({ icono: ICONOS.uv, titulo: t('UV máximo'), valor: num(uv), sub: uv >= 8 ? t('muy alto') : uv >= 6 ? t('alto') : uv >= 3 ? t('moderado') : t('bajo') });
   if (presion !== null) tarjetas.push({ icono: ICONOS.presion, titulo: t('Presión'), valor: `${num(presion)} hPa`, sub: cambioPresion !== null && Math.abs(cambioPresion) >= 1 ? (cambioPresion > 0 ? t('subió {n}', { n: num(cambioPresion) }) : t('bajó {n}', { n: num(-cambioPresion) })) : undefined });
   if (aire !== null) tarjetas.push({ icono: ICONOS.aire, titulo: t('Aire'), valor: num(aire), sub: aire <= 50 ? t('bueno') : aire <= 100 ? t('aceptable') : t('cargado') });
+  if (luz !== null) tarjetas.push({ icono: ICONOS.sol, titulo: t('Horas de luz'), valor: `${num(luz, 1)} h` });
+  if (luna !== null) tarjetas.push({ icono: ICONOS.luna, titulo: t('Luna'), valor: `${num(luna)}%`, sub: luna >= 97 ? t('llena') : luna <= 3 ? t('nueva') : t('iluminada') });
 
   // Lo que Patty deduce del día: solo lo que se sale de lo común.
   const notas: string[] = [];

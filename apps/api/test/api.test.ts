@@ -257,7 +257,7 @@ describe('clima automático', () => {
     ]);
     // Entra en el día de la persona, como lo demás que se anota.
     const dia = await ana.get(`/api/personas/${personaId}/fuentes`);
-    expect(dia.body.map((f: any) => f.nombre)).toEqual(['Clima automático', 'Clima del día']);
+    expect(dia.body.map((f: any) => f.nombre)).toEqual(['Clima automático', 'Clima del día', 'Sol y luna']);
     // Y el resumen del día: máxima, horas de sol, horas con lluvia…
     const resumen = await obtenerDb().execute(
       sql`SELECT c.nombre, m.valor FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id JOIN fuentes f ON f.id = m.fuente_id

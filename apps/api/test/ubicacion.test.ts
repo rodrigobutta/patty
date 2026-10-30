@@ -1,7 +1,9 @@
 import { puntoNuevo } from 'shared';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { horasDeLuz, lunaIluminada } from '../src/clima/cielo.js';
 import { cerrarDb } from '../src/db/client.js';
-import { conAdmin } from './ayudas.js';
+import { esperarClima } from '../src/routes/clima.js';
+import { Cliente, conAdmin } from './ayudas.js';
 import { paradasSinNombre, resumirDia } from '../src/ubicacion/resumen.js';
 
 // Puntos de Buenos Aires: 0,01° de latitud son ~1,1 km.
@@ -349,5 +351,70 @@ describe('contar un viaje', () => {
     expect(por.has('Viaje con tráfico')).toBe(true);
     // Lo que más tardó que lo habitual (18) le gana a los tramos lentos (14).
     expect(por.get('Minutos en tráfico')).toBe(18);
+  });
+});
+
+describe('sol y luna', () => {
+  it('las horas de luz, como las da Open-Meteo, y más en verano que en invierno', () => {
+    expect(Math.abs(horasDeLuz(-34.6, '2026-10-30') - 13.45)).toBeLessThan(0.1); // Open-Meteo: 48419 s
+    expect(horasDeLuz(-34.6, '2026-12-21')).toBeGreaterThan(14);
+    expect(horasDeLuz(-34.6, '2026-06-21')).toBeLessThan(10);
+    expect(horasDeLuz(78, '2026-06-21')).toBe(24); // sol de medianoche
+  });
+
+  it('la luna: nueva y llena en fechas conocidas', () => {
+    expect(lunaIluminada('2026-02-17')).toBeLessThan(5); // eclipse de sol
+    expect(lunaIluminada('2026-03-03')).toBeGreaterThan(95); // eclipse de luna
+  });
+});
+
+describe('clima con la ubicación que manda el teléfono', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('con Patty cerrada guarda el clima de esa hora, una vez, y respeta el apagado', async () => {
+    const { ana, personaId } = await conAdmin();
+    const f = await ana.post(`/api/personas/${personaId}/fuentes`, { tipo: 'telefono', nombre: 'App' });
+    const app = new Cliente();
+    app.headers.Authorization = `Bearer ${f.body.token}`;
+    vi.stubEnv('CLIMA_DE_FONDO', 'si');
+    const pedidos: URL[] = [];
+    vi.stubGlobal('fetch', async (u: string) => {
+      const url = new URL(u);
+      pedidos.push(url);
+      const time = [url.searchParams.get('start_hour')];
+      const hourly = Object.fromEntries((url.searchParams.get('hourly') ?? '').split(',').map((k) => [k, [10]]));
+      return new Response(JSON.stringify({ hourly: { time, ...hourly } }), { headers: { 'Content-Type': 'application/json' } });
+    });
+
+    await app.post('/api/ingesta/ubicacion?clima=no', { lat: -34.6, lon: -58.4 });
+    await esperarClima();
+    expect(pedidos).toHaveLength(0);
+
+    expect((await app.post('/api/ingesta/ubicacion', { lat: -34.6123, lon: -58.4 })).status).toBe(200);
+    await esperarClima();
+    expect(pedidos.map((u) => u.searchParams.get('latitude'))).toEqual(['-34.61', '-34.61']); // clima y aire
+    const hoy = (await ana.get(`/api/registros/automaticos?persona=${personaId}`)).body;
+    expect(hoy.find((d: any) => d.concepto === 'Calidad del aire')).toMatchObject({ fuente: 'Clima automático', suma: 10 });
+
+    await app.post('/api/ingesta/ubicacion', { lat: -34.63, lon: -58.4 });
+    await esperarClima();
+    expect(pedidos).toHaveLength(2); // esa hora ya está
+  });
+
+  it('los días con datos reciben luna y horas de luz, sin clima, y entran al análisis', async () => {
+    const { ana, personaId, categorias } = await conAdmin();
+    const cafe = (await ana.post('/api/conceptos', { nombre: 'Café', categoria_id: categorias.bebida })).body.concepto.id;
+    await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Casa', lat: -34.6, lon: -58.4 });
+    await ana.post('/api/registros', { persona_id: personaId, concepto_id: cafe, inicio: '2026-03-03T15:00:00Z', valor: 1 });
+    const pedir = () => ana.post('/api/analisis', { persona_id: personaId, desde: '2026-03-01', hasta: '2026-03-05', ia: false });
+    await pedir();
+    await pedir(); // no duplica
+    const dia = (await ana.get(`/api/registros/automaticos?persona=${personaId}&fecha=2026-03-03`)).body;
+    const cielo = dia.filter((d: any) => d.fuente === 'Sol y luna');
+    expect(cielo.map((d: any) => [d.concepto, d.cantidad]).sort()).toEqual([['Horas de luz', 1], ['Luna iluminada', 1]]);
+    expect(cielo.find((d: any) => d.concepto === 'Luna iluminada').suma).toBeGreaterThan(95);
   });
 });

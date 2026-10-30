@@ -10,6 +10,8 @@ const CLAVE = 'clima';
 const ULTIMO = 'clima-completado';
 const CADA_MS = 60 * 60000;
 const HORAS_ATRAS = 47;
+/** Avisa que se prendió o apagó (el seguimiento de la app nativa le dice a la API si pedir el clima o no). */
+export const CAMBIO_CLIMA = 'patty-clima';
 
 export function climaActivado(): boolean {
   try {
@@ -26,6 +28,7 @@ export function ponerClima(activo: boolean): void {
   } catch {
     /* sin almacenamiento */
   }
+  window.dispatchEvent(new Event(CAMBIO_CLIMA));
 }
 
 /** La ubicación actual (sirve una de hasta media hora atrás: para el clima alcanza y no gasta batería). */

@@ -37,7 +37,7 @@ function dato(todos: DatoAutomatico[], tipo: string, concepto: string): DatoAuto
 }
 
 function widgetClima(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
-  if (!todos.some((d) => d.tipo_fuente === 'clima')) return null;
+  if (!todos.some((d) => d.tipo_fuente === 'clima' && d.fuente !== 'Sol y luna')) return null; // sin clima (apagado), no hay qué mostrar
   // Con el resumen del día, sus valores; si no, los de cada hora.
   const max = dato(todos, 'clima', 'Temperatura máxima')?.suma ?? dato(todos, 'clima', 'Temperatura')?.maximo;
   const min = dato(todos, 'clima', 'Temperatura mínima')?.suma ?? dato(todos, 'clima', 'Temperatura')?.minimo;

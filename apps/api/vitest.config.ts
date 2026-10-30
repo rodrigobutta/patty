@@ -13,6 +13,7 @@ export default defineConfig({
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? 'postgres://localhost/patty_test',
       ANTHROPIC_API_KEY: '',
       GOOGLE_CLIENT_ID: '',
+      CLIMA_DE_FONDO: 'no',
     },
   },
 });

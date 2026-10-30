@@ -10,7 +10,7 @@ const ORDEN = ['telefono', 'ubicacion', 'reloj', 'clima', 'otro'];
 const ORDEN_CLIMA = ['Temperatura', 'Sensación térmica', 'Humedad', 'Punto de rocío', 'Lluvia', 'Nubosidad', 'Minutos de sol',
   'Índice UV', 'Radiación solar', 'Viento', 'Ráfagas', 'Presión', 'Visibilidad', 'Calidad del aire', 'PM2.5', 'PM10', 'Ozono',
   'Dióxido de nitrógeno', 'Temperatura máxima', 'Temperatura mínima', 'Temperatura media', 'Amplitud térmica',
-  'Sensación térmica media', 'Humedad media', 'Punto de rocío medio', 'Nubosidad de día', 'Horas de sol',
+  'Sensación térmica media', 'Humedad media', 'Punto de rocío medio', 'Nubosidad de día', 'Horas de sol', 'Horas de luz', 'Luna iluminada',
   'Radiación solar media de día', 'Índice UV máximo', 'Lluvia del día', 'Horas con lluvia', 'Viento medio', 'Ráfaga máxima',
   'Presión media', 'Cambio de presión', 'Visibilidad mínima', 'Calidad del aire media', 'PM2.5 medio', 'Ozono medio'];
 

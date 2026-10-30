@@ -8,7 +8,7 @@ import { explicarHallazgos } from '../ia/analizar.js';
 import { iaDisponible } from '../ia/cliente.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { rasgosDelCalendario } from '../routes/ciclo.js';
-import { climaPorHoraParaPatrones } from '../routes/clima.js';
+import { climaPorHoraParaPatrones, completarSolYLuna } from '../routes/clima.js';
 import { obtenerOCrearConcepto } from '../routes/conceptos.js';
 import { buscarPatrones, claveCausas, describir, DIAS_MINIMOS, type ConceptoInfo, type FilaDiaria } from './motor.js';
 
@@ -49,7 +49,10 @@ export interface OpcionesAnalisis {
  * con la hora de lo que se anotó, y la estación y la fase del ciclo. También los usa el aviso preventivo.
  */
 export async function datosDePersona(db: Db, p: PersonaAcceso, desde: string, hasta: string): Promise<{ datos: FilaDiaria[]; conceptos: Array<ConceptoInfo & { unidad?: string | null }> }> {
-  const porHora = await db.transaction((tx) => climaPorHoraParaPatrones(tx, p, desde, hasta));
+  const porHora = await db.transaction(async (tx) => {
+    await completarSolYLuna(tx, p, desde, hasta);
+    return climaPorHoraParaPatrones(tx, p, desde, hasta);
+  });
   const serieCompleta = await filas<FilaDiaria & { primera: Date | null }>(
     db,
     sql`SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha, concepto_id, veces, suma, promedio, intensidad_max AS intensidad, primera

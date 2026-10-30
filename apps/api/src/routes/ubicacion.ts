@@ -123,7 +123,7 @@ function posible(x: { lat: number; lon: number; instante: Date; precision: numbe
  * Guarda los puntos que valen la pena (ver `puntoNuevo`) y recalcula sus días. Devuelve cuántos guardó y en qué lugar
  * está el último punto recibido.
  */
-export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): Promise<{ guardados: number; lugar: string | null }> {
+export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): Promise<{ guardados: number; lugar: string | null; ultimo?: { lat: number; lon: number; instante: Date } }> {
   if (lista.length > 500) throw new ErrorApi('Mandá hasta 500 puntos por vez.');
   const ahora = Date.now();
   const recibidos = (lista as Array<Record<string, unknown>>)
@@ -166,7 +166,7 @@ export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): P
   await tx.execute(sql`DELETE FROM puntos WHERE persona_id = ${p.id} AND instante < now() - make_interval(days => ${DIAS_GUARDADOS})`);
   const ultimo = recibidos[recibidos.length - 1];
   const lugar = lugarDe(ultimo, ls)?.nombre ?? null;
-  return { guardados: guardados.length, lugar };
+  return { guardados: guardados.length, lugar, ultimo };
 }
 
 const COLUMNAS_LUGAR = sql`l.id, l.persona_id, l.concepto_id, c.nombre, l.lat, l.lon, l.radio_m`;
@@ -189,7 +189,8 @@ export const rutasUbicacion = new Hono<Env>()
     const p = await persona(c.var.db, c.var.usuario, Number(d.persona_id), true);
     if (!Array.isArray(d.puntos)) throw new ErrorApi('Mandá una lista "puntos".');
     const lista = d.puntos;
-    return c.json({ ok: true, ...(await c.var.db.transaction((tx) => guardarPuntos(tx, p, lista))) });
+    const { ultimo: _, ...r } = await c.var.db.transaction((tx) => guardarPuntos(tx, p, lista));
+    return c.json({ ok: true, ...r });
   })
   .get('/dia', async (c) => {
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
