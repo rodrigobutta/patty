@@ -40,7 +40,7 @@ describe('reuniones del calendario', () => {
   it('un día sin reuniones manda cero, y lo propio de la agenda va como eventos', () => {
     const l = reunionesDelDia(dia, fin, [ev(14, 15, { invitados: 1 })]);
     expect(l.map((x) => [x.concepto, x.valor])).toEqual([['Reuniones', 0], ['Horas de reuniones', 0], ['Eventos del calendario', 1], ['Horas ocupadas en el calendario', 1]]);
-    expect(reunionesDelDia(dia, fin, []).map((x) => x.concepto)).toEqual(['Reuniones', 'Horas de reuniones']);
+    expect(reunionesDelDia(dia, fin, []).map((x) => [x.concepto, x.valor])).toEqual([['Reuniones', 0], ['Horas de reuniones', 0], ['Eventos del calendario', 0], ['Horas ocupadas en el calendario', 0]]);
     expect(esReunion(ev(9, 9.05))).toBe(false); // 3 minutos
   });
 });

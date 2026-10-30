@@ -78,7 +78,8 @@ export function reunionesDelDia(desde: Date, hasta: Date, eventos: EventoCalenda
   const agenda = eventos
     .filter((e) => !e.todoElDia && !e.libre && !e.rechazado && e.fin - e.inicio >= 5 * 60000 && e.fin - e.inicio <= 12 * 3600000)
     .filter((e) => e.fin > a && e.inicio < b);
-  if (agenda.length) {
+  // Se manda aunque sea cero: un día con la agenda vacía también dice algo (y así no se confunde con "sin datos").
+  {
     let msAgenda = 0;
     let hasta2 = a;
     for (const e of [...agenda].sort((x, y) => x.inicio - y.inicio)) {
