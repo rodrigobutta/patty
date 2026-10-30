@@ -4,6 +4,7 @@
 import { AdminSalud } from './AdminSalud';
 import { AdminUsoIa } from './AdminUsoIa';
 import { AdminBeta } from './AdminBeta';
+import { AdminDatos } from './AdminDatos';
 import { useCallback, useEffect, useState } from 'react';
 import { conUnidad } from 'shared';
 import { api } from '../api';
@@ -184,7 +185,7 @@ function Barritas({ datos, alto = 60 }: { datos: number[]; alto?: number }) {
 }
 
 export function Admin({ alVolver }: { alVolver(): void }) {
-  const [vista, setVista] = useState<'resumen' | 'uso' | 'usuarios' | 'actividad' | 'avisos' | 'salud' | 'ia' | 'beta'>('resumen');
+  const [vista, setVista] = useState<'resumen' | 'uso' | 'usuarios' | 'actividad' | 'avisos' | 'salud' | 'ia' | 'beta' | 'datos'>('resumen');
   const [elegido, setElegido] = useState<number | null>(null);
   return (
     <section className="admin">
@@ -201,8 +202,9 @@ export function Admin({ alVolver }: { alVolver(): void }) {
         <button className={vista === 'salud' ? 'activa' : ''} onClick={() => { setVista('salud'); setElegido(null); }}>{t('🩺 Salud')}</button>
         <button className={vista === 'ia' ? 'activa' : ''} onClick={() => { setVista('ia'); setElegido(null); }}>{t('🤖 IA y planes')}</button>
         <button className={vista === 'beta' ? 'activa' : ''} onClick={() => { setVista('beta'); setElegido(null); }}>{t('🧪 Beta')}</button>
+        <button className={vista === 'datos' ? 'activa' : ''} onClick={() => { setVista('datos'); setElegido(null); }}>{t('🔬 Datos')}</button>
       </div>
-      {vista === 'beta' ? <AdminBeta /> : vista === 'ia' ? <AdminUsoIa /> : vista === 'salud' ? <AdminSalud /> : vista === 'avisos' ? <VistaAvisos /> : vista === 'uso' ? <VistaUso alElegir={(id) => { setElegido(id); setVista('usuarios'); }} /> : vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
+      {vista === 'datos' ? <AdminDatos /> : vista === 'beta' ? <AdminBeta /> : vista === 'ia' ? <AdminUsoIa /> : vista === 'salud' ? <AdminSalud /> : vista === 'avisos' ? <VistaAvisos /> : vista === 'uso' ? <VistaUso alElegir={(id) => { setElegido(id); setVista('usuarios'); }} /> : vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
     </section>
   );
 }

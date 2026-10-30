@@ -1,0 +1,115 @@
+/* Admin → Datos. En la compu la administración se ensancha para que entren las tablas; en el teléfono se deslizan. */
+main:has(.admin-datos) { max-width: 1400px; }
+.admin-datos .subvistas { position: static; box-shadow: none; overflow-x: auto; scrollbar-width: none; }
+.admin-datos .subvistas button { white-space: nowrap; }
+.admin-datos h3 { margin-top: 0; }
+.admin-datos .espacio { flex: 1; }
+.admin-datos .btn.chico-btn { padding: 6px 12px; font-size: 13px; flex: none; }
+.admin-datos .btn.peligro { color: var(--rojo); border-color: color-mix(in srgb, var(--rojo) 40%, var(--borde)); }
+.admin-datos .fila > .btn.chico-btn { flex: none; }
+
+.filtros-datos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.filtros-datos > input, .filtros-datos > select { width: auto; min-width: 0; flex: 1 1 150px; padding: 8px 10px; font-size: 14px; }
+.filtros-datos > .segmentos { flex: none; }
+.filtros-datos > .segmentos button { padding: 6px 10px; font-size: 13px; }
+.barra-tabla { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.barra-tabla select, .barra-tabla input[type='date'] { width: auto; padding: 6px 8px; font-size: 13px; }
+.barra-tabla label.opcion { margin: 0; }
+
+/* La grilla de filas crudas */
+.grilla-caja { overflow: auto; max-height: 70vh; border: 1px solid var(--borde); border-radius: 10px; background: var(--panel); margin-bottom: 8px; }
+.grilla { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.grilla th { position: sticky; top: 0; z-index: 1; background: var(--acento-suave); color: var(--texto); text-align: left; font-weight: 600; padding: 6px 8px; white-space: nowrap; }
+.grilla th.ordenable { cursor: pointer; user-select: none; }
+.grilla td { padding: 5px 8px; border-top: 1px solid var(--borde); white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; vertical-align: top; }
+.grilla td.vacio { color: var(--suave); opacity: 0.6; }
+.grilla td.texto-largo { white-space: normal; min-width: 260px; }
+.grilla td select { width: auto; padding: 4px 6px; font-size: 12px; }
+.grilla tr.clic, .grilla td.clic { cursor: pointer; }
+.grilla tr.clic:hover td, .grilla td.clic:hover { background: var(--acento-suave); }
+.grilla tr.borrada td { text-decoration: line-through; opacity: 0.55; }
+.grilla tr.con-error td { color: var(--rojo); }
+
+/* Navegador de tablas: la lista a la izquierda en la compu, un desplegable en el teléfono */
+.admin-tablas { display: grid; gap: 12px; }
+.admin-tablas-lista select { margin-bottom: 4px; }
+.admin-tablas .solo-compu { display: none; }
+.admin-tablas-cuerpo { min-width: 0; }
+.grupo-tablas { margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+.tabla-boton { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 5px 10px; border: 0; border-radius: 8px; background: none; color: var(--texto); font-size: 13px; text-align: left; cursor: pointer; }
+.tabla-boton:hover { background: var(--acento-suave); }
+.tabla-boton.activa { background: var(--acento); color: var(--sobre-acento); }
+.tabla-boton.activa .suave { color: inherit; opacity: 0.8; }
+@media (min-width: 900px) {
+  .admin-tablas { grid-template-columns: 220px 1fr; align-items: start; }
+  .admin-tablas .solo-movil { display: none; }
+  .admin-tablas .solo-compu { display: block; position: sticky; top: 70px; max-height: calc(100vh - 90px); overflow: auto; }
+}
+
+/* El editor de una fila */
+.admin-modal { position: fixed; inset: 0; z-index: 50; background: rgb(20 15 40 / 0.45); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow: auto; }
+.admin-modal-caja { width: 100%; max-width: 720px; background: var(--panel); border-radius: 16px; padding: 16px; box-shadow: 0 20px 50px rgb(40 20 90 / 0.3); }
+.admin-modal-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.admin-modal-cabeza h3 { margin: 0; word-break: break-all; }
+.admin-campos { display: grid; gap: 0 12px; margin-top: 10px; }
+@media (min-width: 700px) { .admin-campos { grid-template-columns: 1fr 1fr; } .admin-campos label:has(textarea) { grid-column: 1 / -1; } }
+.admin-campos label { margin-bottom: 8px; }
+.admin-campos label.cambiado input, .admin-campos label.cambiado textarea, .admin-campos label.cambiado select { border-color: var(--ambar); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ambar) 30%, transparent); }
+.admin-campos input, .admin-campos select, .admin-campos textarea { padding: 7px 10px; font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.admin-campos input:disabled, .admin-campos textarea:disabled, .admin-campos select:disabled { opacity: 0.6; }
+.campo-nombre { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--texto); font-weight: 600; font-size: 13px; }
+.campo-nulo { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-weight: 400; color: var(--suave); font-size: 12px; }
+.campo-nulo input { width: 14px; height: 14px; padding: 0; margin: 0; }
+.admin-modal-pie { align-items: center; border-top: 1px solid var(--borde); padding-top: 12px; }
+.admin-modal-pie > .btn { flex: none; }
+
+/* Persona 360: el mapa de cobertura (fuentes × días) */
+.cobertura-caja { overflow-x: auto; }
+.cobertura { border-collapse: separate; border-spacing: 2px; }
+.cobertura th { text-align: left; font-weight: 500; font-size: 12px; white-space: nowrap; padding-right: 8px; position: sticky; left: 0; background: var(--panel); }
+.cobertura td { width: 12px; min-width: 12px; height: 14px; border-radius: 3px; cursor: pointer; background: var(--borde); opacity: 0.55; }
+.cobertura td[style] { background: var(--acento); opacity: var(--nivel); }
+.cobertura td.hueco { background: var(--rojo); opacity: 0.35; }
+.cobertura td.elegido { outline: 2px solid var(--texto); outline-offset: 1px; }
+.chip.ok { border-color: var(--verde); }
+.chip.alerta { border-color: var(--rojo); color: var(--rojo); }
+.chip.apagado { opacity: 0.5; }
+.seccion-dia summary { cursor: pointer; margin-bottom: 8px; }
+.clic-texto { cursor: pointer; }
+.dia-admin .barra-tabla { position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 2; background: var(--fondo); padding: 6px 0; }
+
+/* Calidad */
+.gravedad { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; flex: none; }
+.gravedad-alta.gravedad, .dato.gravedad-alta strong { color: var(--rojo); }
+.gravedad.gravedad-alta { background: color-mix(in srgb, var(--rojo) 15%, transparent); }
+.gravedad.gravedad-media { background: color-mix(in srgb, var(--ambar) 20%, transparent); color: color-mix(in srgb, var(--ambar) 70%, var(--texto)); }
+.gravedad.gravedad-baja { background: var(--acento-suave); color: var(--acento); }
+.gravedad.gravedad-info { background: var(--borde); color: var(--suave); }
+.dato.gravedad-media strong { color: color-mix(in srgb, var(--ambar) 80%, var(--texto)); }
+.chequeo { border-left-width: 4px; }
+.chequeo.gravedad-alta { border-left-color: var(--rojo); }
+.chequeo.gravedad-media { border-left-color: var(--ambar); }
+.chequeo.gravedad-baja { border-left-color: var(--acento); }
+.chequeo.sin-problemas { opacity: 0.6; border-left-color: var(--verde); }
+.chequeo-cabeza { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.chequeo-titulo { flex: 1; }
+.chequeo-n { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.chequeo p { margin: 6px 0; }
+
+/* IA y auditoría */
+.columnas-admin { display: grid; gap: 12px; }
+@media (min-width: 1000px) { .columnas-admin { grid-template-columns: 3fr 2fr; align-items: start; } }
+.linea-ia li { display: grid; gap: 2px; cursor: pointer; padding: 8px 0; border-bottom: 1px solid var(--borde); }
+.linea-ia li:hover { background: var(--acento-suave); }
+.datos-ia { font-family: ui-monospace, Menlo, monospace; font-size: 11px; overflow-wrap: anywhere; }
+.auditoria li { display: grid; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--borde); }
+.cambio-auditoria { display: flex; gap: 6px; align-items: flex-start; flex-wrap: wrap; font-size: 12px; }
+.cambio-auditoria code { padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere; max-width: 100%; }
+.cambio-auditoria .antes { background: color-mix(in srgb, var(--rojo) 12%, transparent); }
+.cambio-auditoria .despues { background: color-mix(in srgb, var(--verde) 14%, transparent); }
+.linea-ia { max-height: 75vh; overflow: auto; }
+/* Con la pestaña Datos, las de la administración ya no entran en un teléfono: se deslizan de costado. */
+@media (max-width: 700px) {
+  .admin > .subvistas, .admin-datos .subvistas { overflow-x: auto; scrollbar-width: none; }
+  .admin > .subvistas button, .admin-datos .subvistas button { flex: none; white-space: nowrap; }
+}

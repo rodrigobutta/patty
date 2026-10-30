@@ -17,6 +17,7 @@ import type { Aviso } from '../push/firebase.js';
 import { mandarAviso } from '../push/mandar.js';
 import { avisarA, avisoVersion, desactualizados, guardarVersionApp } from '../push/versionApp.js';
 import { hayEnvio } from '../push/firebase.js';
+import { rutasAdminDatos } from './adminDatos.js';
 
 /** Los registros de los últimos 14 días, por día, para la rayita de actividad. */
 const ULTIMOS_DIAS = 14;
@@ -358,4 +359,6 @@ export const rutasAdmin = new Hono<Env>()
       ? await avisarA(c.var.db, viejos, avisoVersion(version, url))
       : { enviados: 0, telefonos: 0 };
     return c.json({ desactualizados: viejos.length, ...r });
-  });
+  })
+  // Datos: persona 360, tablas, calidad, IA y auditoría (routes/adminDatos.ts).
+  .route('/datos', rutasAdminDatos);

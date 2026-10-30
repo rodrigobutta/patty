@@ -1020,3 +1020,25 @@ export const solicitudesBeta = pgTable(
   },
   (t) => [index('solicitudes_beta_creado_idx').on(t.creado)],
 );
+
+/**
+ * Lo que cambió un administrador desde la administración (Datos): ediciones y borrados de filas y las correcciones de
+ * calidad, con cómo estaba antes y cómo quedó, para poder revisarlo y deshacerlo a mano.
+ */
+export const auditoriaAdmin = pgTable(
+  'auditoria_admin',
+  {
+    id: idGrande(),
+    usuario_id: integer('usuario_id').references(() => usuarios.id, { onDelete: 'set null' }),
+    /** editar, borrar, borrar_logico, corregir. */
+    accion: text('accion').notNull(),
+    tabla: text('tabla'),
+    /** La clave primaria de la fila tocada; en una corrección, el chequeo que se corrió. */
+    clave: jsonb('clave'),
+    antes: jsonb('antes'),
+    despues: jsonb('despues'),
+    detalle: text('detalle'),
+    creado: creado(),
+  },
+  (t) => [index('auditoria_admin_creado_idx').on(t.creado)],
+);

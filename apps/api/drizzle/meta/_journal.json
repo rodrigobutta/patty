@@ -337,6 +337,13 @@
       "when": 1793324005831,
       "tag": "0047_relacion_gente",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793327212785,
+      "tag": "0048_auditoria_admin",
+      "breakpoints": true
     }
   ]
 }

@@ -311,6 +311,22 @@ saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), crea
 - Sesión con cookie en la web, y el mismo token como `Authorization: Bearer` para la app con Capacitor (que corre en
   otro origen y no puede usar la cookie).
 
+## Administración → Datos
+
+Para auditar qué tan bien se guardan los datos y corregirlos (solo administradores, `/api/admin/datos/*`,
+`routes/adminDatos.ts` y `pantallas/AdminDatos*.tsx`):
+- **Persona 360**: mapa de cobertura por fuente y día (anotado, contado a Patty, teléfono, reloj, clima, lugares, GPS,
+  sueño, resumen de la noche, escuchas, comentarios; en rojo los días vacíos de una fuente que sí manda) y el día
+  completo crudo.
+- **Tablas**: navegador de todas las tablas (`admin/tablas.ts`), con filtros, orden, páginas, CSV y edición o borrado
+  de filas. Los nombres se validan contra el catálogo de Postgres; `sesiones`, `codigos_supervision` y las columnas con
+  claves o tokens no se muestran.
+- **Calidad**: chequeos (`admin/calidad.ts`) con su cantidad, ejemplos y, si hay uno seguro, el arreglo (duplicados,
+  días mal puestos, conceptos unidos, valores imposibles, fuentes que dejaron de mandar, puntos de más de 90 días,
+  noches sin resumen, contextos que faltan…). Para agregar uno, sumarlo a `CHEQUEOS`.
+- **Lo que hizo la IA**, **Patrones** (todos los hallazgos con su estadística) y **Auditoría**: cada edición, borrado o
+  corrección queda en `auditoria_admin` con cómo estaba antes y cómo quedó.
+
 ## Compartir e invitar
 
 - Se puede compartir una imagen de un patrón (botón en cada tarjeta de Patrones), la racha o el día completo (hoja de
