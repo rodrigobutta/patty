@@ -26,7 +26,7 @@ const minimoNativo = versionDelUltimoNativo ? pkgEn(versionDelUltimoNativo) : nu
 const n = (v) => (v ?? '0').split('.').map(Number);
 const menor = (a, b) => { const x = n(a); const y = n(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] < y[i]; return false; };
 const problemas = [];
-if (!sesion?.version) problemas.push('No pude saber qué corre en producción.');
+if (!/^\d+\.\d+\.\d+$/.test(sesion?.version ?? '')) problemas.push(`No pude saber qué corre en producción (dice «${sesion?.version ?? 'nada'}»).`);
 else if (menor(sesion.version, repo)) problemas.push(`Producción (${sesion.version}) va atrás del repo (${repo}): el despliegue no terminó o falló.`);
 if (nativos.length) problemas.push(`Hay ${nativos.length} cambios nativos sin publicar desde ${etiqueta}: correr movil:publicar.`);
 if (telefono && minimoNativo && menor(telefono, minimoNativo)) problemas.push(`El teléfono (${telefono}) no tiene el último cambio nativo (${minimoNativo}): correr movil:publicar con el teléfono enchufado.`);

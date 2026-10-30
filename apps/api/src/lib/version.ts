@@ -2,9 +2,13 @@
 import { readFileSync } from 'node:fs';
 
 export const VERSION: string = (() => {
-  try {
-    return (JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version;
-  } catch {
-    return 'dev';
+  // En desarrollo corre de src/lib y compilado de dist/src/lib: el package.json queda a dos o a tres niveles.
+  for (const ruta of ['../../package.json', '../../../package.json']) {
+    try {
+      return (JSON.parse(readFileSync(new URL(ruta, import.meta.url), 'utf8')) as { version: string }).version;
+    } catch {
+      /* se prueba el siguiente */
+    }
   }
+  return 'dev';
 })();
