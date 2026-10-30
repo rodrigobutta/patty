@@ -35,7 +35,7 @@ export function AdminBeta() {
   const nuevas = l.filter((s) => s.estado === 'nueva').length;
   return (
     <div className="tarjeta">
-      <h3>{t('🧪 Pedidos para la beta')}</h3>
+      <h3>{t('Pedidos para la beta')}</h3>
       <p className="suave chico">{t('{n} sin responder de {total}. Llegan desde la página de presentación.', { n: nuevas, total: l.length })}</p>
       {l.length ? (
         <ul className="lista">

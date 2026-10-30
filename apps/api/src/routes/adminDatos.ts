@@ -52,7 +52,8 @@ export const rutasAdminDatos = new Hono<Env>()
       sql`WITH d AS (SELECT (${hoy}::date - g)::date AS fecha FROM generate_series(0, ${dias - 1}::int) g)
           SELECT to_char(d.fecha, 'YYYY-MM-DD') AS fecha,
                  (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen = 'manual')::int AS manual,
-                 (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen <> 'manual')::int AS ia,
+                 (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen = 'ia')::int AS ia,
+                 (SELECT count(*) FROM registros r WHERE r.persona_id = ${id} AND r.borrado IS NULL AND r.fecha = d.fecha AND r.origen NOT IN ('manual', 'ia'))::int AS otros,
                  (SELECT count(*) FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id WHERE m.persona_id = ${id} AND m.fecha = d.fecha AND f.tipo = 'telefono')::int AS telefono,
                  (SELECT count(*) FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id WHERE m.persona_id = ${id} AND m.fecha = d.fecha AND f.tipo = 'reloj')::int AS reloj,
                  (SELECT count(*) FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id WHERE m.persona_id = ${id} AND m.fecha = d.fecha AND f.tipo = 'clima')::int AS clima,
@@ -61,10 +62,48 @@ export const rutasAdminDatos = new Hono<Env>()
                  (SELECT count(*) FROM sueno_etapas s WHERE s.persona_id = ${id} AND s.noche = d.fecha)::int AS sueno,
                  (SELECT count(*) FROM resumen_noche rn WHERE rn.persona_id = ${id} AND rn.noche = d.fecha)::int AS resumen_noche,
                  (SELECT count(*) FROM escuchas e WHERE e.persona_id = ${id} AND e.fecha = d.fecha)::int AS escuchas,
+                 (SELECT coalesce(sum(a.n), 0) FROM avisos_conteos a WHERE a.persona_id = ${id} AND a.fecha = d.fecha)::int AS avisos_apps,
                  (SELECT count(*) FROM comentarios k WHERE k.persona_id = ${id} AND k.fecha = d.fecha)::int AS comentarios
           FROM d ORDER BY d.fecha`,
     );
     return c.json({ hoy, dias: filasDias });
+  })
+  .get('/personas/:id/ultimos', async (c) => {
+    // Lo último que llegó de cada cosa de ESTA persona: el dato más nuevo (cuándo pasó) y cuándo lo recibió el servidor.
+    // Sale de los datos mismos, porque `fuentes.ultimo_uso` solo dice cuándo se usó el token. Más cada fuente y cómo están
+    // los teléfonos de sus dueños.
+    const db = c.var.db;
+    const id = idParam(c);
+    if (!(await una(db, sql`SELECT 1 FROM personas WHERE id = ${id}`))) throw new ErrorApi('No existe.', 404);
+    const semana = sql`now() - interval '7 days'`;
+    const datos = await filas(
+      db,
+      sql`SELECT 'manual' AS clave, max(inicio) AS dato, max(creado) AS recibido, count(*) FILTER (WHERE inicio > ${semana})::int AS semana FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen = 'manual'
+          UNION ALL SELECT 'ia', max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen = 'ia'
+          UNION ALL SELECT 'otros', max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM registros WHERE persona_id = ${id} AND borrado IS NULL AND origen NOT IN ('manual', 'ia')
+          UNION ALL SELECT 'puntos', max(instante), max(creado), count(*) FILTER (WHERE instante > ${semana})::int FROM puntos WHERE persona_id = ${id}
+          UNION ALL SELECT 'sueno', max(fin), NULL, count(*) FILTER (WHERE fin > ${semana})::int FROM sueno_etapas WHERE persona_id = ${id}
+          UNION ALL SELECT 'escuchas', max(inicio), max(creado), count(*) FILTER (WHERE inicio > ${semana})::int FROM escuchas WHERE persona_id = ${id}
+          UNION ALL SELECT 'avisos_apps', max(hora), NULL, coalesce(sum(n) FILTER (WHERE hora > ${semana}), 0)::int FROM avisos_conteos WHERE persona_id = ${id}
+          UNION ALL SELECT 'resumen_noche', max(noche)::timestamptz, max(creado), count(*) FILTER (WHERE creado > ${semana})::int FROM resumen_noche WHERE persona_id = ${id}
+          UNION ALL SELECT 'comentarios', max(creado), max(creado), count(*) FILTER (WHERE creado > ${semana})::int FROM comentarios WHERE persona_id = ${id}
+          UNION ALL SELECT 'analisis', max(creado), max(creado), count(*) FILTER (WHERE creado > ${semana})::int FROM analisis WHERE persona_id = ${id}`,
+    );
+    const fuentes = await filas(
+      db,
+      sql`SELECT f.id, f.tipo, f.nombre, f.activo, f.ultimo_uso, f.creado,
+                 (SELECT max(m.inicio) FROM mediciones m WHERE m.fuente_id = f.id) AS ultimo_dato,
+                 (SELECT count(*) FROM mediciones m WHERE m.fuente_id = f.id AND m.inicio > ${semana})::int AS semana
+          FROM fuentes f WHERE f.persona_id = ${id} ORDER BY f.activo DESC, f.ultimo_uso DESC NULLS LAST`,
+    );
+    const telefonos = await filas(
+      db,
+      sql`SELECT u.nombre AS usuario, i.plataforma, i.actualizado, i.estado->'version'->>'web' AS version, i.estado->'version'->>'app' AS version_app,
+                 i.estado->'ultimos'->>'telefono' AS ultimo_telefono, i.estado->'ultimos'->>'salud' AS ultimo_salud
+          FROM persona_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id JOIN instalaciones i ON i.usuario_id = u.id
+          WHERE pu.persona_id = ${id} AND pu.rol = 'dueno' ORDER BY i.actualizado DESC`,
+    );
+    return c.json({ datos, fuentes, telefonos });
   })
   .get('/personas/:id/dia', async (c) => {
     // Todo lo que hay de un día de la persona, crudo, con la tabla y la clave de cada cosa para poder editarla.
@@ -110,12 +149,21 @@ export const rutasAdminDatos = new Hono<Env>()
         db,
         sql`SELECT h.id, to_char(h.creado AT TIME ZONE ${zona}, 'HH24:MI') AS hora, h.tipo, h.titulo, h.cuerpo, h.resultado, u.nombre AS usuario
             FROM avisos_historial h JOIN usuarios u ON u.id = h.usuario_id
-            WHERE h.persona_id = ${id} AND ((h.creado AT TIME ZONE ${zona}) - interval '5 hours')::date = ${fecha} ORDER BY h.creado`,
+            WHERE (h.persona_id = ${id} OR (h.persona_id IS NULL AND h.usuario_id IN (SELECT pu.usuario_id FROM persona_usuarios pu WHERE pu.persona_id = ${id} AND pu.rol = 'dueno')))
+              AND ((h.creado AT TIME ZONE ${zona}) - interval '5 hours')::date = ${fecha} ORDER BY h.creado`,
       ),
     ]);
     return c.json({ persona: p, fecha, registros, mediciones, sueno, resumen_noche: resumenNoche[0] ?? null, escuchas, puntos, tomas, comentarios, fuera, paseos, contextos, avisos });
   })
-  .get('/tablas', async (c) => c.json(await listarTablas(c.var.db)))
+  .get('/tablas', async (c) => {
+    // Con la cantidad de filas de verdad (la estimación de Postgres da 0 hasta que pasa el autovacuum).
+    const db = c.var.db;
+    const lista = await listarTablas(db);
+    for (const t of lista) {
+      if (!t.vista) t.filas = (await una<{ n: number }>(db, sql`SELECT count(*)::int AS n FROM ${sql.identifier(t.nombre)}`))?.n ?? 0;
+    }
+    return c.json(lista);
+  })
   .get('/tablas/:tabla', async (c) => {
     const t = await tablaDe(c.var.db, c.req.param('tabla'));
     const q = c.req.query();
@@ -198,10 +246,13 @@ export const rutasAdminDatos = new Hono<Env>()
     const consumo = await filas(
       db,
       sql`SELECT tipo, count(*)::int AS pedidos, sum(entrada)::bigint AS entrada, sum(salida)::bigint AS salida, count(DISTINCT usuario_id)::int AS usuarios
-          FROM uso_ia WHERE creado > ${desde} GROUP BY tipo ORDER BY pedidos DESC`,
+          FROM uso_ia WHERE creado > ${desde}
+            ${persona ? sql`AND usuario_id IN (SELECT usuario_id FROM persona_usuarios WHERE persona_id = ${persona} AND rol = 'dueno')` : sql``}
+          GROUP BY tipo ORDER BY pedidos DESC`,
     );
+    // Los procesos son de toda la app, no de una persona.
     const procesos = await filas(db, sql`SELECT * FROM procesos ORDER BY nombre`);
-    return c.json({ dias, linea, consumo, procesos });
+    return c.json({ dias, linea, consumo, consumo_de: persona ? 'dueños' : 'todos', procesos });
   })
   .get('/hallazgos', async (c) => {
     // Los patrones de todas las personas, con la estadística con la que se decidieron.

@@ -11,6 +11,7 @@ interface DatosIa {
   dias: number;
   linea: LineaIa[];
   consumo: Array<{ tipo: string; pedidos: number; entrada: number; salida: number; usuarios: number }>;
+  consumo_de: 'dueños' | 'todos';
   procesos: Array<{ nombre: string; ultimo_inicio: string | null; ultima_duracion_ms: number | null; ultimo_ok: boolean | null; ultimo_error: string | null; ultimo_trabajo: string | null; corridas: number; fallas: number; procesados: number }>;
 }
 
@@ -62,7 +63,7 @@ export function AdminDatosIa() {
         </select>
         <select value={tipo} onChange={(e) => setTipo(e.target.value)} aria-label={t('Tipo')}>
           <option value="">{t('Todo lo que hizo la IA')}</option>
-          {Object.entries(TIPOS).map(([k, [e, n]]) => <option key={k} value={k}>{e} {t(n)}</option>)}
+          {Object.entries(TIPOS).map(([k, [, n]]) => <option key={k} value={k}>{t(n)}</option>)}
         </select>
         <div className="segmentos">
           {[1, 7, 14, 30, 90].map((n) => <button key={n} className={dias === n ? 'activa' : ''} onClick={() => setDias(n)}>{n === 1 ? t('24 h') : t('{n} días', { n })}</button>)}
@@ -75,14 +76,14 @@ export function AdminDatosIa() {
             <div className="tarjeta">
               <h3>{t('Línea de tiempo')} <span className="suave chico">({d.linea.length}{d.linea.length >= 300 ? '+' : ''})</span></h3>
               <div className="chips envolver">
-                {porTipo.map(([k, n]) => <span key={k} className="chip">{TIPOS[k]?.[0]} {t(TIPOS[k]?.[1] ?? k)} · {n}</span>)}
+                {porTipo.map(([k, n]) => <span key={k} className="chip">{t(TIPOS[k]?.[1] ?? k)} · {n}</span>)}
               </div>
               {d.linea.length ? (
                 <ul className="lista-simple linea-ia">
                   {d.linea.map((x) => (
                     <li key={`${x.tipo}|${x.id}`} onClick={() => abrir(...claveDe(x))}>
                       <span className="suave chico">
-                        {TIPOS[x.tipo]?.[0]} {t(TIPOS[x.tipo]?.[1] ?? x.tipo)} · {x.persona ?? '—'} · {fechaHora(x.creado)}
+                        {t(TIPOS[x.tipo]?.[1] ?? x.tipo)} · {x.persona ?? '—'} · {fechaHora(x.creado)}
                       </span>
                       <span>{x.texto || <span className="neg">{t('(sin texto: la IA no contestó)')}</span>}</span>
                       {x.datos ? <span className="suave chico datos-ia">{JSON.stringify(x.datos)}</span> : null}
@@ -94,14 +95,14 @@ export function AdminDatosIa() {
           </div>
           <div>
             <div className="tarjeta">
-              <h3>{t('Consumo de la IA por tipo')}</h3>
+              <h3>{d.consumo_de === 'todos' ? t('Consumo de la IA por tipo') : t('Consumo de la IA de los dueños de esta persona')}</h3>
               <Grilla filas={d.consumo.map((c) => ({ tipo: c.tipo, pedidos: c.pedidos, usuarios: c.usuarios, 'tokens entrada': Number(c.entrada), 'tokens salida': Number(c.salida) }))} />
             </div>
             <div className="tarjeta">
-              <h3>{t('Procesos que corren solos')}</h3>
+              <h3>{t('Procesos que corren solos')} <span className="suave chico">({t('de toda la app')})</span></h3>
               <Grilla
-                filas={d.procesos.map((p) => ({ proceso: p.nombre, estado: p.ultimo_ok === false ? `❌ ${p.ultimo_error ?? ''}` : p.ultimo_ok ? '✅' : '—', corrió: hace(p.ultimo_inicio), 'último trabajo': hace(p.ultimo_trabajo), corridas: p.corridas, fallas: p.fallas, procesados: p.procesados }))}
-                marcar={(f) => (String(f.estado).startsWith('❌') ? 'con-error' : undefined)}
+                filas={d.procesos.map((p) => ({ proceso: p.nombre, estado: p.ultimo_ok === false ? `Error: ${p.ultimo_error ?? ''}` : p.ultimo_ok ? 'OK' : '—', corrió: hace(p.ultimo_inicio), 'último trabajo': hace(p.ultimo_trabajo), corridas: p.corridas, fallas: p.fallas, procesados: p.procesados }))}
+                marcar={(f) => (String(f.estado).startsWith('Error') ? 'con-error' : undefined)}
               />
             </div>
           </div>
@@ -170,7 +171,7 @@ export function AdminDatosHallazgos() {
                   <tr key={String(h.id)} className={h.estado === 'descartado' ? 'borrada' : undefined}>
                     <td>{String(h.persona)}</td>
                     <td className="clic" onClick={() => abrir('hallazgos', { id: h.id })}>
-                      {h.protege ? '🛡️ ' : ''}{String(h.causa)} <span className="suave chico">{String(h.causa_modo)}{h.umbral !== null ? ` ≥${String(h.umbral)}` : ''}</span>
+                      {h.protege ? t('protege') + ' · ' : ''}{String(h.causa)} <span className="suave chico">{String(h.causa_modo)}{h.umbral !== null ? ` ≥${String(h.umbral)}` : ''}</span>
                       {Array.isArray(h.causas_extra) && h.causas_extra.length ? <span className="suave chico"> +{h.causas_extra.length}</span> : null}
                     </td>
                     <td>{String(h.efecto)} <span className="suave chico">{String(h.efecto_modo)}</span></td>
@@ -202,7 +203,7 @@ export function AdminDatosHallazgos() {
 
 interface Auditoria { id: number; accion: string; tabla: string | null; clave: unknown; antes: unknown; despues: unknown; detalle: string | null; creado: string; usuario: string | null }
 
-const ACCION: Record<string, string> = { editar: '✏️ Editó', borrar: '🗑️ Borró', borrar_logico: '🚮 Marcó borrada', corregir: '🛠️ Corrigió' };
+const ACCION: Record<string, string> = { editar: 'Editó', borrar: 'Borró', borrar_logico: 'Marcó borrada', corregir: 'Corrigió' };
 
 export function AdminDatosAuditoria() {
   const [lista, setLista] = useState<Auditoria[] | null>(null);

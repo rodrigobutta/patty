@@ -1,10 +1,5 @@
-// Administración (solo administradores): cómo viene el uso mientras se prueba. Resumen con números y actividad por día,
-// usuarios (con su último acceso y lo que anotan; se crean, desactivan y se les cambia el rol o la clave) y lo último
-// que se anotó en toda la app. Se entra desde Más, o con patty.today/#admin en la compu.
-import { AdminSalud } from './AdminSalud';
-import { AdminUsoIa } from './AdminUsoIa';
-import { AdminBeta } from './AdminBeta';
-import { AdminDatos } from './AdminDatos';
+// Administración: las pantallas de resumen, uso, usuarios (con su último acceso y lo que anotan; se crean, desactivan y
+// se les cambia el rol o la clave), actividad y avisos. El armazón (menú, barra de arriba) está en admin/Shell.tsx.
 import { useCallback, useEffect, useState } from 'react';
 import { conUnidad } from 'shared';
 import { api } from '../api';
@@ -78,11 +73,11 @@ function ChipsPermisos({ i }: { i: Instalacion }) {
   const p = i.estado.permisos ?? {};
   const a = i.estado.activos ?? {};
   const chips: Array<[string, 'si' | 'medio' | 'no' | null]> = [
-    [t('🔔 avisos'), p.avisos === 'si' ? 'si' : p.avisos === 'no_aplica' ? null : 'no'],
-    [p.ubicacion === 'siempre' ? t('📍 ubicación siempre') : p.ubicacion === 'en_uso' ? t('📍 ubicación solo abierta') : t('📍 ubicación'), p.ubicacion === 'siempre' ? 'si' : p.ubicacion === 'en_uso' ? 'medio' : 'no'],
-    [t('📱 uso de apps'), p.uso_apps === 'no_aplica' || p.uso_apps === undefined ? null : p.uso_apps === 'si' ? 'si' : 'no'],
-    [t('📞 llamadas'), p.llamadas === 'no_aplica' || p.llamadas === undefined ? null : p.llamadas === 'si' ? 'si' : 'no'],
-    [typeof p.salud === 'number' && p.salud > 0 ? t('⌚ salud ({n} datos)', { n: p.salud }) : t('⌚ salud'), p.salud === 'no_aplica' ? null : typeof p.salud === 'number' && p.salud > 0 ? 'si' : 'no'],
+    [t('avisos'), p.avisos === 'si' ? 'si' : p.avisos === 'no_aplica' ? null : 'no'],
+    [p.ubicacion === 'siempre' ? t('ubicación siempre') : p.ubicacion === 'en_uso' ? t('ubicación solo abierta') : t('ubicación'), p.ubicacion === 'siempre' ? 'si' : p.ubicacion === 'en_uso' ? 'medio' : 'no'],
+    [t('uso de apps'), p.uso_apps === 'no_aplica' || p.uso_apps === undefined ? null : p.uso_apps === 'si' ? 'si' : 'no'],
+    [t('llamadas'), p.llamadas === 'no_aplica' || p.llamadas === undefined ? null : p.llamadas === 'si' ? 'si' : 'no'],
+    [typeof p.salud === 'number' && p.salud > 0 ? t('salud ({n} datos)', { n: p.salud }) : t('salud'), p.salud === 'no_aplica' ? null : typeof p.salud === 'number' && p.salud > 0 ? 'si' : 'no'],
     ['🚀 push', a.push ? 'si' : i.plataforma === 'web' ? null : 'no'],
   ];
   const prendidos = Object.entries(a).filter(([k, v]) => v && k !== 'push').map(([k]) => k);
@@ -184,33 +179,8 @@ function Barritas({ datos, alto = 60 }: { datos: number[]; alto?: number }) {
   );
 }
 
-export function Admin({ alVolver }: { alVolver(): void }) {
-  const [vista, setVista] = useState<'resumen' | 'uso' | 'usuarios' | 'actividad' | 'avisos' | 'salud' | 'ia' | 'beta' | 'datos'>('resumen');
-  const [elegido, setElegido] = useState<number | null>(null);
-  return (
-    <section className="admin">
-      <div className="admin-cabeza">
-        <button className="btn-icono" onClick={alVolver} aria-label={t('Volver')}>‹</button>
-        <h2>{t('🛠️ Administración')}</h2>
-      </div>
-      <div className="segmentos ancho subvistas">
-        <button className={vista === 'resumen' ? 'activa' : ''} onClick={() => { setVista('resumen'); setElegido(null); }}>{t('Resumen')}</button>
-        <button className={vista === 'uso' ? 'activa' : ''} onClick={() => { setVista('uso'); setElegido(null); }}>{t('Uso')}</button>
-        <button className={vista === 'usuarios' ? 'activa' : ''} onClick={() => setVista('usuarios')}>{t('Usuarios')}</button>
-        <button className={vista === 'actividad' ? 'activa' : ''} onClick={() => { setVista('actividad'); setElegido(null); }}>{t('Actividad')}</button>
-        <button className={vista === 'avisos' ? 'activa' : ''} onClick={() => { setVista('avisos'); setElegido(null); }}>{t('📣 Avisos')}</button>
-        <button className={vista === 'salud' ? 'activa' : ''} onClick={() => { setVista('salud'); setElegido(null); }}>{t('🩺 Salud')}</button>
-        <button className={vista === 'ia' ? 'activa' : ''} onClick={() => { setVista('ia'); setElegido(null); }}>{t('🤖 IA y planes')}</button>
-        <button className={vista === 'beta' ? 'activa' : ''} onClick={() => { setVista('beta'); setElegido(null); }}>{t('🧪 Beta')}</button>
-        <button className={vista === 'datos' ? 'activa' : ''} onClick={() => { setVista('datos'); setElegido(null); }}>{t('🔬 Datos')}</button>
-      </div>
-      {vista === 'datos' ? <AdminDatos /> : vista === 'beta' ? <AdminBeta /> : vista === 'ia' ? <AdminUsoIa /> : vista === 'salud' ? <AdminSalud /> : vista === 'avisos' ? <VistaAvisos /> : vista === 'uso' ? <VistaUso alElegir={(id) => { setElegido(id); setVista('usuarios'); }} /> : vista === 'resumen' ? <VistaResumen /> : vista === 'actividad' ? <VistaActividad /> : elegido ? <DetalleUsuario id={elegido} alVolver={() => setElegido(null)} /> : <VistaUsuarios alElegir={setElegido} />}
-    </section>
-  );
-}
-
 /** Mandar un aviso a un usuario o a todos, y publicar la versión nueva de la app de Android (avisando a quien la tiene vieja). */
-function VistaAvisos() {
+export function VistaAvisos() {
   const { avisar } = useEstado();
   const [usuarios, setUsuarios] = useState<FilaUsuario[]>([]);
   const [para, setPara] = useState('');
@@ -265,7 +235,7 @@ function VistaAvisos() {
   return (
     <>
       <div className="tarjeta">
-        <h3>{t('📣 Mandar un aviso')}</h3>
+        <h3>{t('Mandar un aviso')}</h3>
         <label>
           {t('A quién')}
           <select value={para} onChange={(e) => setPara(e.target.value)}>
@@ -278,7 +248,7 @@ function VistaAvisos() {
         <button className="btn primario ancho" disabled={mandando || !mensaje.trim()} onClick={() => void mandar()}>{mandando ? t('Mandando…') : t('Mandar')}</button>
       </div>
       <div className="tarjeta">
-        <h3>{t('📲 Versión de la app')}</h3>
+        <h3>{t('Versión de la app')}</h3>
         <p className="suave chico">
           {version?.actual
             ? t('Publicada: {v}. Con una más vieja: {n} usuarios.', { v: version.actual.version, n: version.desactualizados ?? 0 })
@@ -301,7 +271,7 @@ function VistaAvisos() {
 const NOMBRE_PANTALLA: Record<string, string> = { hoy: t('Día'), patrones: t('Descubrir'), mas: t('Más'), admin: t('Administración'), otra: t('Otra') };
 
 /** La actividad general: cuánto se usa la app, qué se anota, qué pregunta la gente y qué le manda Patty. */
-function VistaUso({ alElegir }: { alElegir(id: number): void }) {
+export function VistaUso({ alElegir }: { alElegir(id: number): void }) {
   const [dias, setDias] = useState(30);
   const [u, setU] = useState<Uso | null>(null);
   useEffect(() => {
@@ -413,7 +383,7 @@ function VistaUso({ alElegir }: { alElegir(id: number): void }) {
               <li key={q.id}>
                 <strong>{q.pregunta}</strong> <span className="suave chico">· {q.usuario} · {hace(q.creado)}</span>
                 <br />
-                <span className="suave">🦉 {q.respuesta}</span>
+                <span className="suave">{q.respuesta}</span>
               </li>
             ))}
           </ul>
@@ -423,7 +393,7 @@ function VistaUso({ alElegir }: { alElegir(id: number): void }) {
   );
 }
 
-function VistaResumen() {
+export function VistaResumen() {
   const [r, setR] = useState<Resumen | null>(null);
   useEffect(() => void api<Resumen>('GET', '/api/admin/resumen').then(setR).catch(() => {}), []);
   if (!r) return <p className="suave centro">{t('Cargando…')}</p>;
@@ -463,7 +433,7 @@ function VistaResumen() {
   );
 }
 
-function VistaUsuarios({ alElegir }: { alElegir(id: number): void }) {
+export function VistaUsuarios({ alElegir }: { alElegir(id: number): void }) {
   const { avisar } = useEstado();
   const [lista, setLista] = useState<FilaUsuario[] | null>(null);
   const [nuevo, setNuevo] = useState(false);
@@ -509,7 +479,7 @@ function VistaUsuarios({ alElegir }: { alElegir(id: number): void }) {
           </div>
         </form>
       ) : (
-        <button className="btn ancho" onClick={() => setNuevo(true)}>{t('＋ Nuevo usuario')}</button>
+        <button className="btn ancho" onClick={() => setNuevo(true)}>{t('Nuevo usuario')}</button>
       )}
       {!nuevo && error ? <p className="neg">{error}</p> : null}
       {lista ? (
@@ -541,7 +511,7 @@ function VistaUsuarios({ alElegir }: { alElegir(id: number): void }) {
   );
 }
 
-function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
+export function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
   const { avisar, usuario: yo } = useEstado();
   const [d, setD] = useState<Detalle | null>(null);
   const [error, setError] = useState('');
@@ -564,7 +534,7 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
 
   return (
     <div className="admin-detalle">
-      <button className="volver" onClick={alVolver}>‹ {t('Usuarios')}</button>
+      <button className="btn chico-btn" onClick={alVolver}>‹ {t('Usuarios')}</button>
       <div className="tarjeta">
         <h3>{u.nombre} {u.activo ? null : <span className="etiqueta">{t('desactivado')}</span>}</h3>
         <p className="suave chico">
@@ -599,7 +569,7 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
 
       {d.personas.map((p) => (
         <div key={p.id} className="tarjeta">
-          <h3>🧍 {p.nombre} <span className="suave chico">{p.rol === 'dueno' ? t('suya') : p.rol}</span></h3>
+          <h3>{p.nombre} <span className="suave chico">{p.rol === 'dueno' ? t('suya') : p.rol}</span></h3>
           <p className="suave chico">
             {t('{registros} en {dias}', { registros: cuantos(p.registros, 'anotación', 'anotaciones'), dias: cuantos(p.dias, 'día', 'días') })} · {cuantos(p.mediciones, 'dato automático', 'datos automáticos')}{p.fuentes ? ` (${p.fuentes})` : ''}
             {p.sexo || p.nacimiento || p.condiciones?.length ? ` · ${[p.sexo, p.nacimiento, p.altura_cm ? `${p.altura_cm} cm` : '', p.peso_kg ? `${p.peso_kg} kg` : '', ...(p.condiciones ?? [])].filter(Boolean).join(', ')}` : ''}
@@ -617,7 +587,7 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
           {d.instalaciones.map((i, n) => (
             <div key={n} className="instalacion">
               <p className="chico">
-                <strong>{i.plataforma === 'ios' ? '🍎 iPhone' : i.plataforma === 'android' ? '🤖 Android' : t('🌐 Navegador')}</strong>
+                <strong>{i.plataforma === 'ios' ? '🍎 iPhone' : i.plataforma === 'android' ? '🤖 Android' : t('Navegador')}</strong>
                 <span className="suave"> · {t('visto {cuando}', { cuando: hace(i.actualizado) })}</span>
                 {i.estado.version?.web ? <span className="suave"> · <VersionDe v={i.estado.version} /></span> : null}
                 {i.estado.ultimos?.telefono ? <span className="suave"> · {t('mandó uso del teléfono {cuando}', { cuando: hace(i.estado.ultimos.telefono) })}</span> : null}
@@ -647,7 +617,7 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
               <ul className="lista-simple">
                 {d.tratamientos.map((x) => (
                   <li key={x.id}>
-                    💊 {x.remedio}{x.dosis !== null ? ` ${conUnidad(x.dosis, x.unidad, 2, idioma())}` : ''} · {x.cada_horas ? t('cada {n} h', { n: x.cada_horas }) : x.horarios.length ? x.horarios.join(', ') : t('si hace falta')} · {x.persona}
+                    {x.remedio}{x.dosis !== null ? ` ${conUnidad(x.dosis, x.unidad, 2, idioma())}` : ''} · {x.cada_horas ? t('cada {n} h', { n: x.cada_horas }) : x.horarios.length ? x.horarios.join(', ') : t('si hace falta')} · {x.persona}
                     {x.terminado ? ` · ${t('terminado')}` : ''}
                   </li>
                 ))}
@@ -658,7 +628,7 @@ function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void }) {
             <>
               <h3>{t('Familia')}</h3>
               <ul className="lista-simple">
-                {d.supervisiones.map((s, i) => <li key={i}>👀 {s.relacion} {s.otro} ({s.estado})</li>)}
+                {d.supervisiones.map((s, i) => <li key={i}>{s.relacion} {s.otro} ({s.estado})</li>)}
               </ul>
             </>
           ) : null}
@@ -680,14 +650,14 @@ function LoQuePattyLeDice({ d }: { d: Detalle }) {
   const ultimo = d.analisis[0];
   return (
     <div className="tarjeta">
-      <h3>🦉 {t('Lo que Patty le dice')}</h3>
+      <h3>{t('Lo que Patty le dice')}</h3>
       {ultimo ? (
         <>
           {ultimo.resumen ? <p>{ultimo.resumen}</p> : null}
           {ultimo.sugerencias?.length ? (
             <>
               <p className="suave chico">{t('Sugerencias')}</p>
-              <ul className="lista-simple">{ultimo.sugerencias.map((x, i) => <li key={i}>💡 {x}</li>)}</ul>
+              <ul className="lista-simple">{ultimo.sugerencias.map((x, i) => <li key={i}>{x}</li>)}</ul>
             </>
           ) : null}
         </>
@@ -755,7 +725,7 @@ function LoQuePattyLeDice({ d }: { d: Detalle }) {
               <li key={q.id}>
                 <strong>{q.pregunta}</strong> <span className="suave chico">· {hace(q.creado)}</span>
                 <br />
-                <span className="suave">🦉 {q.respuesta}</span>
+                <span className="suave">{q.respuesta}</span>
               </li>
             ))}
           </ul>
@@ -800,7 +770,7 @@ function ListaRegistros({ lista, conUsuario = false }: { lista: Registro[]; conU
   );
 }
 
-function VistaActividad() {
+export function VistaActividad() {
   const [lista, setLista] = useState<Registro[] | null>(null);
   useEffect(() => {
     const traer = () => api<Registro[]>('GET', '/api/admin/actividad').then(setLista).catch(() => {});

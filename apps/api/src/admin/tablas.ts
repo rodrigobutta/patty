@@ -30,6 +30,7 @@ export const GRUPO_TABLA: Record<string, 'persona' | 'automatico' | 'ia' | 'cata
   instalaciones: 'automatico',
   dispositivos: 'automatico',
   avisos_historial: 'automatico',
+  llamadas_horas: 'automatico',
   avisos_conteos: 'automatico',
   avisos_detectados: 'automatico',
   analisis: 'ia',

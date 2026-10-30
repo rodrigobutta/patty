@@ -92,7 +92,6 @@ export async function recalcular(tx: Tx, p: PersonaZona, fechas: string[]): Prom
     }
   }
   if (valores.length) await tx.insert(mediciones).values(valores).onConflictDoNothing();
-  await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE id = ${fuenteId}`);
 }
 
 /** Todos los días que todavía tienen puntos (para cuando cambian los lugares). */
@@ -163,6 +162,8 @@ export async function guardarPuntos(tx: Tx, p: PersonaZona, lista: unknown[]): P
   }
   const guardados = nuevos.length ? await tx.insert(puntos).values(nuevos).onConflictDoNothing().returning({ fecha: puntos.fecha }) : [];
   await recalcular(tx, p, [...new Set(guardados.map((g) => g.fecha))]);
+  // Solo cuando llegaron puntos de verdad: recalcular (al cambiar un lugar o una versión) no es que el teléfono mandó algo.
+  if (guardados.length) await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE persona_id = ${p.id} AND tipo = 'ubicacion'`);
   await tx.execute(sql`DELETE FROM puntos WHERE persona_id = ${p.id} AND instante < now() - make_interval(days => ${DIAS_GUARDADOS})`);
   const ultimo = recibidos[recibidos.length - 1];
   const lugar = lugarDe(ultimo, ls)?.nombre ?? null;

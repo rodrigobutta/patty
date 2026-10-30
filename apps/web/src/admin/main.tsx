@@ -1,15 +1,16 @@
-// La administración: una página aparte, con su propio código, para que nada de esto viaje en la app que usa todo el
-// mundo. Corre en su propio servidor (admin.patty.today, MODO=admin) o, si no, en patty.today/admin. Se entra con usuario
-// y clave de un administrador; no carga personas ni categorías (no las usa).
+// La administración: un backoffice aparte, con su propio código y su propio diseño (backoffice.css, nada de la app),
+// para que nada de esto viaje en la app que usa todo el mundo. Corre en su propio servidor (admin.patty.today, MODO=admin)
+// o, si no, en patty.today/admin. Se entra con mail y clave de un administrador; no carga personas ni categorías.
+import './espanol';
 import { StrictMode, useCallback, useContext, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Sesion } from 'shared';
 import { api, cuandoSePierdaLaSesion } from '../api';
 import { ContextoEstado, type Estado, type Fase } from '../estado';
-import '../estilos.css';
+import './backoffice.css';
 import { escucharErrores } from '../lib/errores';
 import { t } from '../lib/idioma';
-import { Admin } from '../pantallas/Admin';
+import { Shell } from './Shell';
 
 escucharErrores();
 
@@ -70,7 +71,7 @@ function EntrarAdmin({ alEntrar }: { alEntrar(): void }) {
   };
   return (
     <form className="tarjeta admin-sin-acceso" onSubmit={entrar}>
-      <h2>🛠️ {t('Administración de Patty')}</h2>
+      <h2>{t('Patty Admin')}</h2>
       <label>{t('Mail o usuario')}<input name="usuario" required autoCapitalize="none" autoComplete="username" inputMode="email" /></label>
       <label>{t('Clave')}<input name="clave" type="password" required autoComplete="current-password" /></label>
       {error ? <p className="neg">{error}</p> : null}
@@ -80,29 +81,20 @@ function EntrarAdmin({ alEntrar }: { alEntrar(): void }) {
 }
 
 function AppAdmin() {
-  const { fase, error, usuario, aviso, entro, salir } = useEstadoAdmin();
-  // Volver a la app: si la administración está en su propio dominio, a patty.today.
-  const aLaApp = () => location.assign(location.hostname.startsWith('admin.') ? 'https://patty.today/app/' : '/app/');
+  const { fase, error, usuario, entro, salir } = useEstadoAdmin();
   if (fase === 'arrancando') return <p className="suave centro">{t('Cargando…')}</p>;
   if (fase === 'error') return <p className="neg centro">{error}</p>;
   if (fase !== 'listo') return <EntrarAdmin alEntrar={() => void entro()} />;
   if (usuario?.rol !== 'admin') {
     return (
-      <main className="admin-sin-acceso">
-        <h2>🛠️ {t('Administración')}</h2>
+      <main className="admin-sin-acceso tarjeta">
+        <h2>{t('Patty Admin')}</h2>
         <p className="suave">{t('Solo los administradores pueden entrar acá.')}</p>
         <button className="btn" onClick={() => void salir()}>{t('Entrar con otro usuario')}</button>
       </main>
     );
   }
-  return (
-    <>
-      <main>
-        <Admin alVolver={aLaApp} />
-      </main>
-      {aviso ? <div className="aviso" role="status">{aviso}</div> : null}
-    </>
-  );
+  return <Shell />;
 }
 
 function useEstadoAdmin(): Estado {

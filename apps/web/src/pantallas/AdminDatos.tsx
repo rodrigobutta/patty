@@ -1,15 +1,8 @@
-// Admin → Datos: para auditar qué tan bien se guarda todo lo que carga la gente, lo que llega solo del teléfono y lo que
-// produce la IA, y corregirlo. Persona 360 (cobertura por fuente y el día completo), navegador de tablas con edición,
-// chequeos de calidad con arreglos, lo que hizo la IA, los patrones de todos y la auditoría de lo que cambió el admin.
-// En la compu se ensancha (main:has(.admin-datos)); en el teléfono las tablas se deslizan de costado.
+// Administración → Datos: lo que comparten las pantallas de datos (la grilla, el editor de filas) y el navegador de tablas.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { locale, t } from '../lib/idioma';
-import { AdminDatosPersona } from './AdminDatosPersona';
-import { AdminDatosCalidad } from './AdminDatosCalidad';
-import { AdminDatosAuditoria, AdminDatosHallazgos, AdminDatosIa } from './AdminDatosIa';
-import './admin-datos.css';
 
 export interface Columna { nombre: string; tipo: string; nula: boolean; defecto: boolean }
 export interface MetaTabla { nombre: string; vista: boolean; grupo: string; filas: number; columnas: Columna[]; clave: string[]; editable: boolean }
@@ -21,9 +14,6 @@ export interface PersonaAdmin {
   duenos: string | null;
   registros: number;
   mediciones: number;
-  ultimo_registro: string | null;
-  ultima_medicion: string | null;
-  fuentes: Array<{ id: number; tipo: string; nombre: string; activo: boolean; ultimo_uso: string | null }> | null;
 }
 
 // ---------- Ayudas compartidas por las subpestañas ----------
@@ -38,18 +28,16 @@ export function tablas(): Promise<MetaTabla[]> {
   return tablasPedidas;
 }
 
-let personasPedidas: Promise<PersonaAdmin[]> | null = null;
-export function personas(): Promise<PersonaAdmin[]> {
-  personasPedidas ??= api<PersonaAdmin[]>('GET', '/api/admin/datos/personas').catch((e) => {
-    personasPedidas = null;
-    throw e;
-  });
-  return personasPedidas;
-}
-
+/** Las personas, siempre frescas: "lo último" de cada una cambia todo el tiempo. */
 export function usePersonas(): PersonaAdmin[] {
   const [lista, setLista] = useState<PersonaAdmin[]>([]);
-  useEffect(() => void personas().then(setLista).catch(() => {}), []);
+  useEffect(() => {
+    let vigente = true;
+    api<PersonaAdmin[]>('GET', '/api/admin/datos/personas').then((l) => vigente && setLista(l)).catch(() => {});
+    return () => {
+      vigente = false;
+    };
+  }, []);
   return lista;
 }
 
@@ -269,7 +257,7 @@ export interface PedidoTabla {
   persona_id?: number;
 }
 
-function VistaTablas({ pedido }: { pedido: PedidoTabla | null }) {
+export function VistaTablas({ pedido }: { pedido: PedidoTabla | null }) {
   const [lista, setLista] = useState<MetaTabla[]>([]);
   const [tabla, setTabla] = useState(pedido?.tabla ?? 'registros');
   const [persona, setPersona] = useState(pedido?.persona_id ? String(pedido.persona_id) : '');
@@ -414,49 +402,6 @@ function VistaTablas({ pedido }: { pedido: PedidoTabla | null }) {
         ) : null}
       </div>
       {editor}
-    </div>
-  );
-}
-
-// ---------- La pestaña ----------
-
-type Sub = 'persona' | 'tablas' | 'calidad' | 'ia' | 'patrones' | 'auditoria';
-
-export function AdminDatos() {
-  const [sub, setSub] = useState<Sub>('persona');
-  const [pedido, setPedido] = useState<PedidoTabla | null>(null);
-  const abrirTabla = (p: PedidoTabla) => {
-    setPedido(p);
-    setSub('tablas');
-  };
-  const SUBS: Array<[Sub, string]> = [
-    ['persona', t('🧍 Persona 360')],
-    ['tablas', t('🗂️ Tablas')],
-    ['calidad', t('🧪 Calidad')],
-    ['ia', t('🤖 Lo que hizo la IA')],
-    ['patrones', t('✨ Patrones')],
-    ['auditoria', t('📜 Auditoría')],
-  ];
-  return (
-    <div className="admin-datos">
-      <div className="segmentos ancho subvistas">
-        {SUBS.map(([k, nombre]) => (
-          <button key={k} className={sub === k ? 'activa' : ''} onClick={() => { setSub(k); if (k !== 'tablas') setPedido(null); }}>{nombre}</button>
-        ))}
-      </div>
-      {sub === 'persona' ? (
-        <AdminDatosPersona abrirTabla={abrirTabla} />
-      ) : sub === 'tablas' ? (
-        <VistaTablas key={JSON.stringify(pedido)} pedido={pedido} />
-      ) : sub === 'calidad' ? (
-        <AdminDatosCalidad abrirTabla={abrirTabla} />
-      ) : sub === 'ia' ? (
-        <AdminDatosIa />
-      ) : sub === 'patrones' ? (
-        <AdminDatosHallazgos />
-      ) : (
-        <AdminDatosAuditoria />
-      )}
     </div>
   );
 }

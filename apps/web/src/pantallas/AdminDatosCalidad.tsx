@@ -82,10 +82,10 @@ export function AdminDatosCalidad({ abrirTabla }: { abrirTabla(p: PedidoTabla): 
           <span>{t('Solo los que tienen algo ({n} de {total})', { n: conProblemas.length, total: lista.length })}</span>
         </label>
         <span className="espacio" />
-        <button className="btn chico-btn" onClick={() => { setLista(null); traer(); }}>{t('↻ Revisar de nuevo')}</button>
+        <button className="btn chico-btn" onClick={() => { setLista(null); traer(); }}>{t('Revisar de nuevo')}</button>
       </div>
       {error ? <p className="neg">{error}</p> : null}
-      {!visibles.length ? <p className="tarjeta">✅ {t('No hay problemas en los datos.')}</p> : null}
+      {!visibles.length ? <p className="tarjeta">{t('No hay problemas en los datos.')}</p> : null}
       {visibles.map((c) => (
         <div key={c.clave} className={`tarjeta chequeo gravedad-${c.gravedad} ${c.n ? '' : 'sin-problemas'}`}>
           <div className="chequeo-cabeza" onClick={() => alternar(c.clave)}>
@@ -99,7 +99,7 @@ export function AdminDatosCalidad({ abrirTabla }: { abrirTabla(p: PedidoTabla): 
             <button className="btn chico-btn" onClick={() => abrirTabla({ tabla: c.tabla })}>{t('Tabla {tabla}', { tabla: c.tabla })}</button>
             {c.arreglo && c.n > 0 ? (
               <button className="btn chico-btn primario" disabled={corriendo !== null} onClick={() => void corregir(c)}>
-                {corriendo === c.clave ? t('Corrigiendo…') : `🛠️ ${t(c.arreglo)}`}
+                {corriendo === c.clave ? t('Corrigiendo…') : t(c.arreglo)}
               </button>
             ) : null}
           </div>

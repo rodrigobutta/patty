@@ -137,4 +137,64 @@ describe('administración → datos', () => {
     expect((await ana.get(`/api/admin/datos/ia?tipo=comentarios`)).body.linea).toHaveLength(1);
     expect((await ana.get('/api/admin/datos/hallazgos')).body).toEqual([]);
   });
+
+  it('persona 360: cada cosa es de la persona elegida, no de otra ni de toda la app', async () => {
+    const { ana, personaId: a, categorias } = await conAdmin();
+    const b = (await ana.post('/api/personas', { nombre: 'Beto' })).body.id;
+    const db = obtenerDb();
+    // A tiene de todo; B, nada (salvo una anotación propia).
+    const inicio = new Date(Date.now() - 3600e3).toISOString();
+    await ana.post('/api/registros', { persona_id: a, concepto_nombre: 'Tomate', categoria_id: categorias.comida, inicio });
+    await ana.post('/api/registros', { persona_id: b, concepto_nombre: 'Pera', categoria_id: categorias.comida, inicio });
+    const [f] = await db.execute(sql`INSERT INTO fuentes (persona_id, tipo, nombre, token_hash, ultimo_uso) VALUES (${a}, 'telefono', 'App de Android', 'x1', now()) RETURNING id`) as unknown as Array<{ id: number }>;
+    const concepto = (await ana.get('/api/conceptos/buscar?q=pasos')).body[0]?.id;
+    await db.execute(sql`INSERT INTO mediciones (persona_id, concepto_id, fuente_id, inicio, fecha, valor) VALUES (${a}, ${concepto}, ${f.id}, ${inicio}, current_date, 100)`);
+    await db.execute(sql`INSERT INTO puntos (persona_id, instante, fecha, lat, lon) VALUES (${a}, ${inicio}, current_date, -34.6, -58.4)`);
+    await db.execute(sql`INSERT INTO sueno_etapas (persona_id, noche, inicio, fin, etapa) VALUES (${a}, current_date, ${inicio}, now(), 'ligero')`);
+    await db.execute(sql`INSERT INTO comentarios (persona_id, fecha, texto) VALUES (${a}, current_date, 'hola')`);
+    await db.execute(sql`INSERT INTO resumen_noche (persona_id, noche, texto, calidad) VALUES (${a}, current_date, 'bien', 8)`);
+
+    const clave = (l: any[]) => Object.fromEntries(l.map((x) => [x.clave, x]));
+    const ua = (await ana.get(`/api/admin/datos/personas/${a}/ultimos`)).body;
+    const ub = (await ana.get(`/api/admin/datos/personas/${b}/ultimos`)).body;
+    expect(ua.fuentes.map((x: any) => x.nombre)).toEqual(['App de Android']);
+    expect(ua.fuentes[0].semana).toBe(1);
+    expect(ub.fuentes).toEqual([]);
+    expect(clave(ua.datos).puntos.dato).toBeTruthy();
+    for (const k of ['puntos', 'sueno', 'comentarios', 'resumen_noche', 'escuchas', 'avisos_apps', 'analisis']) expect(clave(ub.datos)[k].dato).toBeNull();
+    expect(clave(ub.datos).manual.semana).toBe(1);
+    // Los teléfonos que se muestran son de los dueños de esa persona.
+    await db.execute(sql`INSERT INTO instalaciones (id, usuario_id, plataforma, estado) VALUES ('i1', (SELECT usuario_id FROM persona_usuarios WHERE persona_id = ${a} LIMIT 1), 'android', '{}')`);
+    expect((await ana.get(`/api/admin/datos/personas/${a}/ultimos`)).body.telefonos).toHaveLength(1);
+    const c = await ana.post('/api/personas', { nombre: 'Sin dueño' });
+    await db.execute(sql`DELETE FROM persona_usuarios WHERE persona_id = ${c.body.id}`);
+    expect((await ana.get(`/api/admin/datos/personas/${c.body.id}/ultimos`)).body.telefonos).toEqual([]);
+
+    // La cobertura y el día, igual.
+    const cob = (await ana.get(`/api/admin/datos/personas/${b}/cobertura?dias=7`)).body.dias;
+    expect(cob.reduce((n: number, d: any) => n + d.telefono + d.puntos + d.sueno + d.comentarios + d.resumen_noche, 0)).toBe(0);
+    const hoy = (await ana.get(`/api/admin/datos/personas/${b}/dia`)).body;
+    expect([hoy.mediciones, hoy.puntos, hoy.sueno, hoy.comentarios]).toEqual([[], [], [], []]);
+    expect(hoy.resumen_noche).toBeNull();
+    // Lo de la IA, por persona (el consumo, de sus dueños; los procesos son de toda la app).
+    const ia = (await ana.get(`/api/admin/datos/ia?persona_id=${b}`)).body;
+    expect(ia.linea.every((x: any) => x.persona_id === b)).toBe(true);
+    expect(ia.consumo_de).toBe('dueños');
+    expect((await ana.get(`/api/admin/datos/personas/9999/ultimos`)).status).toBe(404);
+  });
+
+  it('recalcular la ubicación no cuenta como que el teléfono mandó algo', async () => {
+    const { ana, personaId } = await conAdmin();
+    const db = obtenerDb();
+    const inicio = new Date(Date.now() - 3600e3).toISOString();
+    expect((await ana.post('/api/ubicacion', { persona_id: personaId, puntos: [{ lat: -34.6, lon: -58.4, instante: inicio }] })).status).toBeLessThan(300);
+    const uso = async () => (await ana.get(`/api/admin/datos/personas/${personaId}/ultimos`)).body.fuentes.find((f: any) => f.tipo === 'ubicacion')?.ultimo_uso;
+    const antes = await uso();
+    expect(antes).toBeTruthy();
+    await db.execute(sql`UPDATE fuentes SET ultimo_uso = now() - interval '3 days' WHERE persona_id = ${personaId} AND tipo = 'ubicacion'`);
+    const viejo = await uso();
+    const { recalcularTodo } = await import('../src/routes/ubicacion.js');
+    await db.transaction((tx) => recalcularTodo(tx, { id: personaId, zona_horaria: 'America/Argentina/Buenos_Aires' }));
+    expect(await uso()).toBe(viejo);
+  });
 });

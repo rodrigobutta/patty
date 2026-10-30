@@ -53,7 +53,7 @@ export function AdminSalud() {
             );
           })}
         </div>
-        <a className="btn" href={`${API_BASE}/api/admin/respaldo`} download>{t('⬇️ Bajar un respaldo de la base')}</a>
+        <a className="btn" href={`${API_BASE}/api/admin/respaldo`} download>{t('Bajar un respaldo de la base')}</a>
         <p className="suave chico">{t('Es toda la base en un archivo comprimido (sin las sesiones). Guardalo en un lugar seguro: tiene datos de salud.')}</p>
       </div>
 
@@ -72,7 +72,7 @@ export function AdminSalud() {
                     <td>{t(p.nombre)}</td>
                     <td>{hace(p.ultimo_inicio)}</td>
                     <td>{p.ultima_duracion_ms === null ? '—' : p.ultima_duracion_ms < 1000 ? `${p.ultima_duracion_ms} ms` : `${(p.ultima_duracion_ms / 1000).toFixed(1)} s`}</td>
-                    <td title={p.ultimo_error ?? ''}>{!p.ultimo_ok ? `✗ ${p.ultimo_error ?? ''}`.slice(0, 60) : parado ? t('⏸ parado') : '✓'}</td>
+                    <td title={p.ultimo_error ?? ''}>{!p.ultimo_ok ? `✗ ${p.ultimo_error ?? ''}`.slice(0, 60) : parado ? t('parado') : '✓'}</td>
                     <td>{hace(p.ultimo_trabajo)}</td>
                     <td>{p.fallas ? `${p.fallas} / ${p.corridas}` : `0 / ${p.corridas}`}</td>
                   </tr>
@@ -104,7 +104,7 @@ export function AdminSalud() {
             ))}
           </ul>
         ) : (
-          <p className="suave">{t('Sin errores. 🎉')}</p>
+          <p className="suave">{t('Sin errores.')}</p>
         )}
       </div>
 
