@@ -154,6 +154,8 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .hallazgo.protege .flecha { color: var(--verde); }
 .hallazgo.protege .barras .con { background: var(--verde); }
 .hallazgo .marca-protege { color: var(--verde); font-weight: 600; }
+.hallazgo .marca-origen { color: var(--acento); font-weight: 600; }
+.hallazgo .marca-ya-no { color: var(--suave); font-weight: 600; }
 .opinion-hallazgo { display: grid; gap: 4px; margin-top: 6px; }
 .opinion-hallazgo .fila { flex-wrap: wrap; gap: 6px; }
 .barras { display: grid; gap: 4px; margin: 10px 0; font-size: 13px; }

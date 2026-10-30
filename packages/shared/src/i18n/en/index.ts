@@ -6,6 +6,7 @@ import { CUENTA } from './cuenta.js';
 import { COMUN } from './comun.js';
 import { DATOS } from './datos.js';
 import { DIA } from './dia.js';
+import { HIPOTESIS } from './hipotesis.js';
 import { INFORME } from './informe.js';
 import { MAS } from './mas.js';
 import { MEDIOS } from './medios.js';
@@ -17,4 +18,4 @@ import { PATRONES } from './patrones.js';
 import { PATRONES_FINOS } from './patronesfinos.js';
 import { SERVIDOR } from './servidor.js';
 
-export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...MEDIOS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...COMUN };
+export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...HIPOTESIS, ...MEDIOS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...COMUN };

@@ -217,7 +217,7 @@ export async function datosInforme(tx: Tx, p: PersonaAcceso, dias: number, idiom
 
   // Patrones: los firmes (o los que la persona dijo que le pasan), menos los que marcó como sin sentido.
   const hallazgos = (await listarHallazgos(tx, p.id))
-    .filter((h) => h.estado !== 'descartado' && (h.q_valor <= Q_FIRME || h.estado === 'confirmado'))
+    .filter((h) => h.estado !== 'descartado' && !h.fecha_desde && !h.ya_no && (h.q_valor <= Q_FIRME || h.estado === 'confirmado'))
     // Primero los que dijo que le pasan; al final los que marcó como obvios.
     .sort((a, b) => Number(b.estado === 'confirmado') - Number(a.estado === 'confirmado') || Number(a.estado === 'obvio') - Number(b.estado === 'obvio') || b.puntaje - a.puntaje)
     .slice(0, MAX_HALLAZGOS);

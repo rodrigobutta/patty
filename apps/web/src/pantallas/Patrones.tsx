@@ -23,6 +23,15 @@ const cuando = (d: number) =>
 /** "Dolor de cabeza" → "menos dolor de cabeza": lo que protege se dice por lo que baja. */
 const menos = (efecto: string) => t('menos {efecto}', { efecto: efecto.charAt(0).toLocaleLowerCase(locale()) + efecto.slice(1) });
 const decimal = (n: number) => n.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fechaCorta = (f: string) => new Date(`${f}T12:00:00Z`).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+/** Lo que salió de una hipótesis puede ser un antes y después de una fecha (`fecha_desde` sola): cambian los números que se muestran. */
+const esCambio = (h: Hallazgo) => Boolean(h.fecha_desde && !h.fecha_hasta);
+/** Cuándo: "al día siguiente"; lo de un período lo aclara; un cambio solo tiene su fecha. */
+const cuandoDe = (h: Hallazgo) =>
+  esCambio(h)
+    ? t('desde el {fecha}', { fecha: fechaCorta(h.fecha_desde!) })
+    : `${cuando(h.desfase_dias)}${h.fecha_desde ? ` · ${t('del {desde} al {hasta}', { desde: fechaCorta(h.fecha_desde), hasta: fechaCorta(h.fecha_hasta!) })}` : ''}`;
+const veces = (h: Hallazgo) => (esCambio(h) ? t('{n} de {total} días', { n: h.soporte, total: h.dias_causa }) : t('{n} de {total} veces', { n: h.soporte, total: h.dias_causa }));
 const nombresCausa = (h: Hallazgo) =>
   // Un umbral lleva su valor ("Café: 3 o más"); solo la primera causa puede serlo.
   [{ nombre: h.causa, tipo: h.causa_tipo, modo: h.causa_modo }, ...(h.causas_extra ?? [])].map((c, i) =>
@@ -36,7 +45,7 @@ const compartible = (h: Hallazgo): Compartible => ({
     arriba: t('Patty encontró un patrón en mis días'),
     causa: nombresCausa(h).join(' + '),
     efecto: nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma()),
-    cuando: `${cuando(h.desfase_dias)} · ${t('{n} de {total} veces', { n: h.soporte, total: h.dias_causa })}`,
+    cuando: `${cuandoDe(h)} · ${veces(h)}`,
     numero: `×${h.lift.toLocaleString(locale(), { maximumFractionDigits: h.lift >= 10 ? 0 : 1 })}`,
     numeroTexto: t('más probable'),
     aclaracion: t('Es lo que aparece en mis datos, no un diagnóstico.'),
@@ -94,9 +103,14 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
   const apartados = hallazgos?.filter((h) => h.estado === 'obvio' || h.estado === 'descartado') ?? [];
   const firmes = hallazgos?.filter((h) => !apartados.includes(h) && (h.q_valor <= Q_FIRME || h.estado === 'confirmado')) ?? [];
   const posibles = hallazgos?.filter((h) => !apartados.includes(h) && !firmes.includes(h)) ?? [];
-  const tarjeta = (h: Hallazgo) => (
+  const tarjeta = (h: Hallazgo) => {
+    const baja = h.protege || (esCambio(h) && h.lift < 1);
+    const efecto = nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma());
+    return (
     <article key={h.id} className={`tarjeta hallazgo ${h.estado}${h.protege ? ' protege' : ''}`}>
+      {h.origen === 'hipotesis' ? <p className="chico marca-origen">{t('🦉 Lo sospechó Patty y los datos lo confirman')}</p> : null}
       {h.protege ? <p className="chico marca-protege">{t('🛡️ Parece que te protege')}</p> : null}
+      {h.ya_no ? <p className="chico marca-ya-no">{t('🕰️ Pasaba antes: en los últimos meses ya no se ve')}</p> : null}
       <h3>
         {nombresCausa(h).map((c, i) => (
           <Fragment key={i}>
@@ -104,18 +118,18 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
             {c}
           </Fragment>
         ))}{' '}
-        <span className="flecha">→</span> {h.protege ? menos(nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma())) : nombreRasgo(h.efecto, h.efecto_tipo, h.efecto_modo, idioma())}
+        <span className="flecha">→</span> {baja ? menos(efecto) : efecto}
       </h3>
       <p className="suave chico">
-        {cuando(h.desfase_dias)} · {t('{n} de {total} veces', { n: h.soporte, total: h.dias_causa })} ·{' '}
-        {h.protege && h.prob_sin > 0
+        {cuandoDe(h)} · {veces(h)} ·{' '}
+        {baja && h.prob_sin > 0
           ? t('{n}% menos seguido', { n: Math.round((1 - h.prob_con / h.prob_sin) * 100) })
           : t('×{n} más probable', { n: decimal(h.lift) })}
         {h.q_valor > 0.2 ? ` · ${t('puede ser casualidad')}` : ''}
       </p>
       <div className="barras" aria-label={t('{con}% con, {sin}% sin', { con: Math.round(h.prob_con * 100), sin: Math.round(h.prob_sin * 100) })}>
-        <div><span style={{ width: `${h.prob_con * 100}%` }} className="con" />{t('con {n}%', { n: Math.round(h.prob_con * 100) })}</div>
-        <div><span style={{ width: `${h.prob_sin * 100}%` }} className="sin" />{t('sin {n}%', { n: Math.round(h.prob_sin * 100) })}</div>
+        <div><span style={{ width: `${h.prob_con * 100}%` }} className="con" />{t(esCambio(h) ? 'después {n}%' : 'con {n}%', { n: Math.round(h.prob_con * 100) })}</div>
+        <div><span style={{ width: `${h.prob_sin * 100}%` }} className="sin" />{t(esCambio(h) ? 'antes {n}%' : 'sin {n}%', { n: Math.round(h.prob_sin * 100) })}</div>
       </div>
       {h.explicacion ? <p>{h.explicacion}</p> : null}
       {usuario?.rol !== 'lector' ? (
@@ -132,7 +146,8 @@ export function Patrones({ persona, progreso }: { persona: Persona; progreso: Pr
         <div className="fila-compartir"><BotonCompartir className="btn chico compartir-hallazgo" armar={() => compartible(h)} /></div>
       ) : null}
     </article>
-  );
+    );
+  };
 
   useEffect(() => {
     paginaVista(`/descubrir/${vista}`, `descubrir ${vista}`);

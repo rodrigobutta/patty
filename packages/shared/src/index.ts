@@ -728,17 +728,19 @@ export type Modo = 'presente' | 'alto' | 'bajo' | 'alto_semana' | 'bajo_semana' 
  * - umbrales: "a partir de 3 cafés…" (desde qué cantidad empieza a pasar algo)
  * - proteccion: lo que hace que un malestar aparezca menos ("los días que caminás, menos dolor de cabeza")
  * - desfases_largos: efectos que llegan a los dos o tres días (si no, solo el mismo día y el siguiente)
+ * - hipotesis: una vez por semana, la IA mira el resumen de los datos y sospecha cosas; el motor las verifica
  */
 export interface AjustesPatrones {
   umbrales?: boolean;
   proteccion?: boolean;
   desfases_largos?: boolean;
+  hipotesis?: boolean;
 }
-export const PATRONES_FINOS = ['umbrales', 'proteccion', 'desfases_largos'] as const;
+export const PATRONES_FINOS = ['umbrales', 'proteccion', 'desfases_largos', 'hipotesis'] as const;
 export type PatronFino = (typeof PATRONES_FINOS)[number];
 /** Los ajustes completos (lo que no se eligió, prendido). */
 export function patronesFinos(a?: AjustesPatrones | null): Record<PatronFino, boolean> {
-  return { umbrales: a?.umbrales !== false, proteccion: a?.proteccion !== false, desfases_largos: a?.desfases_largos !== false };
+  return { umbrales: a?.umbrales !== false, proteccion: a?.proteccion !== false, desfases_largos: a?.desfases_largos !== false, hipotesis: a?.hipotesis !== false };
 }
 
 /** Un umbral dicho para una persona: "3", "30 min", "1 h 30 min", "28 °C", "8.000 pasos". */
@@ -812,6 +814,16 @@ export interface Hallazgo {
   causa_unidad?: string | null;
   /** Si la causa protege: con ella el efecto (un malestar) aparece menos (prob_con < prob_sin, lift < 1). */
   protege?: boolean;
+  /** motor = lo encontró la búsqueda de siempre; hipotesis = lo sospechó la IA y el motor lo verificó. */
+  origen?: 'motor' | 'hipotesis';
+  /** Pasaba antes, pero en los últimos meses ya no se ve. */
+  ya_no?: boolean;
+  /**
+   * Solo en lo que sale de una hipótesis. Con las dos fechas: la relación se ve en ese período. Con `fecha_desde` sola: un
+   * antes y después de esa fecha (prob_con es el después, prob_sin el antes, soporte y dias_causa los días de después).
+   */
+  fecha_desde?: string | null;
+  fecha_hasta?: string | null;
   /** días entre la causa y el efecto (0 = el mismo día) */
   desfase_dias: number;
   /** días en que hubo causa y, desfase días después, efecto */

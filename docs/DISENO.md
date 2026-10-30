@@ -278,12 +278,36 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
        se sale a caminar). Sin los días en que el malestar ya estaba el día de la causa, con al menos 5 días con la
        causa y esperando ver el malestar 3 o más veces. Las medidas no lo necesitan: "menos pasos → dolor" ya lo dice.
      - *Efectos a los dos o tres días*: los desfases 2 y 3 ("a los dos días"); apagados, solo 0 y 1.
+   - **Toda la historia**: se analiza desde el primer dato de la persona (`primerDiaDe`, con un tope de 20 años por si hay
+     una fecha disparatada). Las tablas se cuentan de a bits y las pruebas tienen tope (`CAUSAS_MAX`, `EFECTOS_MAX`,
+     `UMBRALES_MAX`: las de más días, elegidas sin mirar la relación, así que la corrección sigue valiendo). Lo único que sigue
+     mirando un año es el aviso preventivo: corre una vez por hora y solo necesita saber qué pasó hoy.
+   - Un día antes de la primera vez que se anotó algo (o bastante después de la última: `DIAS_SIN_APARECER`) no cuenta como
+     "día sin eso": si no, con años de historia todo lo que empezó a anotarse en la misma época saldría relacionado.
+   - **Ya no se ve** (`yaNoSeVe`): con más de un año de historia, si la causa siguió pasando en los últimos 180 días y el
+     efecto ya no va con ella, o hace más de un año que no se ven juntos, el hallazgo se marca `ya_no`: se avisa en la tarjeta,
+     va más abajo, y no entra al aviso preventivo ni al informe.
+   - El q de las simples se calcula aparte de las combinaciones (cuyos p, elegidos sobre los mismos datos, inflaban los
+     demás). Las combinaciones siguen teniendo falsos positivos en datos al azar: por eso quedan pocas y una por efecto.
 4. Con menos de 14 días anotados no se analiza.
 5. La **IA** (Claude, misma cuenta que Quincho) recibe los mejores 25 candidatos con sus números y devuelve, en JSON con
    esquema: una explicación clara de cada uno con su plausibilidad (marca los que pueden ser casualidad o tener otra
    explicación), un resumen y sugerencias de qué anotar o probar. Si no hay IA, queda un texto armado por el motor.
 6. Los hallazgos se guardan. La persona puede marcar "me pasa" o "no creo"; eso se respeta en los análisis siguientes.
-7. **Aviso preventivo** (`patrones/preventivo.ts`): de 16 a 21 (hora de la persona), una vez por hora, se mira si hoy
+7. **Hipótesis de Patty** (`patrones/hipotesis.ts`): la IA propone, el motor verifica. Una vez por semana por persona (con 60
+   días anotados o más, y el interruptor prendido), después del análisis de la noche:
+   - `patrones/perfil.ts` comprime toda la historia en un texto de hasta 30.000 caracteres (por concepto, por mes, semana y
+     año; cambios bruscos; semanas y días raros), priorizando por relevancia. Sin el nombre de la persona.
+   - `ia/hipotesis.ts` pide hasta 10 hipótesis con esquema estricto: `relacion` (causa → efecto, desfase de 0 a 14 días, en toda
+     la historia o en un período) o `cambio` (antes y después de una fecha). Se recuerda lo ya encontrado, lo ya rechazado y lo
+     que la persona dijo que es obvio o no tiene sentido.
+   - `patrones/verificar.ts` descarta lo que no existe y mide lo demás con las cuentas del motor: Fisher, soporte, lift, y BH
+     entre las probadas contando al menos 10, con q ≤ 0,05. Como la IA vio los datos, una fecha o un período pagan p × semanas de la
+     historia. Un cambio además pide que la causa haya cambiado para el lado dicho y que el efecto se vea también por semana.
+   - Lo que pasa es un hallazgo con `origen = 'hipotesis'`; lo demás queda en la tabla `hipotesis` y no se repropone en 180 días.
+     Lo confirmado se vuelve a medir cada semana y se va si deja de pasar. Si la IA falta o falla, el análisis sigue igual.
+   - Para probarlo a mano (administración): `GET /api/admin/hipotesis/:persona` (perfil, sin gastar) y `POST` (corre ya).
+8. **Aviso preventivo** (`patrones/preventivo.ts`): de 16 a 21 (hora de la persona), una vez por hora, se mira si hoy
    están todas las causas de un patrón firme o confirmado (no descartado ni obvio) que mira a otro día (desfase ≥ 1),
    con los mismos rasgos del motor (`rasgosDelDia`). Si sí, el búho avisa por push ("Hoy se juntaron «Comida frita» y
    «Día de calor»…"), una vez por día por efecto (si varios patrones dan el mismo efecto, el que junta más cosas), y se

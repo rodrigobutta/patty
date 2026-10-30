@@ -7,9 +7,9 @@ import { una } from '../db/client.js';
 import { hallazgos } from '../db/schema.js';
 import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
-import { diaDePatty, esFecha, sumarDias } from '../lib/fechas.js';
+import { diaDePatty, esFecha } from '../lib/fechas.js';
 import { cuerpo, idParam, type Env } from '../lib/http.js';
-import { analizarPersona, listarHallazgos } from '../patrones/analizar.js';
+import { analizarPersona, listarHallazgos, primerDiaDe } from '../patrones/analizar.js';
 import { DIAS_MINIMOS } from '../patrones/motor.js';
 import { preventivosDeHoy, textoPreventivo } from '../patrones/preventivo.js';
 
@@ -19,8 +19,9 @@ export const rutasPatrones = new Hono<Env>()
     const db = c.var.db;
     const p = await persona(db, c.var.usuario, Number(d.persona_id), true);
     const hasta = esFecha(d.hasta) ? d.hasta : diaDePatty(new Date(), p.zona_horaria);
-    const desde = esFecha(d.desde) ? d.desde : sumarDias(hasta, -364);
-    if (desde > hasta || desde < sumarDias(hasta, -730)) throw new ErrorApi('El período tiene que ser de hasta dos años.');
+    // Toda la historia, salvo que se pida un período.
+    const desde = esFecha(d.desde) ? d.desde : await primerDiaDe(db, p.id, hasta);
+    if (desde > hasta) throw new ErrorApi('Período inválido.');
 
     if (d.ia !== false) await controlarLimite(db, c.var.usuario, 'analisis');
     const res = await analizarPersona(db, p, { desde, hasta, idioma: c.var.idioma, ia: d.ia !== false, origen: 'manual' });
@@ -35,7 +36,7 @@ export const rutasPatrones = new Hono<Env>()
       sql`SELECT count(DISTINCT r.fecha)::int AS dias,
                  count(DISTINCT r.fecha) FILTER (WHERE k.rol = 'efecto')::int AS dias_efecto
           FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
-          WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.fecha BETWEEN ${sumarDias(hasta, -364)} AND ${hasta}`,
+          WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND r.fecha <= ${hasta}`,
     );
     const res: Progreso = { dias: r?.dias ?? 0, dias_efecto: r?.dias_efecto ?? 0, minimo: DIAS_MINIMOS, minimo_efecto: 7 };
     return c.json(res);

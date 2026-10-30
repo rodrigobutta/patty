@@ -99,7 +99,7 @@ export const rutasClima = new Hono<Env>()
     const ids = await filas<{ id: number }>(
       c.var.db,
       sql`SELECT h.id FROM hallazgos h
-          WHERE h.persona_id = ${p.id} AND h.estado NOT IN ('descartado', 'obvio') AND (h.estado = 'confirmado' OR h.q_valor <= 0.1)
+          WHERE h.persona_id = ${p.id} AND h.estado NOT IN ('descartado', 'obvio') AND h.fecha_desde IS NULL AND NOT h.ya_no AND (h.estado = 'confirmado' OR h.q_valor <= 0.1)
             AND EXISTS (SELECT 1 FROM conceptos k JOIN categorias g ON g.id = k.categoria_id WHERE g.clave = 'clima'
               AND (k.id = h.causa_id OR k.id IN (SELECT (e->>'id')::int FROM jsonb_array_elements(h.causas_extra) e)))
           ORDER BY h.puntaje DESC LIMIT 3`,

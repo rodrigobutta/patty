@@ -273,7 +273,7 @@ export const rutasAdminDatos = new Hono<Env>()
       await filas(
         c.var.db,
         sql`SELECT h.id, h.persona_id, p.nombre AS persona, ca.nombre AS causa, h.causa_modo, h.causas_extra, ef.nombre AS efecto, h.efecto_modo,
-                   h.umbral, h.protege, h.desfase_dias, h.soporte, h.dias_causa, h.dias_evaluados, h.prob_con, h.prob_sin, h.lift, h.p_valor, h.q_valor,
+                   h.umbral, h.protege, h.origen, h.ya_no, h.fecha_desde, h.fecha_hasta, h.desfase_dias, h.soporte, h.dias_causa, h.dias_evaluados, h.prob_con, h.prob_sin, h.lift, h.p_valor, h.q_valor,
                    h.puntaje, h.explicacion, h.estado, h.analisis_id, h.detectado, h.actualizado
             FROM hallazgos h JOIN personas p ON p.id = h.persona_id JOIN conceptos ca ON ca.id = h.causa_id JOIN conceptos ef ON ef.id = h.efecto_id
             WHERE true ${persona ? sql`AND h.persona_id = ${persona}` : sql``} ${estado ? sql`AND h.estado = ${estado}` : sql``}

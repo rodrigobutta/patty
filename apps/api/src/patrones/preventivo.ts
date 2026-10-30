@@ -38,8 +38,11 @@ export interface Preventivo {
   causas: Causa[];
 }
 
-/** Los patrones que se pueden adelantar: firmes o confirmados, que no se descartaron ni son obvios, y miran a otro día. */
-const FILTRO = sql`h.desfase_dias >= 1 AND (h.estado = 'confirmado' OR (h.estado = 'nuevo' AND h.q_valor <= ${Q_FIRME}))`;
+/**
+ * Los patrones que se pueden adelantar: firmes o confirmados, que no se descartaron ni son obvios, miran a otro día, se siguen
+ * viendo y valen para cualquier fecha (no un antes y después).
+ */
+const FILTRO = sql`h.desfase_dias >= 1 AND h.fecha_desde IS NULL AND NOT h.ya_no AND (h.estado = 'confirmado' OR (h.estado = 'nuevo' AND h.q_valor <= ${Q_FIRME}))`;
 
 /**
  * Los patrones de la persona cuyas causas están todas hoy. Si varios llevan al mismo efecto (el simple y la

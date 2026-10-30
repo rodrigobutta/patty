@@ -4,14 +4,15 @@
 import { sql } from 'drizzle-orm';
 import { esIdioma, traducir, type Idioma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
-import { diaDePatty, minutosDelDia, sumarDias } from '../lib/fechas.js';
+import { diaDePatty, minutosDelDia } from '../lib/fechas.js';
 import { hayEnvio, type Aviso } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
 import { comentarDia } from '../ia/comentar.js';
 import { armarContexto, pendientes } from '../ia/contexto.js';
 import { resumirNoche } from '../ia/resumirNoche.js';
 import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
-import { analizarPersona } from './analizar.js';
+import { analizarPersona, primerDiaDe } from './analizar.js';
+import { correrHipotesis } from './hipotesis.js';
 import { correr, registrarError } from '../lib/salud.js';
 import { guardarFueraDeLoNormal } from './fueraDeLoNormal.js';
 import { avisarSeguimientos } from './seguimientos.js';
@@ -63,7 +64,7 @@ export async function analizarDeNoche(db: Db, ahora = new Date()): Promise<numbe
     if (!enHora(ahora, p.zona_horaria, HORA_ANALISIS)) continue;
     // A las 4 todavía es "ayer" para Patty: el análisis llega hasta el último día completo.
     const hasta = diaDePatty(ahora, p.zona_horaria);
-    const desde = sumarDias(hasta, -364);
+    const desde = await primerDiaDe(db, p.id, hasta);
     const dias = await una<{ n: number }>(
       db,
       sql`SELECT count(DISTINCT fecha)::int AS n FROM registros WHERE persona_id = ${p.id} AND borrado IS NULL AND fecha BETWEEN ${desde} AND ${hasta}`,
@@ -75,6 +76,11 @@ export async function analizarDeNoche(db: Db, ahora = new Date()): Promise<numbe
       const r = await analizarPersona(db, { id: p.id, nombre: p.nombre, zona_horaria: p.zona_horaria, rol: 'dueno' }, { desde, hasta, idioma, ia: true, origen: 'noche' });
       console.log(`Patrones de noche: ${p.nombre} (${p.id}), ${r.hallazgos.length} hallazgos, ${r.nuevos.length} nuevos.`);
       n++;
+      // Las hipótesis de Patty, una vez por semana. Si fallan, lo de recién queda igual.
+      await correrHipotesis(db, { id: p.id, nombre: p.nombre, zona_horaria: p.zona_horaria, rol: 'dueno' }, { hasta, idioma }).catch((e) => {
+        console.error(`Hipótesis: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+        void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Hipótesis: falló la persona ${p.id}` });
+      });
     } catch (e) {
       console.error(`Patrones de noche: falló el análisis de la persona ${p.id}:`, e instanceof Error ? e.message : e);
       void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Patrones de noche: falló el análisis de la persona ${p.id}` });

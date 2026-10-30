@@ -1,5 +1,5 @@
 // Más → Qué patrones buscar: prender o apagar las búsquedas más finas de Patty (umbrales, lo que protege, efectos que
-// llegan a los dos o tres días). Se guarda en la persona: lo respeta el análisis, también el de la madrugada.
+// llegan a los dos o tres días, las hipótesis de Patty). Se guarda en la persona: lo respeta el análisis, también el de la madrugada.
 import { useState } from 'react';
 import { patronesFinos, type PatronFino, type Persona } from 'shared';
 import { api } from '../api';
@@ -24,6 +24,12 @@ const OPCIONES: Array<{ clave: PatronFino; titulo: string; texto: string; ejempl
     titulo: '⏳ Efectos a los dos o tres días',
     texto: 'Buscar lo que se nota recién a los dos o tres días, además del mismo día y el siguiente.',
     ejemplo: 'Por ejemplo: «si comés tomate, a los dos días te duele la cabeza».',
+  },
+  {
+    clave: 'hipotesis',
+    titulo: '🦉 Hipótesis de Patty',
+    texto: 'Una vez por semana Patty mira el resumen de todos tus datos y sospecha cosas. Solo te muestra las que los números confirman.',
+    ejemplo: 'Por ejemplo: «desde que empezaste con el mate, te duele menos la cabeza».',
   },
 ];
 

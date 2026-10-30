@@ -3,6 +3,7 @@
 import { sql } from 'drizzle-orm';
 import { nombreRasgo, patronesFinos, perfilTexto, RELACIONES, traducir, type AjustesPatrones, type RolCategoria, type Hallazgo, type Idioma, type Persona, type ResultadoAnalisis } from 'shared';
 import { filas, una, type Db, type Tx } from '../db/client.js';
+import { sumarDias } from '../lib/fechas.js';
 import { analisis, hallazgos } from '../db/schema.js';
 import { explicarHallazgos } from '../ia/analizar.js';
 import { iaDisponible } from '../ia/cliente.js';
@@ -14,7 +15,8 @@ import { buscarPatrones, claveCausas, describir, DIAS_MINIMOS, type ConceptoInfo
 
 const COLUMNAS = sql`h.id, h.persona_id, h.causa_id, h.efecto_id, ca.nombre AS causa, ef.nombre AS efecto, h.causa_modo, h.efecto_modo,
   ca.tipo_valor AS causa_tipo, ef.tipo_valor AS efecto_tipo,
-  h.umbral, h.protege, ca.unidad AS causa_unidad,
+  h.umbral, h.protege, ca.unidad AS causa_unidad, h.origen, h.ya_no,
+  to_char(h.fecha_desde, 'YYYY-MM-DD') AS fecha_desde, to_char(h.fecha_hasta, 'YYYY-MM-DD') AS fecha_hasta,
   h.desfase_dias, h.soporte, h.dias_causa, h.dias_evaluados, h.prob_con, h.prob_sin, h.lift, h.p_valor, h.q_valor, h.puntaje,
   h.explicacion, h.estado, h.detectado,
   coalesce((SELECT jsonb_agg(jsonb_build_object('nombre', c.nombre, 'tipo', c.tipo_valor, 'modo', e->>'modo'))
@@ -31,6 +33,7 @@ export function listarHallazgos(tx: Tx, personaId: number, ids?: number[]): Prom
           AND NOT (h.umbral IS NOT NULL AND coalesce(pe.patrones->>'umbrales', '') = 'false')
           AND NOT (h.protege AND coalesce(pe.patrones->>'proteccion', '') = 'false')
           AND NOT (h.desfase_dias >= 2 AND coalesce(pe.patrones->>'desfases_largos', '') = 'false')
+          AND NOT (h.origen = 'hipotesis' AND coalesce(pe.patrones->>'hipotesis', '') = 'false')
         ORDER BY (h.estado = 'descartado'), h.puntaje DESC`,
   );
 }
@@ -42,6 +45,25 @@ export interface OpcionesAnalisis {
   /** Si se le pide a la IA que explique (si no, quedan los textos del motor). */
   ia: boolean;
   origen: 'manual' | 'noche';
+}
+
+/** Por si hay algo anotado con una fecha disparatada: más atrás que esto no se mira. */
+const ANIOS_TOPE = 20;
+
+/**
+ * Desde cuándo tiene datos una persona: los patrones miran toda su historia. El motor cuenta de a bits y tiene tope de pruebas
+ * (ver CAUSAS_MAX en motor.ts), así que crece poco con los años.
+ */
+export async function primerDiaDe(db: Db | Tx, personaId: number, hasta: string): Promise<string> {
+  const tope = sumarDias(hasta, -365 * ANIOS_TOPE);
+  const r = await una<{ primero: string | null }>(
+    db,
+    sql`SELECT to_char(least(
+          (SELECT min(fecha) FROM registros WHERE persona_id = ${personaId} AND borrado IS NULL AND fecha >= ${tope}),
+          (SELECT min(fecha) FROM mediciones WHERE persona_id = ${personaId} AND fecha >= ${tope})
+        ), 'YYYY-MM-DD') AS primero`,
+  );
+  return r?.primero && r.primero <= hasta ? r.primero : hasta;
 }
 
 /**
@@ -144,6 +166,11 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
     ...x,
     umbral: x.umbral ?? null,
     protege: x.protege ?? false,
+    ya_no: x.ya_no ?? false,
+    // Si esto lo había sospechado antes Patty y ahora lo encuentra el motor solo, queda como del motor.
+    origen: 'motor' as const,
+    fecha_desde: null,
+    fecha_hasta: null,
     combo: combo(x),
     causa: [{ id: x.causa_id, modo: x.causa_modo }, ...x.causas_extra]
       .map((c) => nombreRasgo(nombre.get(c.id)!, tipo.get(c.id)!, c.modo, idioma, { valor: x.umbral ?? null, unidad: unidad.get(c.id) }))
@@ -183,8 +210,9 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
       .insert(analisis)
       .values({ persona_id: p.id, desde, hasta, dias: r.dias_activos, pares_evaluados: r.pares_evaluados, resumen: ia?.resumen ?? null, sugerencias: ia?.sugerencias ?? [], origen: o.origen })
       .returning({ id: analisis.id });
-    // Los "nuevos" que ya no aparecen se van; los que la persona confirmó o descartó quedan.
-    await tx.execute(sql`DELETE FROM hallazgos WHERE persona_id = ${p.id} AND estado = 'nuevo'`);
+    // Los "nuevos" que ya no aparecen se van; los que la persona confirmó o descartó quedan. Los que salieron de una
+    // hipótesis se vuelven a medir aparte, una vez por semana (patrones/hipotesis.ts).
+    await tx.execute(sql`DELETE FROM hallazgos WHERE persona_id = ${p.id} AND estado = 'nuevo' AND origen = 'motor'`);
     const ids: number[] = [];
     const nuevos: number[] = [];
     for (const [i, x] of conNombres.entries()) {

@@ -61,6 +61,7 @@ export function explicarHallazgos(datos: {
     'cuidarla ("los días que caminás, al día siguiente te duele menos la cabeza"), sin prometer nada. Una causa con ' +
     '"N o más" / "N o menos" es un umbral: el efecto aparece a partir de esa cantidad ("a partir de 3 cafés"); decilo así. ' +
     'Con 2 o 3 días de desfase decí "a los dos días" / "a los tres días". ' +
+    'Los marcados YA NO SE VE se ven en toda la historia pero no en los últimos meses: contalo en pasado ("antes pasaba"). ' +
     '"Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.' +
     (datos.idioma === 'en'
       ? ' La persona usa la app en inglés: escribí el resumen, las explicaciones y las sugerencias en inglés (claro y simple).'
@@ -83,7 +84,7 @@ export function explicarHallazgos(datos: {
     'Candidatos:',
     ...datos.candidatos.map(
       (c, i) =>
-        `${i}. ${c.protege ? 'PROTEGE: ' : ''}${c.causa} → ${c.efecto}, ${c.desfase_dias} día(s) después: ` +
+        `${i}. ${c.ya_no ? 'YA NO SE VE: ' : ''}${c.protege ? 'PROTEGE: ' : ''}${c.causa} → ${c.efecto}, ${c.desfase_dias} día(s) después: ` +
         `${c.soporte} de ${c.dias_causa} días con la causa (${Math.round(c.prob_con * 100)}%) vs ${Math.round(c.prob_sin * 100)}% sin la causa; ` +
         `lift ${c.lift.toFixed(2)}, p ${c.p_valor.toPrecision(2)}, q ${c.q_valor.toPrecision(2)}`,
     ),

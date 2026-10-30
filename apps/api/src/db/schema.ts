@@ -655,6 +655,13 @@ export const hallazgos = pgTable(
     umbral: doublePrecision('umbral'),
     /** Si la causa protege: con ella el efecto (un malestar) aparece menos. */
     protege: boolean('protege').notNull().default(false),
+    /** motor = lo encontró la búsqueda de siempre; hipotesis = lo sospechó la IA y el motor lo verificó (patrones/hipotesis.ts). */
+    origen: text('origen', { enum: ['motor', 'hipotesis'] }).notNull().default('motor'),
+    /** Pasaba antes, pero en los últimos meses ya no se ve. */
+    ya_no: boolean('ya_no').notNull().default(false),
+    /** De una hipótesis: con las dos, la relación se ve en ese período; con `fecha_desde` sola, es un antes y después de esa fecha. */
+    fecha_desde: date('fecha_desde', { mode: 'string' }),
+    fecha_hasta: date('fecha_hasta', { mode: 'string' }),
     desfase_dias: smallint('desfase_dias').notNull(),
     soporte: integer('soporte').notNull(),
     dias_causa: integer('dias_causa').notNull(),
@@ -675,6 +682,50 @@ export const hallazgos = pgTable(
     uniqueIndex('hallazgos_par_idx').on(t.persona_id, t.causa_id, t.causa_modo, t.combo, t.efecto_id, t.efecto_modo, t.desfase_dias),
     index('hallazgos_persona_idx').on(t.persona_id, t.puntaje.desc()),
   ],
+);
+
+/**
+ * Lo que la IA sospechó de los datos de una persona y cómo le fue contra el motor (patrones/hipotesis.ts). Las rechazadas
+ * quedan para no volver a proponerlas; las confirmadas se vuelven a medir cada semana.
+ */
+export const hipotesis = pgTable(
+  'hipotesis',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    /** Qué se afirma, en un orden fijo: la misma hipótesis da siempre la misma clave. */
+    clave: text('clave').notNull(),
+    /** relacion = causa → efecto k días después (en toda la historia o en un período); cambio = antes y después de una fecha. */
+    tipo: text('tipo', { enum: ['relacion', 'cambio'] }).notNull(),
+    causa_id: integer('causa_id')
+      .notNull()
+      .references(() => conceptos.id, { onDelete: 'cascade' }),
+    causa_modo: text('causa_modo', { enum: ['presente', 'alto', 'bajo', 'alto_semana', 'bajo_semana', 'desde', 'hasta'] }).notNull(),
+    efecto_id: integer('efecto_id')
+      .notNull()
+      .references(() => conceptos.id, { onDelete: 'cascade' }),
+    efecto_modo: text('efecto_modo', { enum: ['presente', 'alto', 'bajo', 'alto_semana', 'bajo_semana', 'desde', 'hasta'] }).notNull(),
+    /** Qué hace el efecto: aparece más (sube) o menos (baja). */
+    sentido: text('sentido', { enum: ['sube', 'baja'] }).notNull(),
+    /** En un cambio: qué hace la causa desde esa fecha. */
+    causa_despues: text('causa_despues', { enum: ['sube', 'baja'] }).notNull().default('sube'),
+    desfase_dias: smallint('desfase_dias').notNull().default(0),
+    fecha_desde: date('fecha_desde', { mode: 'string' }),
+    fecha_hasta: date('fecha_hasta', { mode: 'string' }),
+    razon: text('razon').notNull(),
+    estado: text('estado', { enum: ['confirmada', 'rechazada'] }).notNull(),
+    /** Por qué no pasó (pocos datos, no alcanza, la causa no cambió…). */
+    motivo: text('motivo'),
+    p_valor: doublePrecision('p_valor'),
+    q_valor: doublePrecision('q_valor'),
+    lift: doublePrecision('lift'),
+    creado: creado(),
+    /** Cuándo se midió por última vez. */
+    evaluada: instante('evaluada').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('hipotesis_clave_idx').on(t.persona_id, t.clave), index('hipotesis_persona_idx').on(t.persona_id, t.estado, t.evaluada)],
 );
 
 /** Ajustes de toda la app que maneja la administración (por ejemplo, la última versión de la app de Android). */

@@ -8,7 +8,9 @@ import { VERSION } from '../lib/version.js';
 
 /** Cuándo arrancó este servidor (para ver en Salud si se reinició). */
 const ARRANCO = new Date().toISOString();
-import { filas, obtenerDbAdmin, una } from '../db/client.js';
+import { filas, obtenerDbAdmin, una, type Db } from '../db/client.js';
+import { diaDePatty } from '../lib/fechas.js';
+import { correrHipotesis, verHipotesis } from '../patrones/hipotesis.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 import { compararVersiones, limitesDe, PLANES, USOS_IA, type VersionApp } from 'shared';
@@ -22,6 +24,12 @@ import { rutasAdminDatos } from './adminDatos.js';
 /** Los registros de los últimos 14 días, por día, para la rayita de actividad. */
 const ULTIMOS_DIAS = 14;
 
+async function personaParaHipotesis(db: Db, id: number) {
+  const p = await una<{ id: number; nombre: string; zona_horaria: string }>(db, sql`SELECT id, nombre, zona_horaria FROM personas WHERE id = ${id}`);
+  if (!p) throw new ErrorApi('No existe.', 404);
+  return { ...p, rol: 'dueno' as const };
+}
+
 /** Manda un aviso a los teléfonos de esos usuarios (o de todos). Devuelve a cuántos llegó. */
 export const rutasAdmin = new Hono<Env>()
   .use('*', async (c, next) => {
@@ -29,6 +37,16 @@ export const rutasAdmin = new Hono<Env>()
     // Lo del admin va por su propia conexión a la base (db/client.ts: obtenerDbAdmin), aparte de la de la app.
     c.set('db', obtenerDbAdmin());
     await next();
+  })
+  .get('/hipotesis/:persona', async (c) => {
+    // Sin gastar IA: el perfil tal como le llegaría y lo que ya se probó.
+    const p = await personaParaHipotesis(c.var.db, idParam(c, 'persona'));
+    return c.json(await verHipotesis(c.var.db, p, diaDePatty(new Date(), p.zona_horaria)));
+  })
+  .post('/hipotesis/:persona', async (c) => {
+    // Corre el paso de hipótesis ya, sin esperar a la semana (gasta IA). Para probarlo de verdad.
+    const p = await personaParaHipotesis(c.var.db, idParam(c, 'persona'));
+    return c.json(await correrHipotesis(c.var.db, p, { hasta: diaDePatty(new Date(), p.zona_horaria), idioma: c.var.idioma, forzar: true }));
   })
   .get('/beta', async (c) =>
     // Los pedidos de invitación a la beta, los nuevos primero.
