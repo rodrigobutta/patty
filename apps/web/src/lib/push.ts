@@ -138,7 +138,7 @@ export function configurarWidget(personaId: number | null, categoriaAnimo: numbe
 
 const WIDGET_PENDIENTE = 'widget-pendiente';
 /** Los avisos que llevan a una tarjeta del Día (si el Día todavía no está, lo levanta al montarse). */
-export const TIPOS_DEL_DIA = ['paseo', 'malestar', 'actividad', 'seguimiento', 'fuera', 'preventivo'];
+export const TIPOS_DEL_DIA = ['paseo', 'malestar', 'actividad', 'seguimiento', 'fuera', 'preventivo', 'buen_dia'];
 function guardarWidgetPendiente(d: Record<string, string>) {
   try {
     sessionStorage.setItem(WIDGET_PENDIENTE, JSON.stringify(d));

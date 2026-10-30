@@ -1,7 +1,7 @@
 // Lo que llegó solo en el Día, en widgets chicos: un ícono dibujado (el del clima cambia según el día) y un resumen
 // cortito, sin títulos. Cuatro lugares fijos: clima, ubicación, teléfono, sueño y salud. Los que no tienen datos porque
 // falta el permiso van grises (ver FuenteApagada); tocando uno con datos se ve el detalle a lo ancho.
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { IconoCampana, IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
 import type { Categoria, DatoAutomatico, Persona, Registro } from 'shared';
@@ -11,6 +11,7 @@ import { GraficoSueno, ResumenNoche } from './GraficoSueno';
 import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico, type LineaAutomatica } from '../lib/automatico';
 import { appDelUso, useIconosApps } from '../lib/iconosApps';
+import { marcarNocheVista, useAlPedirNoche } from '../lib/buenDia';
 import { locale, t } from '../lib/idioma';
 import { IconoCelular, IconoReuniones, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
 import { WidgetApagado, type Fuente } from './FuenteApagada';
@@ -198,6 +199,8 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
   fecha: string;
 }) {
   const [abierto, setAbierto] = useState<Lugar | null>(null);
+  // El buen día (la tarjeta o el aviso de la mañana) abre la hoja del sueño.
+  useAlPedirNoche(useCallback(() => setAbierto('sueno'), []));
   const grupos = agruparAutomaticos(automaticos);
   const widgets = [
     widgetClima(automaticos, grupos),
@@ -219,6 +222,11 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
         .map((g) => ({ ...g, lineas: g.lineas.filter((l) => (w.lugar === 'pasos' ? deActividad(l.categoria_id) : !deActividad(l.categoria_id))) })),
     };
   });
+  // Abrir la noche cuenta como haber visto el reporte de sueño: la tarjeta del buen día se va.
+  const hayNoche = widgets.some((w) => w?.lugar === 'sueno');
+  useEffect(() => {
+    if (abierto === 'sueno' && hayNoche) marcarNocheVista(persona.id, fecha);
+  }, [abierto, hayNoche, persona.id, fecha]);
   const orden: Lugar[] = ['clima', 'ubicacion', 'pasos', 'telefono', 'reuniones', 'sueno'];
   const celdas = orden.map((l) => ({ l, w: widgets.find((w) => w?.lugar === l) ?? null, apagada: apagadas.find((f) => LUGAR_DE[f] === l) }));
   if (!antes && !celdas.some((c) => c.w || c.apagada)) return null;

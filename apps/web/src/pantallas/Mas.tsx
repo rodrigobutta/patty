@@ -10,6 +10,8 @@ import { agregarWidget } from '../lib/push';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
 import { api, API_BASE } from '../api';
+import { olvidarPreferenciaBuenDia } from './BuenDia';
+import { IconoSueno } from '../ui/IconosWidget';
 import { useEstado } from '../estado';
 import { avisarAnotado, olvidarDeNoche } from '../mascota/cara';
 import { anotarClima, climaActivado, horasRecientes, ponerClima, ubicacion } from '../lib/clima';
@@ -116,18 +118,21 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   // Se guarda en la cuenta (lo manda el servidor), no en el teléfono.
   const [sinAnotar, setSinAnotar] = useState<boolean | null>(null);
   const [preventivo, setPreventivo] = useState<boolean | null>(null);
+  const [buenDia, setBuenDia] = useState<boolean | null>(null);
   // Si cuenta todo a la noche: null = que Patty se dé cuenta sola (`deNocheVisto` es lo que ve en cómo anota).
   const [deNoche, setDeNoche] = useState<{ elegido: boolean | null; visto: boolean } | null>(null);
   useEffect(() => {
-    api<{ avisar_sin_anotar: boolean; avisar_preventivo: boolean; cuenta_de_noche: boolean | null; de_noche: boolean }>('GET', '/api/usuarios/yo/preferencias')
+    api<{ avisar_sin_anotar: boolean; avisar_preventivo: boolean; avisar_buen_dia?: boolean; cuenta_de_noche: boolean | null; de_noche: boolean }>('GET', '/api/usuarios/yo/preferencias')
       .then((r) => {
         setSinAnotar(r.avisar_sin_anotar);
         setPreventivo(r.avisar_preventivo);
+        setBuenDia(r.avisar_buen_dia !== false);
         setDeNoche({ elegido: r.cuenta_de_noche, visto: r.de_noche });
       })
       .catch(() => {
         setSinAnotar(true);
         setPreventivo(true);
+        setBuenDia(true);
       });
   }, []);
   const cambiarDeNoche = async (elegido: boolean | null) => {
@@ -155,6 +160,16 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
       await api('PUT', '/api/usuarios/yo/preferencias', { avisar_preventivo: si });
     } catch (e) {
       setPreventivo(!si);
+      setError((e as Error).message);
+    }
+  };
+  const cambiarBuenDia = async (si: boolean) => {
+    setBuenDia(si);
+    olvidarPreferenciaBuenDia();
+    try {
+      await api('PUT', '/api/usuarios/yo/preferencias', { avisar_buen_dia: si });
+    } catch (e) {
+      setBuenDia(!si);
       setError((e as Error).message);
     }
   };
@@ -297,6 +312,14 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           <span>{t('Si hoy se juntan las cosas de uno de mis patrones, que Patty me avise a la tarde para poder prevenirlo.')}</span>
         </label>
         <p className="suave chico">{t('Un aviso por día como mucho para cada cosa, y también se ve en el Día.')}</p>
+      </div>
+      <div className="tarjeta ajuste-buen-dia">
+        <h3><IconoSueno />{t('Buen día con tu noche')}</h3>
+        <label className="opcion">
+          <input type="checkbox" checked={buenDia ?? true} disabled={buenDia === null} onChange={(e) => void cambiarBuenDia(e.target.checked)} />
+          <span>{t('Recibir mensaje de buen día con reporte de sueño')}</span>
+        </label>
+        <p className="suave chico">{t('A la mañana, apenas llega tu noche del reloj, Patty te avisa cuánto dormiste y la nota de la noche. También se ve en el Día hasta el mediodía.')}</p>
       </div>
       {deNoche ? (
         <div className="tarjeta">

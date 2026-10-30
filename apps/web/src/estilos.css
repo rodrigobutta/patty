@@ -1036,6 +1036,11 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .comentario-patty { display: flex; gap: 12px; align-items: flex-start; border-color: color-mix(in srgb, var(--acento) 35%, var(--borde));
   background: linear-gradient(135deg, var(--acento-suave), var(--panel)); animation: entra-comentario 0.4s cubic-bezier(.2, 1.2, .4, 1); }
 .emoji-comentario { font-size: 30px; line-height: 1; }
+/* El buen día: el ícono dibujado del sueño en lugar de un emoji. */
+.buen-dia .emoji-comentario svg { width: 36px; height: 36px; display: block; }
+.buen-dia .pie-comentario { gap: 8px; }
+.ajuste-buen-dia h3 { display: flex; align-items: center; gap: 6px; }
+.ajuste-buen-dia h3 svg { width: 26px; height: 26px; }
 .cuerpo-comentario { flex: 1; min-width: 0; }
 .cuerpo-comentario p { margin: 0 0 8px; font-size: 15px; line-height: 1.4; }
 .pie-comentario { display: flex; align-items: center; gap: 6px; }

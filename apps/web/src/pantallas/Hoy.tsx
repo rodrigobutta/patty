@@ -26,6 +26,8 @@ import { GloboDelBuho } from './GloboDelBuho';
 import { ComentarioDelDia, FueraDeLoNormal } from './ComentariosDePatty';
 import { RutinasDelDia } from './RutinasDelDia';
 import { AvisoPreventivo } from './AvisoPreventivo';
+import { BuenDia } from './BuenDia';
+import { abrirNoche } from '../lib/buenDia';
 import { TarjetaSemana } from './Semanas';
 import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
@@ -247,6 +249,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
     (tipo: string) => {
       setFecha(hoyEn(persona.zona_horaria));
       void traer();
+      // El buen día: además de ir al Día de hoy, abre la hoja del sueño.
+      if (tipo === 'buen_dia') abrirNoche();
       const sel = { paseo: '.paseo-pendiente', malestar: '.malestares-abiertos', actividad: '.malestares-abiertos', seguimiento: '.seguimiento-dia', fuera: '.fuera-de-lo-normal', preventivo: '.aviso-preventivo' }[tipo];
       if (!sel) return;
       let intentos = 0;
@@ -533,6 +537,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       ) : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
         <PreguntaDespertar persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
+      ) : null}
+      {/* A la mañana, con la noche del reloj ya llegada: el reporte de sueño (se va al abrirlo o al mediodía). */}
+      {fecha === hoy && !persona.supervisada ? (
+        <BuenDia persona={persona} hoy={hoy} hayNoche={automaticos.some((d) => d.tipo_fuente === 'reloj' && d.concepto === 'Horas de sueño')} />
       ) : null}
       {fecha === hoy ? <AvisoPreventivo persona={persona} hoy={hoy} /> : null}
       {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
