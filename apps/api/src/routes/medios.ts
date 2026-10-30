@@ -51,7 +51,21 @@ export const rutasMedios = new Hono<Env>()
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const fecha = c.req.query('fecha');
     if (!esFecha(fecha)) throw new ErrorApi('Falta el día.');
-    return c.json(await sesionesDelDia(c.var.db, p.id, fecha));
+    const sesiones = await sesionesDelDia(c.var.db, p.id, fecha);
+    // El género de la música, por los artistas que más sonaron en cada sesión (la búsqueda queda guardada un mes).
+    for (const s of sesiones) {
+      if (s.tipo !== 'musica') continue;
+      const minutos = new Map<string, number>();
+      for (const x of s.pistas) if (x.artista) minutos.set(x.artista, (minutos.get(x.artista) ?? 0) + x.minutos);
+      const artistas = [...minutos.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([a]) => a);
+      const generos: string[] = [];
+      for (const a of artistas) {
+        const g = generoDeItunes((await buscarMedios(c.var.db, 'musica', a).catch(() => []))[0]?.genero);
+        if (g && !generos.includes(g)) generos.push(g);
+      }
+      s.generos = generos;
+    }
+    return c.json(sesiones);
   })
   .delete('/escuchas', async (c) => {
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), true);

@@ -197,6 +197,8 @@ export interface SesionEscucha {
   minutos: number;
   apps: string[];
   pistas: Array<{ titulo: string; artista: string; album: string; app: string; inicio: number; minutos: number }>;
+  /** Los géneros de lo que más sonó (en la música, buscados por artista en iTunes): "Rock", "Tango"… */
+  generos?: string[];
 }
 
 /** Hasta cuánto corte (en minutos) se sigue en la misma sesión. */

@@ -3,14 +3,16 @@
 // cómo está ("sigue · 3 h 12 min" o "terminó · 1 h 05"). Tocando la fila se resuelve ahí: un malestar, ya se me pasó /
 // mejor / igual / peor; una actividad, terminé (a la hora que vio la ubicación, o recién) / sigo; lo terminado, editar.
 // Lo que sigue abierto desde otro día también aparece (entra por la izquierda).
-import { IconoCategoria } from '../ui/IconosPatty';
+import { IconoCategoria, IconoMedio } from '../ui/IconosPatty';
 import { IconoLapiz } from '../ui/Iconos';
 import { useEffect, useState } from 'react';
-import type { Categoria, Persona, Registro } from 'shared';
+import type { Categoria, Persona, Registro, SesionEscucha } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { medir } from '../lib/analytics';
 import { duracion } from '../lib/automatico';
+import { borrarEscuchas } from '../lib/escuchas';
+import { NOMBRE_ESCUCHA, principal } from './EscuchasDelDia';
 import { horaEn, instanteDelDia } from '../lib/fechas';
 import { t } from '../lib/idioma';
 import { useMinuto } from '../lib/reloj';
@@ -41,17 +43,36 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
     api<Registro[]>('GET', `/api/registros/abiertos?persona=${persona.id}`).then(setAbiertos).catch(() => {});
   }, [persona.id, fecha, hoy, vuelta, cada10]);
 
+  // Lo que sonó en el teléfono (música, podcasts, videos): una fila más por tipo, al final y cerrada; al tocarla, las
+  // sesiones con lo que más sonó y sus géneros.
+  const [escuchas, setEscuchas] = useState<SesionEscucha[]>([]);
+  const [escuchaAbierta, setEscuchaAbierta] = useState<SesionEscucha['tipo'] | null>(null);
+  useEffect(() => {
+    api<SesionEscucha[]>('GET', `/api/medios/escuchas?persona=${persona.id}&fecha=${fecha}`).then(setEscuchas).catch(() => setEscuchas([]));
+  }, [persona.id, fecha, vuelta, cada10]);
+
   const delDia = registros.filter(
     (r) => (r.categoria_id === sintoma && r.intensidad !== null && (r.fin || r.abierto || r.evolucion?.length)) || (r.categoria_id === actividad && (r.fin || r.abierto)),
   );
   const lista = [...delDia, ...abiertos.filter((a) => !delDia.some((r) => r.id === a.id))].sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio));
-  if (!lista.length) return null;
+  if (!lista.length && !escuchas.length) return null;
 
   // El día de Patty va de 5 a 5.
   const a = Date.parse(instanteDelDia(fecha, '05:00', persona.zona_horaria));
   const b = a + 24 * 3600000;
   const x = (ms: number) => `${Math.max(0, Math.min(100, ((ms - a) / (b - a)) * 100))}%`;
   const marcas = [8, 12, 16, 20, 24].map((h) => ({ h, ms: a + (h - 5) * 3600000 }));
+
+  const borrarTodoLoEscuchado = async () => {
+    if (!confirm(t('¿Borrar todo lo que Patty anotó que escuchaste o miraste en el teléfono? No se puede deshacer.'))) return;
+    try {
+      await borrarEscuchas(persona.id);
+      setEscuchas([]);
+      avisar(t('Borrado'));
+    } catch (e) {
+      avisar((e as Error).message);
+    }
+  };
 
   const responder = async (r: Registro, estado: Estado, fin?: string) => {
     setTocada(null);
@@ -148,6 +169,48 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
                     ) : null}
                     <button className="btn chico" onClick={() => { setTocada(null); alEditar(r); }}><IconoLapiz tamano={16} /> {t('Editar')}</button>
                   </div>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+        {(['musica', 'podcast', 'video'] as const).map((tipo) => {
+          const ses = escuchas.filter((s) => s.tipo === tipo);
+          if (!ses.length) return null;
+          const minutos = ses.reduce((n, s) => n + s.minutos, 0);
+          const abierta = escuchaAbierta === tipo;
+          const generos = [...new Set(ses.flatMap((s) => s.generos ?? []))];
+          return (
+            <div key={tipo} className={`gantt-item escucha${abierta ? ' abierta' : ''}`}>
+              <button className="gantt-fila tocable-gantt escucha" onClick={() => setEscuchaAbierta(abierta ? null : tipo)} aria-expanded={abierta}>
+                <span className="gantt-nombre">
+                  <span className="chico"><IconoMedio tipo={tipo === 'video' ? 'tele' : tipo} tamano={14} /> {t(NOMBRE_ESCUCHA[tipo])}</span>
+                  <span className="gantt-estado">{duracion(minutos)}{generos.length ? ` · ${generos.slice(0, 2).map((g) => t(g)).join(', ')}` : ''}</span>
+                </span>
+                <span className="gantt-pista">
+                  {marcas.map((m) => <span key={m.h} className="gantt-tick" style={{ left: x(m.ms) }} aria-hidden />)}
+                  {fecha === hoy ? <span className="gantt-ahora" style={{ left: x(ahora) }} aria-hidden /> : null}
+                  {ses.map((s) => (
+                    <span key={s.inicio} className="gantt-barra escucha" style={{ left: x(s.inicio), width: `max(3px, calc(${x(s.fin)} - ${x(s.inicio)}))` }} />
+                  ))}
+                </span>
+              </button>
+              {abierta ? (
+                <div className="gantt-acciones escuchas-detalle">
+                  {ses.map((s) => (
+                    <div key={s.inicio} className="escucha-sesion">
+                      <span className="suave chico">
+                        {horaEn(new Date(s.inicio).toISOString(), persona.zona_horaria)}–{horaEn(new Date(s.fin).toISOString(), persona.zona_horaria)} · {duracion(s.minutos)} · {s.apps.join(', ')}
+                      </span>
+                      <span>{principal(s)}</span>
+                      {s.generos?.length ? (
+                        <span className="chips envolver">
+                          {s.generos.map((g) => <span key={g} className="chip chico">{t(g)}</span>)}
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                  <button className="enlace chico" onClick={() => void borrarTodoLoEscuchado()}>{t('Borrar todo lo escuchado')}</button>
                 </div>
               ) : null}
             </div>

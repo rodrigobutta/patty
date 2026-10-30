@@ -11,10 +11,10 @@ import { horaEn } from '../lib/fechas';
 import { t } from '../lib/idioma';
 import { IconoMedio } from '../ui/IconosPatty';
 
-const NOMBRE: Record<SesionEscucha['tipo'], string> = { musica: 'Música', podcast: 'Podcasts', video: 'Series y videos' };
+export const NOMBRE_ESCUCHA: Record<SesionEscucha['tipo'], string> = { musica: 'Música', podcast: 'Podcasts', video: 'Series y videos' };
 
 /** Lo principal de una sesión: los artistas que más sonaron (en la música) o los títulos. */
-function principal(s: SesionEscucha): string {
+export function principal(s: SesionEscucha): string {
   const cuenta = new Map<string, number>();
   for (const p of s.pistas) {
     const k = (s.tipo === 'musica' ? p.artista : p.titulo) || p.titulo;
@@ -61,7 +61,7 @@ export function EscuchasDelDia({ persona, fecha, vuelta }: { persona: Persona; f
             <span className="icono"><IconoMedio tipo={s.tipo === 'video' ? 'tele' : s.tipo} /></span>
             <span className="que">
               <span className="frase">
-                <span className="frase-que">{t(NOMBRE[s.tipo])}</span> <span className="frase-cant">{duracion(s.minutos)}</span>
+                <span className="frase-que">{t(NOMBRE_ESCUCHA[s.tipo])}</span> <span className="frase-cant">{duracion(s.minutos)}</span>
               </span>
               <span className="frase-extra">{[principal(s), s.apps.join(', ')].filter(Boolean).join(' · ')}</span>
               {abierta === i ? (

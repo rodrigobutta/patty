@@ -1625,3 +1625,8 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 /* Personas guardadas: qué es cada una (familia, trabajo…). */
 .relacion-gente { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 10px; border: 1px solid var(--borde); background: var(--panel); color: var(--texto); max-width: 120px; }
 .relacion-gente.sin { color: var(--acento); border-style: dashed; }
+/* La música (y lo que se miró) en la línea del día: al final, más suave, con sus sesiones al tocarla. */
+.gantt-fila.escucha .gantt-nombre .chico { display: inline-flex; align-items: center; gap: 4px; }
+.gantt-barra.escucha { background: color-mix(in srgb, var(--acento) 35%, transparent); border-radius: 4px; }
+.escuchas-detalle { display: flex; flex-direction: column; gap: 10px; }
+.escucha-sesion { display: flex; flex-direction: column; gap: 3px; }
