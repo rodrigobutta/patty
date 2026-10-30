@@ -60,7 +60,7 @@ export function GloboDelBuho({ visible, texto, alTocar }: { visible: boolean; te
   return createPortal(
     <button
       className={`globo-buho${mostrar && !abajo ? ' visible' : ''}`}
-      style={{ left: pos.x + 8, top: pos.y + 4 }}
+      style={{ right: Math.max(8, window.innerWidth - pos.x - 8), top: pos.y + 4 }}
       onClick={alTocar}
       tabIndex={mostrar && !abajo ? 0 : -1}
       aria-hidden={!(mostrar && !abajo)}

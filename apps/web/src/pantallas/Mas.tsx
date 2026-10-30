@@ -10,6 +10,7 @@ import { agregarWidget } from '../lib/push';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CLAVES_SYNC, leerUltimaVez, UltimaVez } from '../ui/UltimaVez';
 import { api, API_BASE } from '../api';
+import { Avatar } from '../ui/Avatar';
 import { actualizarAhora } from '../lib/actualizar';
 import { olvidarPreferenciaBuenDia } from './BuenDia';
 import { IconoSueno } from '../ui/IconosWidget';
@@ -501,6 +502,16 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
           <div className="velo" onClick={() => { setPermisos(false); setGuia(undefined); }} />
           <Permisos key={guia ?? 'todos'} persona={persona} guia={guia} alTerminar={() => { setPermisos(false); setGuia(undefined); }} />
         </>
+      ) : null}
+      {/* Tu foto y tu nombre: tocándolos, tu cuenta. */}
+      {usuario ? (
+        <button className="cabeza-mas" onClick={() => setSeccion('cuenta')}>
+          <Avatar foto={usuario.foto} nombre={usuario.apodo || usuario.nombre} tamano={52} />
+          <span className="que">
+            <strong>{usuario.apodo || usuario.nombre}</strong>
+            <span className="suave chico">{t('Tu cuenta')}</span>
+          </span>
+        </button>
       ) : null}
       <ul className="menu-mas">
         {opciones.filter((o) => o.ver !== false).map((o) => (

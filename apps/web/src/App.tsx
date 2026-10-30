@@ -28,7 +28,6 @@ import { idioma } from './lib/idioma';
 import { Hoy } from './pantallas/Hoy';
 import { Mas } from './pantallas/Mas';
 import { NuevaPersona } from './pantallas/NuevaPersona';
-import { Avatar } from './ui/Avatar';
 import { CartelVersion } from './ui/CartelVersion';
 import { CartelActualizar } from './ui/CartelActualizar';
 import { Tour } from './ui/Tour';
@@ -180,12 +179,6 @@ export function App() {
   return (
     <div className="app">
       <header className="barra">
-        {/* El búho grande a la izquierda: cambia de cara (contento, esperando, con sueño…), se mueve y "dice" los puntos. */}
-        {propia ? (
-          <PuntosDelDia persona={propia} cara={cara} alTocarBuho={() => { setPestana('hoy'); pedirSentir(); }} />
-        ) : (
-          <button className="marca" onClick={() => { setPestana('hoy'); pedirSentir(); }} aria-label={t('Patty: contale cómo te sentís')}>Patty</button>
-        )}
         {personas.length > 1 ? (
           <select className="persona" value={persona.id} onChange={(e) => elegirPersona(Number(e.target.value))} aria-label={t('Persona')}>
             {personas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -194,11 +187,12 @@ export function App() {
           // Con una sola persona no hace falta decir de quién es el día: queda más aire.
           <span className="persona" aria-hidden />
         )}
-        {sesion?.usuario ? (
-          <button className="btn-avatar" onClick={() => setPestana('mas')} aria-label={t('Tu cuenta')}>
-            <Avatar foto={sesion.usuario.foto} nombre={sesion.usuario.apodo || sesion.usuario.nombre} tamano={32} />
-          </button>
-        ) : null}
+        {/* El búho grande a la derecha (a la izquierda quedan libres las flechas del día): cambia de cara (contento, esperando, con sueño…), se mueve y "dice" los puntos. */}
+        {propia ? (
+          <PuntosDelDia persona={propia} cara={cara} alTocarBuho={() => { setPestana('hoy'); pedirSentir(); }} />
+        ) : (
+          <button className="marca" onClick={() => { setPestana('hoy'); pedirSentir(); }} aria-label={t('Patty: contale cómo te sentís')}>Patty</button>
+        )}
       </header>
       <CartelVersion app={sesion?.app} />
       <CartelActualizar />
