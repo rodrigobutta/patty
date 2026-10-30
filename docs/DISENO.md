@@ -311,6 +311,20 @@ saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), crea
 - Sesión con cookie en la web, y el mismo token como `Authorization: Bearer` para la app con Capacitor (que corre en
   otro origen y no puede usar la cookie).
 
+## Servicios (MODO)
+
+La misma imagen arranca en un modo según la variable `MODO` (`apps/api/src/config.ts`), uno por servicio de Railway:
+- sin `MODO` (`completo`): todo junto, como al principio.
+- `app` (patty.today, app.patty.today, api.patty.today): la app y su API; aplica las migraciones. No corre procesos ni
+  tiene la administración (`/admin` lleva a `URL_ADMIN`, por defecto https://admin.patty.today).
+- `admin` (admin.patty.today): solo la página de la administración (`apps/web/admin/index.html`, su propio paquete) con
+  su pantalla para entrar (usuario y clave de un administrador), `/api/admin` y `/api/usuarios`.
+- `worker`: solo los procesos que corren solos (`patrones/noche.ts`, `push/recordatorios.ts`, `push/versionApp.ts`). Su
+  HTTP solo contesta `/api/sesion` para el chequeo de Railway. Corre en un único servicio: así nada se manda dos veces.
+Cada modo tiene su propio tamaño de conexiones a la base (app 10, worker 4, admin 2 + 3 para las consultas del admin,
+con 30 s como máximo por consulta). Ojo: con `MODO=app` en el servicio web tiene que haber un worker andando, si no
+nadie corre los procesos.
+
 ## Administración → Datos
 
 Para auditar qué tan bien se guardan los datos y corregirlos (solo administradores, `/api/admin/datos/*`,

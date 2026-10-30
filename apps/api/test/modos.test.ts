@@ -30,3 +30,13 @@ describe('servidores separados (MODO)', () => {
     expect(r.headers.get('Location')).toBe('https://admin.patty.today');
   });
 });
+
+describe('worker', () => {
+  it('su HTTP solo dice que está vivo', async () => {
+    const { appWorker } = await import('../src/app.js');
+    const r = await appWorker().request('/api/sesion');
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ worker: true });
+    expect((await appWorker().request('/api/personas')).status).toBe(404);
+  });
+});

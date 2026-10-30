@@ -11,12 +11,17 @@ export const config = {
     return env('DATABASE_URL') ?? 'postgres://localhost/patty';
   },
   /**
-   * Qué sirve este servidor: `completo` (todo, como siempre), `app` (la app y su API, sin la administración) o `admin`
-   * (solo la administración y su API, sin los procesos que corren solos: eso lo hace el de la app).
+   * Qué hace este servidor (cada servicio de Railway arranca la misma imagen con su MODO):
+   * - `completo`: todo junto, como siempre (sin MODO).
+   * - `app`: la app y su API, sin la administración ni los procesos que corren solos (atiende pedidos y nada más).
+   * - `admin`: solo la administración y su API.
+   * - `worker`: solo los procesos que corren solos (patrones de noche, resúmenes, avisos, limpieza); su HTTP es solo
+   *   para que Railway sepa que está vivo.
+   * Las migraciones las aplica el de la app (o el completo).
    */
-  get modo(): 'completo' | 'app' | 'admin' {
+  get modo(): 'completo' | 'app' | 'admin' | 'worker' {
     const m = env('MODO');
-    return m === 'app' || m === 'admin' ? m : 'completo';
+    return m === 'app' || m === 'admin' || m === 'worker' ? m : 'completo';
   },
   /** Dónde está la administración cuando corre aparte (para mandar ahí a quien entra a /admin en la app). */
   get urlAdmin() {

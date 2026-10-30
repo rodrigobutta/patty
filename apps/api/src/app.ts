@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { esIdioma, idiomaDe, traducir, type Idioma } from 'shared';
 import { config } from './config.js';
+import { VERSION } from './lib/version.js';
 import { obtenerDb } from './db/client.js';
 import { registrarError } from './lib/salud.js';
 import { conUso } from './lib/usoIa.js';
@@ -99,6 +100,11 @@ function idiomaDelPedido(x: string | undefined, accept: string | undefined): Idi
 
 /** El APK de la última versión (`gh release create vX.Y.Z patty.apk`). */
 export const APK_ANDROID = 'https://github.com/rodrigobutta/patty/releases/latest/download/patty.apk';
+
+/** El HTTP del worker: solo para que Railway vea que está vivo (y en qué versión). */
+export function appWorker(): Hono {
+  return new Hono().get('/api/sesion', (c) => c.json({ worker: true, version: VERSION })).all('*', (c) => c.json({ error: 'worker' }, 404));
+}
 
 export function crearApp(modo = config.modo): Hono<Env> {
   const app = new Hono<Env>();

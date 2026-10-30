@@ -1,6 +1,6 @@
 // Arranque del servidor: migraciones, datos iniciales y HTTP.
 import { serve } from '@hono/node-server';
-import { crearApp } from './app.js';
+import { appWorker, crearApp } from './app.js';
 import { config } from './config.js';
 import { obtenerDb } from './db/client.js';
 import { aplicarMigraciones } from './db/migrar.js';
@@ -11,10 +11,15 @@ import { arrancarVersionApp } from './push/versionApp.js';
 import { recalcularSiCambio } from './routes/ubicacion.js';
 
 const db = obtenerDb();
-// El servidor de la administración (MODO=admin) no migra ni corre los procesos: de eso se encarga el de la app.
-if (config.modo !== 'admin') {
+const modo = config.modo;
+// Las migraciones y los datos iniciales, en el servidor que atiende la app (los otros arrancan con la base ya al día).
+if (modo === 'completo' || modo === 'app') {
   await aplicarMigraciones(db);
   await inicializar(db);
+}
+// Los procesos que corren solos, en un único servidor (el worker, o el completo): así nada se corre dos veces y la app
+// solo atiende pedidos.
+if (modo === 'completo' || modo === 'worker') {
   arrancarRecordatorios(db);
   arrancarPatronesDeNoche(db);
   arrancarVersionApp(db);
@@ -22,6 +27,6 @@ if (config.modo !== 'admin') {
   void recalcularSiCambio(db, 'viajes-sin-saltos-3').catch((e) => console.error('Recalcular ubicación:', e));
 }
 
-serve({ fetch: crearApp().fetch, port: config.port, hostname: config.host }, (info) => {
+serve({ fetch: (modo === 'worker' ? appWorker() : crearApp()).fetch, port: config.port, hostname: config.host }, (info) => {
   console.log(`Patty (${config.modo}) funcionando en http://localhost:${info.port}`);
 });

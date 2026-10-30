@@ -13,7 +13,9 @@ let db: Db | undefined;
 
 export function obtenerDb(): Db {
   if (!db) {
-    cliente = postgres(config.databaseUrl, { max: 10, onnotice: () => {} });
+    // Cada servicio con su propio tamaño: la app atiende pedidos (10), el worker corre de a un proceso (4), el admin poco (2).
+    const max = { completo: 10, app: 10, worker: 4, admin: 2 }[config.modo];
+    cliente = postgres(config.databaseUrl, { max, onnotice: () => {} });
     db = drizzle(cliente, { schema });
   }
   return db;
