@@ -246,8 +246,23 @@ export interface Viaje {
   lento_min?: number;
 }
 
-/** Entre dos puntos de un mismo viaje no pasa más que esto (ver puntosDeMovimiento: en movimiento, uno cada ~150 m). */
-const CONTINUO_MIN = 20;
+/**
+ * Una parada en un lugar sin nombre: desde este rato entre dos puntos, sin haberse movido en serio (ver seSiguioMoviendo).
+ * Las paradas en lugares con nombre van aparte (ver paradasEnLugares).
+ */
+const PARADA_VIAJE_MIN = 10;
+/** En una vuelta a pie, entre dos puntos seguidos no pasa más que esto. */
+const CONTINUO_PASEO_MIN = 20;
+/** Más rápido que esto de un punto al otro, por más rato que haya entre medio: no paró, se perdieron los puntos. */
+const SIGUIO_KMH = 8;
+/** Más hueco que esto entre dos puntos ya no se une: no se sabe qué pasó (fue y volvió, durmió en otro lado…). */
+const HUECO_MAX_MIN = 120;
+
+/** Si entre dos puntos alejados en el tiempo siguió viajando: el teléfono dejó de mandar, pero no se quedó en un lugar. */
+function seSiguioMoviendo(a: Punto, b: Punto): boolean {
+  const min = (b.instante - a.instante) / 60000;
+  return min <= HUECO_MAX_MIN && distanciaMetros(a, b) / 1000 / (min / 60) >= SIGUIO_KMH;
+}
 /** Menos que esto entre dos puntos es el GPS que tiembla, no un movimiento. */
 const TRAMO_M = 60;
 /** Un viaje es de al menos esto (las vueltas cortas no cuentan). */
@@ -295,8 +310,9 @@ const CAMINANDO_KMH = 7;
 
 /**
  * Los viajes del día con los puntos de movimiento (uno cada ~150 m al moverse, o al entrar o salir de un lugar): puntos
- * seguidos en movimiento, sin quedarse en ningún lado en el medio. Si entre un punto y el siguiente pasaron más de 20
- * minutos, o si se quedó en un lugar con nombre (llegó a casa, al súper), ahí hubo una parada y empieza otro viaje.
+ * seguidos en movimiento, sin quedarse en ningún lado en el medio. Solo hay parada, y empieza otro viaje, si se quedó en
+ * un lugar con nombre (llegó a casa, al súper) o estuvo 10 minutos o más en cualquier otro lado. Un semáforo o un rato
+ * sin puntos mientras seguía andando no cortan.
  * Así un viaje de 10 km en auto es uno solo. Las vueltas a pie que terminan donde empezaron (sacar al perro) son
  * caminatas, no viajes: no se cuentan. La salida es aproximada (el primer punto ya es en camino).
  */
@@ -310,7 +326,8 @@ export function viajesDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
     const a = orden[i - 1];
     const b = orden[i];
     const d = distanciaMetros(a, b);
-    const largo = b.instante - a.instante > CONTINUO_MIN * 60000;
+    // Un viaje se corta solo en un lugar con nombre (parado) o después de 10 minutos quieto en cualquier otro lado.
+    const largo = b.instante - a.instante >= PARADA_VIAJE_MIN * 60000 && !seSiguioMoviendo(a, b);
     const seguido = actual !== null && actual.fin === a.instante && !largo && !parado[i - 1];
     if (d < TRAMO_M) {
       // Un punto cerca del anterior es que cruzó el borde de un lugar: no corta lo que venía.
@@ -430,7 +447,7 @@ export function paseosDelDia(puntosDia: Punto[], lugares: LugarZona[] = []): Via
     const a = orden[i - 1];
     const b = orden[i];
     const d = distanciaMetros(a, b);
-    const largo = b.instante - a.instante > CONTINUO_MIN * 60000;
+    const largo = b.instante - a.instante > CONTINUO_PASEO_MIN * 60000;
     const seguido = actual !== null && actual.fin === a.instante && !largo && !parado[i - 1];
     if (d < TRAMO_M) {
       // Un punto cerca del anterior es que cruzó el borde de un lugar: no corta lo que venía.

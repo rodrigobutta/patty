@@ -199,6 +199,47 @@ describe('viajes del día', () => {
     expect(adivinarViaje(2, 30).modo).toBe('caminando');
   });
 
+  it('un viaje se corta solo en un lugar con nombre o tras 10 minutos quieto; un semáforo o puntos perdidos no lo cortan', async () => {
+    const { viajesDelDia } = await import('../src/ubicacion/resumen.js');
+    const m = (n: number) => Date.parse('2026-10-20T12:00:00Z') + n * 60000;
+    // Semáforo: 3 minutos sin moverse en el medio.
+    expect(viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.61, lon: -58.4, instante: m(3) },
+      { lat: -34.61, lon: -58.4, instante: m(6) },
+      { lat: -34.62, lon: -58.4, instante: m(9) },
+    ])).toHaveLength(1);
+    // 12 minutos parado en un lugar cualquiera: son dos viajes.
+    expect(viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.62, lon: -58.4, instante: m(5) },
+      { lat: -34.6205, lon: -58.4, instante: m(17) },
+      { lat: -34.64, lon: -58.4, instante: m(22) },
+    ])).toHaveLength(2);
+    // El teléfono dejó de mandar 40 minutos pero hizo 20 km: siguió viajando, es uno solo y dura todo eso.
+    const seguido = viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.61, lon: -58.4, instante: m(2) },
+      { lat: -34.79, lon: -58.4, instante: m(42) },
+      { lat: -34.8, lon: -58.4, instante: m(44) },
+    ]);
+    expect(seguido).toHaveLength(1);
+    expect((seguido[0].fin - seguido[0].inicio) / 60000).toBe(44);
+    // Pasar por un lugar con nombre sin quedarse no corta; quedarse sí.
+    const lugar = [{ id: 1, lat: -34.62, lon: -58.4, radio_m: 150 }];
+    expect(viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.62, lon: -58.4, instante: m(4) },
+      { lat: -34.64, lon: -58.4, instante: m(6) },
+    ], lugar)).toHaveLength(1);
+    expect(viajesDelDia([
+      { lat: -34.6, lon: -58.4, instante: m(0) },
+      { lat: -34.62, lon: -58.4, instante: m(4) },
+      { lat: -34.6201, lon: -58.4, instante: m(9) },
+      { lat: -34.64, lon: -58.4, instante: m(14) },
+    ], lugar)).toHaveLength(2);
+  });
+
   it('tráfico: los tramos a paso de hombre y lo que tarda habitualmente ese recorrido', async () => {
     const { viajesDelDia, minutosHabituales, huboTrafico } = await import('../src/ubicacion/resumen.js');
     const dia = (d: number) => (min: number) => Date.parse('2026-10-20T12:00:00Z') + d * 86400000 + min * 60000;
