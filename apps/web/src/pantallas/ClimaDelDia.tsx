@@ -4,8 +4,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { nombreRasgo, type DatoAutomatico, type Hallazgo, type Persona } from 'shared';
 import { api } from '../api';
+import { useEstado } from '../estado';
 import { idioma, locale, t } from '../lib/idioma';
+import { placaDeClima } from '../lib/placas';
 import { Mascota } from '../mascota/Mascota';
+import { BotonCompartir } from '../ui/HojaCompartir';
 
 type Contexto = { maxima_semana: number | null; maxima_ayer: number | null; patrones: Hallazgo[] };
 
@@ -42,6 +45,7 @@ function valor(todos: DatoAutomatico[], resumen: string | null, hora: string | n
 }
 
 export function ClimaDelDia({ persona, fecha, todos }: { persona: Persona; fecha: string; todos: DatoAutomatico[] }) {
+  const { usuario } = useEstado();
   const [ctx, setCtx] = useState<Contexto | null>(null);
   useEffect(() => {
     api<Contexto>('GET', `/api/clima/contexto?persona=${persona.id}&fecha=${fecha}`).then(setCtx).catch(() => setCtx(null));
@@ -98,6 +102,7 @@ export function ClimaDelDia({ persona, fecha, todos }: { persona: Persona; fecha
   if (rafaga !== null && rafaga >= 50) notas.push(t('Ráfagas fuertes de viento.'));
 
   const cuando = (d: number) => (d === 0 ? t('el mismo día') : d === 1 ? t('al día siguiente') : t('{n} días después', { n: d }));
+  const placa = usuario?.rol !== 'lector' ? placaDeClima(tarjetas, fecha) : null;
   return (
     <div className="clima-del-dia">
       <div className="clima-tarjetas">
@@ -110,6 +115,7 @@ export function ClimaDelDia({ persona, fecha, todos }: { persona: Persona; fecha
           </div>
         ))}
       </div>
+      {placa ? <div className="fila-compartir centrada"><BotonCompartir armar={() => placa} /></div> : null}
       {notas.length ? (
         <div className="clima-notas">
           <h4><Mascota cara="feliz" tamano={26} /> {t('Lo que noto del día')}</h4>

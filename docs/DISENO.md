@@ -576,6 +576,11 @@ Para auditar qué tan bien se guardan los datos y corregirlos (solo administrado
   progreso. La imagen (1080 x 1350, violeta, con el búho y patty.today) se dibuja en el teléfono, en un canvas
   (`lib/tarjetaCompartir.ts`), con los textos ya traducidos y sin el nombre de la persona; antes de mandarla se ve
   cómo queda (`ui/HojaCompartir.tsx`). Los que tienen rol `lector` no ven los botones.
+- Lo más comido de la semana (Comida), cómo vino la semana o el mes (Cómo venís), un objetivo (cumplido en Más; en curso en
+  el Día), lo que sonó, el clima y cada recorrido elegido del mapita del Día. Salvo el recorrido, se arman en
+  `lib/placas.ts` con una lista cerrada de lo que pueden llevar: nunca ánimo, malestares, pulso, oxígeno, peso, remedios,
+  suplementos ni alergias, y un objetivo que suena a salud (`noVaEnPlaca`) no tiene botón. De lo que sonó van los artistas y
+  los minutos, nunca los títulos.
 - También una actividad o un viaje anotados (botón en la hoja para cambiarlo, en el Día) y cada caminata del reloj (en
   la hoja de los pasos): qué fue, la hora, la duración, los km y la velocidad promedio, con el dibujo de Patty y un
   mapita del recorrido (`GET /api/ubicacion/camino?persona=&desde=&hasta=&tipo=`: los puntos de ese rato y ese tipo, sin los saltos del

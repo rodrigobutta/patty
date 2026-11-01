@@ -4,8 +4,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { nombreRasgo, normalizar, type Categoria, type ComidaDelDia as Datos, type ComponenteDeLaSemana, type ConsumoDeElementos, type ElementoConsumido, type ComponenteDelDia, type Persona, type Registro } from 'shared';
 import { api } from '../api';
+import { useEstado } from '../estado';
 import { guardado } from '../lib/guardado';
 import { idioma, locale, t } from '../lib/idioma';
+import { placaDeComida } from '../lib/placas';
+import { BotonCompartir } from '../ui/HojaCompartir';
 
 const V = 'var(--acento)';
 const trazo = { fill: 'none', stroke: V, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
@@ -166,7 +169,9 @@ const diaCorto = (fecha: string, formato: 'narrow' | 'short') => new Intl.DateTi
  * desglosado van aparte, porque no se sabe si hubo o no.
  */
 function LoMasComido({ consumo, enCurso }: { consumo: ConsumoDeElementos; enCurso: boolean }) {
+  const { usuario } = useEstado();
   const [elegida, setElegida] = useState<{ nombre: string; i: number } | null>(null);
+  const placa = usuario?.rol !== 'lector' ? placaDeComida(consumo) : null;
   const { dias, elementos, comidas_por_dia: comidasPorDia, sin_aparecer: sinAparecer, sin_desglosar: sinDesglosar } = consumo;
   const texto = (e: ElementoConsumido, i: number) => {
     const dia = diaCorto(dias[i], 'short');
@@ -216,6 +221,7 @@ function LoMasComido({ consumo, enCurso }: { consumo: ConsumoDeElementos; enCurs
           <p className="suave chico">{t('Todavía no sé de qué están hechas tus comidas de estos días.')}</p>
         )}
         {sinDesglosar ? <p className="suave chico">{sinDesglosar === 1 ? t('No entra en la cuenta 1 comida de estos días: todavía no sé qué tiene.') : t('No entran en la cuenta {n} comidas de estos días: todavía no sé qué tienen.', { n: sinDesglosar })}</p> : null}
+        {placa ? <div className="fila-compartir centrada"><BotonCompartir armar={() => placa} /></div> : null}
       </div>
       {enCurso && sinAparecer.length ? (
         <div className="clima-notas">
