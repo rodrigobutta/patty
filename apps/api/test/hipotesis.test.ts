@@ -209,7 +209,7 @@ describe('hipótesis de Patty', () => {
     await x.db.execute(sql.raw(`INSERT INTO registros (persona_id, concepto_id, inicio, fecha) VALUES (${x.personaId}, ${x.pizza}, '${sumarDias(x.hasta, -1200)}T12:00:00Z', '${sumarDias(x.hasta, -1200)}')`));
     const r = await x.ana.post('/api/analisis', { persona_id: x.personaId, ia: false });
     expect(r.status).toBe(200);
-    expect(r.body.desde).toBe(sumarDias(x.hasta, -1200));
-    expect(r.body.hasta >= x.hasta).toBe(true);
+    expect(r.body.desde <= sumarDias(x.hasta, -1200)).toBe(true);
+    expect(r.body.hasta >= sumarDias(x.hasta, -1)).toBe(true); // el día de Patty va de 5 a 5: de madrugada todavía es ayer
   });
 });

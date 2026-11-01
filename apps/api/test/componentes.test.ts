@@ -8,7 +8,7 @@ import { armarDeSemilla, enlazarConceptos, gastadoHoy, INTENTOS_MAX, probarAlime
 import { buscarIngrediente, tablaIngredientes } from '../src/componentes/tabla.js';
 import { filas, obtenerDb, una } from '../src/db/client.js';
 import { usarClientePrueba } from '../src/ia/cliente.js';
-import { sumarDias } from '../src/lib/fechas.js';
+import { diaDePatty, sumarDias } from '../src/lib/fechas.js';
 import { analizarPersona } from '../src/patrones/analizar.js';
 import { armarPerfil } from '../src/patrones/perfil.js';
 import { buscarPatrones, describir, type ConceptoInfo, type FilaDiaria } from '../src/patrones/motor.js';
@@ -484,7 +484,7 @@ describe('resolver una comida', () => {
     const id = await anotarConcepto('Plato sin presupuesto');
     await enlazarConceptos(db());
     const pedidos = iaFalsa(() => ({ platos: [] }));
-    await db().execute(sql`INSERT INTO uso_ia (tipo, fecha, entrada, salida) VALUES ('componentes', ${new Date().toISOString().slice(0, 10)}, ${TOKENS_POR_DIA}, 0), ('componentes', (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date, ${TOKENS_POR_DIA}, 0)`);
+    await db().execute(sql`INSERT INTO uso_ia (tipo, fecha, entrada, salida) VALUES ('componentes', ${diaDePatty(new Date(), 'America/Argentina/Buenos_Aires')}, ${TOKENS_POR_DIA}, 0), ('componentes', (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date, ${TOKENS_POR_DIA}, 0)`);
     expect(await gastadoHoy(db())).toBeGreaterThanOrEqual(TOKENS_POR_DIA);
     expect(await resolverLote(db())).toBe(0);
     expect(pedidos).toEqual([]);
