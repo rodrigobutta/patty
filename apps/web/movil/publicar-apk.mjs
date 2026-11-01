@@ -14,6 +14,13 @@ const { version } = JSON.parse(readFileSync(path.join(web, 'package.json'), 'utf
 const correr = (cmd, args, cwd = web) => execFileSync(cmd, args, { cwd, stdio: 'inherit' });
 const salida = (cmd, args) => spawnSync(cmd, args, { cwd: web, encoding: 'utf8' });
 
+// GitHub etiqueta la versión en lo último de main: con cambios sin subir, el APK y su etiqueta no coincidirían.
+const sinSubir = salida('git', ['status', '--porcelain']).stdout.trim() || salida('git', ['log', 'origin/main..HEAD', '--oneline']).stdout.trim();
+if (sinSubir) {
+  console.error(`Primero commiteá y subí los cambios a main:\n${sinSubir}`);
+  process.exit(1);
+}
+
 console.log(`Patty ${version}: compilando…`);
 correr('npx', ['cap', 'sync', 'android']);
 correr('./gradlew', ['-q', 'assembleDebug', 'assembleRelease'], android);
