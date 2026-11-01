@@ -98,6 +98,7 @@ export function pdfInforme(d: DatosInforme): Promise<Buffer> {
   texto(d.persona.nombre, { tam: 16, negrita: true });
   if (datosPersona.length) texto(datosPersona.join('  ·  '), { tam: 10.5, color: COLOR.suave });
   if (d.persona.condiciones.length) texto(`${t('Condiciones que contó')}: ${d.persona.condiciones.map((c) => traducirDato(c, idioma)).join(', ')}`, { tam: 10 });
+  if (d.persona.alergias) texto(`${t('Alergias que contó')}: ${d.persona.alergias}`, { tam: 10 });
   doc.moveDown(0.4);
   texto(
     t('Anotó algo {n} de los {total} días del período. Todo sale de lo que la persona fue anotando en Patty (y de lo que juntan el teléfono o el reloj).', {

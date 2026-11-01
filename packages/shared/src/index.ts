@@ -4,6 +4,8 @@ export * from './i18n.js';
 export * from './mascota.js';
 export * from './medios.js';
 export * from './avisos.js';
+export * from './alergias.js';
+import { alergiasTexto, type AjustesEstados, type Alergia } from './alergias.js';
 import type { Medio } from './medios.js';
 
 /**
@@ -210,6 +212,10 @@ export interface Persona {
   peso_kg?: number | null;
   /** Condiciones crónicas ("Hipertensión", "Celiaquía"), si las quiso contar. */
   condiciones?: string[];
+  /** Las alergias que declaró (primaveral, a un alimento, a un remedio…). */
+  alergias?: Alergia[];
+  /** Los chips de "¿Algo puntual?" que agregó o sacó. */
+  estados_puntuales?: AjustesEstados;
   notas: string | null;
   /** Si el usuario es su dueño (es "la suya"): a esa van los datos que junta solo el teléfono. */
   propia?: boolean;
@@ -285,6 +291,7 @@ export const ITEMS_SEGUIMIENTO: ItemSeguimiento[] = [
   { clave: 'diarrea', nombre: 'Diarrea', emoji: '💦', tipo: 'concepto', concepto: 'Diarrea', categoria: 'sintoma', opcional: true, frecuencia: 'cada_vez' },
   { clave: 'dolor_panza', nombre: 'Dolor de panza', emoji: '🫃', tipo: 'concepto', concepto: 'Dolor de panza', categoria: 'sintoma', opcional: true, frecuencia: 'cada_vez' },
   { clave: 'dolor_cabeza', nombre: 'Dolor de cabeza', emoji: '🤕', tipo: 'concepto', concepto: 'Dolor de cabeza', categoria: 'sintoma', opcional: true, frecuencia: 'cada_vez' },
+  { clave: 'alergia', nombre: 'Alergia', emoji: '🤧', tipo: 'concepto', concepto: 'Alergia', categoria: 'sintoma', opcional: true, frecuencia: 'dia' },
   { clave: 'dientes', nombre: 'Me lavé los dientes', emoji: '🪥', tipo: 'concepto', concepto: 'Me lavé los dientes', categoria: 'higiene', frecuencia: 'dia' },
   { clave: 'ducha', nombre: 'Me bañé', emoji: '🚿', tipo: 'concepto', concepto: 'Me bañé', categoria: 'higiene', frecuencia: 'dia' },
   { clave: 'caminata', nombre: 'Caminata', emoji: '🚶', tipo: 'concepto', concepto: 'Caminata', categoria: 'actividad', frecuencia: 'dia' },
@@ -307,7 +314,9 @@ export const PLANTILLAS_SEGUIMIENTO: PlantillaSeguimiento[] = [
   { nombre: 'Problema de panza', emoji: '🫃', items: ['sentir', 'desayuno', 'almuerzo', 'merienda', 'cena', 'agua', 'caca', 'dolor_panza', 'diarrea', 'vomitos'], horarios: ['13:30', '21:00'], dias: 7 },
   { nombre: 'Recuperación', emoji: '🩹', items: ['sentir', 'temperatura', 'desayuno', 'almuerzo', 'cena', 'agua', 'pis', 'caca', 'caminata', 'ducha'], horarios: ['10:00', '20:00'], dias: 14 },
   { nombre: 'Dormir mejor', emoji: '😴', items: ['me_acoste', 'me_levante', 'sentir', 'caminata'], horarios: ['09:30', '22:30'], dias: 14 },
+  { nombre: 'Temporada de alergia', emoji: '🤧', items: ['sentir', 'alergia'], horarios: ['20:00'], dias: 30 },
 ];
+export const PLANTILLA_TEMPORADA_ALERGIA = PLANTILLAS_SEGUIMIENTO[PLANTILLAS_SEGUIMIENTO.length - 1];
 export interface Seguimiento extends PlantillaSeguimiento {
   id: number;
   persona_id: number;
@@ -427,7 +436,9 @@ export const SINTOMAS_COMUNES = [
  * Cosas puntuales que no son "bien" ni "mal" (después de comer, "tengo sueño"): se anotan al toque en «Ánimo y
  * energía» con cuánto (poco, bastante, mucho), así Patty puede ver qué vino antes.
  */
-export const ESTADOS_PUNTUALES: Array<{ nombre: string; emoji: string }> = [
+export const ESTADOS_PUNTUALES: Array<{ nombre: string; emoji: string; concepto?: string; categoria?: 'sintoma' }> = [
+  // Va con lo del cuerpo y con el mismo nombre que el malestar «Alergia»: un solo concepto para buscar qué la causa.
+  { nombre: 'Con alergia', emoji: '🤧', concepto: 'Alergia', categoria: 'sintoma' },
   { nombre: 'Con sueño', emoji: '😴' },
   { nombre: 'Con energía', emoji: '⚡' },
   { nombre: 'Con hambre', emoji: '🍽️' },
@@ -1082,14 +1093,13 @@ export const CONDICIONES_COMUNES = [
   'Fibromialgia',
   'Ansiedad',
   'Depresión',
-  'Alergias',
 ];
 
 /**
  * Lo que se sabe de la persona, en una línea para la IA ("mujer, 67 años, 1,60 m, 70 kg; condiciones: hipertensión").
  * Vacío si no cargó nada.
  */
-export function perfilTexto(p: Pick<Persona, 'nacimiento' | 'sexo' | 'altura_cm' | 'peso_kg' | 'condiciones'>, hoy = new Date(), idioma: Idioma = 'es'): string {
+export function perfilTexto(p: Pick<Persona, 'nacimiento' | 'sexo' | 'altura_cm' | 'peso_kg' | 'condiciones' | 'alergias'>, hoy = new Date(), idioma: Idioma = 'es'): string {
   const en = idioma === 'en';
   const coma = (x: string) => (en ? x : x.replace('.', ','));
   const partes: string[] = [];
@@ -1105,7 +1115,9 @@ export function perfilTexto(p: Pick<Persona, 'nacimiento' | 'sexo' | 'altura_cm'
   const texto = partes.join(', ');
   const lista = (p.condiciones ?? []).map((c) => traducir(idioma, c)).join(', ').toLowerCase();
   const cond = lista ? `${en ? 'conditions' : 'condiciones'}: ${lista}` : '';
-  return [texto, cond].filter(Boolean).join('; ');
+  const alergias = alergiasTexto(p.alergias, idioma);
+  const aler = alergias ? `${en ? 'allergies' : 'alergias'}: ${alergias}` : '';
+  return [texto, cond, aler].filter(Boolean).join('; ');
 }
 
 // ---------- Progreso hacia los patrones ----------

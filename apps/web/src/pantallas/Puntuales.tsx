@@ -4,7 +4,7 @@
 // así Patty puede buscar qué lo causa.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CUANTO, DOLORES, ENFERMO, ESTADOS_PUNTUALES, MALESTARES, TEMPERATURA_CORPORAL, type Persona } from 'shared';
+import { CUANTO, DOLORES, ENFERMO, estadoEscrito, estadosDe, ESTADOS_PUNTUALES, MALESTARES, normalizar, TEMPERATURA_CORPORAL, type AjustesEstados, type Persona } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
@@ -12,7 +12,41 @@ import { anotarClima } from '../lib/clima';
 import { genteGuardada, traerGente, type Alguien } from '../lib/gente';
 
 export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(): void }) {
-  const { categorias, festejar } = useEstado();
+  const { categorias, festejar, recargar, usuario } = useEstado();
+  /** Los chips propios y los sacados. Se ven al toque; el guardado va atrás. */
+  const [ajustes, setAjustes] = useState<AjustesEstados>(persona.estados_puntuales ?? {});
+  const estados = estadosDe({ estados_puntuales: ajustes });
+  const [editando, setEditando] = useState(false);
+  const [nuevoEstado, setNuevoEstado] = useState('');
+  const cambiarEstados = async (a: AjustesEstados) => {
+    const antes = ajustes;
+    setAjustes(a);
+    setError('');
+    try {
+      await api('PUT', `/api/personas/${persona.id}`, { estados_puntuales: a });
+      await recargar();
+    } catch (e) {
+      setAjustes(antes);
+      setError((e as Error).message);
+    }
+  };
+  const sacarEstado = (nombre: string) =>
+    void cambiarEstados(
+      ESTADOS_PUNTUALES.some((e) => e.nombre === nombre)
+        ? { ...ajustes, ocultos: [...(ajustes.ocultos ?? []), nombre] }
+        : { ...ajustes, propios: (ajustes.propios ?? []).filter((e) => e.nombre !== nombre) },
+    );
+  const agregarEstado = () => {
+    const e = estadoEscrito(nuevoEstado);
+    if (!e.nombre) return;
+    const clave = normalizar(e.nombre);
+    const yaEsta = [...ESTADOS_PUNTUALES, ...(ajustes.propios ?? [])].find((x) => normalizar(x.nombre) === clave);
+    setNuevoEstado('');
+    if (!yaEsta) return void cambiarEstados({ ...ajustes, propios: [...(ajustes.propios ?? []), e] });
+    // Si es uno de Patty que había sacado, vuelve; si ya estaba a la vista, no hay nada que hacer.
+    if (ajustes.ocultos?.includes(yaEsta.nombre)) void cambiarEstados({ ...ajustes, ocultos: ajustes.ocultos.filter((n) => n !== yaEsta.nombre) });
+    else setError(t('Ese ya está.'));
+  };
   /** Un estado puntual, 'otro', o 'dolor' (y entonces `dolor` dice cuál). */
   const [elegido, setElegido] = useState<string | null>(null);
   const [dolor, setDolor] = useState<string | null>(null);
@@ -52,15 +86,18 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
   const sintoma = categorias.find((c) => c.clave === 'sintoma');
 
   const guardar = async (nombre: string, intensidad: number, cuanto: string) => {
-    const cat = elegido === 'dolor' ? sintoma : animo;
+    // "Con alergia" se anota como el malestar: otro nombre para mostrar, el mismo concepto para los patrones.
+    const estado = estados.find((e) => e.nombre === nombre) as { concepto?: string; categoria?: 'sintoma' } | undefined;
+    const delCuerpo = elegido === 'dolor' || estado?.categoria === 'sintoma';
+    const cat = delCuerpo ? sintoma : animo;
     if (!cat) return;
     setError('');
     const inicio = new Date().toISOString();
     try {
-      await api('POST', '/api/registros', { persona_id: persona.id, concepto_nombre: nombre, categoria_id: cat.id, inicio, intensidad });
+      await api('POST', '/api/registros', { persona_id: persona.id, concepto_nombre: estado?.concepto ?? nombre, categoria_id: cat.id, inicio, intensidad });
       void anotarClima(persona.id, [inicio]);
       const vars = { que: t(nombre).toLowerCase(), cuanto: t(cuanto).toLowerCase() };
-      festejar(elegido === 'dolor' ? t('Anotado: {que}, {cuanto}. ¡Que se te pase pronto!', vars) : t('Anotado: {que}, {cuanto}', vars));
+      festejar(delCuerpo ? t('Anotado: {que}, {cuanto}. ¡Que se te pase pronto!', vars) : t('Anotado: {que}, {cuanto}', vars));
       setElegido(null);
       setDolor(null);
       setOtro('');
@@ -116,7 +153,34 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
 
   return (
     <div className="puntuales">
-      <p className="rotulo suave chico">{t('¿Algo puntual?')}</p>
+      <p className="rotulo suave chico fila-puntual">
+        {t('¿Algo puntual?')}
+        {usuario?.rol !== 'lector' ? (
+          <button className="enlace chico" onClick={() => { setEditando(!editando); setElegido(null); setError(''); }}>{editando ? t('Listo') : t('✏️ Editar')}</button>
+        ) : null}
+      </p>
+      {editando ? (
+        <div className="que-duele editar-estados">
+          <p className="suave chico">{t('Tocá ✕ para sacar uno. Podés agregar los tuyos, con un emoji adelante si querés.')}</p>
+          <div className="chips envolver">
+            {estados.map((e) => (
+              <span key={e.nombre} className="chip estado-editable">
+                <span aria-hidden>{e.emoji}</span> {t(e.nombre)}
+                <button className="sacar-estado" onClick={() => sacarEstado(e.nombre)} aria-label={t('Sacar {que}', { que: t(e.nombre) })}>✕</button>
+              </span>
+            ))}
+            {ESTADOS_PUNTUALES.filter((e) => ajustes.ocultos?.includes(e.nombre)).map((e) => (
+              <button key={e.nombre} className="chip estado-sacado" onClick={() => void cambiarEstados({ ...ajustes, ocultos: ajustes.ocultos!.filter((n) => n !== e.nombre) })} aria-label={t('Volver a poner {que}', { que: t(e.nombre) })}>
+                ＋ <span aria-hidden>{e.emoji}</span> {t(e.nombre)}
+              </button>
+            ))}
+          </div>
+          <form className="otro-puntual" onSubmit={(e) => { e.preventDefault(); agregarEstado(); }}>
+            <input value={nuevoEstado} maxLength={40} onChange={(e) => setNuevoEstado(e.target.value)} placeholder={t('ej: 🤧 Con mocos')} />
+            <button className="btn" disabled={!nuevoEstado.trim()}>{t('Agregar')}</button>
+          </form>
+        </div>
+      ) : (
       <div className="chips envolver">
         <button className={`chip${elegido === 'dolor' ? ' activa' : ''}`} onClick={() => elegir('dolor')}>
           <span aria-hidden>🤕</span> {t('Con dolor o malestar')}
@@ -124,13 +188,14 @@ export function Puntuales({ persona, alGuardar }: { persona: Persona; alGuardar(
         <button className={`chip${elegido === 'gente' ? ' activa' : ''}`} onClick={() => elegir('gente')}>
           <span aria-hidden>👥</span> {t('Con gente')}
         </button>
-        {ESTADOS_PUNTUALES.map((e) => (
+        {estados.map((e) => (
           <button key={e.nombre} className={`chip${elegido === e.nombre ? ' activa' : ''}`} onClick={() => elegir(e.nombre)}>
             <span aria-hidden>{e.emoji}</span> {t(e.nombre)}
           </button>
         ))}
         <button className={`chip${elegido === 'otro' ? ' activa' : ''}`} onClick={() => elegir('otro')}>{t('✏️ Otro')}</button>
       </div>
+      )}
       {elegido === 'dolor' ? (
         <div className="que-duele" ref={panel}>
           <p className="rotulo suave chico">{t('¿Qué te duele?')}</p>

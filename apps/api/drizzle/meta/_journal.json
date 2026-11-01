@@ -386,6 +386,13 @@
       "when": 1793504598241,
       "tag": "0054_ultima_ubicacion_de_la_fuente",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793510544256,
+      "tag": "0055_alergias_y_estados_propios",
+      "breakpoints": true
     }
   ]
 }

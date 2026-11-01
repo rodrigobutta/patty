@@ -2,7 +2,7 @@
 // app médica: los usa solo para entender mejor los patrones. Se ofrecen una vez después de la bienvenida (chiquito y
 // salteable) y se completan o cambian cuando sea desde Más.
 import { useState } from 'react';
-import { CONDICIONES_COMUNES, type Persona } from 'shared';
+import { ALERGIAS_CON_NOMBRE, ALERGIAS_ESTACIONALES, CONDICIONES_COMUNES, normalizar, type Alergia, type Persona, type TipoAlergia } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { t } from '../lib/idioma';
@@ -11,7 +11,7 @@ const CLAVE = (id: number) => `perfil-ofrecido-${id}`;
 
 /** Si todavía no se le ofreció completar sus datos a esta persona (y no tiene ninguno cargado). */
 export function ofrecerPerfil(p: Persona): boolean {
-  if (!p.propia || p.sexo || p.altura_cm || p.peso_kg || p.condiciones?.length) return false;
+  if (!p.propia || p.sexo || p.altura_cm || p.peso_kg || p.condiciones?.length || p.alergias?.length) return false;
   try {
     return localStorage.getItem(CLAVE(p.id)) !== 'si';
   } catch {
@@ -35,6 +35,9 @@ export function Perfil({ persona, bienvenida = false, enLinea = false, alTermina
   const [peso, setPeso] = useState(persona.peso_kg ? String(persona.peso_kg).replace('.', ',') : '');
   const [condiciones, setCondiciones] = useState<string[]>(persona.condiciones ?? []);
   const [otra, setOtra] = useState('');
+  const [alergias, setAlergias] = useState<Alergia[]>(persona.alergias ?? []);
+  const [tipoAlergia, setTipoAlergia] = useState<Exclude<TipoAlergia, 'estacional'>>('alimento');
+  const [nuevaAlergia, setNuevaAlergia] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
   const propia = persona.propia;
@@ -44,6 +47,19 @@ export function Perfil({ persona, bienvenida = false, enLinea = false, alTermina
     const nueva = otra.trim();
     if (nueva && !condiciones.some((c) => c.toLowerCase() === nueva.toLowerCase())) setCondiciones((l) => [...l, nueva[0].toUpperCase() + nueva.slice(1)]);
     setOtra('');
+  };
+
+  const alternarEstacion = (estacion: NonNullable<Alergia['estacion']>) =>
+    setAlergias((l) => (l.some((a) => a.estacion === estacion) ? l.filter((a) => a.estacion !== estacion) : [...l, { tipo: 'estacional', nombre: '', estacion }]));
+  /** Las alergias, con lo que quedó escrito sin tocar "Agregar". */
+  const conLaEscrita = (): Alergia[] => {
+    const nombre = nuevaAlergia.trim();
+    if (!nombre || alergias.some((a) => a.tipo === tipoAlergia && normalizar(a.nombre) === normalizar(nombre))) return alergias;
+    return [...alergias, { tipo: tipoAlergia, nombre: nombre[0].toUpperCase() + nombre.slice(1) }];
+  };
+  const agregarAlergia = () => {
+    setAlergias(conLaEscrita());
+    setNuevaAlergia('');
   };
 
   const salir = () => {
@@ -62,7 +78,9 @@ export function Perfil({ persona, bienvenida = false, enLinea = false, alTermina
         altura_cm: altura.trim() || null,
         peso_kg: peso.trim() || null,
         condiciones: [...condiciones, ...extra],
+        alergias: conLaEscrita(),
       });
+      agregarAlergia();
       await recargar();
       avisar(t('¡Gracias! Lo voy a tener en cuenta'));
       if (enLinea) setEnviando(false);
@@ -107,6 +125,41 @@ export function Perfil({ persona, bienvenida = false, enLinea = false, alTermina
         <input value={otra} onChange={(e) => setOtra(e.target.value)} placeholder={t('Otra (escribila)')} onKeyDown={(e) => e.key === 'Enter' && agregarOtra()} />
         <button className="btn" disabled={!otra.trim()} onClick={agregarOtra}>{t('Agregar')}</button>
       </span>
+      {bienvenida ? null : (
+        <div className="alergias">
+          <p className="rotulo suave chico">{propia ? t('¿Tenés alguna alergia?') : t('¿Tiene alguna alergia?')}</p>
+          <p className="suave chico">{t('Sirve para avisarte si anotás algo que choca y para preguntarte en la temporada. No reemplaza leer las etiquetas ni lo que te diga quien te atiende.')}</p>
+          <p className="rotulo suave chico">{t('De temporada')}</p>
+          <div className="chips envolver">
+            {ALERGIAS_ESTACIONALES.map((e) => (
+              <button key={e.estacion} className={`chip chico${alergias.some((a) => a.estacion === e.estacion) ? ' activa' : ''}`} onClick={() => alternarEstacion(e.estacion)}>
+                <span aria-hidden>{e.emoji}</span> {t(e.nombre)}
+              </button>
+            ))}
+          </div>
+          <div className="chips envolver tipos-alergia">
+            {ALERGIAS_CON_NOMBRE.map((x) => (
+              <button key={x.tipo} className={`chip chico${tipoAlergia === x.tipo ? ' activa' : ''}`} onClick={() => setTipoAlergia(x.tipo)}>
+                <span aria-hidden>{x.emoji}</span> {t(x.nombre)}
+              </button>
+            ))}
+          </div>
+          <span className="fila otra-condicion">
+            <input value={nuevaAlergia} maxLength={80} onChange={(e) => setNuevaAlergia(e.target.value)} placeholder={t(ALERGIAS_CON_NOMBRE.find((x) => x.tipo === tipoAlergia)!.ejemplo)} onKeyDown={(e) => e.key === 'Enter' && agregarAlergia()} />
+            <button className="btn" disabled={!nuevaAlergia.trim()} onClick={agregarAlergia}>{t('Agregar')}</button>
+          </span>
+          {alergias.some((a) => a.tipo !== 'estacional') ? (
+            <div className="chips envolver">
+              {alergias.filter((a) => a.tipo !== 'estacional').map((a) => (
+                <span key={`${a.tipo}|${a.nombre}`} className="chip chico estado-editable">
+                  <span aria-hidden>{ALERGIAS_CON_NOMBRE.find((x) => x.tipo === a.tipo)?.emoji}</span> {a.nombre}
+                  <button className="sacar-estado" onClick={() => setAlergias((l) => l.filter((y) => y !== a))} aria-label={t('Sacar {que}', { que: a.nombre })}>✕</button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
       {error ? <p className="neg">{error}</p> : null}
       <button className="btn primario ancho" disabled={enviando} onClick={() => void guardar()}>{enviando ? t('Guardando…') : t('Guardar')}</button>
     </div>

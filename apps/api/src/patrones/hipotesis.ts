@@ -67,7 +67,7 @@ export async function correrHipotesis(db: Db, p: PersonaAcceso, o: { hasta: stri
   const r = vacio();
   const persona = await una<Persona & { patrones: AjustesPatrones }>(
     db,
-    sql`SELECT to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones, patrones FROM personas WHERE id = ${p.id}`,
+    sql`SELECT to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones, alergias, patrones FROM personas WHERE id = ${p.id}`,
   );
   const finos = patronesFinos(persona?.patrones);
   if (!finos.hipotesis) return { ...r, sin_correr: 'apagado' };

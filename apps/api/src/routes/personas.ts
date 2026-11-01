@@ -2,7 +2,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { PATRONES_FINOS, type AjustesPatrones, type Persona } from 'shared';
+import { limpiarAlergias, limpiarEstados, PATRONES_FINOS, type AjustesPatrones, type Persona } from 'shared';
 import { exigirRol } from '../auth/sesion.js';
 import { filas } from '../db/client.js';
 import { fuentes, personas, personaUsuarios } from '../db/schema.js';
@@ -46,6 +46,16 @@ function datosPersona(d: Record<string, unknown>, nueva: boolean) {
     if (lista.length > 30 || lista.some((x) => x.length > 80)) throw new ErrorApi('Demasiadas condiciones o muy largas.');
     v.condiciones = [...new Set(lista)];
   }
+  if ('alergias' in d) {
+    const lista = limpiarAlergias(d.alergias);
+    if (!lista) throw new ErrorApi('Demasiadas alergias o muy largas.');
+    v.alergias = lista;
+  }
+  if ('estados_puntuales' in d) {
+    const a = limpiarEstados(d.estados_puntuales);
+    if (!a) throw new ErrorApi('Demasiados estados o muy largos.');
+    v.estados_puntuales = a;
+  }
   if ('patrones' in d) {
     // Qué patrones más finos buscar: solo las claves conocidas, y sí / no.
     const x = d.patrones;
@@ -68,7 +78,7 @@ export const rutasPersonas = new Hono<Env>()
     return c.json(
       await filas<Persona>(
         c.var.db,
-        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.notas, p.patrones,
+        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.alergias, p.estados_puntuales, p.notas, p.patrones,
               EXISTS (SELECT 1 FROM persona_usuarios d WHERE d.persona_id = p.id AND d.usuario_id = ${u.id} AND d.rol = 'dueno') AS propia,
               EXISTS (SELECT 1 FROM accesos a WHERE a.persona_id = p.id AND a.usuario_id = ${u.id} AND a.por_supervision) AS supervisada
             FROM personas p

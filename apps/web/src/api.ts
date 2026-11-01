@@ -2,6 +2,7 @@
 // se guarda el token y se manda como "Authorization: Bearer". Cada pedido dice el idioma (X-Idioma): el servidor
 // contesta los errores y los textos que arma (resúmenes, avisos) en ese idioma.
 import { encolar, respuestaProvisoria, sePuedeEncolar, subirPendientes } from './lib/cola';
+import { notarAvisosDeAlergia } from './lib/avisoAlergia';
 import { guardar } from './lib/guardado';
 import { idioma, t } from './lib/idioma';
 export const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) || '').replace(/\/$/, '');
@@ -53,7 +54,13 @@ function pedir(metodo: string, ruta: string, cuerpo?: unknown): Promise<Response
 }
 
 /** Sube lo que se anotó sin señal (ver lib/cola.ts). Devuelve cuántas cosas subió. */
-export const subirLoPendiente = () => subirPendientes((p) => pedir(p.metodo, p.ruta, p.cuerpo));
+export const subirLoPendiente = () =>
+  subirPendientes(async (p) => {
+    const r = await pedir(p.metodo, p.ruta, p.cuerpo);
+    // Lo anotado sin señal también avisa si choca con una alergia.
+    void r.clone().json().then(notarAvisosDeAlergia).catch(() => {});
+    return r;
+  });
 
 export async function api<T = unknown>(metodo: 'GET' | 'POST' | 'PUT' | 'DELETE', ruta: string, cuerpo?: unknown): Promise<T> {
   let r: Response;
@@ -72,6 +79,8 @@ export async function api<T = unknown>(metodo: 'GET' | 'POST' | 'PUT' | 'DELETE'
     if (r.status === 401 && !ruta.startsWith('/api/entrar')) alPerderSesion();
     throw new ErrorApi((datos as { error?: string } | null)?.error || `Error ${r.status}`, r.status);
   }
+  // Si lo anotado choca con una alergia declarada, se avisa sea cual sea la pantalla desde la que se anotó.
+  if (metodo !== 'GET') notarAvisosDeAlergia(datos);
   // Las lecturas quedan guardadas para mostrarlas enseguida la próxima vez (ver lib/guardado).
   if (metodo === 'GET' && !ruta.startsWith('/api/sesion')) guardar(ruta, datos);
   return datos as T;

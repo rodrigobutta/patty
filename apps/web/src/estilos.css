@@ -261,6 +261,20 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .puntuales { margin-top: 12px; }
 .puntuales .rotulo { margin: 0 0 6px; }
 .puntuales input { margin-top: 6px; }
+.fila-puntual { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.editar-estados { margin-top: 0; }
+.editar-estados > p { margin: 0 0 8px; }
+.estado-editable { display: inline-flex; align-items: center; gap: 4px; }
+.sacar-estado { border: 0; background: none; color: inherit; font: inherit; padding: 2px 2px 2px 6px; cursor: pointer; opacity: .65; }
+.estado-sacado { opacity: .6; border-style: dashed; }
+.alergias { margin-top: 12px; }
+.alergias .rotulo { margin: 10px 0 6px; }
+.alergias > .chips, .alergias .otra-condicion { margin-top: 8px; }
+.alerta-alergia { margin: 10px 0; padding: 10px 12px; border-radius: var(--radio); background: var(--acento-suave); border-left: 4px solid var(--rojo); }
+.alerta-alergia p { margin: 0 0 4px; }
+.temporada-alergia .botones-cuanto { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.temporada-alergia .btn { flex: 1 1 auto; padding-left: 10px; padding-right: 10px; white-space: nowrap; }
+.temporada-alergia .mas-temporada { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .cuanto-puntual { margin-top: 12px; padding: 12px; border-radius: var(--radio); border: 2px solid var(--acento); background: var(--acento-suave);
   animation: aparece-cuanto 0.3s cubic-bezier(.2, .9, .3, 1); }
 .cuanto-puntual .pregunta-cuanto { margin: 0 0 8px; font-size: 16px; }
