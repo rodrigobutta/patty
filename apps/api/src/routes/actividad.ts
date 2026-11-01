@@ -32,7 +32,8 @@ export const rutasActividad = new Hono<Env>()
         if (!esFecha(x.fecha) || !Array.isArray(x.caminatas)) continue;
         await tx.execute(sql`DELETE FROM mediciones WHERE persona_id = ${p.id} AND fuente_id = ${fuente} AND fecha = ${x.fecha}`);
         await tx.execute(sql`DELETE FROM caminatas_descartadas WHERE persona_id = ${p.id} AND fecha = ${x.fecha}`);
-        for (const k of (x.caminatas as Array<{ inicio?: unknown; fin?: unknown }>).slice(0, 30)) {
+        await tx.execute(sql`DELETE FROM caminatas_pasos WHERE persona_id = ${p.id} AND fecha = ${x.fecha}`);
+        for (const k of (x.caminatas as Array<{ inicio?: unknown; fin?: unknown; pasos?: unknown }>).slice(0, 30)) {
           const a = Date.parse(String(k.inicio));
           const b = Date.parse(String(k.fin));
           if (Number.isNaN(a) || Number.isNaN(b) || b <= a) continue;
@@ -41,6 +42,13 @@ export const rutasActividad = new Hono<Env>()
                 VALUES (${p.id}, ${concepto.id}, ${fuente}, ${new Date(a).toISOString()}, ${new Date(b).toISOString()}, ${x.fecha}, ${Math.round((b - a) / 60000)}, 'min')
                 ON CONFLICT DO NOTHING`,
           );
+          const pasos = Math.round(Number(k.pasos));
+          if (pasos > 0 && pasos < 1000000) {
+            await tx.execute(
+              sql`INSERT INTO caminatas_pasos (persona_id, inicio, fecha, pasos) VALUES (${p.id}, ${new Date(a).toISOString()}, ${x.fecha}, ${pasos})
+                  ON CONFLICT (persona_id, inicio) DO UPDATE SET fecha = excluded.fecha, pasos = excluded.pasos`,
+            );
+          }
           n++;
           primera = Math.min(primera, a);
           ultima = Math.max(ultima, a);

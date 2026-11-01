@@ -2,6 +2,7 @@
 //   POST   /api/ubicacion            { persona_id, puntos: [{ lat, lon, instante?, precision? }] }   (la web, con sesión)
 //   POST   /api/ingesta/ubicacion    { lat, lon, instante? }   con el token de una fuente (un atajo del teléfono)
 //   GET    /api/ubicacion/dia?persona=1&fecha=2026-10-24      viajes, km y estadías del día
+//   GET    /api/ubicacion/direccion?persona=1&lat=…&lon=…     la dirección aproximada de un punto
 //   GET    /api/ubicacion/camino?persona=1&desde=…&hasta=…&tipo=a_pie|vehiculo    por dónde anduvo en ese rato (para compartir)
 //   DELETE /api/ubicacion?persona=1                           borra todos los puntos y lo calculado con ellos
 //   GET/POST /api/ubicacion/lugares, PUT/DELETE /api/ubicacion/lugares/:id
@@ -21,7 +22,7 @@ import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
-import { A_PIE_DIBUJO_M, clasificarDia, metrosAPie, recorteDe, viajesDe, type Pasos } from '../ubicacion/movimiento.js';
+import { clasificarDia, metrosAPie, recorridosDe, recorteDe, type Pasos } from '../ubicacion/movimiento.js';
 import { pasosDe, revisarCaminatas } from '../ubicacion/pasos.js';
 import { caminoLimpio, huboTrafico, metrosDe, minutosHabituales, paradasSinNombre, PRECISION_CAMINO_M, puntoDeFila, rangoDe, resumirDia, sinLosMalos, sinSaltos, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
 import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
@@ -259,7 +260,7 @@ export const rutasUbicacion = new Hono<Env>()
     // ?persona=1&fecha=AAAA-MM-DD: por dónde anduvo en el día. Los puntos en orden, más el último del día anterior y el
     // primero del siguiente si están cerca de la medianoche (un viaje que empezó antes o sigue después), y los lugares con
     // nombre donde estuvo. Con &tipo=a_pie o &tipo=vehiculo, además `rutas`: solo lo de ese tipo, una línea por cada vez
-    // (el mapa de Movimiento no muestra los viajes, y el de Viajes no muestra lo caminado).
+    // (el mapa de Movimiento no muestra los viajes, y el de Viajes no muestra lo caminado), cada una con sus datos.
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const fecha = c.req.query('fecha');
     const dia = esFecha(fecha) ? fecha : diaDePatty(new Date(), p.zona_horaria);
@@ -292,21 +293,22 @@ export const rutasUbicacion = new Hono<Env>()
     const visitados = new Set(r.estadias.map((e) => e.lugar_id));
     const tipo = c.req.query('tipo');
     const tramos = clasificarDia(delDia, ls, pasos);
-    const rutas =
-      tipo === 'a_pie'
-        ? tramos.filter((t) => t.tipo === 'a_pie' && t.metros >= A_PIE_DIBUJO_M).map((t) => ({ inicio: t.inicio, fin: t.fin, metros: t.metros, puntos: caminoLimpio(t.puntos) }))
-        : tipo === 'vehiculo'
-          ? viajesDe(tramos).map((v) => ({ inicio: v.inicio, fin: v.fin, metros: v.metros, puntos: v.camino ?? [] }))
-          : undefined;
+    const rutas = tipo === 'a_pie' || tipo === 'vehiculo' ? recorridosDe(tramos, tipo, ls, pasos) : undefined;
     return c.json({
       puntos: caminoLimpio(sinSaltos(delDia)),
-      rutas: rutas?.map((x) => ({ ...x, inicio: new Date(x.inicio).toISOString(), fin: new Date(x.fin).toISOString(), km: Math.round(x.metros / 100) / 10 })),
+      rutas: rutas?.map((x) => ({ ...x, inicio: new Date(x.inicio).toISOString(), fin: new Date(x.fin).toISOString(), minutos: Math.max(1, Math.round((x.fin - x.inicio) / 60000)), km: Math.round(x.metros / 100) / 10 })),
       antes: antes ? { lat: antes.lat, lon: antes.lon, instante: new Date(antes.instante).toISOString() } : null,
       despues: despues ? { lat: despues.lat, lon: despues.lon, instante: new Date(despues.instante).toISOString() } : null,
       lugares: ls.filter((l) => visitados.has(l.id)).map((l) => ({ nombre: l.nombre, lat: l.lat, lon: l.lon, radio_m: l.radio_m })),
       viajes: r.viajes,
       km: r.km,
     });
+  })
+  .get('/direccion', async (c) => {
+    // ?persona=1&lat=…&lon=…: la dirección aproximada de una punta de un recorrido que no es un lugar con nombre. Va aparte
+    // porque Nominatim contesta de a un pedido por segundo: se pide solo la del recorrido que se está mirando.
+    await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    return c.json({ direccion: await direccionDe(coordenada(c.req.query('lat'), 'lat', 90), coordenada(c.req.query('lon'), 'lon', 180), c.var.idioma) });
   })
   .get('/camino', async (c) => {
     // ?persona=1&desde=ISO&hasta=ISO: por dónde anduvo en ese rato (una actividad o un viaje anotados), sin los saltos

@@ -107,7 +107,7 @@ export interface Tramo {
  * sincronizó, no dice nada).
  */
 export interface Pasos {
-  ratos: Array<{ inicio: number; fin: number }>;
+  ratos: Array<{ inicio: number; fin: number; /** Cuántos pasos tuvo ese rato, si se sabe. */ pasos?: number | null }>;
   desde?: number | null;
   hasta?: number | null;
 }
@@ -476,6 +476,56 @@ export function caminataContradicha(rato: { inicio: number; fin: number }, tramo
   if (dura <= 0) return false;
   const enVehiculo = tramos.filter((t) => t.tipo === 'vehiculo').reduce((s, t) => s + Math.max(0, Math.min(t.fin, rato.fin) - Math.max(t.inicio, rato.inicio)), 0);
   return enVehiculo >= 0.5 * dura;
+}
+
+/**
+ * Los pasos de un rato: lo que le toca de cada caminata que lo cruza, por el tiempo que comparten. Si las caminatas con pasos
+ * no cubren lo suficiente del rato, no se sabe: un número de solo una parte engañaría.
+ */
+export function pasosDelTramo(pasos: Pasos | undefined, inicio: number, fin: number): number | null {
+  let total = 0;
+  let cubierto = 0;
+  for (const r of pasos?.ratos ?? []) {
+    const comparte = Math.min(r.fin, fin) - Math.max(r.inicio, inicio);
+    if (!r.pasos || comparte <= 0) continue;
+    total += (r.pasos * comparte) / (r.fin - r.inicio);
+    cubierto += comparte;
+  }
+  return total > 0 && cubierto >= PASOS_COBERTURA * (fin - inicio) ? Math.round(total) : null;
+}
+
+/** Una punta de un recorrido, con el nombre del lugar si es uno de los que tienen. */
+export interface PuntaRecorrido extends Coordenadas {
+  lugar: string | null;
+}
+
+/** Cada vez que anduvo a pie o en vehículo, con lo suyo: para el mapa del día y para elegir una. */
+export interface RecorridoDeTramo {
+  inicio: number;
+  fin: number;
+  metros: number;
+  puntos: Coordenadas[];
+  kmh: number;
+  /** Solo a pie, y si se sabe (ver pasosDelTramo). */
+  pasos: number | null;
+  origen: PuntaRecorrido | null;
+  destino: PuntaRecorrido | null;
+}
+
+/** Lo que se muestra de los tramos ya clasificados: los viajes de `viajesDe` y lo caminado que alcanza para dibujarse. */
+export function recorridosDe(tramos: Tramo[], tipo: 'a_pie' | 'vehiculo', lugares: Array<LugarZona & { nombre: string }> = [], pasos?: Pasos): RecorridoDeTramo[] {
+  const lista =
+    tipo === 'vehiculo'
+      ? viajesDe(tramos).map((v) => ({ inicio: v.inicio, fin: v.fin, metros: v.metros, puntos: v.camino ?? [] }))
+      : tramos.filter((t) => t.tipo === 'a_pie' && t.metros >= A_PIE_DIBUJO_M).map((t) => ({ inicio: t.inicio, fin: t.fin, metros: t.metros, puntos: caminoLimpio(t.puntos) }));
+  const punta = (p: Coordenadas | undefined): PuntaRecorrido | null => (p ? { lat: p.lat, lon: p.lon, lugar: lugarDe(p, lugares)?.nombre ?? null } : null);
+  return lista.map((x) => ({
+    ...x,
+    kmh: Math.round((x.metros / 1000 / Math.max((x.fin - x.inicio) / 3600000, 1 / 60)) * 10) / 10,
+    pasos: tipo === 'a_pie' ? pasosDelTramo(pasos, x.inicio, x.fin) : null,
+    origen: punta(x.puntos[0]),
+    destino: punta(x.puntos.at(-1)),
+  }));
 }
 
 /**

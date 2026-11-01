@@ -1,8 +1,8 @@
 import { adivinarViaje, distanciaMetros } from 'shared';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { cerrarDb, obtenerDb } from '../src/db/client.js';
 import { recalcularSiCambio } from '../src/routes/ubicacion.js';
-import { caminataContradicha, clasificarDia, metrosAPie, paseosDelDia, recorteDe, viajesDelDia, type Pasos, type Tramo } from '../src/ubicacion/movimiento.js';
+import { caminataContradicha, clasificarDia, metrosAPie, paseosDelDia, pasosDelTramo, recorridosDe, recorteDe, viajesDelDia, type Pasos, type Tramo } from '../src/ubicacion/movimiento.js';
 import { huboTrafico, resumirDia, type Punto } from '../src/ubicacion/resumen.js';
 import { conAdmin } from './ayudas.js';
 
@@ -458,6 +458,90 @@ describe('con la base', () => {
     expect(viajes).toHaveLength(1);
     expect(viajes[0].modo).toBe('auto');
     expect(viajes[0].km).toBeCloseTo(8, 0);
+  });
+
+  it('cada caminata y cada viaje, con lo suyo: de un solo clasificarDia, y un día sin datos no rompe', async () => {
+    const { ana, personaId } = await conAdmin();
+    const db = obtenerDb();
+    const { filas } = await import('../src/db/client.js');
+    const { sql } = await import('drizzle-orm');
+    const casa = await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Casa', lat: -34.6, lon: -58.4, radio_m: 100 });
+    expect(casa.status).toBeLessThan(300);
+    const puntos = new Recorrido(de(0)).ir([1000, 0], PIE, PIE_M).parar(1).ir([9000, 0], AUTO, AUTO_M).parar(1).ir([9000, 700], PIE, PIE_M).puntos;
+    await enTandas(ana, personaId, puntos);
+    const dia = (await filas<{ fecha: string }>(db, sql`SELECT to_char(fecha, 'YYYY-MM-DD') AS fecha FROM puntos WHERE persona_id = ${personaId} LIMIT 1`))[0].fecha;
+
+    // Una caminata de los pasos, con sus pasos, que cubre la primera vuelta a pie.
+    const sync = await ana.post('/api/actividad/caminatas', { persona_id: personaId, dias: [{ fecha: dia, caminatas: [{ inicio: iso(de(0)), fin: iso(de(14)), pasos: 1400 }] }] });
+    expect(sync.status).toBe(200);
+
+    const pie = (await ana.get(`/api/ubicacion/recorrido?persona=${personaId}&fecha=${dia}&tipo=a_pie`)).body.rutas;
+    expect(pie).toHaveLength(2);
+    expect(pie[0].origen.lugar).toBe('Casa');
+    expect(pie[0].destino.lugar).toBeNull();
+    expect(pie[0].minutos).toBeGreaterThan(5);
+    expect(pie[0].kmh).toBeGreaterThan(2);
+    expect(pie[0].kmh).toBeLessThan(8);
+    expect(pie[0].pasos).toBeGreaterThan(500);
+    expect(pie[0].pasos).toBeLessThanOrEqual(1400);
+    expect(pie[1].pasos).toBeNull(); // la segunda no tiene caminata: no se inventa
+    expect(pie[1].origen.lugar).toBeNull();
+
+    const viajes = (await ana.get(`/api/ubicacion/recorrido?persona=${personaId}&fecha=${dia}&tipo=vehiculo`)).body.rutas;
+    expect(viajes).toHaveLength(1);
+    expect(viajes[0].km).toBeCloseTo(8, 0);
+    expect(viajes[0].kmh).toBeGreaterThan(16);
+    expect(viajes[0].pasos).toBeNull();
+    expect(Date.parse(viajes[0].inicio)).toBeGreaterThanOrEqual(Date.parse(pie[0].fin));
+    expect(Date.parse(viajes[0].fin)).toBeLessThanOrEqual(Date.parse(pie[1].inicio));
+
+    // Los mismos ratos que dice la clasificación, y lo mismo que cuentan los viajes del día.
+    const del = (await ana.get(`/api/ubicacion/viajes?persona=${personaId}&fecha=${dia}`)).body;
+    expect(del.map((v: any) => v.inicio)).toEqual(viajes.map((v: any) => v.inicio));
+
+    // Sin datos.
+    const vacio = (await ana.get(`/api/ubicacion/recorrido?persona=${personaId}&fecha=2020-01-01&tipo=a_pie`)).body;
+    expect(vacio.rutas).toEqual([]);
+
+    // Volver a sincronizar sin los pasos los saca (el día se reemplaza entero), y la caminata sigue.
+    await ana.post('/api/actividad/caminatas', { persona_id: personaId, dias: [{ fecha: dia, caminatas: [{ inicio: iso(de(0)), fin: iso(de(14)) }] }] });
+    const sinPasos = (await ana.get(`/api/ubicacion/recorrido?persona=${personaId}&fecha=${dia}&tipo=a_pie`)).body.rutas;
+    expect(sinPasos[0].pasos).toBeNull();
+    expect((await ana.get(`/api/actividad/caminatas?persona=${personaId}&fecha=${dia}`)).body).toHaveLength(1);
+  });
+
+  it('la dirección de una punta se pide aparte, y con una persona que no es tuya no', async () => {
+    const { ana, personaId } = await conAdmin();
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ address: { road: 'Av. Cabildo', house_number: '2100', suburb: 'Belgrano' } }), { headers: { 'Content-Type': 'application/json' } }));
+    try {
+      const r = await ana.get(`/api/ubicacion/direccion?persona=${personaId}&lat=-34.5612&lon=-58.4561`);
+      expect(r.status).toBe(200);
+      expect(r.body.direccion).toBe('Av. Cabildo 2100, Belgrano');
+      expect((await ana.get(`/api/ubicacion/direccion?persona=${personaId}&lat=200&lon=0`)).status).toBe(400);
+      expect((await ana.get(`/api/ubicacion/direccion?persona=999999&lat=-34.5&lon=-58.4`)).status).toBeGreaterThanOrEqual(403);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('un tramo solo: recorridosDe da ese, y los pasos se reparten por el tiempo que comparten', () => {
+    const puntos = new Recorrido(min(0)).ir([1000, 0], PIE, PIE_M).puntos;
+    const tramos = clasificarDia(puntos);
+    const fin = tramos.find((t) => t.tipo === 'a_pie')!.fin;
+    const inicio = tramos.find((t) => t.tipo === 'a_pie')!.inicio;
+    const [r, ...resto] = recorridosDe(tramos, 'a_pie', [], { ratos: [{ inicio, fin, pasos: 1000 }] });
+    expect(resto).toEqual([]);
+    expect(r.pasos).toBe(1000);
+    expect(r.metros).toBeGreaterThan(800);
+    expect(r.origen).toMatchObject({ lugar: null });
+    expect(recorridosDe(tramos, 'vehiculo')).toEqual([]);
+    expect(recorridosDe([], 'a_pie')).toEqual([]);
+
+    const h = 3600000;
+    expect(pasosDelTramo({ ratos: [{ inicio: 0, fin: 2 * h, pasos: 2000 }] }, 0, h)).toBe(1000);
+    expect(pasosDelTramo({ ratos: [{ inicio: 0, fin: h / 4, pasos: 2000 }] }, 0, h)).toBeNull(); // cubre muy poco
+    expect(pasosDelTramo({ ratos: [{ inicio: 0, fin: h }] }, 0, h)).toBeNull();
+    expect(pasosDelTramo(undefined, 0, h)).toBeNull();
   });
 
   it('un paseo pendiente que en realidad fue en auto ya no se pregunta; uno de verdad, con solo su camino', async () => {

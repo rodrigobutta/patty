@@ -122,7 +122,11 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     - **Lo que dibuja cada cosa.** La hoja de Viajes muestra solo los viajes; la de Movimiento, solo lo caminado (sin pasos
       no hay hoja de Movimiento: lo caminado va en la de Viajes, aparte). La tarjeta de una actividad y su mapa piden
       `GET /api/ubicacion/camino?…&tipo=a_pie` (o `vehiculo` para un viaje o una bici): si en ese rato hubo otra cosa, va solo
-      la parte más larga de ese tipo, con sus km. Sin datos de ese tipo, la tarjeta va sin mapa.
+      la parte más larga de ese tipo, con sus km. Sin datos de ese tipo, la tarjeta va sin mapa. En cada hoja se ve primero
+      todo el día y se puede elegir una caminata o un viaje (`rutas` de `GET /api/ubicacion/recorrido`, armadas en
+      `recorridosDe` con los tramos de `clasificarDia`): solo su mapa, horario, km, velocidad, lugares de las puntas (si no
+      tienen nombre, la dirección, que se pide al elegirlo) y pasos, si una caminata con pasos (`caminatas_pasos`) cubre al
+      menos la mitad de ese rato.
     - **Caminatas falsas.** Una caminata de los pasos que pasó sobre todo en vehículo sale de `mediciones` (no la cuenta nada)
       y queda en `caminatas_descartadas`; si los puntos dejan de contradecirla, vuelve. Se revisa al recalcular el día y al
       llegar las caminatas. Sin puntos de ese rato, se le cree a los pasos.

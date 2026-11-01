@@ -319,6 +319,21 @@ export const caminatasDescartadas = pgTable(
   (t) => [uniqueIndex('caminatas_descartadas_idx').on(t.persona_id, t.inicio)],
 );
 
+/** Cuántos pasos tuvo cada caminata (de los pasos del reloj), aparte: la caminata va y viene entre `mediciones` y las descartadas. */
+export const caminatasPasos = pgTable(
+  'caminatas_pasos',
+  {
+    id: idGrande(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    inicio: instante('inicio').notNull(),
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    pasos: integer('pasos').notNull(),
+  },
+  (t) => [uniqueIndex('caminatas_pasos_idx').on(t.persona_id, t.inicio)],
+);
+
 // ---------- Ubicación ----------
 
 /**

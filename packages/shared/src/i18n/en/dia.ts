@@ -254,4 +254,12 @@ export const DIA: Record<string, string> = {
   'Qué fue': 'What it was',
   'Crear «{que}» en {cat}': 'Create “{que}” in {cat}',
   'Crear «{que}»': 'Create “{que}”',
+  'Cuál ver': 'Which one to see',
+  'Horario': 'Time',
+  'Duración': 'Duration',
+  'Distancia': 'Distance',
+  'Velocidad': 'Speed',
+  'Desde': 'From',
+  'Hasta': 'To',
+  'Todo': 'All',
 };

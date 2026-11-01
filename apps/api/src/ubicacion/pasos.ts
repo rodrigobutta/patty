@@ -28,12 +28,14 @@ export async function fuenteCaminatas(tx: Tx, personaId: number): Promise<number
 export async function pasosDe(db: Db | Tx, personaId: number, desde: number, hasta: number): Promise<Pasos> {
   const d = new Date(desde).toISOString();
   const h = new Date(hasta).toISOString();
-  const ratos = await filas<{ inicio: string; fin: string }>(
+  const ratos = await filas<{ inicio: string; fin: string; pasos: number | null }>(
     db,
-    sql`SELECT m.inicio, m.fin FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id
-        WHERE m.persona_id = ${personaId} AND f.tipo = 'reloj' AND f.nombre = ${FUENTE_CAMINATAS} AND m.fin >= ${d} AND m.inicio <= ${h}
-        UNION ALL
-        SELECT inicio, fin FROM caminatas_descartadas WHERE persona_id = ${personaId} AND fin >= ${d} AND inicio <= ${h}`,
+    sql`SELECT u.inicio, u.fin, cp.pasos FROM (
+          SELECT m.inicio, m.fin FROM mediciones m JOIN fuentes f ON f.id = m.fuente_id
+          WHERE m.persona_id = ${personaId} AND f.tipo = 'reloj' AND f.nombre = ${FUENTE_CAMINATAS} AND m.fin >= ${d} AND m.inicio <= ${h}
+          UNION ALL
+          SELECT inicio, fin FROM caminatas_descartadas WHERE persona_id = ${personaId} AND fin >= ${d} AND inicio <= ${h}
+        ) u LEFT JOIN caminatas_pasos cp ON cp.persona_id = ${personaId} AND cp.inicio = u.inicio`,
   );
   const datos = await una<{ desde: string | null; hasta: string | null }>(
     db,
@@ -43,7 +45,7 @@ export async function pasosDe(db: Db | Tx, personaId: number, desde: number, has
                (SELECT max(ultimo_uso) FROM fuentes WHERE persona_id = ${personaId} AND tipo = 'reloj') AS hasta`,
   );
   return {
-    ratos: ratos.map((r) => ({ inicio: new Date(r.inicio).getTime(), fin: new Date(r.fin).getTime() })),
+    ratos: ratos.map((r) => ({ inicio: new Date(r.inicio).getTime(), fin: new Date(r.fin).getTime(), pasos: r.pasos })),
     desde: datos?.desde ? new Date(datos.desde).getTime() : null,
     hasta: datos?.hasta ? new Date(datos.hasta).getTime() : null,
   };
