@@ -1,24 +1,30 @@
 // Lo que llegó solo en el Día, en widgets chicos: un ícono dibujado (el del clima cambia según el día) y un resumen
-// cortito, sin títulos. Cuatro lugares fijos: clima, ubicación, teléfono, sueño y salud. Los que no tienen datos porque
-// falta el permiso van grises (ver FuenteApagada); tocando uno con datos se ve el detalle a lo ancho. Más uno de lo que se
-// comió (ver ComidaDelDia), que aparece cuando hay algo anotado.
-import { Fragment, useCallback, useEffect, useState, type ReactNode } from 'react';
+// cortito, sin títulos. Los que no tienen datos porque falta el permiso van grises (ver FuenteApagada); tocando uno con
+// datos se ve el detalle a lo ancho. Más uno de lo que se comió (ver ComidaDelDia), que aparece cuando hay algo anotado.
+// Cuáles se ven y en qué orden lo elige cada persona: en Más (ver ElegirWidgets) o manteniendo apretado uno (ver OrganizarWidgets).
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { IconoCampana, IconoCategoria } from '../ui/IconosPatty';
 import { createPortal } from 'react-dom';
-import { patronesFinos, type Categoria, type DatoAutomatico, type Persona, type Registro } from 'shared';
+import { CONCEPTOS_ESCUCHA, moverWidget, patronesFinos, ponerWidgetVisible, vecinoDeWidget, widgetOculto, widgetsVisibles, type AjustesWidgets, type Categoria, type DatoAutomatico, type Persona, type Registro, type WidgetId } from 'shared';
 import { AvisosDelTelefono } from './AvisosDelDia';
 import { ClimaDelDia } from './ClimaDelDia';
+import { EscuchasDelDia, NOMBRE_ESCUCHA } from './EscuchasDelDia';
+import { celdasVisibles, OpcionesWidget, useOrganizarWidgets } from './OrganizarWidgets';
 import { ComidaDelDiaHoja, comidasAnotadas, destacadoDe, lineaComidas, useComidaDelDia } from './ComidaDelDia';
 import { GraficoSueno, ResumenNoche } from './GraficoSueno';
 import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico, type LineaAutomatica } from '../lib/automatico';
 import { appDelUso, useIconosApps } from '../lib/iconosApps';
 import { marcarNocheVista, useAlPedirNoche } from '../lib/buenDia';
+import { horaEn } from '../lib/fechas';
 import { locale, t } from '../lib/idioma';
-import { IconoCelular, IconoReuniones, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
+import { irAMas } from '../lib/navegar';
+import { cambiarWidgets, NOMBRE_WIDGET, useAjustesWidgets } from '../lib/widgets';
+import { IconoCelular, IconoCuerpo, IconoEscuchas, IconoReuniones, IconoCielo, IconoLugar, IconoPasos, IconoSueno, type Cielo } from '../ui/IconosWidget';
 import { WidgetApagado, type Fuente } from './FuenteApagada';
 
-type Lugar = 'clima' | 'ubicacion' | 'pasos' | 'telefono' | 'reuniones' | 'sueno' | 'comida';
+/** Los que arma esta pantalla; los demás (remedios, ánimo) se dibujan solos: ver `propios`. */
+type Lugar = Exclude<WidgetId, 'remedios' | 'animo'>;
 
 interface Widget {
   lugar: Lugar;
@@ -190,10 +196,68 @@ function widgetSueno(todos: DatoAutomatico[], grupos: GrupoAutomatico[], registr
   };
 }
 
+/** Pulso, oxígeno y peso del reloj. Sin noche anotada no había dónde verlos: su hoja era la del sueño. */
+const CUERPO = new Set(['Pulso en reposo', 'Pulso promedio', 'Pulso máximo', 'Pulso mínimo', 'Variabilidad del pulso', 'Oxígeno en sangre', 'Respiraciones por minuto', 'Peso']);
+
+function widgetCuerpo(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
+  const valor = (concepto: string) => {
+    const d = dato(todos, 'reloj', concepto);
+    return d ? d.suma / Math.max(1, d.cantidad) : undefined;
+  };
+  const decimal = (n: number) => Number(n.toFixed(1)).toLocaleString(locale());
+  const reposo = valor('Pulso en reposo');
+  const pulso = reposo ?? valor('Pulso promedio');
+  const oxigeno = valor('Oxígeno en sangre');
+  const peso = valor('Peso');
+  const textos = [
+    pulso !== undefined ? t('{n} lpm', { n: entero(pulso) }) : null,
+    oxigeno !== undefined ? t('{n} % de oxígeno', { n: decimal(oxigeno) }) : null,
+    peso !== undefined ? `${decimal(peso)} kg` : null,
+  ].filter((x): x is string => x !== null);
+  if (!textos.length) return null;
+  return {
+    lugar: 'cuerpo',
+    icono: <IconoCuerpo />,
+    linea: textos[0],
+    sub: textos[1] ?? (reposo !== undefined ? t('en reposo') : undefined),
+    grupos: grupos.filter((g) => g.tipo === 'reloj').map((g) => ({ ...g, lineas: g.lineas.filter((l) => CUERPO.has(l.concepto)) })),
+    nombre: t('Pulso y cuerpo'),
+  };
+}
+
+/** Lo que sonó o se miró en el teléfono: el total y qué fue. Su detalle, por sesión y con los temas, es EscuchasDelDia. */
+function widgetEscuchas(todos: DatoAutomatico[]): Widget | null {
+  const datos = todos.filter((d) => d.tipo_fuente === 'telefono' && CONCEPTOS_ESCUCHA.includes(d.concepto));
+  if (!datos.length) return null;
+  const nombres = (['musica', 'podcast', 'video'] as const).map((tipo, i) => (datos.some((d) => d.concepto === CONCEPTOS_ESCUCHA[i]) ? t(NOMBRE_ESCUCHA[tipo]) : null)).filter(Boolean);
+  return { lugar: 'escuchas', icono: <IconoEscuchas />, linea: duracion(datos.reduce((s, d) => s + d.suma, 0)), sub: nombres.join(' · '), grupos: [], nombre: t('Lo que sonó') };
+}
+
+/** Los dolores y molestias anotados ese día, con su intensidad. Lo que se mide (la fiebre) no es un malestar en sí. */
+function widgetMalestares(registros: Registro[], categorias: Categoria[], fecha: string, zona: string): Widget | null {
+  const sintoma = categorias.find((c) => c.clave === 'sintoma')?.id;
+  const delDia = registros.filter((r) => r.categoria_id === sintoma && r.fecha === fecha && (r.intensidad !== null || r.valor === null));
+  if (!delDia.length) return null;
+  const distintos = new Set(delDia.map((r) => r.concepto));
+  const maximo = Math.max(0, ...delDia.map((r) => r.intensidad ?? 0));
+  return {
+    lugar: 'malestares',
+    icono: <IconoCategoria clave="sintoma" />,
+    linea: distintos.size === 1 ? t(delDia[0].concepto) : t('{n} malestares', { n: distintos.size }),
+    sub: maximo ? t('hasta {n} de 10', { n: maximo }) : undefined,
+    grupos: [{
+      fuente: '',
+      tipo: 'malestares',
+      lineas: delDia.map((r) => ({ concepto: r.concepto, categoria_id: r.categoria_id, valor: `${horaEn(r.inicio, zona)}${r.intensidad !== null ? ` · ${r.intensidad}/10` : ''}` })),
+    }],
+    nombre: t('Malestares'),
+  };
+}
+
 /** El lugar de cada permiso que falta (el de la ubicación también trae el clima). */
 const LUGAR_DE: Record<Fuente, Lugar> = { ubicacion: 'ubicacion', telefono: 'telefono', salud: 'sueno' };
 
-export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, alActivar, alContarSueno, buscandoSalud = false, antes, persona, fecha }: {
+export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, alActivar, alContarSueno, buscandoSalud = false, propios, puedeOrganizar = false, alAvisar, persona, fecha }: {
   automaticos: DatoAutomatico[];
   registros: Registro[];
   categorias: Categoria[];
@@ -203,19 +267,58 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
   alContarSueno?: () => void;
   /** Mientras se le pide al reloj (Health Connect / Salud) lo de hoy. */
   buscandoSalud?: boolean;
-  /** Widgets que van primero (los remedios del día). */
-  antes?: ReactNode;
+  /** Los widgets que se dibujan solos (los remedios, el ánimo), en su lugar del orden. Si no tienen qué mostrar, no ocupan lugar. */
+  propios?: Partial<Record<WidgetId, ReactNode>>;
+  /** Si puede cambiar cuáles se ven y en qué orden (no quien solo mira o supervisa). */
+  puedeOrganizar?: boolean;
+  alAvisar?: (texto: string) => void;
   /** Para el gráfico de la noche (en la hoja del sueño). */
   persona: Persona;
   fecha: string;
 }) {
   const [abierto, setAbierto] = useState<Lugar | null>(null);
+  const ajustes = useAjustesWidgets(persona);
+  const [opciones, setOpciones] = useState<WidgetId | null>(null);
+  const [grilla, setGrilla] = useState<HTMLDivElement | null>(null);
+  const guardarAjustes = (a: AjustesWidgets) => void cambiarWidgets(persona.id, a).catch((e: Error) => alAvisar?.(e.message));
+  /** Los que se ven de verdad, en su orden (los que se dibujan solos pueden no tener qué mostrar: eso lo sabe la pantalla). */
+  const mostrados = () => {
+    const hay = new Set(celdasVisibles(grilla).map((c) => c.dataset.widget));
+    return widgetsVisibles(ajustes).filter((w) => hay.has(w));
+  };
+  /** Con el teclado el widget se mueve de lugar en la página: el foco tiene que seguirlo. */
+  const enfocar = useRef<WidgetId | null>(null);
+  const [anuncio, setAnuncio] = useState('');
+  const mover = (id: WidgetId, delta: -1 | 1) => {
+    const otro = vecinoDeWidget(mostrados(), id, delta);
+    if (otro) guardarAjustes(moverWidget(ajustes, id, otro));
+  };
+  const organizar = useOrganizarWidgets({
+    grilla,
+    ajustes,
+    habilitado: puedeOrganizar,
+    alSoltar: guardarAjustes,
+    alOpciones: setOpciones,
+    alMover: (id, delta) => {
+      const lista = mostrados();
+      const otro = vecinoDeWidget(lista, id, delta);
+      if (!otro) return;
+      enfocar.current = id;
+      setAnuncio(t('{nombre}: lugar {n} de {total}', { nombre: t(NOMBRE_WIDGET[id]), n: lista.indexOf(otro) + 1, total: lista.length }));
+      guardarAjustes(moverWidget(ajustes, id, otro));
+    },
+  });
+  useEffect(() => {
+    if (!enfocar.current) return;
+    grilla?.querySelector<HTMLElement>(`[data-widget="${enfocar.current}"] button`)?.focus();
+    enfocar.current = null;
+  });
   // El buen día (la tarjeta o el aviso de la mañana) abre la hoja del sueño.
   useAlPedirNoche(useCallback(() => setAbierto('sueno'), []));
   const grupos = agruparAutomaticos(automaticos);
   // Lo que se comió: el interruptor de los componentes también lo apaga (si no quiere que Patty estime eso, tampoco se muestra).
   const anotadas = comidasAnotadas(registros, categorias, fecha);
-  const hayComida = patronesFinos(persona.patrones).componentes && anotadas.comidas + anotadas.bebidas > 0;
+  const hayComida = patronesFinos(persona.patrones).componentes && anotadas.comidas + anotadas.bebidas > 0 && !widgetOculto(ajustes, 'comida');
   // Al abrir la hoja se vuelve a pedir: lo que se estaba calculando puede haber terminado.
   const comida = useComidaDelDia(persona, fecha, hayComida, `${anotadas.firma}#${abierto === 'comida'}`);
   const widgets = [
@@ -226,6 +329,9 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
     widgetReuniones(automaticos, grupos),
     widgetSueno(automaticos, grupos, registros),
     hayComida ? { lugar: 'comida' as const, icono: <IconoCategoria clave="comida" />, linea: lineaComidas(anotadas), sub: destacadoDe(comida), grupos: [], nombre: t('Comida') } : null,
+    widgetCuerpo(automaticos, grupos),
+    widgetEscuchas(automaticos),
+    widgetMalestares(registros, categorias, fecha, persona.zona_horaria),
   ].map((w) => {
     // Lo del reloj se reparte por categoría: actividad (pasos, km, calorías, ejercicio) al de los pasos; el sueño y la
     // salud (pulso, oxígeno, peso) al del sueño.
@@ -238,38 +344,75 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
         .filter((g) => g.tipo === 'reloj')
         .map((g) => ({ ...g, lineas: g.lineas.filter((l) => (w.lugar === 'pasos' ? deActividad(l.categoria_id) : !deActividad(l.categoria_id))) })),
     };
+  }).map((w) => {
+    // Lo que tiene su propio widget no se repite en otra hoja; si lo ocultó, sigue donde estaba.
+    const sacar = w?.lugar === 'sueno' && !widgetOculto(ajustes, 'cuerpo') ? CUERPO : w?.lugar === 'telefono' && !widgetOculto(ajustes, 'escuchas') ? new Set(CONCEPTOS_ESCUCHA) : null;
+    return w && sacar ? { ...w, grupos: w.grupos.map((g) => ({ ...g, lineas: g.lineas.filter((l) => !sacar.has(l.concepto)) })) } : w;
   });
   // Abrir la noche cuenta como haber visto el reporte de sueño: la tarjeta del buen día se va.
   const hayNoche = widgets.some((w) => w?.lugar === 'sueno');
   useEffect(() => {
     if (abierto === 'sueno' && hayNoche) marcarNocheVista(persona.id, fecha);
   }, [abierto, hayNoche, persona.id, fecha]);
-  const orden: Lugar[] = ['clima', 'ubicacion', 'pasos', 'telefono', 'reuniones', 'sueno', 'comida'];
-  const celdas = orden.map((l) => ({ l, w: widgets.find((w) => w?.lugar === l) ?? null, apagada: apagadas.find((f) => LUGAR_DE[f] === l) }));
-  if (!antes && !celdas.some((c) => c.w || c.apagada)) return null;
+  const widgetDe = (l: WidgetId) => widgets.find((w) => w?.lugar === l) ?? null;
+  const contenido = (l: WidgetId): ReactNode => {
+    if (propios?.[l]) return propios[l];
+    const w = widgetDe(l);
+    if (w) {
+      return (
+        <button className="widget-auto" onClick={() => setAbierto(w.lugar)} aria-haspopup="dialog" aria-label={`${w.nombre}: ${w.linea}${w.sub ? `, ${w.sub}` : ''}`}>
+          {w.icono}
+          <span className="widget-linea">{w.linea}</span>
+          {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
+        </button>
+      );
+    }
+    const apagada = apagadas.find((f) => LUGAR_DE[f] === l);
+    if (apagada) return <WidgetApagado fuente={apagada} alTocar={() => alActivar(apagada)} />;
+    // Sin reloj ni nada anotado: el lugar del sueño queda, para contar cómo dormiste.
+    if (l === 'sueno' && alContarSueno) {
+      return (
+        <button className={`widget-auto sin-datos${buscandoSalud ? ' buscando' : ''}`} onClick={alContarSueno} disabled={buscandoSalud}>
+          <IconoSueno />
+          <span className="widget-linea">{buscandoSalud ? t('Mirando el reloj…') : t('¿Cómo dormiste?')}</span>
+          <span className="widget-sub">{buscandoSalud ? t('Health Connect') : t('Tocá para contarlo')}</span>
+        </button>
+      );
+    }
+    return null;
+  };
+  const celdas = widgetsVisibles(ajustes).map((l) => ({ l, c: contenido(l) })).filter((x) => x.c);
+  if (!celdas.length) return null;
+  // Mientras se arrastra, cada una se ve en su lugar nuevo sin mover el DOM (ver OrganizarWidgets).
+  const ordenVista = organizar.vista ? widgetsVisibles(organizar.vista) : null;
+  const lista = opciones ? mostrados() : [];
   return (
-    <div className="widgets-auto">
-      {antes}
-      {celdas.map(({ l, w, apagada }) =>
-        w ? (
-          <Fragment key={l}>
-            <button className="widget-auto" onClick={() => setAbierto(l)} aria-haspopup="dialog" aria-label={`${w.nombre}: ${w.linea}${w.sub ? `, ${w.sub}` : ''}`}>
-              {w.icono}
-              <span className="widget-linea">{w.linea}</span>
-              {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
-            </button>
-          </Fragment>
-        ) : apagada ? (
-          <WidgetApagado key={l} fuente={apagada} alTocar={() => alActivar(apagada)} />
-        ) : l === 'sueno' && alContarSueno ? (
-          // Sin reloj ni nada anotado: el lugar del sueño queda, para contar cómo dormiste.
-          <button key={l} className={`widget-auto sin-datos${buscandoSalud ? ' buscando' : ''}`} onClick={alContarSueno} disabled={buscandoSalud}>
-            <IconoSueno />
-            <span className="widget-linea">{buscandoSalud ? t('Mirando el reloj…') : t('¿Cómo dormiste?')}</span>
-            <span className="widget-sub">{buscandoSalud ? t('Health Connect') : t('Tocá para contarlo')}</span>
-          </button>
-        ) : null,
-      )}
+    <div ref={setGrilla} className={`widgets-auto${ordenVista ? ' arrastrando' : ''}`}>
+      {celdas.map(({ l, c }) => (
+        <div key={l} className={`widget-celda${organizar.agarrado === l ? ' agarrado' : ''}`} style={ordenVista ? { order: ordenVista.indexOf(l) } : undefined} {...organizar.celda(l)}>
+          {c}
+        </div>
+      ))}
+      <span className="solo-lectores" role="status">{anuncio}</span>
+      {opciones ? (
+        <OpcionesWidget
+          nombre={t(NOMBRE_WIDGET[opciones])}
+          lugar={lista.indexOf(opciones) + 1}
+          total={lista.length}
+          alMover={(delta) => mover(opciones, delta)}
+          alOcultar={() => {
+            const nombre = t(NOMBRE_WIDGET[opciones]);
+            setOpciones(null);
+            guardarAjustes(ponerWidgetVisible(ajustes, opciones, false));
+            alAvisar?.(t('{nombre} oculto. Lo volvés a activar en Más → Widgets del Día.', { nombre }));
+          }}
+          alElegir={() => {
+            setOpciones(null);
+            irAMas('widgets');
+          }}
+          alCerrar={() => setOpciones(null)}
+        />
+      ) : null}
       {/* El detalle, en una hoja: el ícono grande, el resumen y cada dato. */}
       {abierto
         ? (() => {
@@ -302,6 +445,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                   {w.lugar === 'clima' ? <ClimaDelDia persona={persona} fecha={fecha} todos={automaticos} /> : null}
                   {w.lugar === 'telefono' ? <AvisosDelTelefono persona={persona} fecha={fecha} /> : null}
                   {w.lugar === 'comida' ? <ComidaDelDiaHoja datos={comida} /> : null}
+                  {w.lugar === 'escuchas' ? <EscuchasDelDia persona={persona} fecha={fecha} vuelta={0} /> : null}
                   {w.grupos.length && w.lugar !== 'clima' ? <DetalleAuto lineas={w.grupos.flatMap((g) => g.lineas)} categorias={categorias} /> : null}
                 </div>
               </>,

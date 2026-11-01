@@ -2,7 +2,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { PATRONES_FINOS, type AjustesPatrones, type Persona } from 'shared';
+import { limpiarAjustesWidgets, PATRONES_FINOS, type AjustesPatrones, type Persona } from 'shared';
 import { exigirRol } from '../auth/sesion.js';
 import { filas } from '../db/client.js';
 import { fuentes, personas, personaUsuarios } from '../db/schema.js';
@@ -59,6 +59,11 @@ function datosPersona(d: Record<string, unknown>, nueva: boolean) {
     }
     v.patrones = a;
   }
+  if ('widgets' in d) {
+    const w = limpiarAjustesWidgets(d.widgets);
+    if (!w) throw new ErrorApi('Ajustes de widgets inválidos.');
+    v.widgets = w;
+  }
   return v;
 }
 
@@ -68,7 +73,7 @@ export const rutasPersonas = new Hono<Env>()
     return c.json(
       await filas<Persona>(
         c.var.db,
-        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.notas, p.patrones,
+        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.notas, p.patrones, p.widgets,
               EXISTS (SELECT 1 FROM persona_usuarios d WHERE d.persona_id = p.id AND d.usuario_id = ${u.id} AND d.rol = 'dueno') AS propia,
               EXISTS (SELECT 1 FROM accesos a WHERE a.persona_id = p.id AND a.usuario_id = ${u.id} AND a.por_supervision) AS supervisada
             FROM personas p

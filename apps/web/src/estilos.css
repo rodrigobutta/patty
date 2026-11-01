@@ -1021,6 +1021,22 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
   border: 1px solid var(--borde); background: color-mix(in srgb, var(--acento-suave) 55%, var(--panel)); transition: transform 0.12s ease, border-color 0.15s ease; }
 .widget-auto:active { transform: scale(0.97); }
 .widget-auto.abierto { border-color: var(--acento); }
+/* Cada widget va en su celda, que es la que se agarra. Si el widget no tiene nada que mostrar, la celda no ocupa lugar. */
+.widget-celda { display: grid; min-width: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.widget-celda:empty { display: none; }
+.widget-celda.agarrado { position: relative; z-index: 5; }
+.widget-celda.agarrado > .widget-auto { transform: scale(1.04); border-color: var(--acento); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22); }
+.widgets-auto.arrastrando .widget-celda:not(.agarrado) { opacity: 0.75; }
+.solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.opciones-widget .btn { margin-top: 8px; }
+.opciones-widget .fila-mover { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.elegir-widgets { list-style: none; margin: 12px 0; padding: 0; }
+.elegir-widgets li { display: flex; align-items: center; gap: 4px; padding: 6px 0; border-top: 1px solid var(--borde); }
+.elegir-widgets li.oculto .icono-widget, .elegir-widgets li.oculto label > span:last-child { opacity: 0.5; }
+.elegir-widgets label.opcion { flex: 1; min-width: 0; align-items: center; }
+.elegir-widgets .icono-widget { display: flex; flex: none; }
+.elegir-widgets .icono-widget svg { width: 32px; height: 32px; }
+.elegir-widgets .btn-icono:disabled { opacity: 0.3; }
 .widget-cabeza { display: flex; align-items: center; gap: 6px; }
 .widget-cabeza .icono { font-size: 18px; line-height: 1; }
 .widget-resumen { font-size: 14px; font-weight: 600; line-height: 1.3; }

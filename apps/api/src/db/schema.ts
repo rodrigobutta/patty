@@ -26,7 +26,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import type { AjustesPatrones, ComponenteHallazgo, Modo } from 'shared';
+import type { AjustesPatrones, AjustesWidgets, ComponenteHallazgo, Modo } from 'shared';
 
 const id = () => integer('id').primaryKey().generatedByDefaultAsIdentity();
 const idGrande = () => bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity();
@@ -105,6 +105,8 @@ export const personas = pgTable('personas', {
   notas: text('notas'),
   /** Qué patrones más finos se le buscan (umbrales, lo que protege, efectos a los 2 o 3 días); lo que falta, prendido. */
   patrones: jsonb('patrones').$type<AjustesPatrones>().notNull().default({}),
+  /** Qué widgets se ven en el Día y en qué orden; vacío, todos en el orden de siempre (shared: widgets.ts). */
+  widgets: jsonb('widgets').$type<AjustesWidgets>().notNull().default({}),
   creado_por: integer('creado_por').references(() => usuarios.id, { onDelete: 'set null' }),
   creado: creado(),
 });

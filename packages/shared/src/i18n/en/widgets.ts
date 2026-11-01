@@ -1,0 +1,27 @@
+// Elegir y organizar los widgets del Día, y los widgets nuevos.
+export const WIDGETS_EN: Record<string, string> = {
+  'Widgets del Día': 'Day widgets',
+  'Cuáles ver y en qué orden': 'Which to show and in what order',
+  'Elegí cuáles ver en el Día y en qué orden. Cada uno aparece cuando tiene algo para mostrar. En el Día también podés mantener apretado un widget para ocultarlo o arrastrarlo.':
+    'Choose which ones to show on your Day and in what order. Each one appears when it has something to show. On your Day you can also press and hold a widget to hide or drag it.',
+  'Volver al orden de siempre': 'Back to the default order',
+  'Subir {nombre}': 'Move {nombre} up',
+  'Bajar {nombre}': 'Move {nombre} down',
+  'Opciones de {nombre}': '{nombre} options',
+  'Lugar {n} de {total}. También podés mantenerlo apretado y arrastrarlo.': 'Position {n} of {total}. You can also press and hold it, then drag.',
+  'Antes': 'Earlier',
+  'Después': 'Later',
+  'Ocultar este widget': 'Hide this widget',
+  'Elegir qué widgets ver': 'Choose which widgets to show',
+  '{nombre} oculto. Lo volvés a activar en Más → Widgets del Día.': '{nombre} hidden. Turn it back on in More → Day widgets.',
+  '{nombre}: lugar {n} de {total}': '{nombre}: position {n} of {total}',
+  'Pulso y cuerpo': 'Pulse and body',
+  'Lo que sonó': 'What played',
+  Malestares: 'Discomforts',
+  '{n} lpm': '{n} bpm',
+  '{n} % de oxígeno': '{n}% oxygen',
+  'en reposo': 'at rest',
+  '{n} malestares': '{n} discomforts',
+  'hasta {n} de 10': 'up to {n} of 10',
+  'Ajustes de widgets inválidos.': 'Invalid widget settings.',
+};

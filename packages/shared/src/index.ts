@@ -4,6 +4,8 @@ export * from './i18n.js';
 export * from './mascota.js';
 export * from './medios.js';
 export * from './avisos.js';
+export * from './widgets.js';
+import type { AjustesWidgets } from './widgets.js';
 import type { Medio } from './medios.js';
 
 /**
@@ -217,6 +219,8 @@ export interface Persona {
   supervisada?: boolean;
   /** Qué patrones más finos se le buscan (ver `patronesFinos`). */
   patrones?: AjustesPatrones;
+  /** Qué widgets se ven en el Día y en qué orden (ver widgets.ts). */
+  widgets?: AjustesWidgets;
 }
 
 export interface Categoria extends CategoriaBase {
