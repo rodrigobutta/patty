@@ -913,6 +913,22 @@ export const resumenNoche = pgTable(
   (t) => [primaryKey({ columns: [t.persona_id, t.noche] })],
 );
 
+/** Cómo vienen las comidas (ia/leerComidas.ts): una por persona y por día. */
+export const lecturaComidas = pgTable(
+  'lectura_comidas',
+  {
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    texto: text('texto').notNull(),
+    /** ia: la escribió la IA. calculada: salió de las cuentas, porque no había IA o falló (se puede volver a intentar). */
+    origen: text('origen', { enum: ['ia', 'calculada'] }).notNull(),
+    creado: creado(),
+  },
+  (t) => [primaryKey({ columns: [t.persona_id, t.fecha] })],
+);
+
 /**
  * El resumen de cada semana (de lunes a domingo) que arma Patty el domingo a la noche: un título, unas líneas, lo que
  * se destacó y 1 o 2 cosas para probar, más los números de la semana (para comparar y para los gráficos).

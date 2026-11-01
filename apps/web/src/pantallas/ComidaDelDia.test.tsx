@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Categoria, ComidaDelDia, ComponenteDelDia, Persona, Registro } from 'shared';
 import { ComidaDelDiaHoja, comidasAnotadas, lineaComidas } from './ComidaDelDia';
@@ -29,6 +29,52 @@ vi.mock('../api', () => ({
 
 const categorias = [{ id: 1, clave: 'comida' }, { id: 2, clave: 'bebida' }] as Categoria[];
 const reg = (id: number, concepto: string, categoria_id: number, hora: string, fecha = '2026-10-30') => ({ id, concepto, categoria_id, fecha, inicio: `${fecha}T${hora}:00-03:00`, valor: null, unidad: null }) as Registro;
+
+const dias14 = Array.from({ length: 14 }, (_, i) => `2026-10-${String(17 + i).padStart(2, '0')}`);
+const consumo = (x: Partial<NonNullable<ComidaDelDia['consumo']>> = {}): NonNullable<ComidaDelDia['consumo']> => ({
+  dias: dias14,
+  comidas_por_dia: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 2, 1],
+  elementos: [{ nombre: 'Pan', veces: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1], total: 4, dias: 3, dias_desde: 0, seguidos: 1 }, { nombre: 'Queso', veces: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], total: 1, dias: 1, dias_desde: 3, seguidos: 0 }],
+  sin_aparecer: [{ nombre: 'Lentejas', dias_desde: 20, veces: 4 }],
+  distintos: 2,
+  sin_desglosar: 2,
+  ...x,
+});
+
+describe('lo que más se viene comiendo y la lectura', () => {
+  it('una fila por elemento y un cuadrito por día, con cuántas veces y hace cuánto', () => {
+    const { container } = render(<ComidaDelDiaHoja datos={datos({ consumo: consumo() })} />);
+    expect(screen.getByText('Lo que más comiste')).toBeTruthy();
+    expect(screen.getByText('4 veces · hoy')).toBeTruthy();
+    expect(screen.getByText('1 vez · hace 3 días')).toBeTruthy();
+    const filas = container.querySelectorAll('.comida-celdas');
+    expect(filas).toHaveLength(2);
+    expect(filas[0].querySelectorAll('button')).toHaveLength(14);
+    expect(filas[0].querySelectorAll('button')[11].textContent).toBe('2');
+    expect(filas[0].querySelectorAll('button')[11].className).toContain('veces-2');
+    expect(filas[0].querySelectorAll('button')[0].className).toContain('sin-dato'); // ese día no se sabe, no es que no hubo
+    expect(screen.getByText('Lentejas:')).toBeTruthy();
+    expect(screen.getByText(/No entran en la cuenta 2 comidas/)).toBeTruthy();
+  });
+
+  it('tocar un cuadrito dice qué fue ese día', () => {
+    const { container } = render(<ComidaDelDiaHoja datos={datos({ consumo: consumo() })} />);
+    fireEvent.click(container.querySelectorAll('.comida-celdas')[0].querySelectorAll('button')[11]);
+    expect(container.querySelector('.comida-detalle')?.textContent).toMatch(/Pan, .*: 2 veces/);
+  });
+
+  it('al mirar un día pasado no dice "hoy" ni "hace rato"', () => {
+    render(<ComidaDelDiaHoja datos={datos({ en_curso: false, consumo: consumo() })} />);
+    expect(screen.getByText('4 veces')).toBeTruthy();
+    expect(screen.queryByText('Hace rato que no aparece')).toBeNull();
+  });
+
+  it('muestra la lectura; una respuesta guardada de antes (sin estos datos) no rompe nada', () => {
+    render(<ComidaDelDiaHoja datos={datos({ lectura: { fecha: '2026-10-30', texto: 'Viene mucho pan.', origen: 'ia' } })} />);
+    expect(screen.getByText('Viene mucho pan.')).toBeTruthy();
+    expect(screen.queryByText('Lo que más comiste')).toBeNull();
+  });
+});
 
 describe('la hoja de lo que se comió', () => {
   it('muestra números redondos con su unidad, palabras para lo estimado de a platos, y dice que es una estimación', () => {

@@ -1603,6 +1603,20 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .comida-barras { flex: none; display: flex; align-items: flex-end; gap: 3px; width: 62px; height: 26px; }
 .comida-barras i { flex: 1; min-height: 3px; border-radius: 2px; background: var(--acento); }
 .comida-barras i.sin-dato { height: 3px; opacity: 0.3; }
+/* Lo que más se come, día a día: un cuadrito por día, en el mismo color siempre (más intenso, más veces; ni bueno ni malo). */
+.comida-consumo { display: grid; gap: 8px; }
+.comida-consumo-cabeza { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; margin-bottom: 3px; }
+.comida-consumo-cabeza span { flex: none; font-size: 12px; opacity: 0.75; }
+.comida-celdas, .comida-dias { display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px; }
+.comida-celdas button { appearance: none; border: 0; padding: 0; margin: 0; height: 20px; min-width: 0; min-height: 0; border-radius: 4px; font-size: 11px; font-weight: 600; line-height: 20px; text-align: center; background: color-mix(in srgb, var(--acento) 12%, transparent); color: var(--sobre-acento); cursor: pointer; }
+.comida-celdas button.veces-1 { background: color-mix(in srgb, var(--acento) 45%, transparent); }
+.comida-celdas button.veces-2 { background: color-mix(in srgb, var(--acento) 75%, transparent); }
+.comida-celdas button.veces-3 { background: var(--acento); }
+.comida-celdas button.sin-dato { background: transparent; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--acento) 20%, transparent); }
+.comida-celdas button.elegida { outline: 2px solid var(--acento); outline-offset: 1px; }
+.comida-dias span { font-size: 10px; text-align: center; opacity: 0.65; }
+.comida-dias span.ultimo { font-weight: 700; opacity: 1; }
+.comida-detalle { min-height: 18px; margin: 6px 0 0; }
 
 /* Tele, música y podcasts: las tapas (de iTunes), la búsqueda de títulos y lo que sonó en el teléfono. */
 .que-medio { display: flex; margin-bottom: 10px; }

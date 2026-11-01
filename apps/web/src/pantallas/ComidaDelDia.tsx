@@ -2,7 +2,7 @@
 // clima y con lo que más se nota primero. No es una app de dieta: sin metas, sin colores de bien o mal y sin consejos; lo único que
 // se compara es contra lo habitual de la misma persona. Las cuentas están en la API (componentes/delDia.ts).
 import { useEffect, useState, type ReactNode } from 'react';
-import { nombreRasgo, normalizar, type Categoria, type ComidaDelDia as Datos, type ComponenteDeLaSemana, type ComponenteDelDia, type Persona, type Registro } from 'shared';
+import { nombreRasgo, normalizar, type Categoria, type ComidaDelDia as Datos, type ComponenteDeLaSemana, type ConsumoDeElementos, type ElementoConsumido, type ComponenteDelDia, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { guardado } from '../lib/guardado';
 import { idioma, locale, t } from '../lib/idioma';
@@ -157,6 +157,82 @@ function TuSemana({ datos }: { datos: Datos }) {
   );
 }
 
+const veces = (n: number) => (n === 1 ? t('1 vez') : t('{n} veces', { n }));
+const hace = (n: number) => (n === 0 ? t('hoy') : n === 1 ? t('ayer') : t('hace {n} días', { n }));
+const diaCorto = (fecha: string, formato: 'narrow' | 'short') => new Intl.DateTimeFormat(locale(), { weekday: formato, ...(formato === 'short' ? { day: 'numeric' } : {}), timeZone: 'UTC' }).format(new Date(`${fecha}T12:00:00Z`));
+
+/**
+ * Lo que más se viene comiendo: una fila por elemento y un cuadrito por día. Tocando un cuadrito dice cuántas veces fue; los días sin nada
+ * desglosado van aparte, porque no se sabe si hubo o no.
+ */
+function LoMasComido({ consumo, enCurso }: { consumo: ConsumoDeElementos; enCurso: boolean }) {
+  const [elegida, setElegida] = useState<{ nombre: string; i: number } | null>(null);
+  const { dias, elementos, comidas_por_dia: comidasPorDia, sin_aparecer: sinAparecer, sin_desglosar: sinDesglosar } = consumo;
+  const texto = (e: ElementoConsumido, i: number) => {
+    const dia = diaCorto(dias[i], 'short');
+    if (!comidasPorDia[i]) return t('{dia}: sin datos', { dia });
+    return e.veces[i] ? t('{x}, {dia}: {veces}', { x: t(e.nombre), dia, veces: veces(e.veces[i]) }) : t('{x}, {dia}: nada', { x: t(e.nombre), dia });
+  };
+  const detalle = elegida && elementos.find((e) => e.nombre === elegida.nombre);
+  return (
+    <>
+      <div className="clima-notas">
+        <h4>{t('Lo que más comiste')}</h4>
+        {elementos.length ? (
+          <>
+            <p className="suave chico">{t('Lo que aparece adentro de tus comidas, por día. Más intenso, más veces.')}</p>
+            <div className="comida-consumo">
+              {elementos.map((e) => (
+                <div key={e.nombre}>
+                  <div className="comida-consumo-cabeza">
+                    <strong>{t(e.nombre)}</strong>
+                    <span>{enCurso ? `${veces(e.total)} · ${hace(e.dias_desde)}` : veces(e.total)}</span>
+                  </div>
+                  <div className="comida-celdas" role="img" aria-label={`${t(e.nombre)}: ${enCurso ? `${veces(e.total)}, ${hace(e.dias_desde)}` : veces(e.total)}`}>
+                    {e.veces.map((v, i) => (
+                      <button
+                        key={dias[i]}
+                        type="button"
+                        tabIndex={-1}
+                        title={texto(e, i)}
+                        className={`${comidasPorDia[i] ? `veces-${Math.min(v, 3)}` : 'sin-dato'}${elegida?.nombre === e.nombre && elegida.i === i ? ' elegida' : ''}`}
+                        onClick={() => setElegida({ nombre: e.nombre, i })}
+                      >
+                        {v > 1 ? v : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="comida-dias" aria-hidden>
+                {dias.map((d, i) => (
+                  <span key={d} className={i === dias.length - 1 ? 'ultimo' : ''}>{diaCorto(d, 'narrow')}</span>
+                ))}
+              </div>
+            </div>
+            <p className="suave chico comida-detalle" aria-live="polite">{detalle && elegida ? texto(detalle, elegida.i) : ''}</p>
+          </>
+        ) : (
+          <p className="suave chico">{t('Todavía no sé de qué están hechas tus comidas de estos días.')}</p>
+        )}
+        {sinDesglosar ? <p className="suave chico">{sinDesglosar === 1 ? t('No entra en la cuenta 1 comida de estos días: todavía no sé qué tiene.') : t('No entran en la cuenta {n} comidas de estos días: todavía no sé qué tienen.', { n: sinDesglosar })}</p> : null}
+      </div>
+      {enCurso && sinAparecer.length ? (
+        <div className="clima-notas">
+          <h4>{t('Hace rato que no aparece')}</h4>
+          <ul>
+            {sinAparecer.map((e) => (
+              <li key={e.nombre}>
+                <strong>{t(e.nombre)}:</strong> {hace(e.dias_desde)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 /** Lo que va en la hoja, debajo del ícono grande. */
 export function ComidaDelDiaHoja({ datos }: { datos: Datos | null }) {
   if (!datos) return <p className="suave chico comida-estimacion">{t('Mirando lo que comiste…')}</p>;
@@ -195,6 +271,13 @@ export function ComidaDelDiaHoja({ datos }: { datos: Datos | null }) {
           </ul>
         </div>
       ) : null}
+      {datos.lectura ? (
+        <div className="clima-notas">
+          <h4>{t('Cómo venís con las comidas')}</h4>
+          <p className="chico" style={{ margin: 0 }}>{datos.lectura.texto}</p>
+        </div>
+      ) : null}
+      {datos.consumo ? <LoMasComido consumo={datos.consumo} enCurso={datos.en_curso} /> : null}
       <TuSemana datos={datos} />
       {datos.patrones.length ? (
         <div className="clima-notas">

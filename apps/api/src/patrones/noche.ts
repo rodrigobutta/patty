@@ -2,13 +2,15 @@
 // anotaron algo en los últimos días, así nadie espera a que termine al tocar "Buscar patrones" y Patrones abre con lo
 // último. A las 9, si apareció algo nuevo, el búho avisa. Corre cada minuto; cada cosa se hace una sola vez por día.
 import { sql } from 'drizzle-orm';
-import { esIdioma, traducir, type Idioma } from 'shared';
+import { esIdioma, patronesFinos, traducir, type AjustesPatrones, type Idioma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, minutosDelDia } from '../lib/fechas.js';
 import { hayEnvio, type Aviso } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
+import { hayIa } from '../ia/cliente.js';
 import { comentarDia } from '../ia/comentar.js';
 import { armarContexto, pendientes } from '../ia/contexto.js';
+import { leerComidas, lecturaGuardada } from '../ia/leerComidas.js';
 import { resumirNoche } from '../ia/resumirNoche.js';
 import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
 import { analizarPersona, primerDiaDe } from './analizar.js';
@@ -31,6 +33,11 @@ const HORA_COMENTARIOS = 6;
 const HORA_RESUMEN_NOCHE = 10;
 /** Lo que se sale de lo normal (patrones/fueraDeLoNormal.ts), después del resumen de la noche (ya con el sueño). */
 const HORA_FUERA_DE_LO_NORMAL = 11;
+/** La lectura de cómo vienen las comidas (ia/leerComidas.ts), a la mañana: ayer ya terminó. Si la IA falla, se reintenta las horas siguientes. */
+const HORA_LECTURA_COMIDAS = 7;
+const INTENTOS_LECTURA_COMIDAS = 3;
+/** Solo a quien anotó comida en estos últimos días. */
+const DIAS_ACTIVO_COMIDAS = 7;
 /** El domingo a esta hora se arma el resumen de la semana y el búho avisa. */
 const HORA_SEMANA = 20;
 /** Solo se analiza a quien anotó algo en estos últimos días (si no, no cambió nada desde la última vez). */
@@ -149,6 +156,40 @@ export async function resumirNochesDeHoy(db: Db, ahora = new Date()): Promise<nu
     } catch (e) {
       console.error(`Resumen de la noche: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
       void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Resumen de la noche: falló la persona ${p.id}` });
+    }
+  }
+  return n;
+}
+
+/**
+ * A las 7, cómo vienen las comidas de quienes vienen anotando qué comen (y no apagaron los componentes). Una vez por día; si no hay IA o
+ * falla queda guardada la lectura hecha con las cuentas, y con IA se reintenta como mucho una vez por hora, unas pocas horas.
+ */
+export async function leerComidasDeHoy(db: Db, ahora = new Date()): Promise<number> {
+  const lista = await filas<PersonaNoche & { patrones: AjustesPatrones }>(
+    db,
+    sql`SELECT p.id, p.nombre, p.zona_horaria, p.patrones,
+               (SELECT u.idioma FROM persona_usuarios pu JOIN usuarios u ON u.id = pu.usuario_id
+                WHERE pu.persona_id = p.id ORDER BY (pu.rol = 'dueno') DESC, u.id LIMIT 1) AS idioma
+        FROM personas p
+        WHERE EXISTS (SELECT 1 FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
+                      WHERE r.persona_id = p.id AND r.borrado IS NULL AND k.clave IN ('comida', 'bebida')
+                        AND r.inicio > ${ahora.toISOString()}::timestamptz - make_interval(days => ${DIAS_ACTIVO_COMIDAS}))`,
+  );
+  let n = 0;
+  for (const p of lista) {
+    const hora = Math.floor(minutosDelDia(ahora, p.zona_horaria) / 60);
+    if (hora < HORA_LECTURA_COMIDAS || hora >= HORA_LECTURA_COMIDAS + INTENTOS_LECTURA_COMIDAS) continue;
+    if (!patronesFinos(p.patrones).componentes) continue;
+    const hoy = diaDePatty(ahora, p.zona_horaria);
+    const ya = await lecturaGuardada(db, p.id, hoy);
+    if (ya && (ya.origen === 'ia' || !hayIa())) continue;
+    if (!(await primeraVez(db, `lectura-comidas|${p.id}|${hoy}|${hora}`))) continue;
+    try {
+      if (await leerComidas(db, p, hoy, esIdioma(p.idioma) ? p.idioma : 'es')) n++;
+    } catch (e) {
+      console.error(`Lectura de las comidas: falló la persona ${p.id}:`, e instanceof Error ? e.message : e);
+      void registrarError(db, { origen: 'proceso', mensaje: e instanceof Error ? e.message : String(e), detalle: e instanceof Error ? e.stack ?? null : null, donde: `Lectura de las comidas: falló la persona ${p.id}` });
     }
   }
   return n;
@@ -300,6 +341,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await correr(db, 'Comentarios del día', () => comentarDeManana(db));
       await correr(db, 'Resumen de la noche', () => resumirNochesDeHoy(db));
       await correr(db, 'Resumen de la semana', () => resumirSemanas(db));
+      await correr(db, 'Lectura de las comidas', () => leerComidasDeHoy(db));
       await correr(db, 'Algo distinto estos días', () => revisarFueraDeLoNormal(db));
       await correr(db, 'Avisos de seguimientos', () => avisarSeguimientos(db));
       await correr(db, 'Malestares en curso', () => seguirMalestares(db));
