@@ -9,6 +9,8 @@ import { duracion } from '../lib/automatico';
 import { borrarEscuchas } from '../lib/escuchas';
 import { horaEn } from '../lib/fechas';
 import { t } from '../lib/idioma';
+import { placaDeEscuchas } from '../lib/placas';
+import { BotonCompartir } from '../ui/HojaCompartir';
 import { IconoMedio } from '../ui/IconosPatty';
 
 export const NOMBRE_ESCUCHA: Record<SesionEscucha['tipo'], string> = { musica: 'Música', podcast: 'Podcasts', video: 'Series y videos' };
@@ -51,6 +53,7 @@ export function EscuchasDelDia({ persona, fecha, vuelta }: { persona: Persona; f
     }
   };
 
+  const placa = sesion?.usuario?.rol !== 'lector' ? placaDeEscuchas(sesiones, fecha) : null;
   return (
     <div className="tarjeta escuchas-dia">
       <h3>{t('Lo que sonó en el teléfono')}</h3>
@@ -78,6 +81,7 @@ export function EscuchasDelDia({ persona, fecha, vuelta }: { persona: Persona; f
           </li>
         ))}
       </ul>
+      {placa ? <div className="fila-compartir centrada"><BotonCompartir armar={() => placa} /></div> : null}
       {abierta !== null && sesion?.usuario?.rol !== 'lector' ? (
         <button className="borrar-chico" onClick={() => void borrar()}>{t('Borrar todo lo escuchado')}</button>
       ) : null}

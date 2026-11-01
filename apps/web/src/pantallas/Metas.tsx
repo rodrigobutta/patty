@@ -7,6 +7,8 @@ import { api } from '../api';
 import { useEstado } from '../estado';
 import { medir } from '../lib/analytics';
 import { t } from '../lib/idioma';
+import { placaDeObjetivoCumplido } from '../lib/placas';
+import { BotonCompartir } from '../ui/HojaCompartir';
 
 const numero = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
@@ -100,6 +102,7 @@ export function Metas({ persona, puedeEscribir }: { persona: Persona; puedeEscri
     const abierto = abierta === m.id;
     const midiendo = armando.includes(m.id);
     const logrado = m.estado === 'cumplida';
+    const placa = placaDeObjetivoCumplido(m);
     return (
       <div key={m.id} className="tarjeta meta">
         <button className="cabeza-meta" onClick={() => setAbierta(abierto ? null : m.id)} aria-expanded={abierto}>
@@ -126,6 +129,7 @@ export function Metas({ persona, puedeEscribir }: { persona: Persona; puedeEscri
             {m.medico ? <p className="suave chico aviso-meta">{t('Patty no reemplaza a tu médico: acá van solo consejos generales. Por diagnósticos o cambios de tratamiento, consultalo con un profesional.')}</p> : null}
             {puedeEscribir ? (
               <div className="fila acciones-meta">
+                {placa ? <BotonCompartir armar={() => placa} className="btn chico primario" /> : null}
                 {m.estado === 'activa' ? (
                   <>
                     {sesion?.ia ? <button className="btn chico" disabled={midiendo} onClick={() => void armarPlan(m.id, true)}>{t('Rehacer el plan')}</button> : null}

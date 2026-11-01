@@ -8,6 +8,8 @@ import { api } from '../api';
 import { irAlDia } from '../lib/avisos';
 import { guardado } from '../lib/guardado';
 import { locale, t } from '../lib/idioma';
+import { placaDeTendencias } from '../lib/placas';
+import { BotonCompartir } from '../ui/HojaCompartir';
 import { hebra, METRICAS, metricasConDatos, normalizar, resumenDe, textoDelDia, textoValor, valoresDe, type Metrica } from '../lib/tendencias';
 
 /** Cuántas hebras se cruzan arriba: con más ya no se sigue ninguna (en las tiras entran todas). */
@@ -17,7 +19,7 @@ const fechaLarga = (fecha: string) => new Intl.DateTimeFormat(locale(), { timeZo
 const letraDia = (fecha: string) => new Intl.DateTimeFormat(locale(), { timeZone: 'UTC', weekday: 'narrow' }).format(new Date(fecha + 'T12:00:00Z'));
 const numeroDia = (fecha: string) => String(Number(fecha.slice(8)));
 
-export function TendenciasDelDia({ persona, vuelta }: { persona: Persona; vuelta: number }) {
+export function TendenciasDelDia({ persona, vuelta, puedeCompartir = false }: { persona: Persona; vuelta: number; puedeCompartir?: boolean }) {
   const [periodo, setPeriodo] = useState<7 | 30>(7);
   const ruta = `/api/estadisticas/tendencias?persona=${persona.id}&dias=${periodo}`;
   // Lo guardado se ve enseguida; lo nuevo lo reemplaza cuando contesta el servidor.
@@ -44,6 +46,7 @@ export function TendenciasDelDia({ persona, vuelta }: { persona: Persona; vuelta
   const dias = datos?.dias ?? [];
   const metricas = metricasConDatos(dias);
   const dia = dias.find((d) => d.fecha === elegida) ?? null;
+  const placa = puedeCompartir ? placaDeTendencias(dias, periodo) : null;
   const verDia = (fecha: string) => {
     irAlDia(fecha);
     window.scrollTo({ top: 0 });
@@ -79,6 +82,7 @@ export function TendenciasDelDia({ persona, vuelta }: { persona: Persona; vuelta
               <GraficoChico key={m.clave} metrica={m} dias={dias} elegida={elegida} alElegir={setElegida} />
             ))}
           </div>
+          {placa ? <div className="fila-compartir centrada"><BotonCompartir armar={() => placa} /></div> : null}
         </>
       )}
     </section>

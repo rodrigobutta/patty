@@ -17,13 +17,15 @@ const AVISOS: Partial<Record<ComoSeCompartio, string>> = {
 
 /** Lo que se puede compartir: la tarjeta (ya traducida) y qué es, para Analytics y el nombre del archivo. */
 export interface Compartible {
-  que: 'patron' | 'racha' | 'semana' | 'nivel' | 'actividad' | 'viaje' | 'sueno' | 'medio' | 'competencia';
+  que: 'patron' | 'racha' | 'semana' | 'nivel' | 'actividad' | 'viaje' | 'sueno' | 'medio' | 'competencia' | 'comida' | 'tendencias' | 'objetivo' | 'escuchas' | 'clima';
   tarjeta: Tarjeta;
   /** Lo que va escrito junto a la imagen y el link, si no son los de siempre (una competencia lleva su invitación). */
   texto?: string;
   link?: string;
   /** Algo que se puede sacar de la imagen: el tilde (prendido de entrada) y la tarjeta sin eso. */
   opcion?: { rotulo: string; sin: Tarjeta };
+  /** Lo que se le aclara antes de mandarla, si la imagen sí lleva algo que anotó (lo que comió, su objetivo). */
+  nota?: string;
 }
 
 /** Lo que va escrito junto a la imagen, según qué se comparte. */
@@ -37,9 +39,14 @@ const TEXTOS: Record<Compartible['que'], string> = {
   sueno: 'Cómo dormí, con Patty 🦉',
   medio: 'Lo anoté con Patty 🦉',
   competencia: 'Compitiendo con Patty 🦉',
+  comida: 'Lo que más comí, con Patty 🦉',
+  tendencias: 'Cómo vengo, con Patty 🦉',
+  objetivo: 'Mi objetivo con Patty 🦉',
+  escuchas: 'Lo que sonó en mi día, con Patty 🦉',
+  clima: 'El clima de mi día, con Patty 🦉',
 };
 
-export function HojaCompartir({ que, tarjeta, opcion, texto, link: linkPropio, alCerrar }: Compartible & { alCerrar(): void }) {
+export function HojaCompartir({ que, tarjeta, opcion, nota, texto, link: linkPropio, alCerrar }: Compartible & { alCerrar(): void }) {
   const { usuario } = useEstado();
   const [con, setCon] = useState(true);
   const [imagenes, setImagenes] = useState<Record<'con' | 'sin', { blob: Blob; url: string } | undefined>>({ con: undefined, sin: undefined });
@@ -109,7 +116,7 @@ export function HojaCompartir({ que, tarjeta, opcion, texto, link: linkPropio, a
             <input type="checkbox" checked={con} onChange={(e) => setCon(e.target.checked)} /> {opcion.rotulo}
           </label>
         ) : null}
-        <p className="suave chico centro">{t('La imagen no lleva tu nombre ni lo que anotaste: solo esto.')}</p>
+        <p className="suave chico centro">{nota ?? t('La imagen no lleva tu nombre ni lo que anotaste: solo esto.')}</p>
         <button className="btn primario ancho" onClick={compartir} disabled={!imagen || enviando}>{t('📤 Compartir')}</button>
         {aviso ? <p className="chico centro">{aviso}</p> : null}
         <button className="btn ancho" onClick={alInvitar}>{t('💌 Invitá a alguien a usar Patty')}</button>

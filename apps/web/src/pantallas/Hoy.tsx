@@ -676,7 +676,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           })();
         } : undefined}
       />
-      <TendenciasDelDia persona={persona} vuelta={vuelta} />
+      <TendenciasDelDia persona={persona} vuelta={vuelta} puedeCompartir={sesion?.usuario?.rol !== 'lector'} />
       </div>
       {/* Las hojas van fuera del contenido animado: si no, quedan atrás de la lista mientras se anima. */}
       {activando ? (

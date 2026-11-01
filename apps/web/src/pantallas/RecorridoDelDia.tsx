@@ -31,6 +31,7 @@ interface Recorrido {
 const numero = (n: number) => n.toLocaleString(locale());
 
 export function RecorridoDelDia({ persona, fecha, tipo, titulo }: { persona: Persona; fecha: string; tipo: 'a_pie' | 'vehiculo'; titulo?: string }) {
+  const { usuario } = useEstado();
   const [r, setR] = useState<Recorrido | null>(null);
   /** La que se está mirando (por su hora de inicio). Sin elegir, todo el día. */
   const [elegida, setElegida] = useState<string | null>(null);
@@ -70,6 +71,11 @@ export function RecorridoDelDia({ persona, fecha, tipo, titulo }: { persona: Per
         </div>
       ) : null}
       {vista ? <DatosDelRecorrido key={vista.inicio} ruta={vista} persona={persona} /> : null}
+      {vista && usuario?.rol !== 'lector' ? (
+        <div className="fila-compartir">
+          <BotonCompartir armar={() => compartibleActividad({ persona, concepto: tipo === 'a_pie' ? 'Caminata' : 'Viaje', inicio: vista.inicio, fin: vista.fin, esViaje: tipo === 'vehiculo' })} />
+        </div>
+      ) : null}
     </div>
   );
 }

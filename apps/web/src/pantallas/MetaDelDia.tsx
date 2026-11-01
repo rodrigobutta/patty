@@ -6,6 +6,8 @@ import { api } from '../api';
 import { medir } from '../lib/analytics';
 import { t } from '../lib/idioma';
 import { irAMas } from '../lib/navegar';
+import { placaDeObjetivoEnCurso } from '../lib/placas';
+import { BotonCompartir } from '../ui/HojaCompartir';
 import { textoMedida } from './Metas';
 
 const RESPUESTAS: Array<{ clave: RespuestaConsejo; texto: string }> = [
@@ -46,6 +48,7 @@ export function MetaDelDia({ persona, hoy, puedeEscribir }: { persona: Persona; 
     medir('meta_dia', { tipo: c.tipo, ...cuerpo });
     void api('PUT', `/api/metas/dia/${c.id}`, cuerpo).catch(() => {});
   };
+  const placa = placaDeObjetivoEnCurso(c);
   return (
     <div className="tarjeta meta-del-dia">
       <button className="cabeza-meta-dia suave chico" onClick={() => irAMas('objetivos')} aria-label={t('Mirar tus objetivos')}>
@@ -64,6 +67,7 @@ export function MetaDelDia({ persona, hoy, puedeEscribir }: { persona: Persona; 
             <button className="btn chico" onClick={() => contestar({ estado: 'gusta' })} aria-label={t('Me gusta')}>👍</button>
           )}
           <span />
+          {placa ? <BotonCompartir armar={() => placa} /> : null}
           <button className="btn chico" onClick={() => contestar({ estado: 'visto' })} aria-label={t('Cerrar')}>✕</button>
         </div>
       ) : null}
