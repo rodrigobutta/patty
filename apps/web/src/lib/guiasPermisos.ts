@@ -17,7 +17,10 @@ export async function averiguarMarca(): Promise<Marca> {
   }
   return marcaDelTelefono();
 }
-export type PermisoGuia = 'avisos' | 'ubicacion' | 'bateria' | 'telefono' | 'salud' | 'escuchas';
+export type PermisoGuia = 'avisos' | 'ubicacion' | 'bateria' | 'inicio' | 'telefono' | 'salud' | 'escuchas';
+
+/** Las marcas que no dejan que una app vuelva a abrirse sola si no se lo permitís a mano. */
+export const pideInicioAutomatico = (marca: Marca) => marca === 'oppo' || marca === 'xiaomi' || marca === 'huawei';
 
 export function marcaDelTelefono(ua = `${delSistema ?? ''} ${typeof navigator === 'undefined' ? '' : navigator.userAgent}`): Marca {
   if (plataforma() === 'ios' || /iPhone|iPad/.test(ua)) return 'iphone';
@@ -69,7 +72,7 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
           : marca === 'xiaomi'
             ? t('En la misma pantalla de Patty: «Ahorro de batería» → «Sin restricciones», y prendé «Inicio automático».')
             : marca === 'oppo'
-              ? t('En la misma pantalla de Patty: «Uso de batería» → elegí «Permitir actividad en segundo plano». Después, en Ajustes → Aplicaciones → «Inicio automático», prendé Patty.')
+              ? t('En la misma pantalla de Patty: «Uso de batería» → elegí «Permitir actividad en segundo plano».')
             : t('En la misma pantalla: Batería (o «Uso de batería de la app») → «Sin restricciones».'),
         buscar('Patty'),
       ];
@@ -82,23 +85,50 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
         return [
           cartel,
           t('Mantené apretado el ícono de Patty, tocá ⓘ y entrá a «Uso de batería»: elegí «Permitir actividad en segundo plano».'),
-          t('Abrí Ajustes → Aplicaciones → «Inicio automático» y prendé Patty. Si también aparece en «Inicio asociado», prendela ahí.'),
           t('En las apps recientes, tocá ⋮ en la tarjeta de Patty (o mantenela apretada) y elegí «Bloquear», así no se cierra al limpiar.'),
           t('Una actualización de ColorOS puede apagar estos ajustes: si Patty deja de registrar, revisalos de nuevo.'),
           sinTilde,
-          buscar('inicio automático'),
         ];
       }
       if (marca === 'xiaomi') {
-        return [cartel, t('Abrí Ajustes → Aplicaciones → Administrar aplicaciones → Patty: prendé «Inicio automático» y en «Ahorro de batería» elegí «Sin restricciones».'), candado, sinTilde, buscar('inicio automático')];
+        return [cartel, t('Abrí Ajustes → Aplicaciones → Administrar aplicaciones → Patty: en «Ahorro de batería» elegí «Sin restricciones».'), candado, sinTilde];
       }
       if (marca === 'samsung') {
         return [cartel, t('Abrí Ajustes → Aplicaciones → Patty → Batería y elegí «Sin restricciones».'), t('En Ajustes → Mantenimiento del dispositivo → Batería → Límites de uso en segundo plano, fijate que Patty no esté entre las apps en suspensión.'), sinTilde];
       }
       if (marca === 'huawei') {
-        return [cartel, t('Abrí Ajustes → Batería → Inicio de aplicaciones → Patty: apagá «Administrar automáticamente» y dejá prendidas las tres opciones.'), candado, sinTilde];
+        return [cartel, candado, sinTilde];
       }
       return [cartel, t('En la misma pantalla: Batería (o «Uso de batería de la app») → «Sin restricciones».')];
+    }
+    case 'inicio': {
+      const volver = t('Volvé acá y tocá «Ya lo prendí». Si se actualiza el sistema, te lo vuelvo a pedir, porque a veces se apaga solo.');
+      if (marca === 'oppo') {
+        return [
+          t('Tocá «Abrir Ajustes»: se abre Aplicaciones.'),
+          t('Entrá a «Inicio automático», bajá hasta Patty y prendela. Si el teléfono avisa que puede afectar el rendimiento, aceptá.'),
+          t('Volvé atrás, entrá a «Inicio asociado» y, si aparece Patty, prendela también.'),
+          volver,
+          buscar('inicio automático'),
+        ];
+      }
+      if (marca === 'xiaomi') {
+        return [
+          t('Tocá «Abrir Ajustes»: se abre la lista de «Inicio automático». Si no, andá a Ajustes → Aplicaciones → Administrar aplicaciones → Patty.'),
+          t('Prendé «Inicio automático» para Patty.'),
+          volver,
+          buscar('inicio automático'),
+        ];
+      }
+      if (marca === 'huawei') {
+        return [
+          t('Tocá «Abrir Ajustes». Si no se abre «Inicio de aplicaciones», andá a Ajustes → Batería → Inicio de aplicaciones.'),
+          t('Buscá Patty, apagá «Administrar automáticamente» y dejá prendidas las tres opciones.'),
+          volver,
+          buscar('inicio de aplicaciones'),
+        ];
+      }
+      return [];
     }
     case 'telefono':
       return [

@@ -15,6 +15,8 @@ describe('guías de permisos', () => {
     expect(pasosPara('ubicacion', 'iphone')[2]).toContain('«Siempre»');
     expect(pasosPara('telefono', 'iphone')).toEqual([]);
     expect(pasosPara('bateria', 'iphone')).toEqual([]);
-    expect(pasosPara('bateria', 'oppo').join(' ')).toContain('Ajustes → Aplicaciones → «Inicio automático»');
+    expect(pasosPara('inicio', 'oppo').join(' ')).toContain('«Inicio automático»');
+    expect(pasosPara('inicio', 'samsung')).toEqual([]);
+    expect(pasosPara('inicio', 'iphone')).toEqual([]);
   });
 });

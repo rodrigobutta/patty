@@ -1,9 +1,11 @@
 package ar.patty.app;
 
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.PowerManager;
 import android.provider.Settings;
 import androidx.activity.result.ActivityResult;
@@ -84,6 +86,45 @@ public class VigiaPlugin extends Plugin {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * Abre lo más cerca posible del «Inicio automático» de la marca: ninguna app lo puede prender, y varias marcas
+     * tampoco dejan abrir esa lista (ColorOS la cierra con permiso), así que se cae a Aplicaciones y a Ajustes.
+     */
+    @PluginMethod
+    public void abrirInicioAutomatico(PluginCall call) {
+        String[][] pantallas = {
+            { "lista", "com.oplus.battery", "com.oplus.startupapp.view.StartupAppListActivity" },
+            { "lista", "com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity" },
+            { "lista", "com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity" },
+            { "lista", "com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity" },
+            { "lista", "com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity" },
+            { "aplicaciones", "com.android.settings", "com.android.settings.Settings$AppDashboardActivity" },
+        };
+        for (String[] p : pantallas) {
+            try {
+                getActivity().startActivity(new Intent().setComponent(new ComponentName(p[1], p[2])));
+                JSObject r = new JSObject();
+                r.put("abierta", p[0]);
+                call.resolve(r);
+                return;
+            } catch (ActivityNotFoundException | SecurityException e) {
+                // Esta marca no la tiene o no la deja abrir: la que sigue.
+            }
+        }
+        getActivity().startActivity(new Intent(Settings.ACTION_SETTINGS));
+        JSObject r = new JSObject();
+        r.put("abierta", "ajustes");
+        call.resolve(r);
+    }
+
+    /** La versión del sistema: al actualizarse, ColorOS y otros pueden apagar estos ajustes sin avisar. */
+    @PluginMethod
+    public void versionSistema(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("sistema", Build.DISPLAY);
+        call.resolve(r);
     }
 
     /** El cartel de Android para sacar a Patty de la optimización de batería. Devuelve { bateria } al volver de él. */

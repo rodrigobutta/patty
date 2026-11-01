@@ -15,7 +15,7 @@ import { programarRecordatorios } from '../lib/remedios';
 import { pedirPermisoSalud, ponerSalud, sincronizarSalud } from '../lib/salud';
 import { hayDatosDelTelefono, ponerDatos, sincronizar, Telefono } from '../lib/telefono';
 import { ponerSeguimiento } from '../lib/ubicacion';
-import { pedirBateria } from '../lib/vigia';
+import { abrirInicioAutomatico, confirmarInicio, inicioConfirmado, pedirBateria } from '../lib/vigia';
 import { haceCuanto } from '../ui/UltimaVez';
 import { Mascota } from '../mascota/Mascota';
 import { t } from '../lib/idioma';
@@ -24,7 +24,7 @@ import { IconoCampana, IconoCategoria } from '../ui/IconosPatty';
 import { funcionesAvisos, hayAvisosTelefono, ponerFuncionAvisos, sincronizarAvisos } from '../lib/avisosTelefono';
 import { FUNCIONES_AVISOS, type FuncionAvisos, type FuncionesAvisos } from 'shared';
 import type { ReactNode } from 'react';
-import { averiguarMarca, marcaDelTelefono, NOMBRE_MARCA, pasosPara } from '../lib/guiasPermisos';
+import { averiguarMarca, marcaDelTelefono, NOMBRE_MARCA, pasosPara, pideInicioAutomatico } from '../lib/guiasPermisos';
 
 const CLAVE = 'permisos-ofrecidos';
 
@@ -50,7 +50,7 @@ export type Paso = 'avisos' | 'ubicacion' | 'bateria' | 'telefono' | 'salud';
  * Las filas de esta pantalla: los pasos y, aparte (no son una fuente del Día), lo que suena en el teléfono y lo que
  * avisan las apps (los dos con el acceso a las notificaciones de Android).
  */
-type Fila = Paso | 'calendario' | 'escuchas' | 'notificaciones';
+type Fila = Paso | 'inicio' | 'calendario' | 'escuchas' | 'notificaciones';
 
 /** Lo que hace cada interruptor de «Lo que avisan las apps» y qué lee exactamente. */
 const FUNCIONES: Record<FuncionAvisos, { titulo: string; lee: string }> = {
@@ -199,6 +199,16 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
   const telefono = () => hacer('telefono', () => activarPermiso('telefono', persona));
   const salud = () => hacer('salud', () => activarPermiso('salud', persona));
   const bateria = () => hacer('bateria', () => activarPermiso('bateria', persona));
+  const [inicioListo, setInicioListo] = useState(false);
+  useEffect(() => void inicioConfirmado().then(setInicioListo), []);
+  const abrirInicio = () =>
+    hacer('inicio', async () => {
+      if (!(await abrirInicioAutomatico())) return t('Para esto hace falta la última versión de la app.');
+    });
+  const yaPrendioInicio = () => {
+    setInicioListo(true);
+    void confirmarInicio();
+  };
   const escuchar = () =>
     hacer('escuchas', async () => {
       const n = await ponerEscuchas(true);
@@ -241,7 +251,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
   const p = estado?.permisos;
   const algunaAvisos = funciones !== null && FUNCIONES_AVISOS.some((f) => funciones[f]);
   const vigia = estado?.vigia;
-  const filas: Array<{ paso: Fila; icono: ReactNode; titulo: string; para: string; ejemplo: string; listo: boolean; parcial?: boolean; accion(): void; apagar?(): void; mostrar: boolean; extra?: ReactNode }> = [
+  const filas: Array<{ paso: Fila; icono: ReactNode; titulo: string; para: string; ejemplo: string; listo: boolean; parcial?: boolean; textoAccion?: string; guiaAbierta?: boolean; alFinal?: ReactNode; accion(): void; apagar?(): void; mostrar: boolean; extra?: ReactNode }> = [
     {
       paso: 'avisos',
       ejemplo: t('💡 Así no se te pasa ningún remedio, y contestás cómo te sentís desde el mismo aviso.'),
@@ -279,6 +289,19 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
       listo: p?.bateria === 'si',
       accion: bateria,
       mostrar: Boolean(vigia),
+    },
+    {
+      paso: 'inicio',
+      ejemplo: t('💡 Sin esto, si el teléfono cierra a Patty, deja de anotar tus viajes y tus lugares hasta que la abras de nuevo.'),
+      icono: '🔁',
+      titulo: t('Que Patty pueda volver sola'),
+      para: t('Tu teléfono no deja que una app se vuelva a abrir sola si no se lo permitís a mano. Es un ajuste que Patty no puede prender ni ver.'),
+      listo: inicioListo,
+      textoAccion: t('Abrir Ajustes'),
+      guiaAbierta: !inicioListo,
+      alFinal: inicioListo ? null : <button className="btn chico" onClick={yaPrendioInicio}>{t('Ya lo prendí')}</button>,
+      accion: abrirInicio,
+      mostrar: Boolean(vigia) && pideInicioAutomatico(marca),
     },
     {
       paso: 'telefono',
@@ -373,17 +396,18 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
               <span className="chico renglon-sub ejemplo-permiso">{f.ejemplo}</span>
               {nota[f.paso] ? <span className="chico renglon-sub nota-permiso">{nota[f.paso]}</span> : null}
               {f.extra}
-              {f.paso !== 'calendario' && pasosPara(f.paso === 'notificaciones' ? 'escuchas' : f.paso, marca).length ? (
+              {f.paso !== 'calendario' && !f.guiaAbierta && pasosPara(f.paso === 'notificaciones' ? 'escuchas' : f.paso, marca).length ? (
                 <button className="enlace chico como-activar" onClick={() => setAbierta(abierta === f.paso ? null : f.paso)} aria-expanded={abierta === f.paso}>
                   {abierta === f.paso ? t('Ocultar los pasos') : t('¿Cómo lo activo?')}
                 </button>
               ) : null}
-              {abierta === f.paso && f.paso !== 'calendario' ? (
+              {(abierta === f.paso || f.guiaAbierta) && f.paso !== 'calendario' ? (
                 <span className="guia-permiso" ref={(el) => { if (el && guia === f.paso) el.scrollIntoView({ block: 'center' }); }}>
                   <span className="suave chico">{t('En tu {marca}:', { marca: NOMBRE_MARCA[marca] })}</span>
                   <ol>{pasosPara(f.paso === 'notificaciones' ? 'escuchas' : f.paso, marca).map((x) => <li key={x}>{x}</li>)}</ol>
                 </span>
               ) : null}
+              {f.alFinal}
             </span>
             {f.listo ? (
               <span className="listo-permiso">
@@ -392,7 +416,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
               </span>
             ) : (
               <button className={`btn chico ${f.parcial ? '' : 'primario'}`} disabled={ocupado !== null} onClick={f.accion}>
-                {ocupado === f.paso ? '…' : f.parcial ? t('Completar') : t('Activar')}
+                {ocupado === f.paso ? '…' : f.textoAccion ?? (f.parcial ? t('Completar') : t('Activar'))}
               </button>
             )}
           </li>

@@ -27,6 +27,8 @@ interface PluginVigia {
   estado(): Promise<EstadoVigia>;
   pedirBateria(): Promise<{ bateria: boolean }>;
   asegurar(): Promise<void>;
+  abrirInicioAutomatico(): Promise<{ abierta: string }>;
+  versionSistema(): Promise<{ sistema: string }>;
 }
 
 const Vigia = registerPlugin<PluginVigia>('Vigia');
@@ -42,6 +44,37 @@ export async function pedirBateria(): Promise<boolean | null> {
   return Vigia.pedirBateria()
     .then((r) => r.bateria)
     .catch(() => null);
+}
+
+/** Abre lo más cerca que deja la marca de su «Inicio automático». Devuelve false si esta app no lo sabe abrir. */
+export async function abrirInicioAutomatico(): Promise<boolean> {
+  if (plataforma() !== 'android') return false;
+  return Vigia.abrirInicioAutomatico()
+    .then(() => true)
+    .catch(() => false);
+}
+
+const CLAVE_INICIO = 'patty.inicio-automatico';
+/**
+ * Android no le cuenta a ninguna app si este ajuste está prendido: vale lo que dijo la persona, y solo para esta
+ * versión del sistema, porque una actualización puede apagarlo.
+ */
+export async function inicioConfirmado(): Promise<boolean> {
+  if (plataforma() !== 'android') return false;
+  const sistema = await Vigia.versionSistema().catch(() => null);
+  try {
+    return sistema !== null && localStorage.getItem(CLAVE_INICIO) === sistema.sistema;
+  } catch {
+    return false;
+  }
+}
+export async function confirmarInicio(): Promise<void> {
+  const sistema = await Vigia.versionSistema().catch(() => null);
+  try {
+    localStorage.setItem(CLAVE_INICIO, sistema?.sistema ?? '');
+  } catch {
+    /* sin almacenamiento */
+  }
 }
 
 /** Que lo nativo se ponga al día (por ejemplo, la alarma del vigía al prender el seguimiento). */
