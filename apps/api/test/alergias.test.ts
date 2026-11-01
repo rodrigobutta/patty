@@ -3,7 +3,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { perfilTexto } from 'shared';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { cerrarDb } from '../src/db/client.js';
-import { ESQUEMA } from '../src/ia/interpretar.js';
+import { ESQUEMA, ESQUEMA_ALERTAS } from '../src/ia/interpretar.js';
 import { usarClientePrueba } from '../src/ia/cliente.js';
 import { conAdmin } from './ayudas.js';
 
@@ -158,7 +158,8 @@ describe('las alergias en la IA', () => {
   });
 
   it('el esquema pide las alertas y el perfil las nombra', () => {
-    expect(ESQUEMA.required).toContain('alertas_alergia');
+    expect(ESQUEMA.required).not.toContain('alertas_alergia');
+    expect(ESQUEMA_ALERTAS.required).toContain('alertas_alergia');
     expect(perfilTexto({ nacimiento: null, sexo: null, altura_cm: null, peso_kg: null, condiciones: [], alergias: [{ tipo: 'estacional', nombre: '', estacion: 'primavera' }, { tipo: 'alimento', nombre: 'Maní' }] })).toBe(
       'alergias: primaveral, maní (alimento)',
     );

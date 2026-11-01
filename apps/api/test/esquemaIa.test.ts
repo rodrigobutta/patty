@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { ESQUEMA_DESCOMPOSICION, ESQUEMA_ELECCION } from '../src/ia/componentes.js';
 import { ESQUEMA_HIPOTESIS } from '../src/ia/hipotesis.js';
-import { ESQUEMA } from '../src/ia/interpretar.js';
+import { ESQUEMA, ESQUEMA_ALERTAS } from '../src/ia/interpretar.js';
 import { ESQUEMA_LECTURA } from '../src/ia/leerComidas.js';
 import { ESQUEMA_CONSEJO, ESQUEMA_PLAN } from '../src/ia/metas.js';
 import { ESQUEMA_ENVASE, ESQUEMA_SABERES } from '../src/ia/saberRemedios.js';
+
+/** El tamaño con el que se probó contra Anthropic. Antes de subirlo, probar un «Contale a Patty» real en producción. */
+const TOPE_ESQUEMA = 6500;
 
 /** Cuántos parámetros aceptan más de un tipo (anyOf o una lista de tipos), que es lo que Anthropic limita. */
 function uniones(x: unknown): number {
@@ -19,6 +22,14 @@ describe('el esquema de lo que se cuenta con la voz', () => {
   it('no pasa el límite de Anthropic de 16 parámetros con null (si no, la IA contesta 400)', () => {
     expect(uniones(ESQUEMA)).toBeLessThanOrEqual(16);
   });
+
+  it('no crece sin probarlo con la IA real: el tamaño también da 400 ("compiled grammar is too large") y los tests no lo ven', () => {
+    expect(JSON.stringify(ESQUEMA).length).toBeLessThanOrEqual(TOPE_ESQUEMA);
+  });
+});
+
+describe('el esquema de las alertas de alergia', () => {
+  it('no acepta null', () => expect(uniones(ESQUEMA_ALERTAS)).toBe(0));
 });
 
 describe('el esquema de las hipótesis', () => {

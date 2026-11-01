@@ -97,19 +97,6 @@ export const ESQUEMA = {
         additionalProperties: false,
       },
     },
-    alertas_alergia: {
-      type: 'array',
-      description: 'Lo que se comió, se tomó o se programó que puede traer algo a lo que declaró alergia (aunque no lo nombre: milanesa y huevo). Vacío si no declaró alergias o si nada choca.',
-      items: {
-        type: 'object',
-        properties: {
-          que: { type: 'string', description: 'Lo anotado, con el nombre que le pusiste' },
-          alergia: { type: 'string', description: 'La alergia con la que choca, escrita como en la lista de alergias declaradas' },
-        },
-        required: ['que', 'alergia'],
-        additionalProperties: false,
-      },
-    },
     dudas: {
       type: 'array',
       description: 'Lo que no quedó claro y conviene preguntar',
@@ -129,7 +116,7 @@ export const ESQUEMA = {
       },
     },
   },
-  required: ['registros', 'tratamientos', 'alertas_alergia', 'dudas'],
+  required: ['registros', 'tratamientos', 'dudas'],
   additionalProperties: false,
 };
 
@@ -164,7 +151,6 @@ interface Respuesta {
     dias: number | null;
     motivo: string | null;
   }>;
-  alertas_alergia?: AvisoAlergia[];
   dudas: Array<{ pregunta: string; opciones: string[]; varias?: boolean } | string>;
 }
 
@@ -202,6 +188,42 @@ const diaDeLaSemana = (fecha: string) =>
  * `referencia`: el día que la persona estaba mirando en la app al contarlo (AAAA-MM-DD). Si no dice cuándo pasó, es
  * ese día; si dice "ayer", "el sábado", "anoche", se cuenta desde hoy.
  */
+/**
+ * Va en un pedido aparte y solo si declaró alergias: dentro de ESQUEMA pasaba el tamaño de gramática que acepta Anthropic
+ * y dejaba sin andar todo lo que se cuenta (400 "compiled grammar is too large").
+ */
+export const ESQUEMA_ALERTAS = {
+  type: 'object',
+  properties: {
+    alertas_alergia: {
+      type: 'array',
+      description: 'Lo que se comió, se tomó o se programó que puede traer algo a lo que declaró alergia (aunque no lo nombre: milanesa y huevo). Vacío si no declaró alergias o si nada choca.',
+      items: {
+        type: 'object',
+        properties: {
+          que: { type: 'string', description: 'Lo anotado, con el nombre que le pusiste' },
+          alergia: { type: 'string', description: 'La alergia con la que choca, escrita como en la lista de alergias declaradas' },
+        },
+        required: ['que', 'alergia'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['alertas_alergia'],
+  additionalProperties: false,
+} as const;
+
+async function alertasConIa(nombres: string[], alergias: string): Promise<AvisoAlergia[]> {
+  const r = await pedirJson<{ alertas_alergia?: AvisoAlergia[] }>({
+    sistema: 'Decís si lo que anotó una persona puede traer algo a lo que declaró alergia, aunque no lo nombre (milanesa y huevo). Solo contra las alergias de la lista; si no estás seguro, no lo pongas. Sin indicaciones ni consejos.',
+    texto: `${alergias}\n\nLo anotado:\n${nombres.map((n) => `- ${n}`).join('\n')}`,
+    esquema: ESQUEMA_ALERTAS,
+    esfuerzo: 'low',
+    maxTokens: 1000,
+  });
+  return r.alertas_alergia ?? [];
+}
+
 export async function interpretarTexto(
   tx: Tx,
   p: PersonaAcceso,
@@ -344,7 +366,7 @@ export async function interpretarTexto(
         ]
       : []),
     ...(lugaresComida.length ? ['Lugares donde ya comió (los más frecuentes primero):', ...lugaresComida.map((l) => `- ${l}`)] : []),
-    ...(alergias.length ? [`${alergiasParaIa(alergias, diaHoy, p.zona_horaria)} Si algo de lo que anota puede chocar con una de esas alergias, ponelo en alertas_alergia; no le des indicaciones.`] : []),
+    ...(alergias.length ? [`${alergiasParaIa(alergias, diaHoy, p.zona_horaria)} No le des indicaciones sobre eso.`] : []),
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     ...(malestares.length
       ? [
@@ -426,7 +448,9 @@ export async function interpretarTexto(
       }),
   };
   await conTapas(tx, propuesta.registros);
-  return { ...propuesta, alertas_alergia: alertasDe(r.alertas_alergia ?? [], propuesta.registros, propuesta.tratamientos, alergias, porCat, idioma) };
+  const nombres = [...propuesta.registros.map((x) => x.concepto_nombre), ...propuesta.tratamientos.map((x) => x.concepto_nombre)];
+  const delaIa = alergias.length && nombres.length ? await alertasConIa(nombres, alergiasParaIa(alergias, diaHoy, p.zona_horaria)).catch(() => []) : [];
+  return { ...propuesta, alertas_alergia: alertasDe(delaIa, propuesta.registros, propuesta.tratamientos, alergias, porCat, idioma) };
 }
 
 /** El medio que propone la IA, validado (sin los nulos). */
