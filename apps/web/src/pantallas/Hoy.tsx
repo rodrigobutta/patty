@@ -27,6 +27,7 @@ import { ComentarioDelDia, FueraDeLoNormal } from './ComentariosDePatty';
 import { RutinasDelDia } from './RutinasDelDia';
 import { AvisoPreventivo } from './AvisoPreventivo';
 import { SugerenciaWidget } from './SugerenciaWidget';
+import { TemporadaAlergia } from './TemporadaAlergia';
 import { BuenDia } from './BuenDia';
 import { abrirNoche } from '../lib/buenDia';
 import { TarjetaSemana } from './Semanas';
@@ -545,6 +546,10 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       ) : null}
       {fecha === hoy ? <AvisoPreventivo persona={persona} hoy={hoy} /> : null}
       {fecha === hoy ? <SugerenciaWidget /> : null}
+      {/* Si tiene alergia estacional y es la temporada: lo dice, pregunta y ofrece un recordatorio, sin prender nada solo. */}
+      {fecha === hoy && registros && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
+        <TemporadaAlergia persona={persona} hoy={hoy} registros={registros} categorias={categorias} alAnotar={() => { void traer(); avisarAnotado(); }} />
+      ) : null}
       {fecha === hoy ? <FueraDeLoNormal persona={persona} /> : null}
       {/* Las preguntas de Patty sobre lo que pasó (con quién, dónde, cómo fueron los viajes) van primero. */}
       {/* A la noche, si todavía no se anotó nada a mano: contar el día entero de una vez (Patty lo desglosa por horas). */}

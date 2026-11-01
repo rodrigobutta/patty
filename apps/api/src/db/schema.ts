@@ -26,7 +26,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import type { AjustesPatrones, ComponenteHallazgo, Modo } from 'shared';
+import type { AjustesEstados, AjustesPatrones, Alergia, ComponenteHallazgo, Modo } from 'shared';
 
 const id = () => integer('id').primaryKey().generatedByDefaultAsIdentity();
 const idGrande = () => bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity();
@@ -102,6 +102,10 @@ export const personas = pgTable('personas', {
   altura_cm: smallint('altura_cm'),
   peso_kg: doublePrecision('peso_kg'),
   condiciones: text('condiciones').array().notNull().default(sql`'{}'::text[]`),
+  /** Las alergias que declaró: se avisa si lo anotado choca con alguna, y las estacionales se preguntan en su temporada. */
+  alergias: jsonb('alergias').$type<Alergia[]>().notNull().default([]),
+  /** Los chips de "¿Algo puntual?" que agregó o sacó. */
+  estados_puntuales: jsonb('estados_puntuales').$type<AjustesEstados>().notNull().default({}),
   notas: text('notas'),
   /** Qué patrones más finos se le buscan (umbrales, lo que protege, efectos a los 2 o 3 días); lo que falta, prendido. */
   patrones: jsonb('patrones').$type<AjustesPatrones>().notNull().default({}),

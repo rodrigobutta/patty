@@ -1,0 +1,53 @@
+// Inglés: alergias y los estados propios de "¿Algo puntual?".
+export const ALERGIAS: Record<string, string> = {
+  'Con alergia': 'With allergies',
+  'Primaveral': 'Spring',
+  'De verano': 'Summer',
+  'De otoño': 'Autumn',
+  'De invierno': 'Winter',
+  'A un alimento': 'To a food',
+  'A un medicamento': 'To a medication',
+  'A animales': 'To animals',
+  'ej: maní, mariscos, huevo': 'e.g. peanuts, shellfish, egg',
+  'ej: penicilina, ibuprofeno': 'e.g. penicillin, ibuprofen',
+  'ej: gatos, perros': 'e.g. cats, dogs',
+  'ej: ácaros, látex, picaduras': 'e.g. dust mites, latex, insect bites',
+  'Temporada de alergia': 'Allergy season',
+  'Demasiadas alergias o muy largas.': 'Too many allergies, or too long.',
+  'Demasiados estados o muy largos.': 'Too many states, or too long.',
+  // Tus datos de salud
+  'Edad, peso, altura, condiciones y alergias': 'Age, weight, height, conditions and allergies',
+  '¿Tenés alguna alergia?': 'Do you have any allergies?',
+  '¿Tiene alguna alergia?': 'Do they have any allergies?',
+  'De temporada': 'Seasonal',
+  'Sirve para avisarte si anotás algo que choca y para preguntarte en la temporada. No reemplaza leer las etiquetas ni lo que te diga quien te atiende.':
+    "It lets me warn you if you log something that clashes, and ask you during the season. It doesn't replace reading labels or what your doctor tells you.",
+  'Sacar {que}': 'Remove {que}',
+  'Alergias que contó': 'Allergies reported',
+  // El aviso
+  '⚠️ Ojo con esta alergia': '⚠️ Careful with this allergy',
+  'Anotaste «{que}» y me contaste que tenés alergia a {alergia}.': 'You logged “{que}” and you told me you’re allergic to {alergia}.',
+  'Anotaste «{que}» y {nombre} tiene alergia a {alergia}.': 'You logged “{que}” and {nombre} is allergic to {alergia}.',
+  'Fijate bien qué tiene y, ante la duda, consultalo con quien te atiende. Si aparece algo raro, consultá; si cuesta respirar o se hincha la cara, pedí ayuda de emergencia.':
+    'Check what’s in it and, if in doubt, ask your doctor. If something feels off, get it checked; if it’s hard to breathe or the face swells, call for emergency help.',
+  'Entendido': 'Got it',
+  '⚠️ «{que}» puede chocar con tu alergia a {alergia}.': '⚠️ “{que}” may clash with your allergy to {alergia}.',
+  'Fijate bien antes de anotarlo; ante la duda, consultalo con quien te atiende.': 'Take a good look before logging it; if in doubt, ask your doctor.',
+  // La temporada
+  'Es primavera y me contaste que tenés alergia primaveral.': 'It’s spring and you told me you have spring allergies.',
+  'Es verano y me contaste que tenés alergia de verano.': 'It’s summer and you told me you have summer allergies.',
+  'Es otoño y me contaste que tenés alergia de otoño.': 'It’s autumn and you told me you have autumn allergies.',
+  'Es invierno y me contaste que tenés alergia de invierno.': 'It’s winter and you told me you have winter allergies.',
+  '¿Hoy te pica algo, estornudás o te lloran los ojos?': 'Is anything itchy today, are you sneezing or are your eyes watering?',
+  'Nada': 'Nothing',
+  '🔔 Recordame anotarlo a la noche': '🔔 Remind me to log it at night',
+  'No me preguntes más esta temporada': "Don't ask me again this season",
+  'Listo: te pregunto a la noche, por 30 días. Lo apagás en Seguimientos.': "Done: I'll ask you at night for 30 days. You can turn it off in Follow-ups.",
+  // Editar los chips
+  '✏️ Editar': '✏️ Edit',
+  'Listo': 'Done',
+  'Tocá ✕ para sacar uno. Podés agregar los tuyos, con un emoji adelante si querés.': 'Tap ✕ to remove one. You can add your own, with an emoji in front if you like.',
+  'ej: 🤧 Con mocos': 'e.g. 🤧 Runny nose',
+  'Volver a poner {que}': 'Put {que} back',
+  'Ese ya está.': 'That one is already there.',
+};

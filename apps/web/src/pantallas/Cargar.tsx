@@ -2,7 +2,7 @@
 import { medir } from '../lib/analytics';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MUSICA, PODCAST, TELE, conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde, type Porcion, type TipoComida, type Medio } from 'shared';
+import { MUSICA, PODCAST, TELE, conUnidad, cuantos, dosisTexto, frecuenciaTexto, unidadPara, UNIDADES_SUGERIDAS, type AvisoAlergia, type Categoria, type Concepto, type Persona, type Registro, type TipoValor, type Donde, type Porcion, type TipoComida, type Medio } from 'shared';
 import { api, type ErrorApi } from '../api';
 import { guardarContado, sacarContado, type ContadoPendiente } from '../lib/cola';
 import { idioma, t } from '../lib/idioma';
@@ -323,6 +323,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   const [respuesta, setRespuesta] = useState('');
   const [propuesta, setPropuesta] = useState<Propuesta[] | null>(null);
   const [dudas, setDudas] = useState<Duda[]>([]);
+  /** Lo propuesto que puede chocar con una alergia declarada: se muestra antes de anotar. */
+  const [alertasAlergia, setAlertasAlergia] = useState<AvisoAlergia[]>([]);
   /** Las respuestas tocadas (índice de la duda → opción), para contestar con toques en vez de hablar o escribir. */
   const [elegidas, setElegidas] = useState<Record<number, string[]>>({});
   const [quitar, setQuitar] = useState<Set<number>>(new Set());
@@ -363,7 +365,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     setError('');
     try {
       // Con foto, va la foto con lo que se haya contado (y las aclaraciones); si no, solo el texto.
-      const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: Array<Duda | string> }>(
+      const r = await api<{ registros: Propuesta[]; tratamientos?: TratamientoPropuesto[]; dudas: Array<Duda | string>; alertas_alergia?: AvisoAlergia[] }>(
         'POST',
         foto ? '/api/registros/foto' : '/api/registros/interpretar',
         foto
@@ -373,6 +375,7 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
       setTexto(contado);
       setPropuesta(r.registros);
       setRemedios(r.tratamientos ?? []);
+      setAlertasAlergia(r.alertas_alergia ?? []);
       setDudas(
         (r.dudas ?? []).map((d) =>
           typeof d === 'string'
@@ -526,10 +529,10 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
     try {
       // Primero los remedios: así, si dijo que ya tomó la primera, el registro cuenta como esa toma.
       const nuevos = remedios.filter((_, i) => !quitarRemedio.has(i));
-      for (const tr of nuevos) await api('POST', '/api/tratamientos', { ...tr, persona_id: persona.id });
+      for (const tr of nuevos) await api('POST', '/api/tratamientos', { ...tr, persona_id: persona.id, alergia_vista: alertasAlergia.length > 0 });
       if (nuevos.length) tomasCambiaron();
       const lista = propuesta!.filter((_, i) => !quitar.has(i)).map((p) => ({ ...p, persona_id: persona.id }));
-      const hechos = lista.length ? await api<Registro[]>('POST', '/api/registros/varios', { registros: lista, ...(fotoRef.current ? { via: 'foto' } : {}) }) : [];
+      const hechos = lista.length ? await api<Registro[]>('POST', '/api/registros/varios', { registros: lista, ...(fotoRef.current ? { via: 'foto' } : {}), ...(alertasAlergia.length ? { alergia_vista: true } : {}) }) : [];
       void anotarClima(persona.id, lista.map((p) => p.inicio));
       const dias = [...new Set(hechos.map((h) => h.fecha))];
       const otroDia = dias.length === 1 && dias[0] !== fecha ? dias[0] : undefined;
@@ -564,7 +567,8 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
   useEffect(() => {
     if (!respondio.current || estado !== 'quieto' || !propuesta) return;
     respondio.current = false;
-    if (!dudas.length && propuesta.length + remedios.length > 0) void guardar();
+    // Con una alerta de alergia, tampoco: tiene que poder leerla antes de anotar.
+    if (!dudas.length && !alertasAlergia.length && propuesta.length + remedios.length > 0) void guardar();
   });
 
   const ocupado = estado !== 'quieto' && estado !== 'escuchando';
@@ -660,6 +664,12 @@ function TextoLibre({ persona, fecha, alGuardar, dictarAlAbrir = false, fotoInic
               ))}
             </ul>
           </>
+        ) : null}
+        {alertasAlergia.length ? (
+          <div className="alerta-alergia" role="alert">
+            {alertasAlergia.map((a) => <p key={`${a.que}|${a.alergia}`}>{t('⚠️ «{que}» puede chocar con tu alergia a {alergia}.', { que: a.que, alergia: a.alergia.toLowerCase() })}</p>)}
+            <p className="suave chico">{t('Fijate bien antes de anotarlo; ante la duda, consultalo con quien te atiende.')}</p>
+          </div>
         ) : null}
         {dudas.length ? (
           <div className="nota-ia">

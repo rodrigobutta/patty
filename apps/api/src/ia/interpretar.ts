@@ -1,9 +1,10 @@
 // Carga en texto libre: "desayuné café con tostadas, a las 11 me dolió la cabeza (4)" → registros propuestos.
 // No guarda nada: la app los muestra para que la persona los revise y después los manda a /api/registros/varios.
 import { sql } from 'drizzle-orm';
-import { esPorcion, esTipoComida, frecuenciaTexto, limpiarMedio, sePantalla, TIPOS_MEDIO, type Medio, normalizar, PORCIONES, TIPOS_COMIDA, TIPOS_VALOR, type Categoria, type Idioma } from 'shared';
+import { alergiasParaIa, esPorcion, esTipoComida, frecuenciaTexto, limpiarMedio, sePantalla, TIPOS_MEDIO, type Medio, normalizar, PORCIONES, TIPOS_COMIDA, TIPOS_VALOR, type Alergia, type AvisoAlergia, type Categoria, type Idioma } from 'shared';
 import { filas, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
+import { alergiasDe, avisosDeTexto } from '../lib/alergias.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, fechaLocal, localAInstante, minutosDelDia } from '../lib/fechas.js';
 import { pedirJson } from './cliente.js';
@@ -96,6 +97,19 @@ export const ESQUEMA = {
         additionalProperties: false,
       },
     },
+    alertas_alergia: {
+      type: 'array',
+      description: 'Lo que se comió, se tomó o se programó que puede traer algo a lo que declaró alergia (aunque no lo nombre: milanesa y huevo). Vacío si no declaró alergias o si nada choca.',
+      items: {
+        type: 'object',
+        properties: {
+          que: { type: 'string', description: 'Lo anotado, con el nombre que le pusiste' },
+          alergia: { type: 'string', description: 'La alergia con la que choca, escrita como en la lista de alergias declaradas' },
+        },
+        required: ['que', 'alergia'],
+        additionalProperties: false,
+      },
+    },
     dudas: {
       type: 'array',
       description: 'Lo que no quedó claro y conviene preguntar',
@@ -115,7 +129,7 @@ export const ESQUEMA = {
       },
     },
   },
-  required: ['registros', 'tratamientos', 'dudas'],
+  required: ['registros', 'tratamientos', 'alertas_alergia', 'dudas'],
   additionalProperties: false,
 };
 
@@ -150,7 +164,32 @@ interface Respuesta {
     dias: number | null;
     motivo: string | null;
   }>;
+  alertas_alergia?: AvisoAlergia[];
   dudas: Array<{ pregunta: string; opciones: string[]; varias?: boolean } | string>;
+}
+
+/**
+ * Lo que puede chocar con una alergia declarada, para mostrarlo antes de anotar: lo que se ve por el nombre y lo que marcó
+ * la IA (que sabe qué lleva una milanesa), siempre que sea una alergia que la persona declaró de verdad.
+ */
+function alertasDe(
+  ia: AvisoAlergia[],
+  registros: Array<{ categoria_id: number; concepto_nombre: string; nota: string | null }>,
+  tratamientos: Array<{ concepto_nombre: string }>,
+  alergias: Alergia[],
+  porCat: Map<number, string>,
+  idioma: Idioma,
+): AvisoAlergia[] {
+  if (!alergias.length) return [];
+  const r = new Map<string, AvisoAlergia>();
+  const sumar = (a: AvisoAlergia) => r.set(`${normalizar(a.que)}|${normalizar(a.alergia)}`, a);
+  for (const x of registros) avisosDeTexto(x.concepto_nombre, `${x.concepto_nombre} . ${x.nota ?? ''}`, alergias, porCat.get(x.categoria_id) ?? '', idioma).forEach(sumar);
+  for (const x of tratamientos) avisosDeTexto(x.concepto_nombre, x.concepto_nombre, alergias, 'medicacion', idioma).forEach(sumar);
+  for (const x of ia) {
+    const a = alergias.find((y) => y.tipo !== 'estacional' && y.tipo !== 'animal' && normalizar(y.nombre) === normalizar(x.alergia));
+    if (a && x.que.trim()) sumar({ que: x.que.trim(), alergia: a.nombre });
+  }
+  return [...r.values()];
 }
 
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
@@ -208,6 +247,7 @@ export async function interpretarTexto(
     sql`SELECT r.id, c.nombre AS concepto, r.inicio FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id
         WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND k.clave = 'sintoma' AND r.datos->>'abierto' = 'true' ORDER BY r.inicio DESC`,
   );
+  const alergias = await alergiasDe(tx, p.id);
   const ahora = momento ?? new Date();
   const hoy = fechaLocal(ahora, p.zona_horaria);
   const hora = minutosDelDia(ahora, p.zona_horaria);
@@ -304,6 +344,7 @@ export async function interpretarTexto(
         ]
       : []),
     ...(lugaresComida.length ? ['Lugares donde ya comió (los más frecuentes primero):', ...lugaresComida.map((l) => `- ${l}`)] : []),
+    ...(alergias.length ? [`${alergiasParaIa(alergias, diaHoy, p.zona_horaria)} Si algo de lo que anota puede chocar con una de esas alergias, ponelo en alertas_alergia; no le des indicaciones.`] : []),
     ...(activos.length ? ['Remedios que ya tiene programados:', ...activos.map((t) => `- ${t.remedio}, ${frecuenciaTexto(t)}`)] : []),
     ...(malestares.length
       ? [
@@ -385,7 +426,7 @@ export async function interpretarTexto(
       }),
   };
   await conTapas(tx, propuesta.registros);
-  return propuesta;
+  return { ...propuesta, alertas_alergia: alertasDe(r.alertas_alergia ?? [], propuesta.registros, propuesta.tratamientos, alergias, porCat, idioma) };
 }
 
 /** El medio que propone la IA, validado (sin los nulos). */

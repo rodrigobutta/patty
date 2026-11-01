@@ -1,7 +1,7 @@
 // Cambiar algo ya anotado: la hora, la cantidad o los minutos, la intensidad (o cómo te sentías) y la nota. Lo que
 // fue (el concepto) no se cambia acá: para eso se borra y se anota de nuevo.
 import { useEffect, useState } from 'react';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS, ESTADOS_PUNTUALES, estadoDe, unidadPara, type Donde, type Porcion, type TipoComida, type Persona, type Registro } from 'shared';
+import { COMO_ME_SENTI, COMO_ME_SIENTO, CUANTO, ESTADOS, esEstadoPuntual, estadoDe, unidadPara, type Donde, type Porcion, type TipoComida, type Persona, type Registro } from 'shared';
 import { api } from '../api';
 import { idioma, t } from '../lib/idioma';
 import { useEstado } from '../estado';
@@ -86,7 +86,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
   const compartible = (cat?.clave === 'actividad' || cat?.clave === 'viaje') && finCompartir && Date.parse(finCompartir) > Date.parse(r.inicio) && usuario?.rol !== 'lector';
   const esSentir = r.concepto === COMO_ME_SIENTO || r.concepto === COMO_ME_SENTI;
   /** "Con sueño" y compañía: poco, bastante o mucho en vez de 0 a 10. */
-  const esPuntual = ESTADOS_PUNTUALES.some((e) => e.nombre === r.concepto);
+  const esPuntual = esEstadoPuntual(r.concepto, persona);
   const [hora, setHora] = useState(horaEn(r.inicio, persona.zona_horaria));
   const [valor, setValor] = useState(r.valor === null ? '' : String(r.valor));
   const [intensidad, setIntensidad] = useState<number | null>(r.intensidad);

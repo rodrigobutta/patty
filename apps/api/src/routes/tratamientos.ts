@@ -3,10 +3,11 @@
 // (queda un registro de medicación, que entra a los patrones) o salteada. Las que pasan sin marcar son las olvidadas.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { tomasEntre, type NuevoTratamiento, type Registro, type Toma, type Tratamiento, type Usuario } from 'shared';
-import { filas, una, type Tx } from '../db/client.js';
+import { tomasEntre, type AvisoAlergia, type Idioma, type NuevoTratamiento, type Registro, type Toma, type Tratamiento, type Usuario } from 'shared';
+import { filas, una, type Db, type Tx } from '../db/client.js';
 import { tomas, tratamientos } from '../db/schema.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
+import { alergiasDe, avisosDeTexto } from '../lib/alergias.js';
 import { ErrorApi } from '../lib/errores.js';
 import { esFecha, fechaLocal, HORA_INICIO_DIA, leerInstante, localAInstante } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
@@ -194,6 +195,14 @@ export async function tomasDe(tx: Tx, lista: Fila[], desde: Date, hasta: Date): 
   return salida.sort((a, b) => a.programada.localeCompare(b.programada) || a.remedio.localeCompare(b.remedio));
 }
 
+/** El remedio, con `avisos_alergia` si choca con una alergia declarada. Si falla la revisión, el remedio no se pierde. */
+async function conAvisos(db: Db, t: Tratamiento, idioma: Idioma, yaVisto: unknown): Promise<Tratamiento & { avisos_alergia?: AvisoAlergia[] }> {
+  if (yaVisto) return t;
+  const alergias = await alergiasDe(db, t.persona_id).catch(() => []);
+  const avisos = avisosDeTexto(t.remedio, t.remedio, alergias, 'medicacion', idioma);
+  return avisos.length ? { ...t, avisos_alergia: avisos } : t;
+}
+
 export const rutasTratamientos = new Hono<Env>()
   .get('/', async (c) => {
     // ?persona=1: todos (activos primero; los terminados, para ver lo que se tomó).
@@ -234,8 +243,9 @@ export const rutasTratamientos = new Hono<Env>()
     return c.json((await tomasDe(c.var.db, lista, desde, hasta)).filter((t) => t.estado === null));
   })
   .post('/', async (c) => {
-    const d = (await cuerpo(c)) as unknown as NuevoTratamiento;
-    return c.json(await c.var.db.transaction((tx) => crearTratamiento(tx, c.var.usuario, d)), 201);
+    const d = (await cuerpo(c)) as unknown as NuevoTratamiento & { alergia_vista?: boolean };
+    const t = await c.var.db.transaction((tx) => crearTratamiento(tx, c.var.usuario, d));
+    return c.json(await conAvisos(c.var.db, t, c.var.idioma, d.alergia_vista), 201);
   })
   .put('/:id', async (c) => {
     // Cambiar dosis, horarios o fechas. Lo ya marcado queda como estaba.
@@ -248,7 +258,7 @@ export const rutasTratamientos = new Hono<Env>()
       await tx.update(tratamientos).set({ ...v, concepto_id }).where(sql`id = ${id}`);
       return completar(tx, (await fila(tx, id))!);
     });
-    return c.json(r);
+    return c.json(await conAvisos(c.var.db, r, c.var.idioma, !d.concepto_id && !d.concepto_nombre));
   })
   .post('/:id/terminar', async (c) => {
     // Dejarlo (o retomarlo, con {"retomar": true}).

@@ -2,7 +2,7 @@
 // cuánto duraron), qué remedios tomó y para qué, cómo durmió, cómo estuvo de ánimo, el ciclo si lo anota y los
 // patrones que encontró Patty. Sale de lo mismo que usan Números, el Calendario y Patrones; el PDF lo dibuja pdf.ts.
 import { sql } from 'drizzle-orm';
-import { COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, nombreRasgo, resumenCiclo, traducir, traducirDato, type EstadoAnimo, type Hallazgo, type Idioma } from 'shared';
+import { alergiasTexto, COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, nombreRasgo, resumenCiclo, traducir, traducirDato, type Alergia, type EstadoAnimo, type Hallazgo, type Idioma } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { diaDePatty, localAInstante, sumarDias } from '../lib/fechas.js';
@@ -60,7 +60,7 @@ export interface TratamientoInforme {
 
 export interface DatosInforme {
   idioma: Idioma;
-  persona: { nombre: string; edad: number | null; sexo: string | null; altura_cm: number | null; peso_kg: number | null; condiciones: string[] };
+  persona: { nombre: string; edad: number | null; sexo: string | null; altura_cm: number | null; peso_kg: number | null; condiciones: string[]; alergias: string };
   desde: string;
   hasta: string;
   dias: number;
@@ -122,9 +122,9 @@ export async function datosInforme(tx: Tx, p: PersonaAcceso, dias: number, idiom
   const desde = sumarDias(hasta, -(dias - 1));
   const enRango = sql`r.persona_id = ${p.id} AND r.borrado IS NULL AND r.fecha BETWEEN ${desde} AND ${hasta}`;
 
-  const per = await una<{ nombre: string; nacimiento: string | null; sexo: string | null; altura_cm: number | null; peso_kg: number | null; condiciones: string[] }>(
+  const per = await una<{ nombre: string; nacimiento: string | null; sexo: string | null; altura_cm: number | null; peso_kg: number | null; condiciones: string[]; alergias: Alergia[] }>(
     tx,
-    sql`SELECT nombre, to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones FROM personas WHERE id = ${p.id}`,
+    sql`SELECT nombre, to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones, alergias FROM personas WHERE id = ${p.id}`,
   );
   const anotados = await una<{ n: number }>(tx, sql`SELECT count(DISTINCT r.fecha)::int AS n FROM registros r WHERE ${enRango}`);
 
@@ -234,6 +234,7 @@ export async function datosInforme(tx: Tx, p: PersonaAcceso, dias: number, idiom
       altura_cm: per?.altura_cm ?? null,
       peso_kg: per?.peso_kg ?? null,
       condiciones: per?.condiciones ?? [],
+      alergias: alergiasTexto(per?.alergias, idioma),
     },
     desde,
     hasta,

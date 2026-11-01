@@ -2,6 +2,7 @@
 // "genial que saques a los perros: de paso caminás"). Desde el primer día, para que vea que Patty tiene en cuenta lo que
 // le cuenta, mucho antes de que haya patrones. La IA mira lo anotado en la última semana y lo que ya se le comentó.
 import { sql } from 'drizzle-orm';
+import { lineaDeAlergias } from '../lib/alergias.js';
 import { perfilTexto, type Idioma, type Persona } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, sumarDias } from '../lib/fechas.js';
@@ -81,6 +82,7 @@ async function armar(
         WHERE m.persona_id = ${p.id} AND m.fecha BETWEEN ${desde} AND ${hoy} AND c.nombre IN ${AUTOMATICOS}
         GROUP BY m.fecha, c.nombre ORDER BY m.fecha DESC`,
   );
+  const alergias = await lineaDeAlergias(db, p.id, hoy);
   const lengua = idioma === 'en' ? 'English' : 'castellano rioplatense (voseo)';
   const r = await pedirJson<{ comentarios: Array<{ emoji: string; texto: string }> }>({
     sistema:
@@ -96,7 +98,7 @@ async function armar(
       `Mencioná cosas reales de su semana. No repitas ideas de los comentarios anteriores. Un emoji que acompañe cada uno. ` +
       `Hoy es ${hoy}.`,
     texto:
-      `Persona: ${p.nombre}${perfil ? ` (${perfil})` : ''}.\n\n` +
+      `Persona: ${p.nombre}${perfil ? ` (${perfil})` : ''}.\n${alergias ? `${alergias}\n` : ''}\n` +
       `Lo anotado del ${desde} al ${hoy} (lo más nuevo primero):\n` +
       anotado.map((x) => `${x.fecha} ${x.hora} · ${x.categoria}: ${x.que}${x.valor !== null ? ` ${x.valor}${x.unidad ? ' ' + x.unidad : ''}` : ''}${x.intensidad !== null ? ` (${x.intensidad}/10)` : ''}${x.nota ? ` · "${x.nota}"` : ''}`).join('\n') +
       (automaticos.length

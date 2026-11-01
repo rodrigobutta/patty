@@ -196,7 +196,7 @@ export async function analizarPersona(db: Db, p: PersonaAcceso, o: OpcionesAnali
     const frecuentes = [...diasPor].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([id, dias]) => ({ nombre: nombre.get(id)!, dias }));
     try {
       ia = await explicarHallazgos({
-        persona: p.nombre, perfil: perfilTexto((await una<Persona>(db, sql`SELECT to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones FROM personas WHERE id = ${p.id}`))!), desde, hasta, diasActivos: r.dias_activos, paresEvaluados: r.pares_evaluados,
+        persona: p.nombre, perfil: perfilTexto((await una<Persona>(db, sql`SELECT to_char(nacimiento, 'YYYY-MM-DD') AS nacimiento, sexo, altura_cm, peso_kg, condiciones, alergias FROM personas WHERE id = ${p.id}`))!), desde, hasta, diasActivos: r.dias_activos, paresEvaluados: r.pares_evaluados,
         candidatos: conNombres.slice(0, 25), frecuentes, idioma,
         opiniones: opinados.map((o) => ({ causa: o.causa, efecto: o.efecto, opinion: o.estado === 'confirmado' ? 'le sirvió' : o.estado === 'obvio' ? 'ya lo sabía' : 'no tiene sentido' })),
       });

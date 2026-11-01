@@ -400,6 +400,13 @@
       "when": 1793510960873,
       "tag": "0056_lectura_comidas",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793511210780,
+      "tag": "0057_alergias_y_estados_propios",
+      "breakpoints": true
     }
   ]
 }

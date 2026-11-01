@@ -2,11 +2,12 @@
 import { controlarLimite } from '../lib/usoIa.js';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { comidaEn, conceptosDelMedio, conDetalle, limpiarMedio, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type Concepto, type DatoAutomatico, type NuevoRegistro, type Registro, type Usuario } from 'shared';
-import { filas, una, type Tx } from '../db/client.js';
+import { comidaEn, conceptosDelMedio, conDetalle, limpiarMedio, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type AvisoAlergia, type Concepto, type DatoAutomatico, type Idioma, type NuevoRegistro, type Registro, type Usuario } from 'shared';
+import { filas, una, type Db, type Tx } from '../db/client.js';
 import { registros } from '../db/schema.js';
 import { interpretarTexto } from '../ia/interpretar.js';
 import { persona, type PersonaAcceso } from '../lib/acceso.js';
+import { avisosDeRegistros } from '../lib/alergias.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, minutosDelDia, sumarDias } from '../lib/fechas.js';
 import { rutinasDe, type AnotadoRutina } from '../patrones/rutinas.js';
@@ -197,6 +198,12 @@ async function propio(tx: Tx, u: Usuario, id: number) {
   return { ...r, persona: await persona(tx, u, r.persona_id, true) };
 }
 
+/** Lo anotado, con `avisos_alergia` en lo que choca con una alergia declarada. Si falla la revisión, lo anotado no se pierde. */
+async function conAvisos(db: Db, lista: Registro[], idioma: Idioma): Promise<Array<Registro & { avisos_alergia?: AvisoAlergia[] }>> {
+  const avisos = await avisosDeRegistros(db, lista, idioma).catch(() => new Map<number, AvisoAlergia[]>());
+  return lista.map((r, i) => (avisos.has(i) ? { ...r, avisos_alergia: avisos.get(i) } : r));
+}
+
 export const rutasRegistros = new Hono<Env>()
   .get('/', async (c) => {
     // ?persona=1&desde=AAAA-MM-DD&hasta=AAAA-MM-DD (por defecto, hoy en la zona de la persona)
@@ -356,7 +363,8 @@ export const rutasRegistros = new Hono<Env>()
   })
   .post('/', async (c) => {
     const d = (await cuerpo(c)) as unknown as NuevoRegistro;
-    return c.json(await c.var.db.transaction((tx) => guardarRegistro(tx, c.var.usuario, d)), 201);
+    const r = await c.var.db.transaction((tx) => guardarRegistro(tx, c.var.usuario, d));
+    return c.json((await conAvisos(c.var.db, [r], c.var.idioma))[0], 201);
   })
   .post('/varios', async (c) => {
     // Varios de una vez (lo que propone la IA a partir de un texto, una vez que la persona lo revisó).
@@ -369,11 +377,13 @@ export const rutasRegistros = new Hono<Env>()
       for (const d of lista as NuevoRegistro[]) hechos.push(await guardarRegistro(tx, c.var.usuario, d, 'ia', { via }));
       return hechos;
     });
-    return c.json(r, 201);
+    // `alergia_vista`: ya se avisó al revisar lo que propuso la IA, no hace falta otra vez.
+    return c.json(d0.alergia_vista ? r : await conAvisos(c.var.db, r, c.var.idioma), 201);
   })
   .put('/:id', async (c) => {
     const id = idParam(c);
     const d = (await cuerpo(c)) as unknown as NuevoRegistro;
+    let cambioDeConcepto = false;
     const r = await c.var.db.transaction(async (tx) => {
       const actual = await propio(tx, c.var.usuario, id);
       const concepto = await conceptoDe(tx, { ...d, concepto_id: d.concepto_id ?? (d.concepto_nombre ? undefined : actual.concepto_id) }, c.var.usuario);
@@ -382,6 +392,7 @@ export const rutasRegistros = new Hono<Env>()
       const detalles = await datosDetalles(tx, c.var.usuario, d, concepto);
       const para = await datosPara(tx, d, actual.persona.id);
       const medio = await datosMedio(tx, c.var.usuario, d, concepto);
+      cambioDeConcepto = Number(concepto.id) !== Number(actual.concepto_id);
       await tx.update(registros).set({ concepto_id: concepto.id, ...valores(d, concepto, actual.persona) }).where(sql`id = ${id}`);
       // Dónde se comió: se reemplaza (o se saca) solo si vino en el pedido.
       if (comida !== undefined) {
@@ -401,7 +412,7 @@ export const rutasRegistros = new Hono<Env>()
       }
       return una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${id}`);
     });
-    return c.json(r);
+    return c.json(r && cambioDeConcepto ? (await conAvisos(c.var.db, [r], c.var.idioma))[0] : r);
   })
   .delete('/:id', async (c) => {
     const id = idParam(c);

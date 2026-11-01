@@ -31,6 +31,7 @@ import { NuevaPersona } from './pantallas/NuevaPersona';
 import { CartelVersion } from './ui/CartelVersion';
 import { CartelActualizar } from './ui/CartelActualizar';
 import { Tour } from './ui/Tour';
+import { AvisoAlergia } from './ui/AvisoAlergia';
 import { PuntosDelDia } from './pantallas/PuntosDelDia';
 import { Patrones } from './pantallas/Patrones';
 import { IconoDia, IconoMas, IconoPatrones } from './ui/Iconos';
@@ -221,6 +222,7 @@ export function App() {
       </nav>
       {aviso ? <div className="aviso" role="status">{aviso}</div> : null}
       <Festejo />
+      <AvisoAlergia />
     </div>
   );
 }

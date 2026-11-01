@@ -4,6 +4,7 @@
 import { sql } from 'drizzle-orm';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, type Idioma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
+import { lineaDeAlergias } from '../lib/alergias.js';
 import { sumarDias } from '../lib/fechas.js';
 import { hayIa, pedirJson } from './cliente.js';
 
@@ -70,6 +71,7 @@ export async function armarContexto(db: Db, registroId: number, zona: string, id
   let texto: string | null = null;
   if (hayIa() && (anotado.length || datos.length)) {
     const lengua = idioma === 'en' ? 'English' : 'castellano rioplatense (voseo)';
+    const alergias = await lineaDeAlergias(db, r.persona_id, r.fecha);
     const x = await pedirJson<{ texto: string }>({
       sistema:
         `Sos Patty, una app que acompaña a una persona que anota su día. Anotó algo que le hizo mal y te pasamos lo de las ` +
@@ -77,6 +79,7 @@ export async function armarContexto(db: Db, registroId: number, zona: string, id
         `(lo que comió o tomó, cómo durmió, el clima, si se movió poco o mucho, la pantalla), como posibilidades y nunca ` +
         `como causas seguras. Sin diagnósticos ni consejos médicos, sin inventar datos. Si no hay nada que llame la atención, decilo.`,
       texto:
+        (alergias ? `${alergias}\n\n` : '') +
         `Anotó: ${r.que}${r.intensidad !== null ? ` (${r.intensidad}/10)` : ''}${r.nota ? ` "${r.nota}"` : ''}, el ${hora(r.inicio)}.\n\n` +
         `Lo anotado antes (lo más cercano primero):\n${anotado.map((a) => `${hora(a.cuando)} · ${a.que}${a.valor !== null ? ` ${a.valor}${a.unidad ? ' ' + a.unidad : ''}` : ''}${a.intensidad !== null ? ` (${a.intensidad}/10)` : ''}${a.nota ? ` "${a.nota}"` : ''}`).join('\n') || '(nada)'}\n\n` +
         `Datos de esos días:\n${datos.map((d) => `${d.fecha} · ${d.que}: ${Math.round(d.valor * 10) / 10}${d.unidad ? ' ' + d.unidad : ''}`).join('\n') || '(nada)'}`,

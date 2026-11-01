@@ -472,6 +472,21 @@ saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), crea
   (un crónico y más de una semana sin abrir la app). Necesita `FIREBASE_SERVICE_ACCOUNT` en el servidor y
   `google-services.json` en `apps/web/android/app`; sin eso, todo sigue andando sin push.
 
+## Alergias y estados propios
+
+- **Declararlas**: en Tus datos de salud (`personas.alergias`, jsonb): estacionales (una por estación) y con nombre (alimento,
+  medicamento, animal, otra). Lógica en `packages/shared/src/alergias.ts`.
+- **Si algo choca**: al anotar comida, bebida o remedio (o programar un remedio) el servidor agrega `avisos_alergia` a la
+  respuesta y `api.ts` lo muestra sea cual sea la pantalla (`ui/AvisoAlergia.tsx`). Lo anotado se guarda igual. Compara nombre,
+  nota y respuestas contra lo declarado y una lista corta de lo que suele traer cada alergia (`FAMILIAS`). Al ordenar lo contado,
+  la IA suma lo que no se ve por el nombre (`alertas_alergia`, solo contra alergias declaradas) y se muestra antes de anotar.
+- **Temporada**: `pantallas/TemporadaAlergia.tsx`, con la estación de `estacionDe` (según el hemisferio). Pregunta con un toque; el
+  recordatorio es la plantilla de seguimiento «Temporada de alergia» y se prende solo si se toca. "Callarla" vale por la temporada
+  y queda en el teléfono (localStorage).
+- **IA**: `perfilTexto` las nombra y `lineaDeAlergias` agrega si es temporada. Nunca diagnósticos ni recomendar remedios.
+- **Chips de "¿Algo puntual?"**: `personas.estados_puntuales` guarda los propios y los de Patty que se sacaron. «Con alergia» se
+  anota como el malestar «Alergia», para no partir el dato en dos conceptos.
+
 ## Supervisión
 
 - `supervisiones`: un usuario pide supervisar a otro (por usuario o mail) y el otro acepta o rechaza; cualquiera la
