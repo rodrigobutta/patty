@@ -37,10 +37,16 @@ describe('los esquemas de los componentes de lo que se come', () => {
 describe('el esquema de la lectura de las comidas', () => {
   it('no pasa el límite de Anthropic: ningún parámetro acepta null', () => {
     expect(uniones(ESQUEMA_LECTURA)).toBe(0);
+  });
+});
+
 describe('los esquemas de los objetivos', () => {
   it('no pasan el límite de Anthropic: ningún parámetro acepta null', () => {
     expect(uniones(ESQUEMA_PLAN)).toBe(0);
     expect(uniones(ESQUEMA_CONSEJO)).toBe(0);
+  });
+});
+
 describe('los esquemas de lo que se sabe de los remedios', () => {
   it('no pasan el límite de Anthropic: ningún parámetro acepta null', () => {
     expect(uniones(ESQUEMA_SABERES)).toBe(0);

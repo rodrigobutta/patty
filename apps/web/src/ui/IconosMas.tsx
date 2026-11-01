@@ -161,6 +161,9 @@ export const IconoWidgets = () => (
     <rect x="17" y="4" width="11" height="11" rx="3" fill={A} {...T} />
     <rect x="4" y="17" width="11" height="11" rx="3" fill={A} {...T} />
     <rect x="17" y="17" width="11" height="11" rx="3" fill={V} {...T} />
+  </Base>
+);
+
 /** Objetivos: un blanco con su centro. */
 export const IconoObjetivos = () => (
   <Base>

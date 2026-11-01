@@ -83,7 +83,7 @@ export const rutasPersonas = new Hono<Env>()
     return c.json(
       await filas<Persona>(
         c.var.db,
-        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.alergias, p.estados_puntuales, p.notas, p.patrones, p.widgets,, p.patrones,
+        sql`SELECT p.id, p.nombre, p.zona_horaria, to_char(p.nacimiento, 'YYYY-MM-DD') AS nacimiento, p.sexo, p.altura_cm, p.peso_kg, p.condiciones, p.alergias, p.estados_puntuales, p.notas, p.patrones, p.widgets,
               EXISTS (SELECT 1 FROM persona_usuarios d WHERE d.persona_id = p.id AND d.usuario_id = ${u.id} AND d.rol = 'dueno') AS propia,
               EXISTS (SELECT 1 FROM accesos a WHERE a.persona_id = p.id AND a.usuario_id = ${u.id} AND a.por_supervision) AS supervisada
             FROM personas p

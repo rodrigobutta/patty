@@ -27,9 +27,8 @@ import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { idioma, idiomaElegido, locale, ponerIdioma, t } from '../lib/idioma';
 import { Cuenta } from './Cuenta';
 import { alPedirIrAMas, tomarSeccionPedida, verSeccionPedida } from '../lib/navegar';
-import { IconoPatrones, IconoPreguntas, IconoSeguimientos, IconoWidgets } from '../ui/IconosMas';
 import { ElegirWidgets } from './ElegirWidgets';
-import { IconoObjetivos, IconoPatrones, IconoPreguntas, IconoSeguimientos } from '../ui/IconosMas';
+import { IconoObjetivos, IconoPatrones, IconoPreguntas, IconoSeguimientos, IconoWidgets } from '../ui/IconosMas';
 import { QuePatronesBuscar } from './QuePatronesBuscar';
 import { Seguimientos } from './Seguimientos';
 import { Metas } from './Metas';
@@ -51,9 +50,7 @@ import { leerEstado, type EstadoTelefono } from '../lib/estadoTelefono';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
-type Seccion = 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'widgets' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
-type Seccion = 'objetivos' | 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
-type Seccion = 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'avisos' | 'supervision' | 'competencias' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
+type Seccion = 'objetivos' | 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'widgets' | 'avisos' | 'supervision' | 'competencias' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
@@ -500,7 +497,6 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'reloj', icono: <IconoReloj />, titulo: t('Reloj y salud'), sub: t('Sueño, pasos y pulso'), ver: esNativa() && Boolean(persona) },
     { clave: 'lugares', icono: <IconoLugares />, titulo: t('Lugares'), sub: t('Casa, trabajo y los lugares a los que vas'), ver: Boolean(persona) },
     { clave: 'informe', icono: <IconoInforme />, titulo: t('Informe para el médico'), sub: t('Un PDF con lo anotado para la consulta'), ver: Boolean(persona) },
-    { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
     { clave: 'objetivos', icono: <IconoObjetivos />, titulo: t('Objetivos'), sub: t('Dormir mejor, moverte más… y un plan para cada uno'), ver: Boolean(persona) },
     { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos, vitaminas y efectos a tener en cuenta'), ver: Boolean(persona) },
     { clave: 'seguimientos', icono: <IconoSeguimientos />, titulo: t('Seguimientos'), sub: t('Más de cerca por unos días: enfermo, panza…'), ver: Boolean(persona) },
