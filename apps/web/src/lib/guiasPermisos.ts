@@ -69,7 +69,7 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
           : marca === 'xiaomi'
             ? t('En la misma pantalla de Patty: «Ahorro de batería» → «Sin restricciones», y prendé «Inicio automático».')
             : marca === 'oppo'
-              ? t('En la misma pantalla de Patty: «Uso de batería» → prendé «Permitir actividad en segundo plano» y «Permitir inicio automático».')
+              ? t('En la misma pantalla de Patty: «Uso de batería» → elegí «Permitir actividad en segundo plano». Después, en Ajustes → Aplicaciones → «Inicio automático», prendé Patty.')
             : t('En la misma pantalla: Batería (o «Uso de batería de la app») → «Sin restricciones».'),
         buscar('Patty'),
       ];
@@ -81,8 +81,10 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
       if (marca === 'oppo') {
         return [
           cartel,
-          t('Mantené apretado el ícono de Patty, tocá ⓘ y entrá a «Uso de batería»: prendé «Permitir actividad en segundo plano» y «Permitir inicio automático».'),
+          t('Mantené apretado el ícono de Patty, tocá ⓘ y entrá a «Uso de batería»: elegí «Permitir actividad en segundo plano».'),
+          t('Abrí Ajustes → Aplicaciones → «Inicio automático» y prendé Patty. Si también aparece en «Inicio asociado», prendela ahí.'),
           t('En las apps recientes, tocá ⋮ en la tarjeta de Patty (o mantenela apretada) y elegí «Bloquear», así no se cierra al limpiar.'),
+          t('Una actualización de ColorOS puede apagar estos ajustes: si Patty deja de registrar, revisalos de nuevo.'),
           sinTilde,
           buscar('inicio automático'),
         ];
