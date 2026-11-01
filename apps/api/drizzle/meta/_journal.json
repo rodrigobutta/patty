@@ -393,6 +393,13 @@
       "when": 1793510390491,
       "tag": "0055_caminatas_pasos",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793510960873,
+      "tag": "0056_lectura_comidas",
+      "breakpoints": true
     }
   ]
 }

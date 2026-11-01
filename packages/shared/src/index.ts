@@ -840,6 +840,42 @@ export interface SemanaComponentes {
   componentes: ComponenteDeLaSemana[];
 }
 
+/** Un elemento principal de las comidas (pan, carne, queso…) en los últimos días. */
+export interface ElementoConsumido {
+  nombre: string;
+  /** Cuántas comidas lo tuvieron, una por cada día de `ConsumoDeElementos.dias`. */
+  veces: number[];
+  total: number;
+  /** En cuántos de esos días estuvo. */
+  dias: number;
+  /** Hace cuántos días fue la última vez (0: el último día mirado). */
+  dias_desde: number;
+  /** Cuántos días seguidos lleva, hasta el último día mirado. */
+  seguidos: number;
+}
+
+/** Lo que más se viene comiendo, día a día, no por plato sino por lo que tienen adentro. */
+export interface ConsumoDeElementos {
+  dias: string[];
+  /** Cuántas comidas con algo desglosado hubo cada día. 0: de ese día no se sabe nada (no es que no haya comido eso). */
+  comidas_por_dia: number[];
+  /** Los que más aparecen primero. */
+  elementos: ElementoConsumido[];
+  /** Lo que aparecía antes y en estos días ya no. */
+  sin_aparecer: Array<{ nombre: string; dias_desde: number; veces: number }>;
+  /** Cuántos elementos distintos aparecieron en estos días. */
+  distintos: number;
+  /** Lo anotado en estos días que todavía no se sabe qué tiene (no entra en la cuenta). */
+  sin_desglosar: number;
+}
+
+/** Cómo vienen las comidas en palabras: la escribe el proceso de la mañana (ia) o sale de las cuentas (calculada). */
+export interface LecturaComidas {
+  fecha: string;
+  texto: string;
+  origen: 'ia' | 'calculada';
+}
+
 /** Lo que trae el widget Comida del Día: GET /api/componentes/dia. */
 export interface ComidaDelDia {
   fecha: string;
@@ -855,6 +891,10 @@ export interface ComidaDelDia {
   semana: SemanaComponentes;
   /** Los patrones de la persona con un componente como causa. */
   patrones: Hallazgo[];
+  /** Opcional: lo último guardado en el teléfono puede ser de una versión anterior. */
+  consumo?: ConsumoDeElementos;
+  /** Null: todavía no hay días suficientes para decir algo. */
+  lectura?: LecturaComidas | null;
 }
 
 export interface Hallazgo {

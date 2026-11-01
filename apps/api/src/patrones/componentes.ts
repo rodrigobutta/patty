@@ -3,6 +3,7 @@
 import { sql } from 'drizzle-orm';
 import { filas, una, type Tx } from '../db/client.js';
 import { CATEGORIA_COMPONENTE } from '../componentes/lista.js';
+import type { RegistroConIngredientes } from '../componentes/consumo.js';
 import { comidaDe, rasgosDeComidas, type ComidaDia, type RegistroComida } from '../componentes/niveles.js';
 import { obtenerOCrearConcepto } from '../routes/conceptos.js';
 import type { ConceptoInfo, FilaDiaria } from './motor.js';
@@ -15,6 +16,18 @@ export async function registrosDeComidas(tx: Tx, personaId: number, desde: strin
                a.estado, a.confianza, a.gramos, a.gramos_unidad, a.componentes
         FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id LEFT JOIN alimentos a ON a.id = c.alimento_id
         WHERE r.persona_id = ${personaId} AND r.borrado IS NULL AND r.fecha BETWEEN ${desde} AND ${hasta} AND k.clave IN ('comida', 'bebida')`,
+  );
+  return lista.map((x) => ({ ...x, hora: x.hora ? new Date(x.hora).getTime() : null }));
+}
+
+/** Lo anotado de comidas y bebidas en un período, con sus ingredientes (para ver qué se viene comiendo, componentes/consumo.ts). */
+export async function registrosConIngredientes(tx: Tx, personaId: number, desde: string, hasta: string): Promise<RegistroConIngredientes[]> {
+  const lista = await filas<Omit<RegistroConIngredientes, 'hora'> & { hora: Date | string | null }>(
+    tx,
+    sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.inicio AS hora, a.estado, a.ingredientes
+        FROM registros r JOIN conceptos c ON c.id = r.concepto_id JOIN categorias k ON k.id = c.categoria_id LEFT JOIN alimentos a ON a.id = c.alimento_id
+        WHERE r.persona_id = ${personaId} AND r.borrado IS NULL AND r.fecha BETWEEN ${desde} AND ${hasta} AND k.clave IN ('comida', 'bebida') AND c.nombre !~* '^agua( |$)'
+        ORDER BY r.inicio`,
   );
   return lista.map((x) => ({ ...x, hora: x.hora ? new Date(x.hora).getTime() : null }));
 }

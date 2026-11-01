@@ -436,6 +436,9 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
      come (mediana bajo la mitad del piso). **No es una app de dieta**: sin metas, sin colores de bien o mal (mucho y poco se marcan igual), sin consejos, y comparado solo
      contra la misma persona. "Muchas calorías" nunca va en la línea del Día ni abre las listas si no se nota. El interruptor de Qué patrones buscar
      (`personas.patrones.componentes`) apaga los patrones y también este widget.
+   - **Lo que más se come y cómo vienen las comidas** (`componentes/consumo.ts`, `ia/leerComidas.ts`): en la misma hoja, los últimos 14 días por elemento principal (lo que pesa de cada plato, en
+     familias: "peceto" y "bife" son Carne), cuántas comidas lo tuvieron cada día y lo que dejó de aparecer. A las 7 de cada persona, el proceso `leerComidasDeHoy` guarda en `lectura_comidas` una lectura
+     breve de los días terminados: con IA, o con las cuentas si no hay o falla (con IA reintenta hasta las 9). Si no corrió, el pedido del widget arma la de las cuentas sin guardarla. Orientación general: sin dietas ni diagnósticos.
    - Para probarlo a mano (administración): `POST /api/admin/componentes/probar` con `{ "nombre": "Pastel de papa" }` (la IA de verdad, sin guardar),
      `POST /api/admin/componentes/lote` (un lote ya) y `GET /api/admin/componentes` (cómo viene y cuánto se gastó hoy).
 9. **Aviso preventivo** (`patrones/preventivo.ts`): de 16 a 21 (hora de la persona), una vez por hora, se mira si hoy

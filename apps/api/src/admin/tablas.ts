@@ -39,6 +39,7 @@ export const GRUPO_TABLA: Record<string, 'persona' | 'automatico' | 'ia' | 'cata
   hallazgos: 'ia',
   hipotesis: 'ia',
   resumen_noche: 'ia',
+  lectura_comidas: 'ia',
   resumen_semana: 'ia',
   comentarios: 'ia',
   contexto_registro: 'ia',
