@@ -827,6 +827,29 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 @media (prefers-reduced-motion: reduce) { .rueda-puntos .arco-puntos { animation: none; } }
 .tablero-lista .cifra { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 
+/* ---------- Competencias ---------- */
+.competencia-buho { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--acento-suave); margin-bottom: 12px; }
+.competencia-buho p { margin: 0; flex: 1; font-weight: 600; }
+.competencia-cabeza { margin: 0 0 12px; }
+.competencia-cabeza h3 { margin: 0 0 2px; }
+.competencia-metricas { display: grid; gap: 8px; margin-bottom: 12px; }
+.competencia-metricas button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px; border: 1px solid var(--borde); border-radius: 12px;
+  background: var(--panel); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.competencia-metricas button.activa { border-color: var(--acento); background: var(--acento-suave); }
+.competencia-metricas .que { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.competencia-comparte { padding: 12px 14px; border: 1px solid var(--borde); border-radius: 14px; margin: 12px 0; }
+.competencia-comparte p { margin: 0 0 6px; }
+.competencia-comparte p:last-child { margin-bottom: 0; }
+.competencia-botones { display: grid; gap: 8px; margin-top: 12px; }
+.competencia-fila { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px; border: 1px solid var(--borde); border-radius: 12px;
+  background: var(--panel); color: inherit; font: inherit; text-align: left; cursor: pointer; margin-bottom: 8px; }
+.competencia-fila .que { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.competencia-codigo { display: flex; gap: 8px; margin-top: 12px; }
+.competencia-codigo input { flex: 1; min-width: 0; }
+.sin-dato { color: var(--suave); font-style: italic; font-weight: 500; }
+.banda-invitacion { position: fixed; top: 0; left: 0; right: 0; z-index: 5; margin: 0; padding: 10px 16px; text-align: center; font-weight: 600;
+  background: var(--acento); color: var(--sobre-acento); }
+
 /* ---------- Más: menú y sub-pantallas ---------- */
 .menu-mas { list-style: none; margin: 4px 0 18px; padding: 0; display: grid; gap: 10px; }
 .menu-mas button { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--borde); border-radius: var(--radio);

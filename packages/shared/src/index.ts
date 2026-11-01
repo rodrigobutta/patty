@@ -10,6 +10,7 @@ export * from './widgets.js';
 import type { AjustesWidgets } from './widgets.js';
 export * from './metas.js';
 export * from './saberRemedios.js';
+export * from './competencias.js';
 import type { Medio } from './medios.js';
 
 /**

@@ -17,8 +17,11 @@ const AVISOS: Partial<Record<ComoSeCompartio, string>> = {
 
 /** Lo que se puede compartir: la tarjeta (ya traducida) y qué es, para Analytics y el nombre del archivo. */
 export interface Compartible {
-  que: 'patron' | 'racha' | 'semana' | 'nivel' | 'actividad' | 'viaje' | 'sueno' | 'medio';
+  que: 'patron' | 'racha' | 'semana' | 'nivel' | 'actividad' | 'viaje' | 'sueno' | 'medio' | 'competencia';
   tarjeta: Tarjeta;
+  /** Lo que va escrito junto a la imagen y el link, si no son los de siempre (una competencia lleva su invitación). */
+  texto?: string;
+  link?: string;
   /** Algo que se puede sacar de la imagen: el tilde (prendido de entrada) y la tarjeta sin eso. */
   opcion?: { rotulo: string; sin: Tarjeta };
 }
@@ -33,9 +36,10 @@ const TEXTOS: Record<Compartible['que'], string> = {
   viaje: 'Lo anoté con Patty 🦉',
   sueno: 'Cómo dormí, con Patty 🦉',
   medio: 'Lo anoté con Patty 🦉',
+  competencia: 'Compitiendo con Patty 🦉',
 };
 
-export function HojaCompartir({ que, tarjeta, opcion, alCerrar }: Compartible & { alCerrar(): void }) {
+export function HojaCompartir({ que, tarjeta, opcion, texto, link: linkPropio, alCerrar }: Compartible & { alCerrar(): void }) {
   const { usuario } = useEstado();
   const [con, setCon] = useState(true);
   const [imagenes, setImagenes] = useState<Record<'con' | 'sin', { blob: Blob; url: string } | undefined>>({ con: undefined, sin: undefined });
@@ -74,8 +78,8 @@ export function HojaCompartir({ que, tarjeta, opcion, alCerrar }: Compartible & 
     setEnviando(true);
     setAviso('');
     try {
-      const link = await linkInvitacion(usuario?.id);
-      const como = await compartirImagen(imagen.blob, `patty-${que}.png`, `${t(TEXTOS[que])} ${link}`);
+      const link = linkPropio ?? (await linkInvitacion(usuario?.id));
+      const como = await compartirImagen(imagen.blob, `patty-${que}.png`, `${texto ?? t(TEXTOS[que])} ${link}`);
       medir('compartir', { que, como, ...(opcion ? { con: con ? 'si' : 'no' } : {}) });
       setAviso(AVISOS[como] ? t(AVISOS[como]!) : '');
     } catch {

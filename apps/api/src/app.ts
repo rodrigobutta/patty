@@ -17,6 +17,7 @@ import type { Env } from './lib/http.js';
 import { rutasAdmin } from './routes/admin.js';
 import { rutasCiclo } from './routes/ciclo.js';
 import { rutasPuntos } from './routes/puntos.js';
+import { rutasCompetencias } from './routes/competencias.js';
 import { rutasGente } from './routes/gente.js';
 import { rutasClima } from './routes/clima.js';
 import { rutasComponentes } from './routes/componentes.js';
@@ -203,6 +204,7 @@ export function crearApp(modo = config.modo): Hono<Env> {
   api.route('/estadisticas', rutasEstadisticas);
   api.route('/ciclo', rutasCiclo);
   api.route('/puntos', rutasPuntos);
+  api.route('/competencias', rutasCompetencias);
   api.route('/gente', rutasGente);
   api.route('/', rutasPatrones);
   api.route('/', rutasPreguntar);

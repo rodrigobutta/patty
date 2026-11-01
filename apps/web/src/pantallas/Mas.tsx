@@ -44,6 +44,7 @@ import { alPedirGuia, Permisos, tomarGuia, type Paso } from './Permisos';
 import { Gente } from './Gente';
 import { Remedios } from './Remedios';
 import { Supervision } from './Supervision';
+import { Competencias } from './Competencias';
 import { NuevaPersona } from './NuevaPersona';
 import { COMMIT, VERSION, versionNativa } from '../lib/version';
 import { leerEstado, type EstadoTelefono } from '../lib/estadoTelefono';
@@ -52,6 +53,7 @@ interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string 
 
 type Seccion = 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'widgets' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 type Seccion = 'objetivos' | 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
+type Seccion = 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'avisos' | 'supervision' | 'competencias' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
@@ -223,6 +225,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     patrones: () => <IconoPatrones />,
     avisos: () => <IconoAvisos />,
     supervision: () => <IconoFamilia />,
+    competencias: () => <span>🏆</span>,
     personas: () => <IconoGente />,
     cuenta: () => <IconoCuenta />,
     avanzado: () => <IconoAvanzado />,
@@ -387,6 +390,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   if (seccion === 'supervision') return pantalla(t('👨‍👩‍👧 Familia'), <>
       <Supervision />
   </>, true);
+  if (seccion === 'competencias') return pantalla(t('🏆 Competencias'), <Competencias />);
   if (seccion === 'personas') return pantalla(t('Personas guardadas'), <>
       {persona ? <Gente persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
       <div className="tarjeta">
@@ -505,6 +509,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'widgets', icono: <IconoWidgets />, titulo: t('Widgets del Día'), sub: t('Cuáles ver y en qué orden'), ver: Boolean(persona) },
     { clave: 'avisos', icono: <IconoAvisos />, titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
     { clave: 'supervision', icono: <IconoFamilia />, titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
+    { clave: 'competencias', icono: <span>🏆</span>, titulo: t('Competencias'), sub: t('A ver quién viene mejor: pasos, racha, sueño…'), ver: usuario?.rol !== 'lector' },
     { clave: 'personas', icono: <IconoGente />, titulo: t('Personas guardadas'), sub: t('Con quién estás, qué es cada una y de quién se anota') },
     { clave: 'cuenta', icono: <IconoCuenta />, titulo: t('Tu cuenta'), sub: t('Foto, apodo, tema, idioma') },
     { clave: 'avanzado', icono: <IconoAvanzado />, titulo: t('Otros dispositivos'), sub: t('Relojes y atajos con token'), ver: usuario?.rol !== 'lector' },

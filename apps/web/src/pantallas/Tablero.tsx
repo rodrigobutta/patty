@@ -1,9 +1,10 @@
 // El tablero de puntos de los últimos 7 días: la familia (quienes supervisás o te supervisan), con una meta de la
-// semana entre todos, y el general (todos los que quieren aparecer, con su apodo). Se puede salir del general.
+// semana entre todos, el general (todos los que quieren aparecer, con su apodo; se puede salir) y las competencias.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { t } from '../lib/idioma';
 import { Avatar } from '../ui/Avatar';
+import { Competencias } from './Competencias';
 
 interface Fila {
   usuario_id: number;
@@ -46,7 +47,7 @@ function Lista({ filas }: { filas: Fila[] }) {
 
 export function Tablero({ alCerrar }: { alCerrar(): void }) {
   const [d, setD] = useState<Datos | null>(null);
-  const [vista, setVista] = useState<'familia' | 'general'>('familia');
+  const [vista, setVista] = useState<'familia' | 'general' | 'competencias'>('familia');
   const traer = () => void api<Datos>('GET', '/api/puntos/tablero').then(setD).catch(() => {});
   useEffect(traer, []);
 
@@ -64,8 +65,11 @@ export function Tablero({ alCerrar }: { alCerrar(): void }) {
       <div className="segmentos ancho">
         <button className={vista === 'familia' ? 'activa' : ''} onClick={() => setVista('familia')}>{t('👨‍👩‍👧 Familia')}</button>
         <button className={vista === 'general' ? 'activa' : ''} onClick={() => setVista('general')}>{t('🌎 General')}</button>
+        <button className={vista === 'competencias' ? 'activa' : ''} onClick={() => setVista('competencias')}>{t('⚔️ Retos')}</button>
       </div>
-      {!d ? (
+      {vista === 'competencias' ? (
+        <Competencias />
+      ) : !d ? (
         <p className="suave centro">{t('Cargando…')}</p>
       ) : vista === 'familia' ? (
         <>

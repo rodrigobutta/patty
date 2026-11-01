@@ -3,6 +3,7 @@ import { ALERGIAS } from './alergias.js';
 import { CICLO } from './ciclo.js';
 import { COMIDA } from './comida.js';
 import { COMPARTIR } from './compartir.js';
+import { COMPETENCIAS } from './competencias.js';
 import { COMPONENTES } from './componentes.js';
 import { CUENTA } from './cuenta.js';
 import { COMUN } from './comun.js';
@@ -23,4 +24,4 @@ import { SABER_REMEDIOS } from './saberremedios.js';
 import { SERVIDOR } from './servidor.js';
 import { WIDGETS_EN } from './widgets.js';
 
-export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...HIPOTESIS, ...COMPONENTES, ...MEDIOS, ...METAS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...SABER_REMEDIOS, ...WIDGETS_EN, ...ALERGIAS, ...COMUN };
+export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...COMPETENCIAS, ...PATRONES_FINOS, ...HIPOTESIS, ...COMPONENTES, ...MEDIOS, ...METAS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...SABER_REMEDIOS, ...WIDGETS_EN, ...ALERGIAS, ...COMUN };
