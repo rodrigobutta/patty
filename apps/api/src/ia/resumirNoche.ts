@@ -6,6 +6,7 @@ import { sql } from 'drizzle-orm';
 import type { Idioma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { localAInstante, sumarDias } from '../lib/fechas.js';
+import { bloqueMetas, REGLA_METAS } from '../lib/metas.js';
 import { obtenerOCrearConcepto } from '../routes/conceptos.js';
 import { hayIa, pedirJson } from './cliente.js';
 
@@ -55,6 +56,7 @@ export async function resumirNoche(db: Db, p: { id: number; nombre: string; zona
                            AND ${localAInstante(noche, '12:00', p.zona_horaria).toISOString()}
         ORDER BY r.inicio LIMIT 60`,
   );
+  const metas = await bloqueMetas(db, p.id);
   const lengua = idioma === 'en' ? 'English' : 'castellano rioplatense (voseo)';
   const r = await pedirJson<{ texto: string; calidad: number }>({
     sistema:
@@ -62,7 +64,7 @@ export async function resumirNoche(db: Db, p: { id: number; nombre: string; zona
       `cortas y cálidas: cuánto durmió y cómo se compara con su semana, cómo se repartieron las etapas (profundo, REM, ` +
       `despertares y a qué hora), y si algo de lo que anotó antes puede haber influido (cena tarde, café, alcohol, pantalla), ` +
       `sin afirmarlo como causa. Sin diagnósticos ni consejos médicos, sin inventar datos. Además, una nota de calidad del ` +
-      `sueño de 1 (muy mala) a 10 (excelente) según duración, continuidad y etapas.`,
+      `sueño de 1 (muy mala) a 10 (excelente) según duración, continuidad y etapas. La nota no depende de sus objetivos.${metas ? REGLA_METAS : ''}`,
     texto:
       `Noche que terminó el ${noche}.\n\n` +
       (etapas.length
@@ -71,7 +73,7 @@ export async function resumirNoche(db: Db, p: { id: number; nombre: string; zona
       `Sueño de los últimos días (por día):\n${sueno.map((x) => `${x.fecha} · ${x.que}: ${Math.round(x.valor * 10) / 10}`).join('\n') || '(nada)'}\n\n` +
       `Lo anotado desde la tarde anterior hasta el mediodía:\n${
         anotado.map((a) => `${hora(a.cuando)} ${a.que}${a.valor !== null ? ` ${a.valor}${a.unidad ? ' ' + a.unidad : ''}` : ''}${a.intensidad !== null ? ` (${a.intensidad}/10)` : ''}${a.nota ? ` "${a.nota}"` : ''}`).join('\n') || '(nada)'
-      }`,
+      }${metas}`,
     esquema: {
       type: 'object',
       properties: { texto: { type: 'string' }, calidad: { type: 'integer' } },

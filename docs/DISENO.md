@@ -467,6 +467,25 @@ no pasivo frena el scroll. Mientras se arrastra el DOM no se reordena (se usa `o
 → la IA propone registros reusando los conceptos existentes (se le pasa el catálogo). No guarda nada: la persona revisa,
 saca lo que no va y recién ahí se guardan (`POST /api/registros/varios`), creando los conceptos nuevos.
 
+## Objetivos de la persona
+
+En Más → Objetivos, cada persona se pone varios objetivos ("dormir mejor", "comer menos grasas" o lo que escriba), que duran hasta
+que los cumple, pausa o borra. En el código son `metas` (tablas `metas` y `metas_dia`, `/api/metas`, `shared/metas.ts`) porque
+`objetivos` ya son los suaves de una semana que propone el resumen del domingo.
+
+- **Plan**: al crearlo queda un plan de base (el de la sugerencia parecida, o uno general); con IA, se cambia por uno armado con lo
+  que Patty sabe (perfil de los últimos 120 días, patrones, condiciones). Queda guardado en `metas.plan` y solo se rehace si se pide;
+  rehacerlo gasta del límite de preguntas. Si falla o no se puede, queda el que había.
+- **Qué lo mide**: cada paso puede nombrar un dato (`mide`), de `MEDIDAS_META` o de lo que la persona anota. Se muestra esta semana
+  contra la anterior, solo cuando hay datos. Lo que devuelve la IA fuera de esa lista se descarta.
+- **En el Día**: una sola cosa por día (`metas_dia`, rota entre los objetivos activos): un consejo o una pregunta de sí, más o menos
+  o no, que se cierra hasta mañana. Sin IA sale de los consejos y preguntas del plan.
+- **Contexto de la IA**: los activos (y lo último contestado) llegan a los comentarios del día, a los resúmenes de la noche y de la
+  semana, a lo que se le pregunta a Patty y a las hipótesis (`bloqueMetas`, `lineasMetas`). Sin objetivos, esos pedidos no cambian.
+- **Lo médico**: un objetivo que suena médico (`pareceMedico`) va con el plan de hábitos generales, se le aclara a la persona y la
+  IA recibe la regla de no diagnosticar ni tocar tratamientos. Como última red, lo que devuelve la IA y se mete con un tratamiento se
+  descarta (`tocaTratamiento`).
+
 ## Remedios y recordatorios
 
 - `tratamientos`: un remedio (concepto de Medicación) con dosis y unidad, y cómo se toma: `cada_horas` desde la primera

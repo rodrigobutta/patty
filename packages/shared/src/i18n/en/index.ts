@@ -12,6 +12,7 @@ import { HIPOTESIS } from './hipotesis.js';
 import { INFORME } from './informe.js';
 import { MAS } from './mas.js';
 import { MEDIOS } from './medios.js';
+import { METAS } from './metas.js';
 import { AVISOS_TELEFONO } from './avisostelefono.js';
 import { BUEN_DIA } from './buendia.js';
 import { PERMISOS } from './permisos.js';
@@ -21,4 +22,4 @@ import { PATRONES_FINOS } from './patronesfinos.js';
 import { SERVIDOR } from './servidor.js';
 import { WIDGETS_EN } from './widgets.js';
 
-export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...HIPOTESIS, ...COMPONENTES, ...MEDIOS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...WIDGETS_EN, ...ALERGIAS, ...COMUN };
+export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...HIPOTESIS, ...COMPONENTES, ...MEDIOS, ...METAS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...WIDGETS_EN, ...ALERGIAS, ...COMUN };

@@ -414,6 +414,13 @@
       "when": 1793511423805,
       "tag": "0058_widgets_de_la_persona",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793511434161,
+      "tag": "0059_objetivos_de_la_persona",
+      "breakpoints": true
     }
   ]
 }

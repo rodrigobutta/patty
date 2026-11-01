@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, type Idioma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { sumarDias } from '../lib/fechas.js';
+import { bloqueMetas, REGLA_METAS } from '../lib/metas.js';
 import { objetivosDe, progreso, TIPOS_OBJETIVO, type TipoObjetivo } from '../lib/objetivos.js';
 import { hayIa, pedirJson } from './cliente.js';
 
@@ -96,6 +97,7 @@ export async function resumirSemana(db: Db, p: { id: number; nombre: string }, l
     await db.execute(sql`UPDATE objetivos SET logrados = ${x.cumplidos} WHERE id = ${o.id}`);
     logros.push(`- ${o.texto}: ${x.cumplidos} de ${o.meta_dias} días`);
   }
+  const metas = await bloqueMetas(db, p.id);
   const lengua = idioma === 'en' ? 'English' : 'castellano rioplatense (voseo)';
   const fila = (k: string) => `${k}: ${numeros[k] ?? '—'} (semana anterior: ${antes[k] ?? '—'})`;
   const r = await pedirJson<{
@@ -116,13 +118,15 @@ export async function resumirSemana(db: Db, p: { id: number; nombre: string }, l
       `datos: texto corto ("Caminar 3 días"), un emoji, cuántos días de los 7 (meta_dias) y cómo se mide (tipo): ` +
       `"concepto" = anotar ese concepto (exactamente un nombre de "Lo más anotado", o "Caminata"), "sin_concepto" = días ` +
       `sin ese concepto, "sueno_min" = dormir al menos valor horas, "pasos_min" = al menos valor pasos, "pantalla_max" = ` +
-      `como mucho valor minutos de pantalla. Solo uses sueño, pasos o pantalla si hay números de eso.`,
+      `como mucho valor minutos de pantalla. Solo uses sueño, pasos o pantalla si hay números de eso.` +
+      (metas ? `${REGLA_METAS} Contá cómo le fue con ellos si los datos lo muestran, y que las sugerencias y los objetivos de la semana que viene los ayuden.` : ''),
     texto:
       `Persona: ${p.nombre}. Semana del ${lunes} al ${hasta}.\n\nNúmeros (por día; minutos donde dice _min):\n` +
       ['dias_anotados', 'sueno_horas', 'sueno_calidad', 'pasos', 'caminatas_min', 'viajes', 'km', 'pantalla_min', 'reuniones_h', 'animo', 'molestias'].map(fila).join('\n') +
       `\n\nLo más anotado (veces · intensidad promedio si tiene):\n${top.map((x) => `${x.categoria}: ${x.que} · ${x.veces}${x.intensidad !== null ? ` · ${Math.round(x.intensidad)}/10` : ''}`).join('\n') || '(nada)'}` +
       (logros.length ? `\n\nObjetivos que se propuso para esta semana (días cumplidos):\n${logros.join('\n')}` : '') +
-      (comentarios.length ? `\n\nLo que ya le comentaste en la semana (no lo repitas igual):\n${comentarios.map((c) => `- ${c.texto}`).join('\n')}` : ''),
+      (comentarios.length ? `\n\nLo que ya le comentaste en la semana (no lo repitas igual):\n${comentarios.map((c) => `- ${c.texto}`).join('\n')}` : '') +
+      metas,
     esquema: {
       type: 'object',
       properties: {

@@ -26,7 +26,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import type { AjustesEstados, AjustesPatrones, AjustesWidgets, Alergia, ComponenteHallazgo, Modo } from 'shared';
+import type { AjustesEstados, AjustesPatrones, AjustesWidgets, Alergia, ComponenteHallazgo, Modo, PlanMeta } from 'shared';
 
 const id = () => integer('id').primaryKey().generatedByDefaultAsIdentity();
 const idGrande = () => bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity();
@@ -1210,4 +1210,48 @@ export const auditoriaAdmin = pgTable(
     creado: creado(),
   },
   (t) => [index('auditoria_admin_creado_idx').on(t.creado)],
+);
+
+/**
+ * Los objetivos que se pone la persona ("dormir mejor", "comer menos grasas" o lo que escriba), hasta que los cumple, pausa o
+ * borra (en la interfaz, "Objetivos"; `objetivos` son los de una semana). El plan queda guardado: se rehace solo si lo pide.
+ */
+export const metas = pgTable(
+  'metas',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    texto: text('texto').notNull(),
+    emoji: text('emoji').notNull().default('🎯'),
+    /** La sugerencia de la que salió, si salió de una. */
+    clave: text('clave'),
+    estado: text('estado', { enum: ['activa', 'pausada', 'cumplida'] }).notNull().default('activa'),
+    plan: jsonb('plan').$type<PlanMeta>().notNull(),
+    creado: creado(),
+  },
+  (t) => [index('metas_persona_idx').on(t.persona_id, t.estado)],
+);
+
+/** El seguimiento del objetivo en el Día: un consejo o una pregunta, uno solo por persona y día (rota entre sus objetivos). */
+export const metasDia = pgTable(
+  'metas_dia',
+  {
+    id: id(),
+    meta_id: integer('meta_id')
+      .notNull()
+      .references(() => metas.id, { onDelete: 'cascade' }),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    /** El día de Patty (de 5 a 5). */
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    tipo: text('tipo', { enum: ['consejo', 'pregunta'] }).notNull(),
+    texto: text('texto').notNull(),
+    estado: text('estado', { enum: ['nuevo', 'visto', 'gusta', 'respondido'] }).notNull().default('nuevo'),
+    respuesta: text('respuesta', { enum: ['si', 'mas_o_menos', 'no'] }),
+    creado: creado(),
+  },
+  (t) => [uniqueIndex('metas_dia_unico').on(t.persona_id, t.fecha), index('metas_dia_meta_idx').on(t.meta_id, t.fecha)],
 );
