@@ -1289,6 +1289,33 @@ export interface CalendarioCapa {
   resumen: string;
 }
 
+/** Cómo vino un día, con los valores reales; null es que ese día no hay dato de eso. */
+export interface TendenciaDia {
+  fecha: string;
+  /** Promedio de lo que contestó en "¿Cómo te sentís?", de 1 a 10. */
+  animo: number | null;
+  /** Horas dormidas. */
+  sueno: number | null;
+  pasos: number | null;
+  /** Minutos. */
+  ejercicio: number | null;
+  /** Minutos. */
+  pantalla: number | null;
+  /** Grados centígrados. */
+  temperatura: number | null;
+  /** Latidos por minuto, en reposo. */
+  pulso: number | null;
+  /** Cuántos malestares distintos se anotaron. */
+  malestares: number | null;
+  nombres_malestares: string[];
+}
+
+export interface Tendencias {
+  desde: string;
+  hasta: string;
+  dias: TendenciaDia[];
+}
+
 /** Palabras que hacen que una comida o bebida cuente como chatarra (el nombre normalizado las contiene). */
 export const PALABRAS_CHATARRA = [
   'pizza', 'hamburguesa', 'papas fritas', 'papitas', 'pancho', 'hot dog', 'nuggets', 'empanada frita', 'milanesa frita',

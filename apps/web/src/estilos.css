@@ -1575,6 +1575,50 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .animo-dias li { display: grid; grid-template-columns: 70px 1fr; column-gap: 8px; row-gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--borde); }
 .animo-dias .cuando { grid-row: 1 / span 2; font-weight: 600; text-transform: capitalize; }
 .animo-dias .animo { display: inline-flex; align-items: center; gap: 6px; }
+/* Cómo venís, abajo de los widgets: los colores siguen a cada cosa, elegidos para distinguirse también con daltonismo. */
+.tendencias {
+  --tend-animo: #2a78d6; --tend-sueno: #eb6834; --tend-pasos: #1baf7a; --tend-ejercicio: #eda100;
+  --tend-pantalla: #e87ba4; --tend-temperatura: #008300; --tend-pulso: #6250d6; --tend-malestares: #e34948;
+  margin-top: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) .tendencias {
+    --tend-animo: #3987e5; --tend-sueno: #d95926; --tend-pasos: #199e70; --tend-ejercicio: #c98500;
+    --tend-pantalla: #d55181; --tend-temperatura: #008300; --tend-pulso: #9085e9; --tend-malestares: #e66767;
+  }
+}
+:root[data-tema="oscuro"] .tendencias {
+  --tend-animo: #3987e5; --tend-sueno: #d95926; --tend-pasos: #199e70; --tend-ejercicio: #c98500;
+  --tend-pantalla: #d55181; --tend-temperatura: #008300; --tend-pulso: #9085e9; --tend-malestares: #e66767;
+}
+.tendencias-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.tendencias-cabeza h3 { margin: 0; }
+.tendencias .segmentos button { padding: 6px 12px; font-size: 14px; }
+.tend-principal { display: block; width: 100%; max-width: 520px; margin: 0 auto; }
+.tend-principal text, .tend-chico svg text { fill: var(--suave); font-size: 11px; }
+.tend-principal .fila { fill: var(--texto); }
+.tend-hebra, .tend-linea { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tend-punto { stroke: var(--panel); stroke-width: 1.5; }
+.tend-vacia { fill: var(--borde); opacity: 0.5; }
+.tend-columna { fill: transparent; cursor: pointer; outline: none; }
+.tend-columna:focus-visible { stroke: var(--acento); stroke-width: 1.5; }
+.tend-marca { fill: color-mix(in srgb, var(--texto) 9%, transparent); stroke: color-mix(in srgb, var(--texto) 45%, transparent); stroke-width: 1; pointer-events: none; }
+.tend-principal .tend-marca { fill: none; stroke-width: 1.5; }
+.tend-muestra { display: inline-block; width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.tend-dia { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: var(--acento-suave); }
+.tend-dia h4 { margin: 0 0 6px; font-size: 15px; }
+.tend-dia h4::first-letter { text-transform: uppercase; }
+.tend-dia ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.tend-dia li { display: flex; align-items: baseline; gap: 6px; font-size: 14px; }
+.tend-dia li > span:nth-child(2) { flex: 1; min-width: 0; }
+.tend-dia li > b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.tend-dia .sin { color: var(--suave); font-weight: 400; }
+.tend-chicos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.tend-chico { padding: 8px 10px; border: 1px solid var(--borde); border-radius: 12px; min-width: 0; }
+.tend-chico .nombre { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--suave); }
+.tend-chico .valor { display: block; font-weight: 600; font-size: 15px; margin: 1px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tend-chico .prom { margin-left: auto; font-size: 12px; }
+.tend-chico svg { display: block; width: 100%; }
 /* El mapita de una vuelta a pie sin anotar, a la derecha de la tarjeta. */
 .paseo-pendiente { position: relative; }
 .paseo-pendiente .paseo-mapita { float: right; width: 112px; margin: 0 0 6px 10px; padding: 0; border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; cursor: pointer; background: none; }

@@ -59,6 +59,7 @@ import { Frase } from '../ui/Frase';
 import { Sentir } from './Sentir';
 import { detalleDelMedio } from '../lib/medios';
 import { AvisosPendientes } from './AvisosDelDia';
+import { TendenciasDelDia } from './TendenciasDelDia';
 
 /** Después de contestar "¿cómo te sentís ahora?", cuánto tiempo no se vuelve a preguntar en el Día. */
 const HORAS_SIN_PREGUNTAR = 3;
@@ -665,6 +666,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
           })();
         } : undefined}
       />
+      <TendenciasDelDia persona={persona} vuelta={vuelta} />
       </div>
       {/* Las hojas van fuera del contenido animado: si no, quedan atrás de la lista mientras se anima. */}
       {activando ? (

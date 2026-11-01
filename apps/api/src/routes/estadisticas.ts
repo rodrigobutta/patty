@@ -2,7 +2,7 @@
 // últimos días; y, para una cosa puntual ("dolor de cabeza", "huevos"), los días en que pasó, para el calendario.
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { resumenCiclo, CAPAS_CALENDARIO, COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, normalizar, PALABRAS_CHATARRA, traducir, traducirDato, type CalendarioCapa, type CapaCalendario, type Estadisticas, type SerieConcepto } from 'shared';
+import { resumenCiclo, CAPAS_CALENDARIO, COMO_ME_SENTI, COMO_ME_SIENTO, estadoDe, normalizar, PALABRAS_CHATARRA, traducir, traducirDato, type CalendarioCapa, type CapaCalendario, type Estadisticas, type SerieConcepto, type TendenciaDia, type Tendencias } from 'shared';
 import { filas, una, type Tx } from '../db/client.js';
 import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
@@ -49,7 +49,87 @@ export async function horasDeSueno(tx: Tx, personaId: number, desde: string, has
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+/** Los minutos de ejercicio de cada día: lo que se hizo, sin contar pasos, km ni calorías (que son del mismo movimiento). */
+function ejercicioPorDia(tx: Tx, personaId: number, desde: string, hasta: string) {
+  return filas<{ fecha: string; valor: number; detalle: string }>(
+    tx,
+    sql`SELECT to_char(s.fecha, 'YYYY-MM-DD') AS fecha, sum(CASE WHEN k.nombre = 'Pasos' THEN 0 ELSE coalesce(s.suma, 30) END)::float AS valor,
+               string_agg(DISTINCT k.nombre, ', ') FILTER (WHERE k.nombre <> 'Pasos') AS detalle
+        FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id JOIN categorias g ON g.id = k.categoria_id
+        WHERE s.persona_id = ${personaId} AND s.fecha BETWEEN ${desde} AND ${hasta} AND g.clave = 'actividad' AND k.nombre NOT IN ('Km caminados', 'Calorías activas', 'Calorías totales', 'Entrenamientos')
+        GROUP BY s.fecha`,
+  );
+}
+
 export const rutasEstadisticas = new Hono<Env>()
+  .get('/tendencias', async (c) => {
+    // ?persona=1&dias=7|30: cómo vino cada uno de los últimos días, con los valores reales (null donde no hay dato: un
+    // día sin anotar no es un cero). Para los gráficos de abajo del Día; normalizar para dibujar es cosa de la pantalla.
+    const db = c.var.db;
+    const p = await persona(db, c.var.usuario, Number(c.req.query('persona')), false);
+    const dias = Number(c.req.query('dias')) === 30 ? 30 : 7;
+    const hasta = diaDePatty(new Date(), p.zona_horaria);
+    const desde = sumarDias(hasta, -(dias - 1));
+    const serie = async (nombre: string, campo: 'suma' | 'promedio') =>
+      new Map(
+        (
+          await filas<{ fecha: string; valor: number | null }>(
+            db,
+            sql`SELECT to_char(s.fecha, 'YYYY-MM-DD') AS fecha, max(s.${sql.raw(campo)})::float AS valor FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id
+                WHERE s.persona_id = ${p.id} AND s.fecha BETWEEN ${desde} AND ${hasta} AND k.nombre = ${nombre} GROUP BY s.fecha`,
+          )
+        ).flatMap((x) => (x.valor === null ? [] : [[x.fecha, x.valor] as const])),
+      );
+    /** Lo que se mide: un cero es que el reloj o el teléfono no midió ese día, no que haya pasado eso. */
+    const medido = (m: Map<string, number>, f: string) => {
+      const v = m.get(f);
+      return v === undefined || v <= 0 ? null : Math.round(v);
+    };
+    const animo = new Map(
+      (
+        await filas<{ fecha: string; valor: number }>(
+          db,
+          sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, avg(r.intensidad)::float AS valor FROM registros r JOIN conceptos k ON k.id = r.concepto_id
+              WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND k.nombre IN (${COMO_ME_SIENTO}, ${COMO_ME_SENTI}) AND r.intensidad IS NOT NULL
+                AND r.fecha BETWEEN ${desde} AND ${hasta} GROUP BY r.fecha`,
+        )
+      ).map((x) => [x.fecha, Math.round(x.valor * 10) / 10]),
+    );
+    const malestares = new Map(
+      (
+        await filas<{ fecha: string; nombres: string[] }>(
+          db,
+          sql`SELECT to_char(r.fecha, 'YYYY-MM-DD') AS fecha, array_agg(DISTINCT k.nombre) AS nombres
+              FROM registros r JOIN conceptos k ON k.id = r.concepto_id JOIN categorias g ON g.id = k.categoria_id
+              WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND g.clave = 'sintoma' AND r.fecha BETWEEN ${desde} AND ${hasta} GROUP BY r.fecha`,
+        )
+      ).map((x) => [x.fecha, x.nombres]),
+    );
+    const sueno = new Map((await horasDeSueno(db, p.id, desde, hasta)).map((x) => [x.fecha, x.horas]));
+    const ejercicio = new Map((await ejercicioPorDia(db, p.id, desde, hasta)).map((x) => [x.fecha, x.valor]));
+    const pasos = await serie('Pasos', 'suma');
+    const pantalla = await serie('Tiempo de pantalla', 'suma');
+    const temperatura = await serie('Temperatura media', 'promedio');
+    const pulso = await serie('Pulso en reposo', 'promedio');
+    const temp = (f: string) => {
+      const v = temperatura.get(f);
+      return v === undefined ? null : Math.round(v * 10) / 10;
+    };
+    const lista: TendenciaDia[] = Array.from({ length: dias }, (_, i) => sumarDias(desde, i)).map((fecha) => ({
+      fecha,
+      animo: animo.get(fecha) ?? null,
+      sueno: sueno.get(fecha) ?? null,
+      pasos: medido(pasos, fecha),
+      ejercicio: medido(ejercicio, fecha),
+      pantalla: medido(pantalla, fecha),
+      temperatura: temp(fecha),
+      pulso: medido(pulso, fecha),
+      malestares: malestares.get(fecha)?.length ?? null,
+      nombres_malestares: (malestares.get(fecha) ?? []).map((n) => traducirDato(n, c.var.idioma)),
+    }));
+    const res: Tendencias = { desde, hasta, dias: lista };
+    return c.json(res);
+  })
   .get('/', async (c) => {
     // ?persona=1&dias=30
     const db = c.var.db;
@@ -190,14 +270,7 @@ export const rutasEstadisticas = new Hono<Env>()
       );
       r = { tipo: 'numero', unidad: '/10', mejor: 'menos', dias: l.map((d) => ({ ...d, valor: d.valor ?? 5, detalle: nombres(d.detalle) ?? undefined })), resumen: l.length ? t('{n} días con algún dolor o molestia.', { n: l.length }) : t('Ningún dolor anotado en el período. ¡Bien!') };
     } else if (capa === 'ejercicio') {
-      const l = await filas<{ fecha: string; valor: number; detalle: string }>(
-        db,
-        sql`SELECT to_char(s.fecha, 'YYYY-MM-DD') AS fecha, sum(CASE WHEN k.nombre = 'Pasos' THEN 0 ELSE coalesce(s.suma, 30) END)::float AS valor,
-                   string_agg(DISTINCT k.nombre, ', ') FILTER (WHERE k.nombre <> 'Pasos') AS detalle
-            FROM serie_diaria s JOIN conceptos k ON k.id = s.concepto_id JOIN categorias g ON g.id = k.categoria_id
-            WHERE s.persona_id = ${p.id} AND s.${enRango} AND g.clave = 'actividad' AND k.nombre NOT IN ('Km caminados', 'Calorías activas', 'Calorías totales', 'Entrenamientos')
-            GROUP BY s.fecha`,
-      );
+      const l = await ejercicioPorDia(db, p.id, desde, hasta);
       const dias = l.filter((d) => d.valor > 0).map((d) => ({ ...d, detalle: `${Math.round(d.valor)} min${d.detalle ? ` · ${nombres(d.detalle)}` : ''}` }));
       const total = Math.round((Date.parse(hasta) - Date.parse(desde)) / 86400000) + 1;
       r = { tipo: 'numero', unidad: 'min', mejor: 'mas', dias, resumen: t('{n} de {total} días con ejercicio.', { n: dias.length, total }) };
