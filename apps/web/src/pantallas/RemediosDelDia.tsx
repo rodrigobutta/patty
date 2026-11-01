@@ -183,6 +183,7 @@ export function RemediosDelDia({ persona, fecha, hoy, vuelta, alCambiar, widget 
           ))}
         </div>
       ) : null}
+      <button className="enlace chico" onClick={() => irAMas('remedios')}>{t('👀 Tengo en cuenta los efectos posibles de lo que tomás')}</button>
       </>
   );
   const engranaje = (

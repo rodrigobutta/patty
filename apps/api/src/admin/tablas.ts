@@ -11,6 +11,8 @@ export const GRUPO_TABLA: Record<string, 'persona' | 'automatico' | 'ia' | 'cata
   registros: 'persona',
   tratamientos: 'persona',
   tomas: 'persona',
+  suplementos: 'persona',
+  senales_apartadas: 'persona',
   gente: 'persona',
   lugares: 'persona',
   preguntas_concepto: 'persona',
@@ -52,6 +54,7 @@ export const GRUPO_TABLA: Record<string, 'persona' | 'automatico' | 'ia' | 'cata
   conceptos: 'catalogo',
   concepto_alias: 'catalogo',
   medios_cache: 'catalogo',
+  saberes_remedio: 'catalogo',
   alimentos: 'catalogo',
 };
 

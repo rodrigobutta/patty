@@ -9,6 +9,7 @@ import { lineaDeAlergias } from '../lib/alergias.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, sumarDias } from '../lib/fechas.js';
 import { bloqueMetas, REGLA_METAS } from '../lib/metas.js';
+import { REGLA_SALUD_IA, saludParaIa } from '../remedios/contextoIa.js';
 import { pedirJson } from './cliente.js';
 
 /** Hasta cuánto para atrás se mira si la pregunta no dice cuándo. */
@@ -95,6 +96,8 @@ export async function preguntarDatos(tx: Tx, p: PersonaAcceso, pregunta: string,
   ];
 
   const alergias = await lineaDeAlergias(tx, p.id, hoy);
+  // Lo que toma y sus efectos posibles, para que pueda contestar "¿qué me podría estar haciendo mal?" sin inventar.
+  const salud = await saludParaIa(tx, p.id, hoy, idioma).catch(() => '');
   const r = await pedirJson<{ respuesta: string; fechas: string[] }>({
     sistema:
       `Sos Patty, una app de registro diario. Contestá la pregunta de la persona sobre sus propios datos, en ${lengua}, corto y claro (2 a 5 oraciones), ` +
@@ -105,6 +108,9 @@ export async function preguntarDatos(tx: Tx, p: PersonaAcceso, pregunta: string,
       `y si son muchas, resumí (cuántas veces, cada cuánto, la última). No des diagnósticos médicos. ` +
       `En "fechas" poné los días (AAAA-MM-DD) de los que habla la respuesta, los más recientes primero, hasta 40. Hoy es ${hoy}.${metas ? `${REGLA_METAS} Si pregunta cómo viene con un objetivo, contestale con los datos.` : ''}`,
     texto: `Pregunta: ${pregunta}\nPeríodo mirado: ${desde} a ${hasta}.\n\nDatos (${datos.length}${datos.length >= MAX_FILAS ? ', cortados a los más recientes' : ''}):\n${datos.join('\n') || '(nada en ese período)'}${metas}`,
+      `y si son muchas, resumí (cuántas veces, cada cuánto, la última). No des diagnósticos médicos. ` +
+      `En "fechas" poné los días (AAAA-MM-DD) de los que habla la respuesta, los más recientes primero, hasta 40. Hoy es ${hoy}.${salud ? ` ${REGLA_SALUD_IA}` : ''}`,
+    texto: `Pregunta: ${pregunta}\nPeríodo mirado: ${desde} a ${hasta}.\n\nDatos (${datos.length}${datos.length >= MAX_FILAS ? ', cortados a los más recientes' : ''}):\n${datos.join('\n') || '(nada en ese período)'}${salud ? `\n\n${salud}` : ''}`,
     esquema: {
       type: 'object',
       properties: { respuesta: { type: 'string' }, fechas: { type: 'array', items: { type: 'string' } } },

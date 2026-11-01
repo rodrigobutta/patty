@@ -624,6 +624,25 @@ packages/shared Tipos y reglas comunes (categorías iniciales, tipos de valor, n
 docs/           Este documento.
 ```
 
+## Lo que se sabe de lo que se toma
+
+Efectos, interacciones, vitaminas y lo que cubren. Siempre como información general y posibilidad, nunca como diagnóstico. Patty no sugiere dejar,
+cambiar ni ajustar un remedio o su dosis, ni comprar un suplemento: lo que la IA manda en ese sentido se saca antes de guardarlo (`esTextoSeguro`, en
+`shared/saberRemedios.ts`, donde también están los textos fijos).
+
+- **`saberes_remedio`**: tabla de todos, por `claveRemedio(nombre)` (sin dosis ni forma), sin datos de ninguna persona. La llena el worker
+  (`remedios/saberes.ts`, cada minuto, de a 5 nombres, con tope de tokens por día). A la IA le llega solo la clave. Lo que no reconoce queda
+  `desconocido` y se dice que no se sabe. Sin IA queda `pendiente`, y lo demás anda igual.
+- **Señales** (`remedios/senales.ts`): un síntoma coincide con un efecto (o sus sinónimos) de algo que tomaba. Se calcula al pedirlo, sin IA, sin guardar
+  nada. No se señala si apareció antes de empezar, si lo toma justamente para eso (`motivo`, `para_registro_id`), ni si es un "cuando haga falta" que no se
+  tomó en las 72 horas previas. "No tiene que ver" queda en `senales_apartadas`.
+- **Patrones** (`patrones/hipotesis.ts`): lo que coincide también se prueba como hipótesis, con o sin IA, y solo se muestra si pasa por los números del motor.
+- **Suplementos**: por nombre (vale lo típico de `saberes_remedio`) o por foto del envase (`/api/suplementos/leer-foto`, propuesta que la persona revisa; la
+  foto no se guarda). `FuenteContenido` dice de dónde salió lo que contiene.
+- **Cobertura** (`remedios/cobertura.ts`): sin IA y gruesa, con palabras sobre lo anotado de 30 días. No mide cantidades. Con menos de 10 días con comidas no
+  dice nada de la comida; lo que aparece poco se expresa como "podría valer la pena revisar con tu médico".
+- **Contexto de la IA** (`remedios/contextoIa.ts`): hipótesis, "qué pasó antes" y preguntas reciben lo que toma, sus efectos, lo que contiene y lo que aparece poco, con `REGLA_SALUD_IA`.
+
 ## Pendiente / ideas
 
 - Lectura de Salud / Health Connect desde la app nativa; íconos alternativos de la mascota en iPhone.

@@ -1782,3 +1782,23 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .gantt-barra.escucha { background: color-mix(in srgb, var(--acento) 35%, transparent); border-radius: 4px; }
 .escuchas-detalle { display: flex; flex-direction: column; gap: 10px; }
 .escucha-sesion { display: flex; flex-direction: column; gap: 3px; }
+
+/* Lo que se tiene en cuenta de lo que se toma (EfectosRemedio, Suplementos) */
+.efectos-vigilados { margin-top: 4px; }
+.efectos-vigilados summary { cursor: pointer; color: var(--acento); }
+.efectos-vigilados p { margin: 6px 0 4px; }
+.chips-suaves { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.chips-suaves li { padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--borde); }
+.chips-suaves.consultar li { border-color: var(--ambar); }
+.interacciones { margin: 0; padding-left: 16px; }
+.interacciones .consultar { color: var(--ambar); }
+.senales-efecto { display: flex; flex-direction: column; gap: 10px; }
+.senal-efecto p { margin: 0 0 4px; }
+.senal-efecto.urgente { border-left: 3px solid var(--ambar); padding-left: 10px; }
+.botones-suplemento { gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.fila-contenido { gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+.fila-contenido select { flex: 1; min-width: 0; }
+.etiqueta-contenido { margin: 4px 0; font-weight: 600; }
+.cobertura .lista-simple { margin: 0 0 8px; padding-left: 16px; }
+.cobertura { margin-top: 12px; }
+.suplementos { margin-top: 12px; }

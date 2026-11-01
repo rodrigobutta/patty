@@ -9,6 +9,7 @@ import { alergiasTexto, type AjustesEstados, type Alergia } from './alergias.js'
 export * from './widgets.js';
 import type { AjustesWidgets } from './widgets.js';
 export * from './metas.js';
+export * from './saberRemedios.js';
 import type { Medio } from './medios.js';
 
 /**

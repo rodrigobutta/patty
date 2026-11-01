@@ -54,6 +54,7 @@ import { CompaniaSugerida } from './CompaniaSugerida';
 import { ViajesDelDia } from './ViajesDelDia';
 import { EVENTO_CONTAR, PISTAS } from './PuntosDelDia';
 import { RemediosDelDia } from './RemediosDelDia';
+import { SenalesEfecto } from './EfectosRemedio';
 import { Avisarle } from './Supervision';
 import { FilaDeslizable } from '../ui/FilaDeslizable';
 import { etiquetaDonde } from '../ui/DondeComida';
@@ -528,6 +529,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {registros && !persona.supervisada ? (
         <LineaDelDia persona={persona} fecha={fecha} hoy={hoy} registros={registros} categorias={categorias} vuelta={vuelta} alCambiar={() => void traer()} alEditar={(r) => setEditando(r)} />
       ) : null}
+      {/* Lo anotado que coincide con un efecto posible de algo que toma. */}
+      {!persona.supervisada ? <SenalesEfecto persona={persona} fecha={fecha} vuelta={vuelta} /> : null}
       {fecha === hoy && registros ? <SeguimientoDelDia persona={persona} registros={registros} categorias={categorias} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
       {fecha === hoy && !persona.supervisada ? <PaseosPendientes persona={persona} vuelta={vuelta} alAnotar={() => { void traer(); avisarAnotado(); }} /> : null}
       {/* Un pedido de comida o un viaje en Uber que se vio en los avisos del teléfono: Patty pregunta qué fue. */}

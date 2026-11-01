@@ -65,6 +65,8 @@ export async function resumirNoche(db: Db, p: { id: number; nombre: string; zona
       `despertares y a qué hora), y si algo de lo que anotó antes puede haber influido (cena tarde, café, alcohol, pantalla), ` +
       `sin afirmarlo como causa. Sin diagnósticos ni consejos médicos, sin inventar datos. Además, una nota de calidad del ` +
       `sueño de 1 (muy mala) a 10 (excelente) según duración, continuidad y etapas. La nota no depende de sus objetivos.${metas ? REGLA_METAS : ''}`,
+      `sin afirmarlo como causa. Sin diagnósticos ni consejos médicos, sin inventar datos. Nunca sugieras dejar, cambiar ni ajustar un remedio o su dosis, ni comprar un suplemento: eso lo decide su médico. Además, una nota de calidad del ` +
+      `sueño de 1 (muy mala) a 10 (excelente) según duración, continuidad y etapas.`,
     texto:
       `Noche que terminó el ${noche}.\n\n` +
       (etapas.length

@@ -42,6 +42,7 @@ import { rutasPersonas } from './routes/personas.js';
 import { rutasRegistros } from './routes/registros.js';
 import { rutasSesion } from './routes/sesion.js';
 import { rutasSupervision } from './routes/supervision.js';
+import { rutasRemedios, rutasSuplementos } from './routes/saberRemedios.js';
 import { rutasTratamientos } from './routes/tratamientos.js';
 import { rutasUbicacion } from './routes/ubicacion.js';
 import { rutasUsuarios } from './routes/usuarios.js';
@@ -191,6 +192,8 @@ export function crearApp(modo = config.modo): Hono<Env> {
   api.route('/conceptos', rutasConceptos);
   api.route('/registros', rutasRegistros);
   api.route('/tratamientos', rutasTratamientos);
+  api.route('/remedios', rutasRemedios);
+  api.route('/suplementos', rutasSuplementos);
   api.route('/clima', rutasClima);
   api.route('/componentes', rutasComponentes);
   api.route('/ubicacion', rutasUbicacion);

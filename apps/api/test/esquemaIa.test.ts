@@ -4,6 +4,7 @@ import { ESQUEMA_HIPOTESIS } from '../src/ia/hipotesis.js';
 import { ESQUEMA } from '../src/ia/interpretar.js';
 import { ESQUEMA_LECTURA } from '../src/ia/leerComidas.js';
 import { ESQUEMA_CONSEJO, ESQUEMA_PLAN } from '../src/ia/metas.js';
+import { ESQUEMA_ENVASE, ESQUEMA_SABERES } from '../src/ia/saberRemedios.js';
 
 /** Cuántos parámetros aceptan más de un tipo (anyOf o una lista de tipos), que es lo que Anthropic limita. */
 function uniones(x: unknown): number {
@@ -40,5 +41,9 @@ describe('los esquemas de los objetivos', () => {
   it('no pasan el límite de Anthropic: ningún parámetro acepta null', () => {
     expect(uniones(ESQUEMA_PLAN)).toBe(0);
     expect(uniones(ESQUEMA_CONSEJO)).toBe(0);
+describe('los esquemas de lo que se sabe de los remedios', () => {
+  it('no pasan el límite de Anthropic: ningún parámetro acepta null', () => {
+    expect(uniones(ESQUEMA_SABERES)).toBe(0);
+    expect(uniones(ESQUEMA_ENVASE)).toBe(0);
   });
 });
