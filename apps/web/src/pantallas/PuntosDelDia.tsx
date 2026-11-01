@@ -146,7 +146,9 @@ export function PuntosDelDia({ persona, cara, alTocarBuho }: { persona: Persona;
           {cara ? <Mascota cara={cara} tamano={84} className={`buho-puntos${ganancia ? ' saltando' : ' vivo'}`} /> : null}
         </button>
         <button className="globo-puntos" onClick={() => setAbierta(true)} aria-label={t('{n} puntos de 100', { n: hoy.puntos })}>
-        <span className="estrella" aria-hidden>⭐</span>
+        <svg className="estrella" viewBox="0 0 24 24" aria-hidden>
+          <path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#fff" stroke="#8a5a00" strokeWidth="1.6" strokeLinejoin="round" />
+        </svg>
         <span className="numero">{mostrado}</span>
         </button>
         {ganancia ? (
