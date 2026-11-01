@@ -27,7 +27,8 @@ import { ponerTema, temaActual, type Tema } from '../lib/tema';
 import { idioma, idiomaElegido, locale, ponerIdioma, t } from '../lib/idioma';
 import { Cuenta } from './Cuenta';
 import { alPedirIrAMas, tomarSeccionPedida, verSeccionPedida } from '../lib/navegar';
-import { IconoPatrones, IconoPreguntas, IconoSeguimientos } from '../ui/IconosMas';
+import { IconoPatrones, IconoPreguntas, IconoSeguimientos, IconoWidgets } from '../ui/IconosMas';
+import { ElegirWidgets } from './ElegirWidgets';
 import { QuePatronesBuscar } from './QuePatronesBuscar';
 import { Seguimientos } from './Seguimientos';
 import { IconoInforme } from '../ui/IconosMas';
@@ -47,7 +48,7 @@ import { leerEstado, type EstadoTelefono } from '../lib/estadoTelefono';
 
 interface Fuente { id: number; tipo: string; nombre: string; ultimo_uso: string | null }
 
-type Seccion = 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
+type Seccion = 'informe' | 'datos' | 'clima' | 'telefono' | 'reloj' | 'lugares' | 'remedios' | 'preguntas' | 'seguimientos' | 'patrones' | 'widgets' | 'avisos' | 'supervision' | 'personas' | 'salud' | 'cuenta' | 'avanzado';
 
 export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const { persona, personas, elegirPersona, usuario, salir, sesion, avisar } = useEstado();
@@ -206,6 +207,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   // El título de cada sección lleva el mismo ícono dibujado que en el menú (sin el emoji del texto).
   const ICONO_SECCION: Record<Seccion, () => ReactNode> = {
     salud: () => <IconoSalud />,
+    widgets: () => <IconoWidgets />,
     datos: () => <IconoPermisos />,
     clima: () => <IconoClima />,
     telefono: () => <IconoTelefono />,
@@ -277,6 +279,9 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   </>);
   if (seccion === 'patrones') return pantalla(t('Qué patrones buscar'), <>
       {persona ? <QuePatronesBuscar key={persona.id} persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
+  </>);
+  if (seccion === 'widgets') return pantalla(t('Widgets del Día'), <>
+      {persona ? <ElegirWidgets key={persona.id} persona={persona} puedeEscribir={usuario?.rol !== 'lector' && !persona.supervisada} /> : null}
   </>);
   if (seccion === 'preguntas') return pantalla(t('Preguntas de Patty'), <>
       {persona ? <PreguntasPatty persona={persona} puedeEscribir={usuario?.rol !== 'lector'} /> : null}
@@ -488,6 +493,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'seguimientos', icono: <IconoSeguimientos />, titulo: t('Seguimientos'), sub: t('Más de cerca por unos días: enfermo, panza…'), ver: Boolean(persona) },
     { clave: 'preguntas', icono: <IconoPreguntas />, titulo: t('Preguntas de Patty'), sub: t('El detalle de lo que anotás: café con azúcar…'), ver: Boolean(persona) },
     { clave: 'patrones', icono: <IconoPatrones />, titulo: t('Qué patrones buscar'), sub: t('Umbrales, lo que te protege, efectos a los días'), ver: Boolean(persona) },
+    { clave: 'widgets', icono: <IconoWidgets />, titulo: t('Widgets del Día'), sub: t('Cuáles ver y en qué orden'), ver: Boolean(persona) },
     { clave: 'avisos', icono: <IconoAvisos />, titulo: t('Avisos'), sub: t('Recordatorios, encuesta de la noche') },
     { clave: 'supervision', icono: <IconoFamilia />, titulo: t('Familia'), sub: t('Sumar a tu familia y acompañarse') },
     { clave: 'personas', icono: <IconoGente />, titulo: t('Personas guardadas'), sub: t('Con quién estás, qué es cada una y de quién se anota') },

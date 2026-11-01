@@ -654,12 +654,12 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         alActivar={setActivando}
         persona={persona}
         fecha={fecha}
-        antes={
-          <>
-            <RemediosDelDia widget persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />
-            <AnimoSemana persona={persona} fecha={fecha} vuelta={vuelta} />
-          </>
-        }
+        propios={{
+          remedios: <RemediosDelDia widget persona={persona} fecha={fecha} hoy={hoy} vuelta={vuelta} alCambiar={() => { void traer(); avisarAnotado(); }} />,
+          animo: <AnimoSemana persona={persona} fecha={fecha} vuelta={vuelta} />,
+        }}
+        puedeOrganizar={sesion?.usuario?.rol !== 'lector' && !persona.supervisada}
+        alAvisar={avisar}
         buscandoSalud={buscandoSalud}
         alContarSueno={fecha === hoy && sesion?.ia && sesion.usuario?.rol !== 'lector' && !persona.supervisada ? () => {
           // Con permiso de salud, primero se busca en el reloj; si no hay nada, se cuenta.

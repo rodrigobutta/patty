@@ -92,6 +92,27 @@ export function IconoCelular() {
   );
 }
 
+/** Pulso y cuerpo: un corazón con su latido. */
+export function IconoCuerpo() {
+  return (
+    <svg {...props}>
+      <path d="M24 41 C10 31 6 24 6 17 a10 10 0 0 1 18-6 a10 10 0 0 1 18 6 c0 7-4 14-18 24 z" fill="#f3a6a6" stroke={TRAZO} strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M12 23 h7 l3-6 l4 11 l3-5 h7" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Lo que sonó en el teléfono: una nota musical. */
+export function IconoEscuchas() {
+  return (
+    <svg {...props}>
+      <path d="M19 34 V12 l18-4 v22" fill="none" stroke={TRAZO} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="13.5" cy="34.5" r="6" fill="#c9bcf2" stroke={TRAZO} strokeWidth="2.5" />
+      <circle cx="31.5" cy="30.5" r="6" fill="#c9bcf2" stroke={TRAZO} strokeWidth="2.5" />
+    </svg>
+  );
+}
+
 export function IconoSueno() {
   return (
     <svg {...props}>

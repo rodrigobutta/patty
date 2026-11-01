@@ -154,6 +154,16 @@ export const IconoSeguimientos = () => (
   </Base>
 );
 
+/** Widgets del Día: cuatro cuadritos, uno de otro color. */
+export const IconoWidgets = () => (
+  <Base>
+    <rect x="4" y="4" width="11" height="11" rx="3" fill={V} {...T} />
+    <rect x="17" y="4" width="11" height="11" rx="3" fill={A} {...T} />
+    <rect x="4" y="17" width="11" height="11" rx="3" fill={A} {...T} />
+    <rect x="17" y="17" width="11" height="11" rx="3" fill={V} {...T} />
+  </Base>
+);
+
 /** Qué patrones buscar: una lupa sobre dos puntos unidos. */
 export const IconoPatrones = () => (
   <Base>

@@ -1,0 +1,1 @@
+ALTER TABLE "personas" ADD COLUMN "widgets" jsonb DEFAULT '{}'::jsonb NOT NULL;

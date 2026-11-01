@@ -311,6 +311,20 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   que se abre en el navegador del teléfono con `Telefono.abrirAfuera` (si la app instalada es vieja, se copia el enlace).
 - Próximos pasos: leer Health Connect / HealthKit (pasos, sueño, pulso) desde la app nativa.
 
+## Widgets del Día
+
+Cada persona elige cuáles ve y en qué orden: en Más → Widgets del Día (subir, bajar, prender, apagar) o manteniendo
+apretado uno en el Día (soltado sin mover abre sus opciones; arrastrado, se reordena). Con teclado: click derecho o tecla
+de menú para las opciones, Alt + flechas para moverlo. Quien solo mira o supervisa no organiza.
+
+Se guarda en `personas.widgets` (`{ orden, ocultos }`; lógica en `packages/shared/src/widgets.ts`). Lo que no está en
+`orden` va al final y se ve: así aparece un widget nuevo, que se agrega al final de `WIDGETS`. Lo que una versión no
+conoce no se muestra pero se conserva al guardar. En el teléfono (`apps/web/src/lib/widgets.ts`): el cambio se ve al
+instante y se sube; sin señal queda pendiente y gana a lo del servidor hasta subirse. Sin nada pendiente gana el servidor.
+
+El gesto está en `OrganizarWidgets.tsx`: antes de los 420 ms moverse es scroll o cambio de día; ya agarrado, un `touchmove`
+no pasivo frena el scroll. Mientras se arrastra el DOM no se reordena (se usa `order` de CSS), para no perder el dedo.
+
 ## Cómo se buscan los patrones
 
 1. La vista `serie_diaria` junta registros y mediciones en **una fila por persona, día y concepto** (veces, suma,
