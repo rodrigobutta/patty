@@ -4,7 +4,7 @@ import { registerPlugin } from '@capacitor/core';
 import { t } from './idioma';
 import { plataforma } from './nativo';
 
-export type Marca = 'iphone' | 'samsung' | 'xiaomi' | 'oppo' | 'motorola' | 'pixel' | 'android';
+export type Marca = 'iphone' | 'samsung' | 'xiaomi' | 'oppo' | 'huawei' | 'motorola' | 'pixel' | 'android';
 
 const Mascota = registerPlugin<{ telefono(): Promise<{ marca: string; modelo: string }> }>('Mascota');
 let delSistema: string | null = null;
@@ -17,12 +17,13 @@ export async function averiguarMarca(): Promise<Marca> {
   }
   return marcaDelTelefono();
 }
-export type PermisoGuia = 'avisos' | 'ubicacion' | 'telefono' | 'salud' | 'escuchas';
+export type PermisoGuia = 'avisos' | 'ubicacion' | 'bateria' | 'telefono' | 'salud' | 'escuchas';
 
 export function marcaDelTelefono(ua = `${delSistema ?? ''} ${typeof navigator === 'undefined' ? '' : navigator.userAgent}`): Marca {
   if (plataforma() === 'ios' || /iPhone|iPad/.test(ua)) return 'iphone';
   if (/\b(OPPO|OnePlus|realme)\b|CPH\d{4}|RMX\d{4}/i.test(ua)) return 'oppo';
   if (/SM-[A-Z0-9]|Samsung|SAMSUNG|Galaxy/.test(ua)) return 'samsung';
+  if (/\b(HUAWEI|HONOR)\b/i.test(ua)) return 'huawei';
   if (/Redmi|POCO|Xiaomi|\bMi \d|; M2\d{3}|; 2\d{3}[0-9A-Z]{3,}/.test(ua)) return 'xiaomi';
   if (/moto|Motorola|XT\d{4}/i.test(ua)) return 'motorola';
   if (/Pixel/.test(ua)) return 'pixel';
@@ -34,6 +35,7 @@ export const NOMBRE_MARCA: Record<Marca, string> = {
   samsung: 'Samsung',
   xiaomi: 'Xiaomi / Redmi / POCO',
   oppo: 'OPPO / OnePlus / realme',
+  huawei: 'Huawei / Honor',
   motorola: 'Motorola',
   pixel: 'Pixel',
   android: 'Android',
@@ -71,6 +73,31 @@ export function pasosPara(permiso: PermisoGuia, marca: Marca): string[] {
             : t('En la misma pantalla: Batería (o «Uso de batería de la app») → «Sin restricciones».'),
         buscar('Patty'),
       ];
+    case 'bateria': {
+      const cartel = t('Tocá «Activar» y aceptá el cartel de Android: así no le aplica sus límites de batería a Patty.');
+      // Esto Android no se lo cuenta a ninguna app: por eso hay que decirlo, y por eso la fila no puede tildarlo.
+      const sinTilde = t('Patty no puede saber si estos ajustes quedaron prendidos: el tilde de acá arriba es solo por el cartel de Android.');
+      const candado = t('En las apps recientes, mantené apretada la tarjeta de Patty y tocá el candado, así no se cierra al limpiar.');
+      if (marca === 'oppo') {
+        return [
+          cartel,
+          t('Mantené apretado el ícono de Patty, tocá ⓘ y entrá a «Uso de batería»: prendé «Permitir actividad en segundo plano» y «Permitir inicio automático».'),
+          t('En las apps recientes, tocá ⋮ en la tarjeta de Patty (o mantenela apretada) y elegí «Bloquear», así no se cierra al limpiar.'),
+          sinTilde,
+          buscar('inicio automático'),
+        ];
+      }
+      if (marca === 'xiaomi') {
+        return [cartel, t('Abrí Ajustes → Aplicaciones → Administrar aplicaciones → Patty: prendé «Inicio automático» y en «Ahorro de batería» elegí «Sin restricciones».'), candado, sinTilde, buscar('inicio automático')];
+      }
+      if (marca === 'samsung') {
+        return [cartel, t('Abrí Ajustes → Aplicaciones → Patty → Batería y elegí «Sin restricciones».'), t('En Ajustes → Mantenimiento del dispositivo → Batería → Límites de uso en segundo plano, fijate que Patty no esté entre las apps en suspensión.'), sinTilde];
+      }
+      if (marca === 'huawei') {
+        return [cartel, t('Abrí Ajustes → Batería → Inicio de aplicaciones → Patty: apagá «Administrar automáticamente» y dejá prendidas las tres opciones.'), candado, sinTilde];
+      }
+      return [cartel, t('En la misma pantalla: Batería (o «Uso de batería de la app») → «Sin restricciones».')];
+    }
     case 'telefono':
       return [
         marca === 'samsung'

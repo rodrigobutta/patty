@@ -71,9 +71,17 @@ public class EscuchaService extends NotificationListenerService {
 
     private final MediaSessionManager.OnActiveSessionsChangedListener alCambiarSesiones = this::sincronizar;
 
+    /** Android vuelve a conectar este servicio solo después de matar el proceso: es lo primero que revive. */
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        VigiaUbicacion.asegurar(this, "escucha");
+    }
+
     @Override
     public void onListenerConnected() {
         super.onListenerConnected();
+        VigiaUbicacion.asegurar(this, "escucha");
         yo = new ComponentName(this, EscuchaService.class);
         sesiones = (MediaSessionManager) getSystemService(Context.MEDIA_SESSION_SERVICE);
         // Lo que quedó abierto de una vez anterior en que el proceso murió: se cierra donde se lo vio por última vez.

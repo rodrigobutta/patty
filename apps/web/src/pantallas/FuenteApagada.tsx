@@ -11,7 +11,7 @@ import { Mascota } from '../mascota/Mascota';
 import { activarPermiso, permisoListo, type Paso } from './Permisos';
 import { IconoCelular, IconoLugar, IconoSueno } from '../ui/IconosWidget';
 
-export type Fuente = Exclude<Paso, 'avisos'>;
+export type Fuente = Exclude<Paso, 'avisos' | 'bateria'>;
 
 interface Info {
   icono: string;

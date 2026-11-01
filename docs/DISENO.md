@@ -168,6 +168,12 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     semana). Los interruptores viven en la web: `lib/sincroFondo.ts` se los copia al teléfono (con los tokens de las
     fuentes «App de Android» y «Reloj y salud») al abrir Patty y al cambiarlos. Con Patty a la vista, lo que sonó y los
     avisos los manda solo la web. Lo de la ingesta se actualiza si llega dos veces; etapas y caminatas, con la sesión.
+  - **Si el teléfono mata a Patty** (solo Android; los Oppo/Realme lo hacen varias veces por día): `VigiaUbicacion.asegurar` es
+    la única puerta que vuelve a poner el servicio, la alarma de 15 min y los trabajos de WorkManager. La llaman el lector de
+    notificaciones (lo primero que Android revive), los dos trabajos, el arranque, la actualización, la alarma, abrir la app y
+    un mensaje silencioso del servidor (`push/despertar.ts`: teléfono callado 45 min, sin punto ni latido; como mucho 6 intentos
+    sin respuesta por día; no muestra nada ni va al historial). `TrackerStatus` guarda una bitácora de lo que pasó, que llega con
+    el estado del teléfono (`instalaciones.estado.vigia`) y se ve en el detalle del usuario en la administración.
   - **Buen día** (`push/buenDia.ts`): cuando la ingesta trae las «Horas de sueño» de hoy y es la mañana de la persona
     (5 a 13 h), arma el resumen de la noche con la IA (si no estaba; sin IA, igual) y manda un aviso por día («☀️ Buen
     día», "Rodri, dormiste 7 h 12 min (nota 8)…", `tipo: buen_dia`) a quienes anotan a la persona y no lo apagaron

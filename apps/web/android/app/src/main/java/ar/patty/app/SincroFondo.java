@@ -59,12 +59,16 @@ public class SincroFondo extends Worker {
         return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
+    /** Si hay una sesión y algo prendido para mandar (lo copia la web con SincroFondoPlugin.configurar). */
+    static boolean hayAlgoParaMandar(Context ctx) {
+        SharedPreferences p = prefs(ctx);
+        return p.getInt("persona", 0) != 0 && (p.getBoolean("salud", false) || p.getBoolean("telefono", false) || p.getBoolean("calendario", false) || p.getString("token_app", null) != null);
+    }
+
     /** Lo programa (una sola vez: si ya estaba, sigue igual) o lo saca si no queda nada prendido. */
     static void programar(Context ctx) {
-        SharedPreferences p = prefs(ctx);
-        boolean algo = p.getInt("persona", 0) != 0 && (p.getBoolean("salud", false) || p.getBoolean("telefono", false) || p.getBoolean("calendario", false) || p.getString("token_app", null) != null);
         WorkManager wm = WorkManager.getInstance(ctx);
-        if (!algo) {
+        if (!hayAlgoParaMandar(ctx)) {
             wm.cancelUniqueWork(TRABAJO);
             return;
         }
@@ -76,6 +80,7 @@ public class SincroFondo extends Worker {
     @Override
     public Result doWork() {
         Context ctx = getApplicationContext();
+        VigiaUbicacion.asegurar(ctx, "sincro");
         SharedPreferences p = prefs(ctx);
         String api = ctx.getSharedPreferences(RespuestaReceiver.PREFS, Context.MODE_PRIVATE).getString("api", null);
         int persona = p.getInt("persona", 0);

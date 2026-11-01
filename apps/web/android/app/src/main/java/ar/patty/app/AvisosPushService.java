@@ -28,6 +28,13 @@ public class AvisosPushService extends FirebaseMessagingService {
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage m) {
+        // El servidor no sabe nada de este teléfono (push/despertar.ts): sin mostrar nada, se vuelve a levantar todo. Un
+        // mensaje de prioridad alta le da a Patty un rato en que Android la deja arrancar el servicio.
+        if ("despertar".equals(m.getData().get("tipo"))) {
+            com.capgo.capacitor_background_geolocation.TrackerStatus.event(this, "despertar");
+            VigiaUbicacion.asegurar(this, "despertar");
+            return;
+        }
         RemoteMessage.Notification n = m.getNotification();
         Map<String, String> datos = m.getData();
         String titulo = n != null && n.getTitle() != null ? n.getTitle() : datos.get("titulo");

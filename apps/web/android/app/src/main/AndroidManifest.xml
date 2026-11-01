@@ -150,6 +150,8 @@
     <!-- La encuesta de la noche llega a la hora justa (Android lo da al instalar, sin pedir nada). -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Para poder pedir el cartel de Android que saca a Patty de la optimización de batería (ver VigiaPlugin). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Dictar: grabar desde la web (el permiso de micrófono lo pide la app al primer uso). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />

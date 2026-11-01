@@ -15,6 +15,8 @@ import { programarRecordatorios } from '../lib/remedios';
 import { pedirPermisoSalud, ponerSalud, sincronizarSalud } from '../lib/salud';
 import { hayDatosDelTelefono, ponerDatos, sincronizar, Telefono } from '../lib/telefono';
 import { ponerSeguimiento } from '../lib/ubicacion';
+import { pedirBateria } from '../lib/vigia';
+import { haceCuanto } from '../ui/UltimaVez';
 import { Mascota } from '../mascota/Mascota';
 import { t } from '../lib/idioma';
 import { Escucha, escuchasActivadas, hayEscuchas, permisoEscuchas, ponerEscuchas, sincronizarEscuchas } from '../lib/escuchas';
@@ -43,7 +45,7 @@ const yaOfrecido = () => {
   }
 };
 
-export type Paso = 'avisos' | 'ubicacion' | 'telefono' | 'salud';
+export type Paso = 'avisos' | 'ubicacion' | 'bateria' | 'telefono' | 'salud';
 /**
  * Las filas de esta pantalla: los pasos y, aparte (no son una fuente del Día), lo que suena en el teléfono y lo que
  * avisan las apps (los dos con el acceso a las notificaciones de Android).
@@ -114,6 +116,12 @@ export async function activarPermiso(paso: Paso, persona: Persona): Promise<stri
     }
     return;
   }
+  if (paso === 'bateria') {
+    const dado = await pedirBateria();
+    if (dado === null) return t('Para esto hace falta la última versión de la app.');
+    if (!dado) return t('Sin esto, Android puede cerrar a Patty y dejar de anotar tus viajes. Podés volver a intentarlo cuando quieras.');
+    return t('Listo. En algunos teléfonos falta un paso más, que Patty no puede ver: mirá «¿Cómo lo activo?».');
+  }
   if (paso === 'telefono') {
     ponerDatos(true);
     const p = await Telefono.pedirPermisoLlamadas().catch(() => null);
@@ -143,6 +151,7 @@ export function permisoListo(paso: Paso, e: EstadoTelefono | null): boolean {
   if (!p) return false;
   if (paso === 'avisos') return p.avisos === 'si';
   if (paso === 'ubicacion') return p.ubicacion === 'siempre';
+  if (paso === 'bateria') return p.bateria !== 'no';
   if (paso === 'telefono') return p.uso_apps === 'si' && p.llamadas === 'si';
   return typeof p.salud === 'number' && p.salud > 0;
 }
@@ -189,6 +198,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
   const ubicacion = () => hacer('ubicacion', () => activarPermiso('ubicacion', persona));
   const telefono = () => hacer('telefono', () => activarPermiso('telefono', persona));
   const salud = () => hacer('salud', () => activarPermiso('salud', persona));
+  const bateria = () => hacer('bateria', () => activarPermiso('bateria', persona));
   const escuchar = () =>
     hacer('escuchas', async () => {
       const n = await ponerEscuchas(true);
@@ -230,6 +240,7 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
 
   const p = estado?.permisos;
   const algunaAvisos = funciones !== null && FUNCIONES_AVISOS.some((f) => funciones[f]);
+  const vigia = estado?.vigia;
   const filas: Array<{ paso: Fila; icono: ReactNode; titulo: string; para: string; ejemplo: string; listo: boolean; parcial?: boolean; accion(): void; apagar?(): void; mostrar: boolean; extra?: ReactNode }> = [
     {
       paso: 'avisos',
@@ -251,6 +262,23 @@ export function Permisos({ persona, bienvenida = false, guia, alTerminar }: { pe
       parcial: p?.ubicacion === 'en_uso',
       accion: ubicacion,
       mostrar: true,
+      // Para que un seguimiento frenado se vea, en vez de descubrirlo a los días por un mapa vacío.
+      extra: vigia?.prendido ? (
+        <>
+          <span className="suave chico renglon-sub">{t('Último punto de ubicación: {cuando}', { cuando: vigia.ultimoPunto ? haceCuanto(vigia.ultimoPunto) : t('nunca') })}</span>
+          {vigia.corriendo ? null : <span className="chico renglon-sub nota-permiso">{t('El seguimiento está frenado en este momento. Patty lo intenta levantar sola, pero el teléfono puede no dejarla.')}</span>}
+        </>
+      ) : null,
+    },
+    {
+      paso: 'bateria',
+      ejemplo: t('💡 Algunos teléfonos cierran las apps para ahorrar batería, aunque estén andando. Si le pasa a Patty, deja de anotar hasta que algo la vuelva a levantar.'),
+      icono: '🔋',
+      titulo: t('Que Patty siga funcionando en segundo plano'),
+      para: t('Para que el teléfono no la cierre y sigan llegando tus viajes, tus lugares y tu sueño sin abrir la app. Usa un poco más de batería.'),
+      listo: p?.bateria === 'si',
+      accion: bateria,
+      mostrar: Boolean(vigia),
     },
     {
       paso: 'telefono',

@@ -15,7 +15,7 @@ export function leerUltimaVez(clave: string): number | null {
   }
 }
 
-function haceCuanto(ms: number): string {
+export function haceCuanto(ms: number): string {
   const min = Math.round((Date.now() - ms) / 60000);
   if (min < 1) return t('recién');
   if (min < 60) return t('hace {n} min', { n: min });

@@ -14,6 +14,7 @@ import { datosActivados, hayDatosDelTelefono, Telefono } from './telefono';
 import { seguimientoActivado } from './ubicacion';
 import { calendarioActivado } from './calendario';
 import { COMMIT, VERSION, versionNativa } from './version';
+import { leerVigia, type EstadoVigia } from './vigia';
 
 export type SiNo = 'si' | 'no' | 'no_aplica';
 export type PermisoUbicacion = 'siempre' | 'en_uso' | 'no';
@@ -29,11 +30,15 @@ export interface EstadoTelefono {
     salud: number | 'no_aplica';
     /** El calendario del teléfono (reuniones y eventos): si dio el permiso. */
     calendario?: SiNo;
+    /** Android no la frena por la batería (la app de Android que ya lo sabe pedir; las otras, no aplica). */
+    bateria?: SiNo;
   };
   /** Lo que tiene prendido en Patty (en este dispositivo). */
   activos: { ubicacion: boolean; clima: boolean; telefono: boolean; salud: boolean; recordatorios: boolean; encuesta: boolean; push: boolean };
   /** Cuándo mandó por última vez los datos del teléfono y de salud. */
   ultimos: { telefono: string | null; salud: string | null };
+  /** Lo que el teléfono cuenta del seguimiento y de lo que le pasó (null: esta app no lo sabe). */
+  vigia?: EstadoVigia | null;
 }
 
 const leer = (k: string) => {
@@ -79,6 +84,7 @@ export async function permisoUbicacion(): Promise<PermisoUbicacion> {
 export async function leerEstado(): Promise<EstadoTelefono> {
   const tel = hayDatosDelTelefono() ? await Telefono.permisos().catch(() => null) : null;
   const salud = esNativa() ? (await permisosSalud()).length : 'no_aplica';
+  const vigia = await leerVigia();
   return {
     plataforma: plataforma(),
     permisos: {
@@ -88,6 +94,7 @@ export async function leerEstado(): Promise<EstadoTelefono> {
       llamadas: tel ? (tel.llamadas === 'granted' ? 'si' : 'no') : 'no_aplica',
       salud,
       calendario: tel ? (tel.calendario === 'granted' && calendarioActivado() ? 'si' : 'no') : 'no_aplica',
+      bateria: vigia ? (vigia.bateria ? 'si' : 'no') : 'no_aplica',
     },
     activos: {
       ubicacion: seguimientoActivado(),
@@ -99,6 +106,7 @@ export async function leerEstado(): Promise<EstadoTelefono> {
       push: Boolean(leer('push-token')),
     },
     ultimos: { telefono: fecha('datos-telefono-ultima'), salud: fecha('salud-ultima') },
+    vigia,
   };
 }
 

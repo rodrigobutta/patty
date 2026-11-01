@@ -14,5 +14,7 @@ describe('guías de permisos', () => {
     expect(pasosPara('ubicacion', 'samsung')[0]).toBe('Abrí Ajustes → Aplicaciones → Patty.');
     expect(pasosPara('ubicacion', 'iphone')[2]).toContain('«Siempre»');
     expect(pasosPara('telefono', 'iphone')).toEqual([]);
+    expect(pasosPara('bateria', 'iphone')).toEqual([]);
+    expect(pasosPara('bateria', 'oppo').join(' ')).toContain('«Permitir inicio automático»');
   });
 });

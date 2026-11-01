@@ -48,8 +48,31 @@ public class AdaptiveTrackerTest {
     @Test
     public void inAVehicleThePointsAreMoreSpacedOut() {
         assertEquals(15, AdaptiveTracker.spacingM(1.4), 0.01);
-        assertEquals(60, AdaptiveTracker.spacingM(10), 0.01);
-        assertEquals(150, AdaptiveTracker.spacingM(33), 0.01);
+        assertEquals(40, AdaptiveTracker.spacingM(10), 0.01);
+        assertEquals(150, AdaptiveTracker.spacingM(50), 0.01);
+    }
+
+    @Test
+    public void inACarEveryFixIsAPoint() {
+        AdaptiveTracker t = new AdaptiveTracker();
+        t.onGpsFix(LAT, LON, 10f, 0f, 0);
+        assertEquals(AdaptiveTracker.ROUTE, t.onGpsFix(LAT + 800 * M, LON, 10f, 13.9f, 60000));
+        double lat = LAT + 800 * M;
+        for (int i = 1; i <= 24; i++) { // 2 minutes at 50 km/h, a fix every 5 s: 70 m each
+            lat += 69.5 * M;
+            assertEquals("fix " + i, AdaptiveTracker.ROUTE, t.onGpsFix(lat, LON, 8f, 13.9f, 60000 + i * 5000L));
+        }
+    }
+
+    @Test
+    public void theLogCollapsesRepeatsAndKeepsTheLastOnes() {
+        String log = TrackerStatus.appendEvent("", 1, "alarma", 3);
+        log = TrackerStatus.appendEvent(log, 2, "alarma", 3);
+        assertEquals("2|2|alarma", log);
+        log = TrackerStatus.appendEvent(log, 3, "quieto", 3);
+        log = TrackerStatus.appendEvent(log, 4, "en_movimiento", 3);
+        log = TrackerStatus.appendEvent(log, 5, "murio:13:o-kill(2006)", 3);
+        assertEquals("3|1|quieto\n4|1|en_movimiento\n5|1|murio:13:o-kill(2006)", log);
     }
 
     @Test

@@ -1,5 +1,6 @@
 // Administración: las pantallas de resumen, uso, usuarios (con su último acceso y lo que anotan; se crean, desactivan y
 // se les cambia el rol o la clave), actividad y avisos. El armazón (menú, barra de arriba) está en admin/Shell.tsx.
+import type { EstadoVigia } from '../lib/vigia';
 import { useCallback, useEffect, useState } from 'react';
 import { conUnidad } from 'shared';
 import { api } from '../api';
@@ -49,10 +50,11 @@ interface FilaUsuario {
 export interface Instalacion {
   plataforma: string;
   estado: {
-    permisos: { avisos?: string; ubicacion?: string; uso_apps?: string; llamadas?: string; salud?: number | string };
+    permisos: { avisos?: string; ubicacion?: string; uso_apps?: string; llamadas?: string; salud?: number | string; bateria?: string };
     activos: Record<string, boolean>;
     ultimos: { telefono?: string | null; salud?: string | null };
     version?: { web?: string | null; commit?: string | null; app?: string | null };
+    vigia?: EstadoVigia | null;
   };
   creado?: string;
   actualizado: string;
@@ -68,6 +70,28 @@ function VersionDe({ v }: { v: NonNullable<Instalacion['estado']['version']> }) 
   );
 }
 
+/** Qué le pasó al seguimiento en este teléfono, según él mismo: lo más nuevo arriba. */
+function BitacoraVigia({ v }: { v: EstadoVigia }) {
+  const eventos = [...v.bitacora].sort((a, b) => b[0] - a[0]);
+  return (
+    <details className="chico">
+      <summary className="suave">
+        {t('Último punto: {cuando}', { cuando: v.ultimoPunto ? hace(new Date(v.ultimoPunto).toISOString()) : t('nunca') })}
+        {' · '}
+        {t('trabajo de fondo: {estado}', { estado: v.sincro.estado ?? (v.sincro.algo ? t('no programado') : t('nada para mandar')) })}
+        {v.sincro.ultima ? ` · ${t('corrió {cuando}', { cuando: hace(new Date(v.sincro.ultima).toISOString()) })}` : ''}
+      </summary>
+      {eventos.length ? (
+        <ul>
+          {eventos.map(([ms, veces, evento], n) => (
+            <li key={n}>{fechaHora(new Date(ms).toISOString())} · {evento}{veces > 1 ? ` (×${veces})` : ''}</li>
+          ))}
+        </ul>
+      ) : <p className="suave">{t('Nada todavía.')}</p>}
+    </details>
+  );
+}
+
 /** Los permisos de un dispositivo en chips: verde lo dado, ámbar a medias, gris lo que falta. */
 export function ChipsPermisos({ i }: { i: Pick<Instalacion, 'plataforma' | 'estado'> }) {
   const p = i.estado.permisos ?? {};
@@ -79,6 +103,8 @@ export function ChipsPermisos({ i }: { i: Pick<Instalacion, 'plataforma' | 'esta
     [t('llamadas'), p.llamadas === 'no_aplica' || p.llamadas === undefined ? null : p.llamadas === 'si' ? 'si' : 'no'],
     [typeof p.salud === 'number' && p.salud > 0 ? t('salud ({n} datos)', { n: p.salud }) : t('salud'), p.salud === 'no_aplica' ? null : typeof p.salud === 'number' && p.salud > 0 ? 'si' : 'no'],
     ['🚀 push', a.push ? 'si' : i.plataforma === 'web' ? null : 'no'],
+    [t('sin límite de batería'), p.bateria === 'si' ? 'si' : p.bateria === 'no' ? 'no' : null],
+    [t('seguimiento andando'), !i.estado.vigia?.prendido ? null : i.estado.vigia.corriendo ? 'si' : 'no'],
   ];
   const prendidos = Object.entries(a).filter(([k, v]) => v && k !== 'push').map(([k]) => k);
   return (
@@ -594,6 +620,7 @@ export function DetalleUsuario({ id, alVolver }: { id: number; alVolver(): void 
                 {i.estado.ultimos?.salud ? <span className="suave"> · {t('mandó salud {cuando}', { cuando: hace(i.estado.ultimos.salud) })}</span> : null}
               </p>
               <ChipsPermisos i={i} />
+              {i.estado.vigia ? <BitacoraVigia v={i.estado.vigia} /> : null}
             </div>
           ))}
         </div>

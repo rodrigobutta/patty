@@ -134,7 +134,7 @@ export function App() {
         // El buen día con el reporte de sueño: el Día, con la hoja de la noche abierta.
         if (d.tipo === 'buen_dia') setPestana('hoy');
         // Un permiso que falta: Más, con los pasos para darlo en este teléfono.
-        if (d.tipo === 'permiso' && ['avisos', 'ubicacion', 'telefono', 'salud'].includes(d.permiso)) {
+        if (d.tipo === 'permiso' && ['avisos', 'ubicacion', 'bateria', 'telefono', 'salud'].includes(d.permiso)) {
           setPestana('mas');
           pedirGuia(d.permiso as Paso);
         }

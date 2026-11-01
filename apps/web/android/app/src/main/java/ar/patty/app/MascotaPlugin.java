@@ -46,8 +46,7 @@ public class MascotaPlugin extends Plugin {
 
     @Override
     public void load() {
-        PeriodicWorkRequest trabajo = new PeriodicWorkRequest.Builder(Revisar.class, 2, TimeUnit.HOURS).build();
-        WorkManager.getInstance(getContext()).enqueueUniquePeriodicWork("mascota", ExistingPeriodicWorkPolicy.KEEP, trabajo);
+        programarRevision(getContext());
         // Si la app se abrió tocando un aviso push (con la app cerrada).
         if (getActivity() != null) avisarAvisoTocado(getActivity().getIntent());
     }
@@ -56,6 +55,12 @@ public class MascotaPlugin extends Plugin {
     protected void handleOnNewIntent(android.content.Intent intent) {
         super.handleOnNewIntent(intent);
         avisarAvisoTocado(intent);
+    }
+
+    /** El trabajo periódico del ícono (una sola vez: si ya estaba, sigue igual). */
+    static void programarRevision(Context ctx) {
+        PeriodicWorkRequest trabajo = new PeriodicWorkRequest.Builder(Revisar.class, 2, TimeUnit.HOURS).build();
+        WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("mascota", ExistingPeriodicWorkPolicy.KEEP, trabajo);
     }
 
     /** Le pasa a la web los datos del aviso push que se tocó (ver AvisosPushService), para que vaya a donde corresponde. */
@@ -249,6 +254,8 @@ public class MascotaPlugin extends Plugin {
 
         @Override
         public Result doWork() {
+            // Este trabajo vuelve solo después de que el teléfono mata a Patty: de paso, levanta lo demás.
+            VigiaUbicacion.asegurar(getApplicationContext(), "mascota");
             ponerIcono(getApplicationContext());
             return Result.success();
         }

@@ -1,9 +1,9 @@
 diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/AdaptiveTracker.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/AdaptiveTracker.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..6b11db0b3dcc70619d1d748815db94846be73a6d
+index 0000000000000000000000000000000000000000..fd75faf3ef2433ec30653046c31901a1c94d4b3c
 --- /dev/null
 +++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/AdaptiveTracker.java
-@@ -0,0 +1,187 @@
+@@ -0,0 +1,189 @@
 +package com.capgo.capacitor_background_geolocation;
 +
 +// Patty: decides, fix by fix, how often the GPS should run and which fixes are worth sending, using only what the fixes
@@ -35,15 +35,17 @@ index 0000000000000000000000000000000000000000..6b11db0b3dcc70619d1d748815db9484
 +    private static final double NET_MIN_M = 50;
 +    private static final long NET_WINDOW_MS = 5 * 60000L;
 +
-+    // Spacing between points: what is covered in SPACING_S at this speed, within these limits (15 m on foot, ~60 m at
-+    // 36 km/h, 150 m on the highway).
-+    private static final double SPACING_S = 6;
++    // Spacing between points: what is covered in SPACING_S at this speed, within these limits (15 m on foot, 40 m at
++    // 36 km/h, 150 m on the highway). It has to stay below the 5 s between fixes: with 6 s, a fix never reached the spacing
++    // and only every other one was sent, so a car at 50 km/h left a point every 140 m (10 s), like the old 150 m rule.
++    private static final double SPACING_S = 4;
 +    private static final double SPACING_MIN_M = 15;
 +    private static final double SPACING_MAX_M = 150;
 +
 +    private static final double COARSE_MIN_M = 100;
 +    private static final long COARSE_WHILE_MOVING_MS = 60000L;
-+    // Still and with nothing new: one point every this long, so the server keeps getting the weather's location.
++    // Still and with nothing new: one point every this long, so the server keeps getting the weather's location. It takes
++    // a fix to get here: indoors, with no GPS and no network fix, nothing goes out (see TrackerStatus.sendHeartbeat).
 +    private static final long HEARTBEAT_MS = 15 * 60000L;
 +
 +    private boolean moving = false;
@@ -206,7 +208,7 @@ index 7b2952bdd69a5fb7b9e3cdeb125da4afe114cd27..361769d9393523261b4633363ac45b9c
          });
          serviceStartedFuture.exceptionally((throwable) -> {
 diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocationService.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocationService.java
-index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31881b3ac7 100644
+index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..79ecc3f458a5eeba97e39dab6091de2b46a8de42 100644
 --- a/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocationService.java
 +++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/BackgroundGeolocationService.java
 @@ -76,6 +76,12 @@ public class BackgroundGeolocationService extends Service {
@@ -222,7 +224,30 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
      // When set (via the "url" start option), each location is also POSTed to
      // this URL directly from native code so delivery survives the WebView being
      // destroyed. Delivery runs on postExecutor to keep it off the main thread.
-@@ -146,6 +152,7 @@ public class BackgroundGeolocationService extends Service {
+@@ -133,6 +139,12 @@ public class BackgroundGeolocationService extends Service {
+             // here, so that it does not wait for the bind and the start() call behind it.
+             if (intent != null && intent.hasExtra(EXTRA_NOTIFICATION_TITLE)) {
+                 promoteToForeground(intent.getStringExtra(EXTRA_NOTIFICATION_TITLE), intent.getStringExtra(EXTRA_NOTIFICATION_MESSAGE));
++            } else if (intent != null && intent.getBooleanExtra(TrackerStatus.EXTRA_REVIVE, false)) {
++                // Patty: revived from the app's watchdog, and tracking was turned off in the meantime. Android still wants
++                // startForeground() after startForegroundService(), so promote and leave right away.
++                promoteToForeground("Patty", "");
++                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE);
++                stopSelf();
+             }
+             // Not in native delivery mode: preserve the original behavior where the
+             // service does not outlive the app, so it is not sticky-restarted.
+@@ -140,12 +152,17 @@ public class BackgroundGeolocationService extends Service {
+         }
+         nativePostUrl = LocationStore.getUrl(context);
+         promoteToForeground(LocationStore.getTitle(context), LocationStore.getMessage(context));
++        TrackerStatus.setRunning(true);
++        if (intent == null) {
++            TrackerStatus.event(context, "reiniciado_por_android");
++        }
+         if (client == null || locationCallback == null) {
+             acquireWakeLock();
+             client = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
              currentDistanceFilter = LocationStore.getDistanceFilter(context);
              currentMinIntervalMs = LocationStore.getMinIntervalMs(context);
              networkFallbackEnabled = LocationStore.getNetworkFallback(context);
@@ -230,19 +255,28 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
              locationCallback = createLocationListener(this);
              lastGpsFixAtMs = SystemClock.elapsedRealtime();
              requestLocationUpdates();
-@@ -221,6 +228,11 @@ public class BackgroundGeolocationService extends Service {
+@@ -156,6 +173,7 @@ public class BackgroundGeolocationService extends Service {
+ 
+     @Override
+     public void onDestroy() {
++        TrackerStatus.setRunning(false);
+         if (client != null && locationCallback != null) {
+             client.removeUpdates(locationCallback);
+         }
+@@ -221,6 +239,12 @@ public class BackgroundGeolocationService extends Service {
          if (client == null || locationCallback == null) {
              return;
          }
 +        // Moving stopped somewhere without sky: back to the slow GPS, and what was waiting goes out.
 +        AdaptiveTracker tracker = adaptiveTracker;
 +        if (tracker != null && tracker.expire(SystemClock.elapsedRealtime())) {
++            movingChanged(false);
 +            flushPendingNatively();
 +        }
          client.removeUpdates(locationCallback);
          if (restartRunnable != null) {
              watchdogHandler.removeCallbacks(restartRunnable);
-@@ -240,7 +252,8 @@ public class BackgroundGeolocationService extends Service {
+@@ -240,7 +264,8 @@ public class BackgroundGeolocationService extends Service {
          if (watchdogRunnable == null) {
              watchdogRunnable = this::restartLocationUpdates;
          }
@@ -252,7 +286,7 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
      }
  
      private void stopWatchdog() {
-@@ -252,7 +265,57 @@ public class BackgroundGeolocationService extends Service {
+@@ -252,7 +277,63 @@ public class BackgroundGeolocationService extends Service {
          }
      }
  
@@ -293,12 +327,18 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
 +            LocalEvents.emitLocation(callbackId, location);
 +        }
 +        if (moving != wasMoving) {
++            movingChanged(moving);
 +            requestGpsUpdates();
 +            startWatchdog();
 +            if (!moving) {
 +                flushPendingNatively();
 +            }
 +        }
++    }
++
++    private void movingChanged(boolean moving) {
++        TrackerStatus.setMoving(moving);
++        TrackerStatus.event(getApplicationContext(), moving ? "en_movimiento" : "quieto");
 +    }
 +
      private void handleLocationChanged(android.location.Location location) {
@@ -310,7 +350,7 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
          if (LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
              lastGpsFixAtMs = SystemClock.elapsedRealtime();
          } else if (LocationManager.NETWORK_PROVIDER.equals(location.getProvider())) {
-@@ -266,7 +329,7 @@ public class BackgroundGeolocationService extends Service {
+@@ -266,7 +347,7 @@ public class BackgroundGeolocationService extends Service {
          }
          startWatchdog();
          if (nativePostUrl != null) {
@@ -319,7 +359,7 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
          }
          if (mediaPlayer != null) {
              double[] point = { location.getLongitude(), location.getLatitude() };
-@@ -281,21 +344,46 @@ public class BackgroundGeolocationService extends Service {
+@@ -281,21 +362,46 @@ public class BackgroundGeolocationService extends Service {
  
      // Delivers a location to the configured URL from native code, so it works
      // even when the WebView/JavaScript layer no longer exists.
@@ -368,7 +408,7 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
      private static JSONObject locationToJson(android.location.Location location) {
          JSONObject obj = new JSONObject();
          try {
-@@ -330,14 +418,30 @@ public class BackgroundGeolocationService extends Service {
+@@ -330,14 +436,30 @@ public class BackgroundGeolocationService extends Service {
          return currentMinIntervalMs > 0 ? currentMinIntervalMs : 1000L;
      }
  
@@ -401,7 +441,29 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
          if (!networkFallbackEnabled) {
              return;
          }
-@@ -396,7 +500,8 @@ public class BackgroundGeolocationService extends Service {
+@@ -348,10 +470,12 @@ public class BackgroundGeolocationService extends Service {
+         // with network location turned off.
+         try {
+             if (client.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
++                // Patty: in adaptive mode AdaptiveTracker has to see these too. With a distance here, a phone that doesn't
++                // move and has no sky got no fix at all, so it never reached the heartbeat.
+                 client.requestLocationUpdates(
+                     LocationManager.NETWORK_PROVIDER,
+                     locationIntervalMs(),
+-                    currentDistanceFilter,
++                    adaptiveTracker != null ? 0f : currentDistanceFilter,
+                     locationCallback
+                 );
+             }
+@@ -382,6 +506,7 @@ public class BackgroundGeolocationService extends Service {
+             }
+         } catch (Exception exception) {
+             Logger.error("Failed to foreground service", exception);
++            TrackerStatus.event(getApplicationContext(), "sin_primer_plano:" + exception.getClass().getSimpleName());
+         }
+     }
+ 
+@@ -396,7 +521,8 @@ public class BackgroundGeolocationService extends Service {
              final String url,
              final Map<String, String> headers,
              final long minIntervalMs,
@@ -411,15 +473,17 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
          ) {
              // The plugin starts this service with startForegroundService(). If the setup
              // below throws (for example 'provider "gps" does not exist' on a device without
-@@ -411,6 +516,7 @@ public class BackgroundGeolocationService extends Service {
+@@ -411,6 +537,9 @@ public class BackgroundGeolocationService extends Service {
              currentDistanceFilter = distanceFilter;
              currentMinIntervalMs = Math.max(0L, minIntervalMs);
              networkFallbackEnabled = networkFallback;
 +            adaptiveTracker = adaptive ? new AdaptiveTracker() : null;
++            TrackerStatus.setRunning(true);
++            TrackerStatus.setMoving(false);
  
              nativePostUrl = url == null || url.isEmpty() ? null : url;
              LocationStore.saveSetup(
-@@ -421,7 +527,8 @@ public class BackgroundGeolocationService extends Service {
+@@ -421,7 +550,8 @@ public class BackgroundGeolocationService extends Service {
                  distanceFilter,
                  headers,
                  currentMinIntervalMs,
@@ -429,10 +493,12 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
              );
  
              // The service may already be running (for example after a sticky
-@@ -441,7 +548,14 @@ public class BackgroundGeolocationService extends Service {
+@@ -441,7 +571,16 @@ public class BackgroundGeolocationService extends Service {
          }
  
          String stop() {
++            TrackerStatus.setRunning(false);
++            TrackerStatus.setMoving(false);
 +            Runnable lastPoints = LocationStore.pendingSender(getApplicationContext());
              LocationStore.clear(getApplicationContext());
 +            if (lastPoints != null) {
@@ -445,7 +511,7 @@ index 7bb3cbba6bc31bad5a3b83e0681cf0e148c3cf95..65d01389cc28d739fae1b39bb9ac5d31
              stopWatchdog();
              // stop() can reach a bound service whose start() has not run yet
 diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
-index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..7063d1a05913c4837f234892ab9766f79ce7d0fc 100644
+index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..f0b79036b1fee179c931f05a72e0922ea20b6a65 100644
 --- a/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
 +++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/LocationStore.java
 @@ -12,6 +12,7 @@ import java.util.Collections;
@@ -493,7 +559,7 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..7063d1a05913c4837f234892ab9766f7
      static Map<String, String> getHeaders(Context context) {
          return headersFromJson(prefs(context).getString(KEY_HEADERS, null));
      }
-@@ -129,21 +137,132 @@ final class LocationStore {
+@@ -129,21 +137,133 @@ final class LocationStore {
          prefs(context).edit().putLong(KEY_LAST_POST_TIME, locationTimeMs).apply();
      }
  
@@ -582,6 +648,7 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..7063d1a05913c4837f234892ab9766f7
 +        try {
 +            postBody(urlString, getHeaders(context), payload);
 +            markPosted(context, locationTimeMs);
++            TrackerStatus.pointDelivered(context);
 +            if (sentPending > 0) {
 +                JSONArray rest = new JSONArray();
 +                JSONArray now = pending(context);
@@ -622,7 +689,7 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..7063d1a05913c4837f234892ab9766f7
 +        };
 +    }
 +
-+    private static void postBody(String urlString, Map<String, String> headers, String payload) throws IOException {
++    static void postBody(String urlString, Map<String, String> headers, String payload) throws IOException {
          HttpURLConnection connection = null;
          try {
              URL url = new URL(urlString);
@@ -631,7 +698,7 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..7063d1a05913c4837f234892ab9766f7
              connection = (HttpURLConnection) url.openConnection();
              connection.setRequestMethod("POST");
              connection.setConnectTimeout(15000);
-@@ -152,7 +271,7 @@ final class LocationStore {
+@@ -152,7 +272,7 @@ final class LocationStore {
              connection.setRequestProperty("Accept", "application/json");
              connection.setRequestProperty("Content-Type", "application/json");
              connection.setRequestProperty("Content-Length", String.valueOf(body.length));
@@ -640,7 +707,7 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..7063d1a05913c4837f234892ab9766f7
                  connection.setRequestProperty(header.getKey(), header.getValue());
              }
              try (OutputStream outputStream = connection.getOutputStream()) {
-@@ -163,7 +282,6 @@ final class LocationStore {
+@@ -163,7 +283,6 @@ final class LocationStore {
              if (responseCode < HttpURLConnection.HTTP_OK || responseCode >= HttpURLConnection.HTTP_MULT_CHOICE) {
                  throw new IOException("Location POST failed with response code: " + responseCode);
              }
@@ -648,6 +715,137 @@ index 44b37bfb8bd542b83f37f05fada78eed0d8a82f0..7063d1a05913c4837f234892ab9766f7
          } finally {
              if (connection != null) {
                  connection.disconnect();
+diff --git a/android/src/main/java/com/capgo/capacitor_background_geolocation/TrackerStatus.java b/android/src/main/java/com/capgo/capacitor_background_geolocation/TrackerStatus.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..a85e5d8a4d35cebbdfd9753386802c5a629677c7
+--- /dev/null
++++ b/android/src/main/java/com/capgo/capacitor_background_geolocation/TrackerStatus.java
+@@ -0,0 +1,125 @@
++package com.capgo.capacitor_background_geolocation;
++
++import android.content.Context;
++import android.content.SharedPreferences;
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.List;
++
++// Patty: what the app needs to know about the tracker from outside this package. Whether the service is running (it lives
++// in the process: a kill clears it), a small rolling log of what happened to it (so a stopped tracker stops being guesswork)
++// and when the server last heard from it. In its own preferences: LocationStore.clear() runs every time the app opens.
++public final class TrackerStatus {
++
++    // On the start intent when it comes from the app's watchdog and not from the plugin.
++    public static final String EXTRA_REVIVE = "patty_revive";
++
++    private static final String PREFS_NAME = "PattyTrackerStatus";
++    private static final String KEY_LOG = "log";
++    private static final String KEY_LAST_POINT = "lastPointAt";
++    private static final String KEY_LAST_CONTACT = "lastContactAt";
++    static final int MAX_EVENTS = 50;
++
++    private static volatile boolean running = false;
++    private static volatile boolean moving = false;
++
++    private TrackerStatus() {}
++
++    private static SharedPreferences prefs(Context context) {
++        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
++    }
++
++    public static boolean isRunning() {
++        return running;
++    }
++
++    public static boolean isMoving() {
++        return running && moving;
++    }
++
++    static void setRunning(boolean value) {
++        running = value;
++        if (!value) {
++            moving = false;
++        }
++    }
++
++    static void setMoving(boolean value) {
++        moving = value;
++    }
++
++    // Whether tracking is turned on (the user's choice, it survives kills), running or not.
++    public static boolean isEnabled(Context context) {
++        return LocationStore.isEnabled(context);
++    }
++
++    public static void event(Context context, String name) {
++        event(context, System.currentTimeMillis(), name);
++    }
++
++    public static synchronized void event(Context context, long atMs, String name) {
++        SharedPreferences p = prefs(context);
++        p.edit().putString(KEY_LOG, appendEvent(p.getString(KEY_LOG, ""), atMs, name, MAX_EVENTS)).apply();
++    }
++
++    // One line per event, "time|times|name", oldest first. The same event again only updates the last line: an alarm every 15
++    // minutes can't push everything else out.
++    static String appendEvent(String log, long atMs, String name, int max) {
++        List<String> lines = new ArrayList<>();
++        if (log != null && !log.isEmpty()) {
++            for (String l : log.split("\n")) lines.add(l);
++        }
++        int times = 1;
++        if (!lines.isEmpty()) {
++            String[] last = lines.get(lines.size() - 1).split("\\|", 3);
++            if (last.length == 3 && last[2].equals(name)) {
++                try {
++                    times = Integer.parseInt(last[1]) + 1;
++                } catch (NumberFormatException e) {
++                    times = 2;
++                }
++                lines.remove(lines.size() - 1);
++            }
++        }
++        lines.add(atMs + "|" + times + "|" + name);
++        while (lines.size() > max) lines.remove(0);
++        return String.join("\n", lines);
++    }
++
++    // The log, oldest first: "time|times|name" per line.
++    public static synchronized String[] events(Context context) {
++        String log = prefs(context).getString(KEY_LOG, "");
++        return log.isEmpty() ? new String[0] : log.split("\n");
++    }
++
++    // When a location last reached the server (0: never).
++    public static long lastPointAt(Context context) {
++        return prefs(context).getLong(KEY_LAST_POINT, 0L);
++    }
++
++    static void pointDelivered(Context context) {
++        long now = System.currentTimeMillis();
++        prefs(context).edit().putLong(KEY_LAST_POINT, now).putLong(KEY_LAST_CONTACT, now).apply();
++    }
++
++    // "Alive, with nothing to report": for a phone whose fixes aren't reaching the tracker's own heartbeat (AdaptiveTracker
++    // only sends one when a fix arrives), so that silence on the server really means the tracker is gone. Skipped if the
++    // server heard from it less than `everyMs` ago (0: always). Makes a network request: off the main thread.
++    public static void sendHeartbeat(Context context, long everyMs) {
++        String url = LocationStore.getUrl(context);
++        if (url == null || url.isEmpty()) {
++            return;
++        }
++        SharedPreferences p = prefs(context);
++        long now = System.currentTimeMillis();
++        if (everyMs > 0 && Math.abs(now - p.getLong(KEY_LAST_CONTACT, 0L)) < everyMs) {
++            return;
++        }
++        try {
++            LocationStore.postBody(url, LocationStore.getHeaders(context), "{\"latido\":true}");
++            p.edit().putLong(KEY_LAST_CONTACT, now).apply();
++        } catch (IOException e) {
++            event(context, "latido_fallo");
++        }
++    }
++}
 diff --git a/dist/esm/definitions.d.ts b/dist/esm/definitions.d.ts
 index bffc5f1c1e58edbde7def3b17caa13c26124d10b..381bca3a6891a290e97bcabf7b88faced70ab1fe 100644
 --- a/dist/esm/definitions.d.ts

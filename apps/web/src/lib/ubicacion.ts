@@ -11,6 +11,7 @@ import { CAMBIO_CLIMA, climaActivado } from './clima';
 import { ingestaUrl, tokenDeLaApp } from './fuenteApp';
 import { t } from './idioma';
 import { esNativa } from './nativo';
+import { asegurarVigia } from './vigia';
 
 const CLAVE = 'ubicacion';
 const ULTIMO = 'ubicacion-ultimo';
@@ -156,6 +157,8 @@ export async function seguirNativo(personaId: number, alFallar: (mensaje: string
         if (error?.code === 'NOT_AUTHORIZED') alFallar(t('Patty no tiene permiso de ubicación: habilitalo en los ajustes del teléfono («Permitir todo el tiempo»).'));
       },
     );
+    // Si recién se prendió, todavía no está la alarma que lo vuelve a levantar.
+    asegurarVigia();
   } catch (e) {
     siguiendoNativo = null;
     alFallar((e as Error).message);

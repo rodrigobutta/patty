@@ -467,7 +467,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
   const completo: Partial<Record<Seccion, boolean | undefined>> = {
     salud: persona ? Boolean(persona.nacimiento && persona.sexo && persona.altura_cm && persona.peso_kg) : undefined,
     datos: p
-      ? p.avisos !== 'no' && p.ubicacion === 'siempre' && p.uso_apps !== 'no' && p.llamadas !== 'no' && p.salud !== 0
+      ? p.avisos !== 'no' && p.ubicacion === 'siempre' && p.bateria !== 'no' && p.uso_apps !== 'no' && p.llamadas !== 'no' && p.salud !== 0
       : undefined,
     clima: a ? a.clima : undefined,
     telefono: p && a ? a.telefono && p.uso_apps === 'si' && p.llamadas === 'si' : undefined,
