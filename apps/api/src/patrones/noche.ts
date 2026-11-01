@@ -9,6 +9,7 @@ import { hayEnvio, type Aviso } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
 import { comentarDia } from '../ia/comentar.js';
 import { armarContexto, pendientes } from '../ia/contexto.js';
+import { saberesPendientes } from '../remedios/saberes.js';
 import { resumirNoche } from '../ia/resumirNoche.js';
 import { lunesDe, resumirSemana } from '../ia/resumirSemana.js';
 import { analizarPersona, primerDiaDe } from './analizar.js';
@@ -308,6 +309,7 @@ export function arrancarPatronesDeNoche(db: Db): void {
       await correr(db, 'Avisos preventivos', () => avisarPreventivos(db));
       await correr(db, '¿Qué pasó antes?', () => contextosPendientes(db));
       await correr(db, 'Componentes de la comida', () => componentesPendientes(db));
+      await correr(db, 'Efectos de los remedios', () => saberesPendientes(db));
     } finally {
       corriendo = false;
     }

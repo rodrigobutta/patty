@@ -12,6 +12,9 @@ import { lunesDe } from '../ia/resumirSemana.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { diasEntre } from '../lib/fechas.js';
 import { conUso, controlarLimite } from '../lib/usoIa.js';
+import { saludParaIa } from '../remedios/contextoIa.js';
+import { claveRemedio } from '../remedios/saberes.js';
+import { razonDeEfecto, senalesEntre } from '../remedios/senales.js';
 import { datosDePersona, primerDiaDe } from './analizar.js';
 import { armarRasgos, type ConceptoInfo, type FilaDiaria } from './motor.js';
 import { armarPerfil } from './perfil.js';
@@ -110,7 +113,12 @@ export async function correrHipotesis(db: Db, p: PersonaAcceso, o: { hasta: stri
     .map(({ tipo, causa_id, causa_modo, efecto_id, efecto_modo, sentido, causa_despues, desfase_dias, fecha_desde, fecha_hasta, razon }) => ({ tipo, causa_id, causa_modo, efecto_id, efecto_modo, sentido, causa_despues, desfase_dias, fecha_desde, fecha_hasta, razon }));
   const nuevas = await proponer(db, p, o, r, { datos, conceptos, desde, guardadas, opinadas, delMotor, apartados, yaDelMotor, finos, persona: persona! });
 
-  const lista = [...yaConfirmadas, ...nuevas];
+  // Lo que coincide con un efecto posible de algo que toma se prueba también, con o sin IA: el motor mide si de verdad se ve.
+  const deEfectos = await hipotesisDeEfectos(db, p.id, { desde, hasta: o.hasta, idioma: o.idioma, guardadas, apartados, datos, conceptos, yaDelMotor, ya: [...yaConfirmadas, ...nuevas] }).catch((e) => {
+    console.error(`Hipótesis: no se pudieron armar las de efectos de la persona ${p.id}:`, e instanceof Error ? e.message : e);
+    return [] as Hipotesis[];
+  });
+  const lista = [...yaConfirmadas, ...nuevas, ...deEfectos];
   if (!lista.length) return r;
   const veredictos = evaluarHipotesis(datos, conceptos, desde, o.hasta, lista);
   const porId = new Map(conceptos.map((c) => [c.id, c]));
@@ -123,6 +131,44 @@ export async function correrHipotesis(db: Db, p: PersonaAcceso, o: { hasta: stri
   r.nuevos = await guardar(db, p, veredictos, porId, yaDelMotor, o.idioma);
   console.log(`Hipótesis: persona ${p.id}, ${r.propuestas} propuestas, ${r.descartadas.length} descartadas, ${r.repetidas} repetidas, ${r.confirmadas.length} confirmadas, ${r.rechazadas.length} rechazadas.`);
   return r;
+}
+
+/** Con cuántas como mucho se prueba por vez: cada una suma pruebas a la corrección. */
+const HIPOTESIS_EFECTOS_MAX = 5;
+
+/**
+ * Las hipótesis que salen de la tabla de efectos: "este remedio → este síntoma, ese mismo día", para lo que la persona ya anotó y coincide.
+ * Si no pasa por los números del motor, queda rechazada como cualquier otra y no se muestra.
+ */
+async function hipotesisDeEfectos(
+  db: Db,
+  personaId: number,
+  o: { desde: string; hasta: string; idioma: Idioma; guardadas: Guardada[]; apartados: Set<string>; datos: FilaDiaria[]; conceptos: ConceptoInfo[]; yaDelMotor: Set<string>; ya: Hipotesis[] },
+): Promise<Hipotesis[]> {
+  const senales = await senalesEntre(db, personaId, o.desde, o.hasta, o.idioma);
+  if (!senales.length) return [];
+  const remedios = await filas<{ id: number; nombre: string }>(db, sql`SELECT c.id, c.nombre FROM conceptos c JOIN categorias k ON k.id = c.categoria_id WHERE k.clave = 'medicacion' AND c.unido_a IS NULL`);
+  const porClave = new Map(remedios.map((r) => [claveRemedio(r.nombre), r]));
+  const dias = diasEntre(o.desde, o.hasta) + 1;
+  const rasgos = new Set(armarRasgos(o.datos, new Map(o.conceptos.map((c) => [c.id, c])), o.desde, dias).map((x) => `${x.concepto.id}|${x.modo}`));
+  const yaProbadas = new Map(o.guardadas.map((x) => [x.clave, x]));
+  const yaEsta = new Set(o.ya.map((h) => claveHipotesis(h)));
+  const salida = new Map<string, Hipotesis>();
+  for (const s of senales) {
+    const causa = porClave.get(s.clave);
+    if (!causa) continue; // un suplemento sin tomas anotadas no tiene días que medir
+    if (o.apartados.has(`${causa.id}|${s.concepto_id}`) || !rasgos.has(`${causa.id}|presente`) || !rasgos.has(`${s.concepto_id}|presente`)) continue;
+    if (o.yaDelMotor.has(`${causa.id}|presente|${s.concepto_id}|presente`)) continue;
+    const h: Hipotesis = {
+      tipo: 'relacion', causa_id: causa.id, causa_modo: 'presente', efecto_id: s.concepto_id, efecto_modo: 'presente', sentido: 'sube', causa_despues: 'sube', desfase_dias: 0,
+      fecha_desde: null, fecha_hasta: null, razon: razonDeEfecto(s.remedio, s.efecto, o.idioma),
+    };
+    const clave = claveHipotesis(h);
+    const antes = yaProbadas.get(clave);
+    if (yaEsta.has(clave) || (antes && (antes.estado === 'confirmada' || antes.reciente))) continue;
+    salida.set(clave, h);
+  }
+  return [...salida.values()].slice(0, HIPOTESIS_EFECTOS_MAX);
 }
 
 /** Le pide hipótesis nuevas a la IA (si está y se puede) y las valida. Si falla, ninguna. */
@@ -164,10 +210,12 @@ async function proponer(
     r.perfil_caracteres = perfil.texto.length;
     const rasgos = new Set(armarRasgos(d.datos, new Map(d.conceptos.map((c) => [c.id, c])), d.desde, diasEntre(d.desde, o.hasta) + 1).map((x) => `${x.concepto.id}|${x.modo}`));
     const nombreDe = (x: Guardada) => `${x.causa} (${x.causa_modo}) → ${x.efecto} (${x.efecto_modo})${x.tipo === 'cambio' ? `, cambio desde ${x.fecha_desde}` : `, ${x.desfase_dias} días${x.fecha_desde ? `, del ${x.fecha_desde} al ${x.fecha_hasta}` : ''}`}`;
+    const salud = await saludParaIa(db, p.id, o.hasta, o.idioma).catch(() => '');
     const crudas = await conUso({ usuarioId: dueno?.id ?? null, tipo: 'hipotesis' }, () =>
       pedirHipotesis({
         perfil: perfil.texto,
         sobreLaPersona: perfilTexto(d.persona),
+        salud,
         conocidos: d.delMotor.slice(0, CONOCIDOS_MAX).map((x) => `${x.causa} (${x.causa_modo}) → ${x.efecto} (${x.efecto_modo}), ${x.desfase_dias} días`),
         rechazadas: d.guardadas.filter((x) => x.estado === 'rechazada').slice(0, RECHAZADAS_MAX).map(nombreDe),
         apartados: d.opinadas.map((x) => `${x.causa} → ${x.efecto}`),

@@ -5,6 +5,8 @@ import { sql } from 'drizzle-orm';
 import { COMO_ME_SENTI, COMO_ME_SIENTO, type Idioma } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { sumarDias } from '../lib/fechas.js';
+import { REGLA_SALUD_IA, saludParaIa } from '../remedios/contextoIa.js';
+import { senalesDelRegistro } from '../remedios/senales.js';
 import { hayIa, pedirJson } from './cliente.js';
 
 const HORAS = 72;
@@ -68,18 +70,24 @@ export async function armarContexto(db: Db, registroId: number, zona: string, id
     texto: `${a.que}${a.valor !== null ? ` ${Math.round(a.valor * 10) / 10}${a.unidad ? ' ' + a.unidad : ''}` : ''}${a.intensidad !== null ? ` (${a.intensidad}/10)` : ''}`,
   }));
   let texto: string | null = null;
-  if (hayIa() && (anotado.length || datos.length)) {
+  // Lo que toma: si lo anotado coincide con un efecto posible, se puede nombrar como una posibilidad más.
+  const senales = hayIa() ? await senalesDelRegistro(db, r.persona_id, registroId, idioma).catch(() => []) : [];
+  if (hayIa() && (anotado.length || datos.length || senales.length)) {
     const lengua = idioma === 'en' ? 'English' : 'castellano rioplatense (voseo)';
+    const salud = await saludParaIa(db, r.persona_id, r.fecha, idioma).catch(() => '');
     const x = await pedirJson<{ texto: string }>({
       sistema:
         `Sos Patty, una app que acompaña a una persona que anota su día. Anotó algo que le hizo mal y te pasamos lo de las ` +
         `${HORAS} horas anteriores. Contale en ${lengua}, en 2 o 3 oraciones cortas, qué pasó antes que pueda tener que ver ` +
         `(lo que comió o tomó, cómo durmió, el clima, si se movió poco o mucho, la pantalla), como posibilidades y nunca ` +
-        `como causas seguras. Sin diagnósticos ni consejos médicos, sin inventar datos. Si no hay nada que llame la atención, decilo.`,
+        `como causas seguras. Sin diagnósticos ni consejos médicos, sin inventar datos. Si no hay nada que llame la atención, decilo.` +
+        (salud ? ` ${REGLA_SALUD_IA}` : ''),
       texto:
         `Anotó: ${r.que}${r.intensidad !== null ? ` (${r.intensidad}/10)` : ''}${r.nota ? ` "${r.nota}"` : ''}, el ${hora(r.inicio)}.\n\n` +
         `Lo anotado antes (lo más cercano primero):\n${anotado.map((a) => `${hora(a.cuando)} · ${a.que}${a.valor !== null ? ` ${a.valor}${a.unidad ? ' ' + a.unidad : ''}` : ''}${a.intensidad !== null ? ` (${a.intensidad}/10)` : ''}${a.nota ? ` "${a.nota}"` : ''}`).join('\n') || '(nada)'}\n\n` +
-        `Datos de esos días:\n${datos.map((d) => `${d.fecha} · ${d.que}: ${Math.round(d.valor * 10) / 10}${d.unidad ? ' ' + d.unidad : ''}`).join('\n') || '(nada)'}`,
+        `Datos de esos días:\n${datos.map((d) => `${d.fecha} · ${d.que}: ${Math.round(d.valor * 10) / 10}${d.unidad ? ' ' + d.unidad : ''}`).join('\n') || '(nada)'}` +
+        (salud ? `\n\n${salud}` : '') +
+        (senales.length ? `\n\nLo anotado coincide con un efecto posible de: ${senales.map((s) => s.remedio).join(', ')}.` : ''),
       esquema: { type: 'object', properties: { texto: { type: 'string' } }, required: ['texto'], additionalProperties: false },
       esfuerzo: 'low',
       maxTokens: 1200,

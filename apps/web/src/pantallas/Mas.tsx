@@ -484,7 +484,7 @@ export function Mas({ alAdministrar }: { alAdministrar?: () => void }) {
     { clave: 'reloj', icono: <IconoReloj />, titulo: t('Reloj y salud'), sub: t('Sueño, pasos y pulso'), ver: esNativa() && Boolean(persona) },
     { clave: 'lugares', icono: <IconoLugares />, titulo: t('Lugares'), sub: t('Casa, trabajo y los lugares a los que vas'), ver: Boolean(persona) },
     { clave: 'informe', icono: <IconoInforme />, titulo: t('Informe para el médico'), sub: t('Un PDF con lo anotado para la consulta'), ver: Boolean(persona) },
-    { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos y tomas'), ver: Boolean(persona) },
+    { clave: 'remedios', icono: <IconoRemedios />, titulo: t('Remedios'), sub: t('Tratamientos, vitaminas y efectos a tener en cuenta'), ver: Boolean(persona) },
     { clave: 'seguimientos', icono: <IconoSeguimientos />, titulo: t('Seguimientos'), sub: t('Más de cerca por unos días: enfermo, panza…'), ver: Boolean(persona) },
     { clave: 'preguntas', icono: <IconoPreguntas />, titulo: t('Preguntas de Patty'), sub: t('El detalle de lo que anotás: café con azúcar…'), ver: Boolean(persona) },
     { clave: 'patrones', icono: <IconoPatrones />, titulo: t('Qué patrones buscar'), sub: t('Umbrales, lo que te protege, efectos a los días'), ver: Boolean(persona) },

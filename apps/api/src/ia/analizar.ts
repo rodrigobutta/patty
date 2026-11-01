@@ -64,7 +64,7 @@ export function explicarHallazgos(datos: {
     'Las causas "Días con mucha sal", "Días con muchas harinas" y parecidas son estimaciones de lo que comió, relativas a sus días de siempre: contalas como estimaciones, nombrá las ' +
     'comidas que se indican, nunca des gramos, calorías ni consejos de dieta o de nutrición. ' +
     'Los marcados YA NO SE VE se ven en toda la historia pero no en los últimos meses: contalo en pasado ("antes pasaba"). ' +
-    '"Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional.' +
+    '"Alto", "bajo", "tarde" y "temprano" son respecto de lo habitual de la persona. No des indicaciones médicas; si algo parece serio, sugerí consultarlo con un profesional. Nunca sugieras dejar, cambiar ni ajustar un remedio o su dosis, ni comprar un suplemento: eso lo decide su médico.' +
     (datos.idioma === 'en'
       ? ' La persona usa la app en inglés: escribí el resumen, las explicaciones y las sugerencias en inglés (claro y simple).'
       : '');

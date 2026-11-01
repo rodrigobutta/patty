@@ -14,6 +14,7 @@ import { compartibleActividad } from '../lib/tarjetasDelDia';
 import { BotonCompartir } from '../ui/HojaCompartir';
 
 import { QuePasoAntes } from './QuePasoAntes';
+import { SenalesEfecto } from './EfectosRemedio';
 import { GENEROS_MUSICA, GENEROS_PANTALLA, sePantalla, type Medio } from 'shared';
 import { IconoMedio } from '../ui/IconosPatty';
 import { BuscarMedio, type Elegido } from '../ui/BuscarMedio';
@@ -177,6 +178,7 @@ export function Editar({ persona, registro: r, partes, alGuardar, alCerrar, alBo
         </div>
       ) : null}
       {/* Una molestia o un mal momento: qué pasó antes (lo arma Patty al rato de anotarlo). */}
+      {cat?.clave === 'sintoma' ? <SenalesEfecto persona={persona} registroId={r.id} /> : null}
       {cat?.clave === 'sintoma' || (esSentir && r.intensidad !== null && r.intensidad <= 4) ? <QuePasoAntes persona={persona} registroId={r.id} /> : null}
       <div className="valor">
         {r.medio ? <MedioDelRegistro r={r} medio={medio ?? r.medio} zona={persona.zona_horaria} puedeCompartir={sesion?.usuario?.rol !== 'lector'} alCambiar={setMedio} /> : null}

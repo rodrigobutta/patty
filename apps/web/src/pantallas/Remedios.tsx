@@ -2,11 +2,13 @@
 // uno a mano o cambiarlo. Lo más cómodo igual es contárselo a Patty ("el médico me dijo paracetamol cada 8 horas por 5
 // días"): esto queda para revisar y ajustar.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { dosisTexto, frecuenciaTexto, tomasEntre, UNIDADES_DOSIS, type NuevoTratamiento, type Persona, type Sugerencia, type Tratamiento } from 'shared';
+import { dosisTexto, frecuenciaTexto, tomasEntre, UNIDADES_DOSIS, type NuevoTratamiento, type Persona, type RemedioVigilado, type Sugerencia, type Tratamiento } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { horaAhora, horaEn, instanteLocal, nombreDia } from '../lib/fechas';
 import { tomasCambiaron } from '../lib/remedios';
+import { EfectosVigilados } from './EfectosRemedio';
+import { Suplementos } from './Suplementos';
 // `t` ya es el tratamiento en todo el archivo: la traducción va como `tr`.
 import { idioma, t as tr } from '../lib/idioma';
 
@@ -37,9 +39,12 @@ export function Remedios({ persona, puedeEscribir }: { persona: Persona; puedeEs
   const [lista, setLista] = useState<Tratamiento[] | null>(null);
   const [editando, setEditando] = useState<Tratamiento | 'nuevo' | null>(null);
   const [error, setError] = useState('');
+  const [vigilados, setVigilados] = useState<RemedioVigilado[]>([]);
   const { avisar } = useEstado();
 
   const traer = useCallback(async () => {
+    // Lo que se vigila de cada remedio es un extra: si no llega, la lista se ve igual.
+    api<RemedioVigilado[]>('GET', `/api/remedios/vigilados?persona=${persona.id}`).then(setVigilados).catch(() => {});
     try {
       setLista(await api<Tratamiento[]>('GET', `/api/tratamientos?persona=${persona.id}`));
     } catch (e) {
@@ -62,7 +67,9 @@ export function Remedios({ persona, puedeEscribir }: { persona: Persona; puedeEs
 
   const activos = lista?.filter((t) => t.activo) ?? [];
   const terminados = lista?.filter((t) => !t.activo) ?? [];
-  const renglon = (t: Tratamiento) => (
+  const renglon = (t: Tratamiento) => {
+    const vigilado = t.activo ? vigilados.find((v) => v.tratamiento_ids.includes(t.id)) : undefined;
+    return (
     <li key={t.id} className="tratamiento">
       <span className="que">
         <strong>{t.remedio}</strong>
@@ -80,6 +87,7 @@ export function Remedios({ persona, puedeEscribir }: { persona: Persona; puedeEs
               ].filter(Boolean).join(' · ')
             : `${t.terminado ? tr('terminado') : tr('terminó')} · ${t.total ? tr('{tomadas} de {total} tomas', { tomadas: t.tomadas, total: t.total }) : tr('{n} tomas', { n: t.tomadas })}`}
         </span>
+        {vigilado ? <EfectosVigilados remedio={vigilado} /> : null}
       </span>
       {puedeEscribir ? (
         <span className="columna-chica">
@@ -88,9 +96,11 @@ export function Remedios({ persona, puedeEscribir }: { persona: Persona; puedeEs
         </span>
       ) : null}
     </li>
-  );
+    );
+  };
 
   return (
+    <>
     <div className="tarjeta remedios">
       <h3>{tr('💊 Remedios')}</h3>
       <p className="suave chico">
@@ -121,6 +131,8 @@ export function Remedios({ persona, puedeEscribir }: { persona: Persona; puedeEs
         </>
       ) : null}
     </div>
+    <Suplementos persona={persona} puedeEscribir={puedeEscribir} vigilados={vigilados} alCambiar={() => void traer()} />
+    </>
   );
 }
 

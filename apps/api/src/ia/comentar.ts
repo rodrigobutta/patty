@@ -92,7 +92,7 @@ async function armar(
       `("los días que sacaste a los perros caminaste más de 6.000 pasos y dormiste mejor"), notá tendencias ("ya van 3 días durmiendo ` +
       `más de 7 horas y te sentiste bien") o mostrá curiosidad amable por algo que se repite junto con otra cosa ("el café de la tarde ` +
       `se repite los días que dormís menos"). Si hay poco anotado, un solo comentario alcanza. ` +
-      `Nunca retes ni hagas sentir culpa, no des diagnósticos ni consejos médicos, no inventes datos ni números que no estén. ` +
+      `Nunca retes ni hagas sentir culpa, no des diagnósticos ni consejos médicos, no inventes datos ni números que no estén. Nunca sugieras dejar, cambiar ni ajustar un remedio o su dosis, ni comprar un suplemento: eso lo decide su médico. ` +
       `Mencioná cosas reales de su semana. No repitas ideas de los comentarios anteriores. Un emoji que acompañe cada uno. ` +
       `Hoy es ${hoy}.`,
     texto:

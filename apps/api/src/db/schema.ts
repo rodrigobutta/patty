@@ -550,6 +550,72 @@ export const tomas = pgTable(
   (t) => [uniqueIndex('tomas_unica_idx').on(t.tratamiento_id, t.programada), index('tomas_registro_idx').on(t.registro_id)],
 );
 
+/**
+ * Lo que se sabe de cada remedio o suplemento, por nombre: es de todos y no dice nada de ninguna persona (cada nombre se le pregunta
+ * a la IA una sola vez). `clave` sale de claveRemedio(nombre). `estado`: pendiente (se sigue intentando), conocido, desconocido (la IA
+ * no lo reconoce: se dice que no se sabe) o fallido (se acabaron los intentos).
+ */
+export const saberesRemedio = pgTable(
+  'saberes_remedio',
+  {
+    id: id(),
+    clave: text('clave').notNull().unique(),
+    estado: text('estado', { enum: ['pendiente', 'conocido', 'desconocido', 'fallido'] }).notNull().default('pendiente'),
+    tipo: text('tipo', { enum: ['medicamento', 'suplemento'] }),
+    efectos: jsonb('efectos').$type<Array<{ nombre: string; nombre_en: string; sinonimos: string[]; urgente: boolean }>>().notNull().default([]),
+    interacciones: jsonb('interacciones').$type<Array<{ con: string; con_en: string; detalle: string; detalle_en: string }>>().notNull().default([]),
+    /** Lo típico que trae, si es un suplemento. */
+    contenido: jsonb('contenido').$type<Array<{ nutriente: string; nombre: string; cantidad: number | null; unidad: string | null }>>().notNull().default([]),
+    intentos: smallint('intentos').notNull().default(0),
+    proximo_intento: instante('proximo_intento').notNull().defaultNow(),
+    error: text('error'),
+    creado: creado(),
+    actualizado: instante('actualizado').notNull().defaultNow(),
+  },
+  (t) => [index('saberes_remedio_pendientes_idx').on(t.estado, t.proximo_intento)],
+);
+
+/**
+ * Las vitaminas y suplementos que toma una persona. `contenido`: lo que se leyó de la foto o se corrigió a mano; sin eso, vale lo
+ * típico de ese nombre (saberes_remedio). `origen` dice de dónde salió y `corregido`, si la persona lo cambió después.
+ */
+export const suplementos = pgTable(
+  'suplementos',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    nombre: text('nombre').notNull(),
+    clave: text('clave').notNull(),
+    contenido: jsonb('contenido').$type<Array<{ nutriente: string; nombre: string; cantidad: number | null; unidad: string | null }>>(),
+    origen: text('origen', { enum: ['nombre', 'foto'] }).notNull().default('nombre'),
+    corregido: boolean('corregido').notNull().default(false),
+    desde: instante('desde').notNull().defaultNow(),
+    terminado: instante('terminado'),
+    creado_por: integer('creado_por').references(() => usuarios.id, { onDelete: 'set null' }),
+    creado: creado(),
+    borrado: instante('borrado'),
+  },
+  (t) => [index('suplementos_persona_idx').on(t.persona_id)],
+);
+
+/** "No tiene que ver": esta persona ya no quiere que se le señale este síntoma con este remedio (ni que se pruebe como patrón). */
+export const senalesApartadas = pgTable(
+  'senales_apartadas',
+  {
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    concepto_id: integer('concepto_id')
+      .notNull()
+      .references(() => conceptos.id, { onDelete: 'cascade' }),
+    clave: text('clave').notNull(),
+    creado: creado(),
+  },
+  (t) => [primaryKey({ columns: [t.persona_id, t.concepto_id, t.clave] })],
+);
+
 // ---------- Avisos push ----------
 
 /**

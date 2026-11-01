@@ -17,6 +17,7 @@ import { PERMISOS } from './permisos.js';
 import { PREVENTIVO } from './preventivo.js';
 import { PATRONES } from './patrones.js';
 import { PATRONES_FINOS } from './patronesfinos.js';
+import { SABER_REMEDIOS } from './saberremedios.js';
 import { SERVIDOR } from './servidor.js';
 
-export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...HIPOTESIS, ...COMPONENTES, ...MEDIOS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...COMUN };
+export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...HIPOTESIS, ...COMPONENTES, ...MEDIOS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...SABER_REMEDIOS, ...COMUN };

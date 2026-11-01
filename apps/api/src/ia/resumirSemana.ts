@@ -110,7 +110,7 @@ export async function resumirSemana(db: Db, p: { id: number; nombre: string }, l
       `semana en ${lengua}. Un título corto y simpático (máximo 50 letras); un texto de 3 a 5 oraciones que cuente cómo fue ` +
       `la semana comparada con la anterior (sueño, movimiento, reuniones de trabajo, ánimo, molestias, lo que se repitió), juntando varios datos; ` +
       `de 2 a 4 destacados (emoji + una frase corta, lo bueno primero); y 1 o 2 sugerencias concretas y amables para probar ` +
-      `la semana que viene, basadas en lo que se ve. Sin diagnósticos ni consejos médicos, sin culpa, sin inventar datos. ` +
+      `la semana que viene, basadas en lo que se ve. Sin diagnósticos ni consejos médicos, sin culpa, sin inventar datos. Nunca sugieras dejar, cambiar ni ajustar un remedio o su dosis, ni comprar un suplemento: eso lo decide su médico. ` +
       `Si se había propuesto objetivos para esta semana, comentá cómo le fue (celebrá lo logrado, sin culpa por lo que no). ` +
       `Además, 1 o 2 objetivos suaves y medibles para la semana que viene (en "objetivos"), alcanzables y basados en sus ` +
       `datos: texto corto ("Caminar 3 días"), un emoji, cuántos días de los 7 (meta_dias) y cómo se mide (tipo): ` +
