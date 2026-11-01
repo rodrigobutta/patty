@@ -6,7 +6,9 @@ import { persona } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { cuerpo, idParam, texto, type Env } from '../lib/http.js';
 import { etiquetasDePaseos } from '../patrones/paseos.js';
-import { caminoLimpio, puntoDeFila, sinSaltos } from '../ubicacion/resumen.js';
+import { caminataContradicha, clasificarDia, recorteDe } from '../ubicacion/movimiento.js';
+import { pasosDe } from '../ubicacion/pasos.js';
+import { caminoLimpio, puntoDeFila, type LugarZona } from '../ubicacion/resumen.js';
 import { guardarRegistro } from './registros.js';
 
 export const rutasPaseos = new Hono<Env>()
@@ -17,18 +19,24 @@ export const rutasPaseos = new Hono<Env>()
       c.var.db,
       sql`SELECT id, inicio, fin, metros FROM paseos_detectados WHERE persona_id = ${p.id} AND estado = 'pendiente' AND inicio > now() - interval '2 days' ORDER BY inicio`,
     );
-    // El recorrido de cada una (sin los saltos del GPS), para el mapita: así se ve si era lo que parece.
+    // El recorrido de cada una, para el mapita: solo lo que fue a pie, así se ve si era lo que parece. Si la ubicación dice
+    // que ese rato iba en un vehículo (una detectada antes de que Patty supiera distinguirlo), ya no se pregunta.
+    const ls = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
     const conCamino = await Promise.all(
       pendientes.map(async (x) => {
+        const inicio = Date.parse(x.inicio);
+        const fin = Date.parse(x.fin);
+        const margen = 3 * 3600000;
         const l = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
           c.var.db,
-          sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${x.inicio} AND ${x.fin} ORDER BY instante`,
+          sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${new Date(inicio - margen).toISOString()} AND ${new Date(fin + margen).toISOString()} ORDER BY instante`,
         );
-        const camino = caminoLimpio(sinSaltos(l.map(puntoDeFila)));
-        return { ...x, camino };
+        const tramos = clasificarDia(l.map(puntoDeFila), ls, await pasosDe(c.var.db, p.id, inicio - margen, fin + margen));
+        if (caminataContradicha({ inicio, fin }, tramos)) return null;
+        return { ...x, camino: caminoLimpio(recorteDe(tramos, 'a_pie', inicio, fin).puntos) };
       }),
     );
-    return c.json({ pendientes: conCamino, ...(await etiquetasDePaseos(c.var.db, p.id)) });
+    return c.json({ pendientes: conCamino.filter((x) => x !== null), ...(await etiquetasDePaseos(c.var.db, p.id)) });
   })
   .post('/:id', async (c) => {
     // { concepto } la anota como esa actividad (con su hora y sus minutos); { descartar: true } la saca.

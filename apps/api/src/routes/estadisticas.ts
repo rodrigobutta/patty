@@ -87,7 +87,7 @@ export const rutasEstadisticas = new Hono<Env>()
       sql`SELECT c.nombre, to_char(s.fecha, 'YYYY-MM-DD') AS fecha, s.suma::float AS suma, s.promedio::float AS promedio
           FROM serie_diaria s JOIN conceptos c ON c.id = s.concepto_id
           WHERE s.persona_id = ${p.id} AND s.fecha BETWEEN ${desde} AND ${hasta}
-            AND c.nombre IN ('Lluvia del día', 'Horas de sol', 'Temperatura media', 'Temperatura máxima', 'Pasos', 'Km recorridos', 'Tiempo de pantalla', 'Llamadas')`,
+            AND c.nombre IN ('Lluvia del día', 'Horas de sol', 'Temperatura media', 'Temperatura máxima', 'Pasos', 'Km en vehículo', 'Tiempo de pantalla', 'Llamadas')`,
     );
     const de = (n: string) => auto.filter((a) => a.nombre === n);
     const prom = (l: number[]) => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : null);
@@ -133,7 +133,7 @@ export const rutasEstadisticas = new Hono<Env>()
       },
       movimiento: {
         pasos_promedio: prom(de('Pasos').map((l) => l.suma)),
-        km: de('Km recorridos').reduce((a, l) => a + (l.suma ?? 0), 0),
+        km: de('Km en vehículo').reduce((a, l) => a + (l.suma ?? 0), 0),
         pantalla_promedio: prom(de('Tiempo de pantalla').map((l) => l.suma)),
         llamadas: de('Llamadas').reduce((a, l) => a + (l.suma ?? 0), 0),
       },

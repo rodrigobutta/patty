@@ -1,4 +1,4 @@
-// Las vueltas a pie que se ven en la ubicación (salir de casa, caminar unas cuadras y volver) se sugieren para anotar:
+// Lo que se ve a pie en la ubicación (salir de casa, caminar unas cuadras y volver, o ir caminando a algún lado) se sugiere para anotar:
 // "Saliste a caminar 15 min, ¿qué fue?", con lo que la persona suele contestar ("Paseo con los perros"). Cuando una
 // respuesta ya se repite (3 veces o más, y 7 de cada 10), Patty pregunta directo: "¿Paseo con los perros?". Corre cada
 // minuto con los demás trabajos (patrones/noche.ts); la vuelta se sugiere a los 10 minutos de haber terminado.
@@ -7,6 +7,7 @@ import { esIdioma, traducir, type Idioma } from 'shared';
 import { filas, una, type Db, type Tx } from '../db/client.js';
 import { hayEnvio } from '../push/firebase.js';
 import { avisarUnaVez, dispositivosDe } from '../push/recordatorios.js';
+import { pasosDe } from '../ubicacion/pasos.js';
 import { paseosDelDia, puntoDeFila } from '../ubicacion/resumen.js';
 
 const ESPERA_MS = 10 * 60000;
@@ -42,7 +43,8 @@ export async function sugerirPaseos(db: Db, ahora = new Date()): Promise<number>
       db,
       sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`,
     );
-    for (const v of paseosDelDia(puntos, lugares)) {
+    const pasos = await pasosDe(db, p.id, ahora.getTime() - HASTA_MS - 3600000, ahora.getTime());
+    for (const v of paseosDelDia(puntos, lugares, pasos)) {
       if (ahora.getTime() - v.fin < ESPERA_MS || ahora.getTime() - v.fin > HASTA_MS) continue;
       // Si ya anotó una actividad en ese rato (a mano o contándolo), no se sugiere.
       const ya = await una(

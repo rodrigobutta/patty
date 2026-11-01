@@ -28,6 +28,12 @@ function modoDe(concepto: string): ModoViaje | null {
   return (Object.keys(MODOS_VIAJE) as ModoViaje[]).find((m) => MODOS_VIAJE[m].concepto === concepto) ?? null;
 }
 
+/** Qué recorrido corresponde a lo anotado: una caminata solo muestra lo que fue a pie, aunque ese rato se le cruce un auto. */
+function tipoDe(concepto: string, esViaje: boolean, modo: ModoViaje | null): 'a_pie' | 'vehiculo' {
+  if (esViaje) return modo === 'caminando' ? 'a_pie' : 'vehiculo';
+  return /bici|bike|cicl/i.test(concepto) ? 'vehiculo' : 'a_pie';
+}
+
 /**
  * Una actividad o un viaje para compartir: busca por dónde anduvo en ese rato (si hay ubicación) y arma la tarjeta con
  * el mapita, y la misma sin el mapa por si no se quiere mostrar dónde fue.
@@ -37,16 +43,18 @@ export async function compartibleActividad(o: { persona: Persona; concepto: stri
   const minutos = Math.max(1, Math.round((Date.parse(fin) - Date.parse(inicio)) / 60000));
   let camino: Coord[] = [];
   let kms = 0;
+  const modo = esViaje ? modoDe(concepto) : null;
+  const tipo = tipoDe(concepto, esViaje, modo);
   try {
-    const r = await api<{ camino: Coord[]; km: number }>('GET', `/api/ubicacion/camino?persona=${persona.id}&desde=${encodeURIComponent(inicio)}&hasta=${encodeURIComponent(fin)}`);
+    const r = await api<{ camino: Coord[]; km: number }>('GET', `/api/ubicacion/camino?persona=${persona.id}&desde=${encodeURIComponent(inicio)}&hasta=${encodeURIComponent(fin)}&tipo=${tipo}`);
     camino = r.camino;
     kms = r.km;
-    // Con pocos puntos (un viaje sin señal), el recorrido más probable por las calles, como en el mapita del Día.
-    if (faltaCamino(camino)) camino = (await caminoPorCalles(camino)) ?? camino;
+    // Con pocos puntos (un viaje sin señal), el recorrido más probable por las calles, como en el mapita del Día. A pie no: esas
+    // rutas son para autos, y dibujarían una caminata por donde no fue.
+    if (tipo === 'vehiculo' && faltaCamino(camino)) camino = (await caminoPorCalles(camino)) ?? camino;
   } catch {
     /* sin ubicación: la tarjeta va sin mapa */
   }
-  const modo = esViaje ? modoDe(concepto) : null;
   const icono = iconoParaTarjeta(modo ? <IconoModo modo={modo} tamano={96} /> : <IconoCategoria clave={esViaje ? 'viaje' : 'actividad'} tamano={96} />);
   const datos = [{ valor: duracion(minutos), texto: t('duración') }];
   if (kms >= 0.1) {

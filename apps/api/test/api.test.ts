@@ -321,11 +321,11 @@ describe('ubicación y lugares', () => {
     const med = async () =>
       [...(await db.execute(sql`SELECT c.nombre, m.valor, cat.clave AS categoria FROM mediciones m JOIN conceptos c ON c.id = m.concepto_id
           JOIN categorias cat ON cat.id = c.categoria_id ORDER BY m.inicio, c.nombre`))].map((x: any) => `${x.categoria}:${x.nombre}=${x.valor}`);
-    expect(await med()).toEqual(['lugar:Km recorridos=4.5', 'lugar:Viajes=2', 'lugar:Casa=20', 'lugar:Supermercado Coto=25', 'lugar:Casa=0']);
+    expect(await med()).toEqual(['lugar:Km en vehículo=4.5', 'lugar:Viajes=2', 'lugar:Casa=20', 'lugar:Supermercado Coto=25', 'lugar:Casa=0']);
 
     // Al cambiar los lugares se recalcula: sin el súper, las estadías en casa quedan y la del súper se va.
     expect((await ana.del(`/api/ubicacion/lugares/${sup.id}`)).status).toBe(200);
-    expect(await med()).toEqual(['lugar:Km recorridos=4.5', 'lugar:Viajes=2', 'lugar:Casa=20', 'lugar:Casa=0']);
+    expect(await med()).toEqual(['lugar:Km en vehículo=4.5', 'lugar:Viajes=2', 'lugar:Casa=20', 'lugar:Casa=0']);
     // Renombrar un lugar renombra su concepto.
     const ren = await ana.put(`/api/ubicacion/lugares/${casa.body.id}`, { nombre: 'Mi casa', radio_m: 300 });
     expect(ren.body).toMatchObject({ nombre: 'Mi casa', radio_m: 300 });

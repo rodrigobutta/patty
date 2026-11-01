@@ -1,33 +1,36 @@
-// El mapita del día (en la hoja del widget de viajes o de pasos): por dónde anduviste, con el comienzo en verde, el final
-// en ámbar y los lugares con nombre donde estuviste. Si un viaje empezó el día anterior o sigue al siguiente, ese
-// tramo va punteado.
+// El mapita del día, de una sola cosa: en la hoja de Viajes, solo lo que fue en vehículo; en la de Movimiento, solo lo que
+// fue a pie (ver ubicacion/movimiento.ts en la API). Una línea por cada vez, con el comienzo en verde y el final en ámbar, y
+// los lugares con nombre donde estuviste.
 import { useEffect, useState } from 'react';
 import type { Persona } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { horaEn } from '../lib/fechas';
-import { t } from '../lib/idioma';
+import { locale, t } from '../lib/idioma';
 import { compartibleActividad } from '../lib/tarjetasDelDia';
 import { BotonCompartir } from '../ui/HojaCompartir';
 import { IconoCategoria } from '../ui/IconosPatty';
 import { Mapa, type Ruta } from '../ui/Mapa';
 
-interface Recorrido extends Ruta {
+interface Recorrido {
+  rutas: Array<Ruta & { inicio: string; fin: string; km: number }>;
   lugares: Array<{ nombre: string; lat: number; lon: number; radio_m: number }>;
   viajes: number;
   km: number;
 }
 
-export function RecorridoDelDia({ persona, fecha }: { persona: Persona; fecha: string }) {
+export function RecorridoDelDia({ persona, fecha, tipo, titulo }: { persona: Persona; fecha: string; tipo: 'a_pie' | 'vehiculo'; titulo?: string }) {
   const [r, setR] = useState<Recorrido | null>(null);
   useEffect(() => {
-    api<Recorrido>('GET', `/api/ubicacion/recorrido?persona=${persona.id}&fecha=${fecha}`).then(setR).catch(() => {});
-  }, [persona.id, fecha]);
-  if (!r || r.puntos.length < 1) return null;
+    api<Recorrido>('GET', `/api/ubicacion/recorrido?persona=${persona.id}&fecha=${fecha}&tipo=${tipo}`).then(setR).catch(() => {});
+  }, [persona.id, fecha, tipo]);
+  if (!r?.rutas.length) return null;
+  const km = r.rutas.reduce((s, x) => s + x.km, 0);
   return (
     <div className="recorrido-dia">
+      {titulo ? <p className="suave chico">{titulo}</p> : null}
       <Mapa
-        ruta={r}
+        rutas={r.rutas}
         puntos={r.lugares.map((l) => ({ lat: l.lat, lon: l.lon, radio: l.radio_m, etiqueta: l.nombre }))}
         alto={220}
         interactivo
@@ -35,7 +38,7 @@ export function RecorridoDelDia({ persona, fecha }: { persona: Persona; fecha: s
       />
       <p className="suave chico leyenda-recorrido">
         <span className="punto-ini" aria-hidden /> {t('salida')} · <span className="punto-fin" aria-hidden /> {t('llegada')}
-        {r.antes || r.despues ? ` · ${t('punteado: del día anterior o siguiente')}` : ''}
+        {tipo === 'a_pie' && km >= 0.1 ? ` · ${t('{n} km a pie', { n: Number(km.toFixed(1)).toLocaleString(locale()) })}` : ''}
       </p>
     </div>
   );

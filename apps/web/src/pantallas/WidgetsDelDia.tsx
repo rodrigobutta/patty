@@ -63,7 +63,8 @@ function widgetClima(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget
 /** Los viajes (de la ubicación). Sin viajes pero con pasos, el widget es de los pasos (ver widgetPasos). */
 function widgetUbicacion(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget | null {
   const viajes = dato(todos, 'ubicacion', 'Viajes');
-  const km = dato(todos, 'ubicacion', 'Km recorridos');
+  const km = dato(todos, 'ubicacion', 'Km en vehículo');
+  const kmAPie = dato(todos, 'ubicacion', 'Km a pie');
   const pasos = dato(todos, 'reloj', 'Pasos');
   if (!viajes && !km) return null;
   const n = Math.round(viajes?.suma ?? 0);
@@ -72,8 +73,14 @@ function widgetUbicacion(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Wi
     lugar: 'ubicacion',
     icono: <IconoLugar />,
     linea: n === 0 ? t('Sin viajes') : n === 1 ? t('1 viaje') : t('{n} viajes', { n }),
-    sub: km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : undefined,
-    grupos: grupos.filter((g) => g.tipo === 'ubicacion'),
+    sub:
+      km && km.suma >= 0.1
+        ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km`
+        : kmAPie && kmAPie.suma >= 0.1
+          ? t('{n} km a pie', { n: Number(kmAPie.suma.toFixed(1)).toLocaleString(locale()) })
+          : undefined,
+    // Lo caminado va con los pasos, si hay (ver widgetPasos).
+    grupos: grupos.filter((g) => g.tipo === 'ubicacion').map((g) => ({ ...g, lineas: g.lineas.filter((l) => !pasos || l.concepto !== 'Km a pie') })),
     nombre: t('Viajes'),
   };
 }
@@ -94,7 +101,9 @@ function widgetPasos(todos: DatoAutomatico[], grupos: GrupoAutomatico[]): Widget
     sub: caminatas
       ? caminatas === 1 ? t('1 caminata') : t('{n} caminatas', { n: caminatas })
       : km && km.suma >= 0.1 ? `${Number(km.suma.toFixed(1)).toLocaleString(locale())} km` : sinViajes ? t('Sin viajes') : undefined,
-    grupos: grupos.filter((g) => g.tipo === 'reloj').map((g) => ({ ...g, lineas: g.lineas.filter((l) => !SUENO.has(l.concepto) && !l.concepto.startsWith('Pulso')) })),
+    grupos: grupos
+      .filter((g) => g.tipo === 'reloj' || g.tipo === 'ubicacion')
+      .map((g) => ({ ...g, lineas: g.lineas.filter((l) => (g.tipo === 'reloj' ? !SUENO.has(l.concepto) && !l.concepto.startsWith('Pulso') : l.concepto === 'Km a pie')) })),
     nombre: t('Movimiento'),
   };
 }
@@ -279,7 +288,10 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                     <span className="widget-linea">{w.linea}</span>
                     {w.sub ? <span className="widget-sub">{w.sub}</span> : null}
                   </div>
-                  {w.lugar === 'ubicacion' || w.lugar === 'pasos' ? <RecorridoDelDia persona={persona} fecha={fecha} /> : null}
+                  {/* Cada hoja, su mapa: los viajes no se mezclan con lo caminado. Sin pasos no hay hoja de Movimiento: lo caminado va acá, aparte. */}
+                  {w.lugar === 'ubicacion' ? <RecorridoDelDia persona={persona} fecha={fecha} tipo="vehiculo" titulo={t('En vehículo')} /> : null}
+                  {w.lugar === 'ubicacion' && !widgets.some((x) => x?.lugar === 'pasos') ? <RecorridoDelDia persona={persona} fecha={fecha} tipo="a_pie" titulo={t('A pie')} /> : null}
+                  {w.lugar === 'pasos' ? <RecorridoDelDia persona={persona} fecha={fecha} tipo="a_pie" /> : null}
                   {w.lugar === 'pasos' ? <CaminatasDelDia persona={persona} fecha={fecha} /> : null}
                   {w.lugar === 'sueno' ? (
                     <>

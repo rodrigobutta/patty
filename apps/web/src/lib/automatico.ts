@@ -72,7 +72,7 @@ const DESTACADOS: Record<string, Array<[string, (v: string) => string]>> = {
   ],
   ubicacion: [
     ['Viajes', (v) => v],
-    ['Km recorridos', (v) => v],
+    ['Km en vehículo', (v) => v],
   ],
   clima: [
     ['Temperatura máxima', (v) => t('máx {v}', { v })],

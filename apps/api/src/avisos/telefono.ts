@@ -33,7 +33,8 @@ import { diaDePatty, fechaLocal, localAInstante, minutosDelDia, sumarDias } from
 import { texto } from '../lib/http.js';
 import { obtenerOCrearConcepto } from '../routes/conceptos.js';
 import { conceptoMedido, type Fuente } from '../routes/ingesta.js';
-import { puntoDeFila, viajesDelDia, type LugarZona } from '../ubicacion/resumen.js';
+import { pasosDe } from '../ubicacion/pasos.js';
+import { puntoDeFila, rangoDe, viajesDelDia, type LugarZona } from '../ubicacion/resumen.js';
 
 const DIAS_GUARDADOS = 90;
 const MIN = 60000;
@@ -389,7 +390,9 @@ async function viajesDetectados(db: Db | Tx, personaId: number, fecha: string): 
   const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(db, sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${personaId} AND fecha = ${fecha}`);
   if (ps.length < 2) return [];
   const lugares = await filas<LugarZona>(db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${personaId}`);
-  return viajesDelDia(ps.map(puntoDeFila), lugares);
+  const puntos = ps.map(puntoDeFila);
+  const { desde, hasta } = rangoDe(puntos);
+  return viajesDelDia(puntos, lugares, await pasosDe(db, personaId, desde, hasta));
 }
 
 /**

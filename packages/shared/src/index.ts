@@ -78,7 +78,8 @@ export const CONCEPTOS_INICIALES: Array<{ categoria: string; nombre: string; tip
   { categoria: 'comunicacion', nombre: 'Llamadas', tipo_valor: 'cantidad', unidad: null },
   { categoria: 'pantalla', nombre: 'Tiempo de pantalla', tipo_valor: 'medida', unidad: 'min' },
   { categoria: 'lugar', nombre: 'Viajes', tipo_valor: 'medida', unidad: 'viajes' },
-  { categoria: 'lugar', nombre: 'Km recorridos', tipo_valor: 'medida', unidad: 'km' },
+  { categoria: 'lugar', nombre: 'Km en vehículo', tipo_valor: 'medida', unidad: 'km' },
+  { categoria: 'actividad', nombre: 'Km a pie', tipo_valor: 'medida', unidad: 'km' },
   { categoria: 'ciclo', nombre: 'Menstruación', tipo_valor: 'intensidad', unidad: null },
   { categoria: 'musica', nombre: 'Escuchar música', tipo_valor: 'duracion', unidad: 'min' },
   { categoria: 'musica', nombre: 'Podcast', tipo_valor: 'duracion', unidad: 'min' },
@@ -1609,9 +1610,15 @@ export interface ViajeDelDia {
 export const MINUTOS_EN_TRAFICO = 'Minutos en tráfico';
 export const VIAJE_CON_TRAFICO = 'Viaje con tráfico';
 
-/** Qué se adivina de un viaje por su velocidad y largo: en qué fue y si parece pesado (tráfico, mucho tiempo). */
-export function adivinarViaje(km: number, minutos: number): { modo: ModoViaje; pista: string; pesado: boolean } {
+/**
+ * Qué se adivina de un viaje por su velocidad y largo: en qué fue y si parece pesado (tráfico, mucho tiempo). Con `tramo`,
+ * es un rato que la ubicación ya clasificó como vehículo (ver movimiento.ts): lento no puede querer decir caminando, y la bici
+ * es lo que se vio ahí, que mira más que el promedio.
+ */
+export function adivinarViaje(km: number, minutos: number, tramo?: { bici: boolean }): { modo: ModoViaje; pista: string; pesado: boolean } {
   const v = km / Math.max(minutos / 60, 1 / 60);
+  if (tramo?.bici) return { modo: 'bici', pista: 'A velocidad de bici (o con tráfico)', pesado: minutos >= 45 };
+  if (tramo && v < 16) return { modo: 'auto', pista: 'Lento para ir en auto o colectivo: ¿tráfico?', pesado: km >= 6 || minutos >= 30 };
   if (v < 6) return { modo: 'caminando', pista: 'A paso de caminata', pesado: minutos >= 50 };
   if (v < 16)
     return km >= 6

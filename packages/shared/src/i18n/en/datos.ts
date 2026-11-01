@@ -51,7 +51,8 @@ export const DATOS: Record<string, string> = {
   Llamadas: 'Calls',
   'Tiempo de pantalla': 'Screen time',
   Viajes: 'Trips',
-  'Km recorridos': 'Km traveled',
+  'Km en vehículo': 'Km by vehicle',
+  'Km a pie': 'Km on foot',
 
   // Cómo me siento
   'Cómo me siento': 'How I feel',

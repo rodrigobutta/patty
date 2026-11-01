@@ -89,15 +89,52 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
     50 m o mejor; se guardan desde los 10 m). Lo que pasó (viajes, paseos, paradas) se decide siempre con
     `puntosDeMovimiento` (uno cada ~150 m o cambio de lugar), así no depende de cuántos puntos hay y el temblor del GPS no
     arma km ni caminatas. Los finos se usan para dibujar (`caminoLimpio`: sin puntos malos ni picos, suavizado leve a pie,
-    sin pegarse a las calles porque el OSRM público solo tiene autos y puede inventar) y para los km de un viaje ya
-    detectado (`metrosDe`: solo suma a más de 25 m del punto anterior). Pasar por un lugar con nombre en menos de 5 min no
+    sin pegarse a las calles porque el OSRM público solo tiene autos y puede inventar) y para los km de un tramo ya
+    clasificado (`metrosDe`: solo suma a más de 25 m del punto anterior). Pasar por un lugar con nombre en menos de 5 min no
     corta el viaje, y en menos de 2 no cuenta como estadía.
+  - **Quieto, a pie o en vehículo: una sola regla** (`apps/api/src/ubicacion/movimiento.ts`, `clasificarDia`). Viajes, km,
+    paseos, tráfico, mapas y tarjetas salen de ahí. Cómo se decide, en palabras:
+    - **Paradas.** Un rato se corta si estuvo 10 minutos quieto en cualquier lado o si se quedó en un lugar con nombre (5
+      minutos o más; pasar de largo no corta). Un semáforo, o un rato sin puntos en el que avanzó a 8 km/h o más, no cortan.
+    - **Velocidad.** Se mide entre puntos separados ~150 m, desde que salió de donde estaba, y para cada pedazo se toma la
+      mediana de sus vecinos (al menos dos y unos 3 minutos) del lado que más se le parece: un punto que rebotó o un semáforo
+      no cambian nada, y el paso de caminar a manejar no se corre.
+    - **Menos de 8 km/h** es paso de caminata. **16 km/h o más, sostenido (300 m o más)**, es vehículo. Un pedazo de 25 km/h y
+      500 m o más también, aunque sus vecinos sean lentos. **Entre 8 y 16** no alcanza con la velocidad (correr, bici o un auto
+      en la ciudad).
+    - **Lo que no es rápido se resuelve así:** si los pasos lo explican, a pie. Entre dos partes rápidas: tráfico, es vehículo
+      (salvo que termine cerca de donde empezó, que es bajarse y volver al auto, o que sean más de 40 minutos a paso de
+      caminata). Al lado de una parte rápida: de 8 a 16 km/h es vehículo; a paso de caminata es caminar hasta el auto, salvo
+      que dure 10 minutos o más, haya datos de pasos y no hubo una caminata (es tráfico). Solo, sin nada rápido al lado: a paso
+      de caminata es siempre a pie; de 8 a 13 km/h es correr; de 13 a 16 es vehículo. Si hay datos de pasos y 10 minutos o más
+      a 8-16 km/h no dejaron una caminata, no corrió: es vehículo.
+    - **Pasos.** Llegan como caminatas (10 minutos o más a 60 pasos por minuto; ver `caminatasDe`), así que una caminata corta
+      no dice nada, y no ver pasos solo cuenta si hay datos de pasos ese día y el reloj ya sincronizó después de ese rato.
+      Con pasos, se cree que fue a pie hasta 20 km/h (correr rápido); más rápido, los pasos son falsos.
+    - **Puntos muy separados.** Quieto un rato y de golpe lejos, sin puntos que digan cuándo salió: 1 km o más es vehículo (a
+      30 km/h, para estimar la hora de salida), salvo que los pasos lo expliquen (a 1,4 m/s); menos, es lo que sigue.
+    - **Bici.** Cuenta como vehículo (no da pasos) y es solo una suposición del modo de un viaje: por GPS no se distingue de
+      un auto en la ciudad. Con 6 pedazos o más, mediana de 10 a 25 km/h y sin pasar de 30; con menos, un viaje de menos de 6
+      km a 8-16 km/h. Con tráfico, no. La persona lo corrige en «¿Cómo fue tu viaje?».
+    - **Qué cuenta como qué.** Un *viaje* es vehículo de 1 km o más; caminar de A a B no es un viaje. Un *paseo* (se sugiere
+      para anotar) es a pie: una vuelta de 300 m y 5 minutos, o ir de un lado a otro con 600 m y 8 minutos; caminar hasta el
+      auto no. Los *minutos lentos* (tráfico) son a menos de 10 km/h, solo en vehículo.
+    - **Lo que dibuja cada cosa.** La hoja de Viajes muestra solo los viajes; la de Movimiento, solo lo caminado (sin pasos
+      no hay hoja de Movimiento: lo caminado va en la de Viajes, aparte). La tarjeta de una actividad y su mapa piden
+      `GET /api/ubicacion/camino?…&tipo=a_pie` (o `vehiculo` para un viaje o una bici): si en ese rato hubo otra cosa, va solo
+      la parte más larga de ese tipo, con sus km. Sin datos de ese tipo, la tarjeta va sin mapa.
+    - **Caminatas falsas.** Una caminata de los pasos que pasó sobre todo en vehículo sale de `mediciones` (no la cuenta nada)
+      y queda en `caminatas_descartadas`; si los puntos dejan de contradecirla, vuelve. Se revisa al recalcular el día y al
+      llegar las caminatas. Sin puntos de ese rato, se le cree a los pasos.
   - Tabla `lugares` (Casa, Supermercado…: centro y radio, 150 m de entrada). Cada lugar es un concepto de la categoría
     «Lugares y salidas» (rol causa, tipo duración).
-  - Con los puntos de cada día se recalculan las mediciones de la fuente «Ubicación»: «Viajes» (tramos de más de 1 km),
-    «Km recorridos» (en línea recta entre puntos) y una por estadía en un lugar (concepto del lugar, minutos, con la
-    hora de llegada). Al crear, mover o borrar un lugar se recalculan todos los días que todavía tienen puntos.
-    Lógica pura en `apps/api/src/ubicacion/resumen.ts`.
+  - Con los puntos de cada día se recalculan las mediciones de la fuente «Ubicación»: «Viajes» (en vehículo, de más de 1
+    km), «Km en vehículo» (solo de esos viajes, en línea recta entre puntos; antes se llamaba «Km recorridos»), «Km a pie»
+    (lo caminado, si hubo; no es lo mismo que «Km caminados», que dice el reloj) y una por estadía en un lugar (concepto del
+    lugar, minutos, con la hora de llegada). Los dos km van separados a los patrones: manejar y caminar no son lo mismo. Al
+    crear, mover o borrar un lugar se recalculan todos los días que todavía tienen puntos, y si cambia la forma de contar,
+    una vez todo lo guardado (`recalcularSiCambio`). Lógica pura en `apps/api/src/ubicacion/` (`puntos.ts`, `movimiento.ts`,
+    `resumen.ts`).
   - En el motor, las estadías tienen hora (para el orden dentro del día) pero son `automatica`: un día con solo
     ubicación no cuenta como día anotado (si no, parecería un día sin dolores).
   - Borrar el historial (Más) borra puntos y lo calculado; los lugares quedan.
@@ -480,8 +517,8 @@ Para auditar qué tan bien se guardan los datos y corregirlos (solo administrado
   cómo queda (`ui/HojaCompartir.tsx`). Los que tienen rol `lector` no ven los botones.
 - También una actividad o un viaje anotados (botón en la hoja para cambiarlo, en el Día) y cada caminata del reloj (en
   la hoja de los pasos): qué fue, la hora, la duración, los km y la velocidad promedio, con el dibujo de Patty y un
-  mapita del recorrido (`GET /api/ubicacion/camino?persona=&desde=&hasta=`: los puntos de ese rato sin los saltos del
-  GPS; con pocos puntos, el camino por las calles de OSRM, como en el Día). El mapa se dibuja en el canvas con los
+  mapita del recorrido (`GET /api/ubicacion/camino?persona=&desde=&hasta=&tipo=`: los puntos de ese rato y ese tipo, sin los saltos del
+  GPS; con pocos puntos, en un viaje, el camino por las calles de OSRM, como en el Día). El mapa se dibuja en el canvas con los
   cuadraditos de OpenStreetMap teñidos de violeta (`lib/mapaTarjeta.ts`, con el crédito); si no llegan en 5 s o el
   teléfono no deja usarlos, va el recorrido solo sobre un fondo lila. Y la noche (botón abajo del gráfico del sueño):
   las horas dormidas, de cuándo a cuándo, el gráfico de las etapas, la nota de la IA y la primera oración o dos de lo

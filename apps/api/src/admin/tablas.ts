@@ -26,6 +26,7 @@ export const GRUPO_TABLA: Record<string, 'persona' | 'automatico' | 'ia' | 'cata
   escuchas: 'automatico',
   sueno_etapas: 'automatico',
   paseos_detectados: 'automatico',
+  caminatas_descartadas: 'automatico',
   uso_diario: 'automatico',
   instalaciones: 'automatico',
   dispositivos: 'automatico',

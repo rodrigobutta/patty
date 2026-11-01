@@ -38,10 +38,12 @@ export interface Ruta {
   despues?: { lat: number; lon: number } | null;
 }
 
-export function Mapa({ puntos, calor = [], ruta, alto = 180, interactivo = false, etiquetasFijas = false, className = '' }: {
+export function Mapa({ puntos, calor = [], ruta, rutas, alto = 180, interactivo = false, etiquetasFijas = false, className = '' }: {
   puntos: PuntoMapa[];
   calor?: Calor[];
   ruta?: Ruta;
+  /** Varios recorridos separados: una línea por cada uno, sin unirlos entre sí (dos caminatas del mismo día, por ejemplo). */
+  rutas?: Ruta[];
   alto?: number;
   /** Arrastrar y hacer zoom (en el mapa grande); el mini queda quieto para no pelear con el scroll. */
   interactivo?: boolean;
@@ -50,9 +52,10 @@ export function Mapa({ puntos, calor = [], ruta, alto = 180, interactivo = false
   className?: string;
 }) {
   const caja = useRef<HTMLDivElement>(null);
-  const clave = JSON.stringify(puntos) + JSON.stringify(calor) + JSON.stringify(ruta ?? null);
+  const lineas = (rutas ?? (ruta ? [ruta] : [])).filter((r) => r.puntos.length);
+  const clave = JSON.stringify(puntos) + JSON.stringify(calor) + JSON.stringify(lineas);
   useEffect(() => {
-    if (!caja.current || (!puntos.length && !calor.length && !ruta?.puntos.length)) return;
+    if (!caja.current || (!puntos.length && !calor.length && !lineas.length)) return;
     let mapa: import('leaflet').Map | null = null;
     let vivo = true;
     void (async () => {
@@ -87,12 +90,12 @@ export function Mapa({ puntos, calor = [], ruta, alto = 180, interactivo = false
       }
       // El recorrido: una línea violeta por los puntos en orden, con el comienzo y el final marcados; lo del día anterior
       // o siguiente, punteado.
-      if (ruta?.puntos.length) {
-        const ll = ruta.puntos.map((x) => [x.lat, x.lon] as [number, number]);
+      for (const r of lineas) {
+        const ll = r.puntos.map((x) => [x.lat, x.lon] as [number, number]);
         const linea = L.polyline(ll, { color: ACENTO, weight: 4, opacity: 0.85, lineJoin: 'round', lineCap: 'round' });
         linea.addTo(mapa);
         capas.push(linea);
-        for (const [borde, extremo] of [[ruta.antes, ll[0]], [ruta.despues, ll[ll.length - 1]]] as const) {
+        for (const [borde, extremo] of [[r.antes, ll[0]], [r.despues, ll[ll.length - 1]]] as const) {
           if (!borde) continue;
           const l2 = L.polyline([[borde.lat, borde.lon], extremo], { color: ACENTO, weight: 3, opacity: 0.6, dashArray: '4 7' });
           l2.addTo(mapa);
@@ -113,15 +116,15 @@ export function Mapa({ puntos, calor = [], ruta, alto = 180, interactivo = false
         capa.addTo(mapa);
         capas.push(capa);
       }
-      if (puntos.length === 1 && !calor.length && !ruta?.puntos.length) mapa.setView([puntos[0].lat, puntos[0].lon], puntos[0].radio && puntos[0].radio > 400 ? 14 : 16);
+      if (puntos.length === 1 && !calor.length && !lineas.length) mapa.setView([puntos[0].lat, puntos[0].lon], puntos[0].radio && puntos[0].radio > 400 ? 14 : 16);
       else {
         // Los límites con las coordenadas (no con las capas: los círculos en metros todavía no saben medirse hasta que
         // el mapa tiene vista, y eso dejaba el mapa gris).
         const todos: Array<[number, number]> = [
           ...puntos.map((p) => [p.lat, p.lon] as [number, number]),
           ...calor.map((x) => [x.lat, x.lon] as [number, number]),
-          ...(ruta?.puntos ?? []).map((x) => [x.lat, x.lon] as [number, number]),
-          ...[ruta?.antes, ruta?.despues].filter((x): x is { lat: number; lon: number } => Boolean(x)).map((x) => [x.lat, x.lon] as [number, number]),
+          ...lineas.flatMap((r) => r.puntos).map((x) => [x.lat, x.lon] as [number, number]),
+          ...lineas.flatMap((r) => [r.antes, r.despues]).filter((x): x is { lat: number; lon: number } => Boolean(x)).map((x) => [x.lat, x.lon] as [number, number]),
         ];
         const b = L.latLngBounds(todos);
         if (todos.length === 1 || b.getNorthEast().equals(b.getSouthWest())) mapa.setView(todos[0], 15);

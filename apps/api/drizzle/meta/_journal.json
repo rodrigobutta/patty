@@ -372,6 +372,13 @@
       "when": 1793395895996,
       "tag": "0052_componentes_de_lo_que_se_come",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793494918713,
+      "tag": "0053_caminatas_descartadas",
+      "breakpoints": true
     }
   ]
 }

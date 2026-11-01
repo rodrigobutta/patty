@@ -2,13 +2,14 @@
 //   POST   /api/ubicacion            { persona_id, puntos: [{ lat, lon, instante?, precision? }] }   (la web, con sesión)
 //   POST   /api/ingesta/ubicacion    { lat, lon, instante? }   con el token de una fuente (un atajo del teléfono)
 //   GET    /api/ubicacion/dia?persona=1&fecha=2026-10-24      viajes, km y estadías del día
-//   GET    /api/ubicacion/camino?persona=1&desde=…&hasta=…    por dónde anduvo en ese rato (para compartir)
+//   GET    /api/ubicacion/camino?persona=1&desde=…&hasta=…&tipo=a_pie|vehiculo    por dónde anduvo en ese rato (para compartir)
 //   DELETE /api/ubicacion?persona=1                           borra todos los puntos y lo calculado con ellos
 //   GET/POST /api/ubicacion/lugares, PUT/DELETE /api/ubicacion/lugares/:id
 // De los puntos se guarda uno cada vez que la persona se movió más de 150 m o entró o salió de un lugar (el primero de cada
 // día siempre) y, además, los que la app nativa marca como tomados en movimiento con buena precisión, para dibujar el
-// recorrido. Con ellos se recalculan, por día, las mediciones de la fuente «Ubicación»: «Viajes»,
-// «Km recorridos» y una por cada estadía en un lugar (el concepto del lugar, con los minutos). Eso es lo que ve el motor.
+// recorrido. Con ellos se recalculan, por día, las mediciones de la fuente «Ubicación»: «Viajes», «Km en vehículo»,
+// «Km a pie» y una por cada estadía en un lugar (el concepto del lugar, con los minutos). Eso es lo que ve el motor. Qué fue
+// cada rato (a pie, en vehículo) lo decide siempre ubicacion/movimiento.ts.
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -20,7 +21,9 @@ import { persona, type PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, localAInstante } from '../lib/fechas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
-import { caminoLimpio, huboTrafico, metrosDe, minutosHabituales, paradasSinNombre, PRECISION_CAMINO_M, puntoDeFila, resumirDia, sinLosMalos, sinSaltos, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
+import { A_PIE_DIBUJO_M, clasificarDia, metrosAPie, recorteDe, viajesDe, type Pasos } from '../ubicacion/movimiento.js';
+import { pasosDe, revisarCaminatas } from '../ubicacion/pasos.js';
+import { caminoLimpio, huboTrafico, metrosDe, minutosHabituales, paradasSinNombre, PRECISION_CAMINO_M, puntoDeFila, rangoDe, resumirDia, sinLosMalos, sinSaltos, viajesDelDia, type LugarZona, type Punto } from '../ubicacion/resumen.js';
 import { agregarAlias, obtenerOCrearConcepto } from './conceptos.js';
 import { appDelViaje, viajesEnApps } from '../avisos/telefono.js';
 import { conceptoMedido } from './ingesta.js';
@@ -28,6 +31,9 @@ import { conceptoMedido } from './ingesta.js';
 export const NOMBRE_FUENTE = 'Ubicación';
 /** Los puntos (lo único con coordenadas) se borran solos pasado este tiempo; los resúmenes quedan. */
 export const DIAS_GUARDADOS = 90;
+/** Lo que se hizo en vehículo y lo que se caminó, medido con la ubicación. No se suman: son cosas distintas para los patrones. */
+export const KM_EN_VEHICULO = 'Km en vehículo';
+export const KM_A_PIE = 'Km a pie';
 
 type PersonaZona = Pick<PersonaAcceso, 'id' | 'zona_horaria'>;
 
@@ -66,7 +72,8 @@ export async function recalcular(tx: Tx, p: PersonaZona, fechas: string[]): Prom
   const f = { id: fuenteId, persona_id: p.id, tipo: 'ubicacion', zona_horaria: p.zona_horaria };
   const cache = new Map<string, number>();
   const viajes = await conceptoMedido(tx, f, 'Viajes', 'lugar', 'viajes', cache);
-  const km = await conceptoMedido(tx, f, 'Km recorridos', 'lugar', 'km', cache);
+  const km = await conceptoMedido(tx, f, KM_EN_VEHICULO, 'lugar', 'km', cache);
+  const kmAPie = await conceptoMedido(tx, f, KM_A_PIE, 'actividad', 'km', cache);
   await tx.execute(sql`DELETE FROM mediciones WHERE fuente_id = ${fuenteId} AND fecha IN ${fechas}`);
   const delDia = await filas<{ fecha: string; instante: string; lat: number; lon: number; precision_m: number | null }>(
     tx,
@@ -79,12 +86,19 @@ export async function recalcular(tx: Tx, p: PersonaZona, fechas: string[]): Prom
     l.push(puntoDeFila(x));
   }
   const valores: Array<typeof mediciones.$inferInsert> = [];
+  const pasos = await pasosDelRato(tx, p.id, delDia.map(puntoDeFila));
   for (const [fecha, lista] of porDia) {
-    const r = resumirDia(lista, ls);
+    const tramos = clasificarDia(lista, ls, pasos);
+    const r = resumirDia(lista, ls, pasos);
+    // Las caminatas de los pasos que estos puntos contradicen dejan de contar (y vuelven, si ya no).
+    const { desde, hasta } = rangoDe(lista);
+    await revisarCaminatas(tx, p.id, tramos, desde, hasta);
     const base = { persona_id: p.id, fuente_id: fuenteId, fecha };
     const comienzo = localAInstante(fecha, '05:00', p.zona_horaria).toISOString();
     valores.push({ ...base, concepto_id: viajes, inicio: comienzo, valor: r.viajes, unidad: 'viajes' });
     valores.push({ ...base, concepto_id: km, inicio: comienzo, valor: r.km, unidad: 'km' });
+    const aPie = Math.round(metrosAPie(tramos) / 100) / 10;
+    if (aPie > 0) valores.push({ ...base, concepto_id: kmAPie, inicio: comienzo, valor: aPie, unidad: 'km' });
     for (const e of r.estadias) {
       valores.push({
         ...base,
@@ -195,6 +209,13 @@ function radio(v: unknown): number {
   return Math.round(n);
 }
 
+/** Lo que se sabe de los pasos en el rato que cubren esos puntos. */
+async function pasosDelRato(db: Db | Tx, personaId: number, ps: Punto[]): Promise<Pasos | undefined> {
+  if (!ps.length) return undefined;
+  const { desde, hasta } = rangoDe(ps);
+  return pasosDe(db, personaId, desde, hasta);
+}
+
 export const rutasUbicacion = new Hono<Env>()
   .post('/', async (c) => {
     const d = await cuerpo(c);
@@ -216,7 +237,8 @@ export const rutasUbicacion = new Hono<Env>()
       c.var.db,
       sql`SELECT l.id, l.lat, l.lon, l.radio_m, c.nombre FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.persona_id = ${p.id}`,
     );
-    const r = resumirDia(ps.map(puntoDeFila), ls);
+    const delDia = ps.map(puntoDeFila);
+    const r = resumirDia(delDia, ls, await pasosDelRato(c.var.db, p.id, delDia));
     const nombre = new Map(ls.map((l) => [l.id, l.nombre]));
     const res: DiaUbicacion = {
       fecha: dia,
@@ -234,9 +256,10 @@ export const rutasUbicacion = new Hono<Env>()
     return c.json(res);
   })
   .get('/recorrido', async (c) => {
-    // ?persona=1&fecha=AAAA-MM-DD: el mapita del día (en el widget de viajes). Los puntos en orden, más el último del día
-    // anterior y el primero del siguiente si están cerca de la medianoche (un viaje que empezó antes o sigue después), y
-    // los lugares con nombre donde estuvo.
+    // ?persona=1&fecha=AAAA-MM-DD: por dónde anduvo en el día. Los puntos en orden, más el último del día anterior y el
+    // primero del siguiente si están cerca de la medianoche (un viaje que empezó antes o sigue después), y los lugares con
+    // nombre donde estuvo. Con &tipo=a_pie o &tipo=vehiculo, además `rutas`: solo lo de ese tipo, una línea por cada vez
+    // (el mapa de Movimiento no muestra los viajes, y el de Viajes no muestra lo caminado).
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const fecha = c.req.query('fecha');
     const dia = esFecha(fecha) ? fecha : diaDePatty(new Date(), p.zona_horaria);
@@ -264,10 +287,20 @@ export const rutasUbicacion = new Hono<Env>()
       sql`SELECT l.id, l.lat, l.lon, l.radio_m, c.nombre FROM lugares l JOIN conceptos c ON c.id = l.concepto_id WHERE l.persona_id = ${p.id}`,
     );
     const delDia = ps.map(puntoDeFila);
-    const r = resumirDia(delDia, ls);
+    const pasos = await pasosDelRato(c.var.db, p.id, delDia);
+    const r = resumirDia(delDia, ls, pasos);
     const visitados = new Set(r.estadias.map((e) => e.lugar_id));
+    const tipo = c.req.query('tipo');
+    const tramos = clasificarDia(delDia, ls, pasos);
+    const rutas =
+      tipo === 'a_pie'
+        ? tramos.filter((t) => t.tipo === 'a_pie' && t.metros >= A_PIE_DIBUJO_M).map((t) => ({ inicio: t.inicio, fin: t.fin, metros: t.metros, puntos: caminoLimpio(t.puntos) }))
+        : tipo === 'vehiculo'
+          ? viajesDe(tramos).map((v) => ({ inicio: v.inicio, fin: v.fin, metros: v.metros, puntos: v.camino ?? [] }))
+          : undefined;
     return c.json({
       puntos: caminoLimpio(sinSaltos(delDia)),
+      rutas: rutas?.map((x) => ({ ...x, inicio: new Date(x.inicio).toISOString(), fin: new Date(x.fin).toISOString(), km: Math.round(x.metros / 100) / 10 })),
       antes: antes ? { lat: antes.lat, lon: antes.lon, instante: new Date(antes.instante).toISOString() } : null,
       despues: despues ? { lat: despues.lat, lon: despues.lon, instante: new Date(despues.instante).toISOString() } : null,
       lugares: ls.filter((l) => visitados.has(l.id)).map((l) => ({ nombre: l.nombre, lat: l.lat, lon: l.lon, radio_m: l.radio_m })),
@@ -277,18 +310,36 @@ export const rutasUbicacion = new Hono<Env>()
   })
   .get('/camino', async (c) => {
     // ?persona=1&desde=ISO&hasta=ISO: por dónde anduvo en ese rato (una actividad o un viaje anotados), sin los saltos
-    // del GPS, y cuántos km fueron. Para el mapita de la imagen para compartir. Hasta 24 horas.
+    // del GPS, y cuántos km fueron. Para el mapita de la imagen para compartir. Hasta 24 horas. Con &tipo=a_pie o
+    // &tipo=vehiculo, solo lo de ese tipo: una caminata no dibuja el auto que se le cruzó, ni suma sus km.
     const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
     const desde = leerInstante(c.req.query('desde'), 'desde');
     const hasta = leerInstante(c.req.query('hasta'), 'hasta');
     if (hasta <= desde || hasta.getTime() - desde.getTime() > 24 * 3600000) throw new ErrorApi('El rato tiene que ser de hasta 24 horas.');
-    const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
-      c.var.db,
-      sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${desde.toISOString()} AND ${hasta.toISOString()} ORDER BY instante`,
-    );
-    const sinSalto = sinSaltos(ps.map(puntoDeFila));
-    const metros = metrosDe(sinLosMalos(sinSalto));
-    const limpio = caminoLimpio(sinSalto);
+    const tipo = c.req.query('tipo');
+    let delRato: Punto[];
+    let metros: number;
+    if (tipo === 'a_pie' || tipo === 'vehiculo') {
+      // Para saber qué fue ese rato hay que ver también lo de antes y lo de después (de dónde venía).
+      const contexto = 3 * 3600000;
+      const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
+        c.var.db,
+        sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${new Date(desde.getTime() - contexto).toISOString()} AND ${new Date(hasta.getTime() + contexto).toISOString()} ORDER BY instante`,
+      );
+      const todos = ps.map(puntoDeFila);
+      const ls = await filas<LugarZona>(c.var.db, sql`SELECT id, lat, lon, radio_m FROM lugares WHERE persona_id = ${p.id}`);
+      const recorte = recorteDe(clasificarDia(todos, ls, await pasosDelRato(c.var.db, p.id, todos)), tipo, desde.getTime(), hasta.getTime());
+      delRato = recorte.puntos;
+      metros = recorte.metros;
+    } else {
+      const ps = await filas<{ instante: string; lat: number; lon: number; precision_m: number | null }>(
+        c.var.db,
+        sql`SELECT instante, lat, lon, precision_m FROM puntos WHERE persona_id = ${p.id} AND instante BETWEEN ${desde.toISOString()} AND ${hasta.toISOString()} ORDER BY instante`,
+      );
+      delRato = sinSaltos(ps.map(puntoDeFila));
+      metros = metrosDe(sinLosMalos(delRato));
+    }
+    const limpio = caminoLimpio(delRato);
     // Con muchísimos puntos alcanza con uno de cada tanto (y siempre el último) para dibujarlo.
     const paso = Math.max(1, Math.ceil(limpio.length / 400));
     const camino = limpio.filter((_, i) => i % paso === 0 || i === limpio.length - 1);
@@ -321,8 +372,10 @@ export const rutasUbicacion = new Hono<Env>()
       if (l) l.push(puntoDeFila(x));
       else porDia.set(x.fecha, [puntoDeFila(x)]);
     }
-    const anteriores = [...porDia.values()].flatMap((l) => viajesDelDia(l, lugaresP));
-    const delDia = viajesDelDia(ps.map(puntoDeFila), lugaresP);
+    const puntosDia = ps.map(puntoDeFila);
+    const pasos = await pasosDelRato(c.var.db, p.id, [...puntosDia, ...[...porDia.values()].flat()]);
+    const anteriores = [...porDia.values()].flatMap((l) => viajesDelDia(l, lugaresP, pasos));
+    const delDia = viajesDelDia(puntosDia, lugaresP, pasos);
     // Los viajes en Uber, Cabify o DiDi que se vieron en sus avisos (con «Viajes en apps» prendido en el teléfono).
     const enApps = delDia.length ? await viajesEnApps(c.var.db, p.id, delDia[0].inicio, delDia[delDia.length - 1].fin) : [];
     const r: ViajeDelDia[] = delDia.map((v) => {
@@ -331,7 +384,7 @@ export const rutasUbicacion = new Hono<Env>()
       const km = Math.round(v.metros / 100) / 10;
       const habitual = minutosHabituales(v, anteriores);
       const trafico = huboTrafico(v, habitual);
-      const g = adivinarViaje(km, minutos);
+      const g = adivinarViaje(km, minutos, { bici: v.bici ?? false });
       const lento = v.lento_min ?? 0;
       // Lo que vio Patty, en palabras: el tráfico va antes que la velocidad.
       const pista = trafico
@@ -347,7 +400,7 @@ export const rutasUbicacion = new Hono<Env>()
         minutos,
         km,
         velocidad: Math.round(km / (minutos / 60)),
-        modo: app ? 'taxi' : g.modo === 'caminando' || g.modo === 'bici' ? g.modo : trafico ? 'auto' : g.modo,
+        modo: app ? 'taxi' : g.modo,
         pista: app ? `${traducir(c.var.idioma, 'En {app}, según su aviso', { app })} · ${pista}` : pista,
         app,
         pesado: g.pesado || trafico,
@@ -466,6 +519,8 @@ export const rutasUbicacion = new Hono<Env>()
     await c.var.db.transaction(async (tx) => {
       await tx.execute(sql`DELETE FROM puntos WHERE persona_id = ${p.id}`);
       await tx.execute(sql`DELETE FROM mediciones WHERE fuente_id IN (SELECT id FROM fuentes WHERE persona_id = ${p.id} AND tipo = 'ubicacion')`);
+      // Sin puntos no hay con qué contradecir a los pasos: las caminatas descartadas vuelven.
+      await revisarCaminatas(tx, p.id, [], 0, Date.now() + 86400000);
     });
     return c.json({ ok: true });
   })

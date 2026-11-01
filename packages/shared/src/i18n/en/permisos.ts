@@ -473,7 +473,6 @@ export const PERMISOS: Record<string, string> = {
   '🦉 Cómo fue tu noche': '🦉 How your night went',
   'salida': 'start',
   'llegada': 'end',
-  'punteado: del día anterior o siguiente': 'dotted: from the previous or next day',
   '1 caminata': '1 walk',
   '{n} caminatas': '{n} walks',
   'Caminatas (10 minutos o más caminando seguido):': 'Walks (10 minutes or more of continuous walking):',
@@ -1048,4 +1047,7 @@ export const PERMISOS: Record<string, string> = {
   "última {v}": "latest {v}",
   "al día": "up to date",
   "Bajarla": "Get it",
+  "{n} km a pie": "{n} km on foot",
+  "A pie": "On foot",
+  "En vehículo": "By vehicle",
 };

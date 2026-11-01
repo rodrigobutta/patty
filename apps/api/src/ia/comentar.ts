@@ -11,7 +11,7 @@ const DIAS_MIRADOS = 7;
 /** Pocos y buenos: uno o dos por día. */
 const MAX_COMENTARIOS = 2;
 /** Lo que llega solo que vale la pena cruzar con lo anotado (por día). */
-const AUTOMATICOS = ['Horas de sueño', 'Pasos', 'Tiempo de pantalla', 'Viajes', 'Km recorridos', 'Minutos de ejercicio'];
+const AUTOMATICOS = ['Horas de sueño', 'Pasos', 'Tiempo de pantalla', 'Viajes', 'Km en vehículo', 'Km a pie', 'Minutos de ejercicio'];
 const MAX_FILAS = 250;
 
 export interface Comentario {

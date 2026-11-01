@@ -297,6 +297,26 @@ export const mediciones = pgTable(
   ],
 );
 
+/**
+ * Las caminatas de los pasos que la ubicación contradice (el teléfono saltando en el auto): salen de `mediciones` para que
+ * nada las cuente, pero quedan acá. Si después los puntos dicen otra cosa, vuelven (ver ubicacion/pasos.ts).
+ */
+export const caminatasDescartadas = pgTable(
+  'caminatas_descartadas',
+  {
+    id: idGrande(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    inicio: instante('inicio').notNull(),
+    fin: instante('fin').notNull(),
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    valor: doublePrecision('valor').notNull(),
+    creado: creado(),
+  },
+  (t) => [uniqueIndex('caminatas_descartadas_idx').on(t.persona_id, t.inicio)],
+);
+
 // ---------- Ubicación ----------
 
 /**

@@ -57,7 +57,7 @@ export async function numerosDeSemana(db: Db, personaId: number, lunes: string):
     pasos: r1(await med('Pasos', 'avg')),
     caminatas_min: r1(await med('Caminata', 'sum')),
     viajes: r1(await med('Viajes', 'sum')),
-    km: r1(await med('Km recorridos', 'sum')),
+    km: r1(await med('Km en vehículo', 'sum')),
     pantalla_min: r1(await med('Tiempo de pantalla', 'avg')),
     reuniones_h: r1(await med('Horas de reuniones', 'sum')),
     animo: r1(animo?.v),

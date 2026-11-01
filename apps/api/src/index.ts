@@ -23,8 +23,8 @@ if (modo === 'completo' || modo === 'worker') {
   arrancarRecordatorios(db);
   arrancarPatronesDeNoche(db);
   arrancarVersionApp(db);
-  // Los viajes se cuentan distinto desde la 1.20.1 (puntos cada ~150 m, sin contar los paseos): se recalculan una vez.
-  void recalcularSiCambio(db, 'viajes-parada-10-min').catch((e) => console.error('Recalcular ubicación:', e));
+  // Cuando cambia la forma de contar se recalcula una vez lo guardado. Ahora: a pie y en vehículo por separado (ubicacion/movimiento.ts).
+  void recalcularSiCambio(db, 'a-pie-y-en-vehiculo').catch((e) => console.error('Recalcular ubicación:', e));
 }
 
 serve({ fetch: (modo === 'worker' ? appWorker() : crearApp()).fetch, port: config.port, hostname: config.host }, (info) => {
