@@ -74,7 +74,7 @@ export async function compartibleActividad(o: { persona: Persona; concepto: stri
   return {
     que: esViaje ? 'viaje' : 'actividad',
     tarjeta,
-    opcion: tarjeta.camino ? { rotulo: t('Mostrar el mapa de por dónde fui'), sin: { ...tarjeta, camino: undefined } } : undefined,
+    opcion: tarjeta.camino ? { rotulo: t('Mostrar el mapa de por dónde fui'), sin: { ...tarjeta, camino: undefined }, apagada: true } : undefined,
   };
 }
 
@@ -134,6 +134,6 @@ export function compartibleNoche(o: {
   return {
     que: 'sueno',
     tarjeta,
-    opcion: comentario ? { rotulo: t('Sumar lo que dijo Patty de la noche'), sin: { ...tarjeta, comentario: undefined } } : undefined,
+    opcion: comentario ? { rotulo: t('Sumar lo que dijo Patty de la noche'), sin: { ...tarjeta, comentario: undefined }, apagada: true } : undefined,
   };
 }

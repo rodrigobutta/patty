@@ -22,8 +22,8 @@ export interface Compartible {
   /** Lo que va escrito junto a la imagen y el link, si no son los de siempre (una competencia lleva su invitación). */
   texto?: string;
   link?: string;
-  /** Algo que se puede sacar de la imagen: el tilde (prendido de entrada) y la tarjeta sin eso. */
-  opcion?: { rotulo: string; sin: Tarjeta };
+  /** Algo que se puede sacar de la imagen: el tilde (prendido de entrada, salvo `apagada`) y la tarjeta sin eso. */
+  opcion?: { rotulo: string; sin: Tarjeta; apagada?: boolean };
   /** Lo que se le aclara antes de mandarla, si la imagen sí lleva algo que anotó (lo que comió, su objetivo). */
   nota?: string;
 }
@@ -48,7 +48,7 @@ const TEXTOS: Record<Compartible['que'], string> = {
 
 export function HojaCompartir({ que, tarjeta, opcion, nota, texto, link: linkPropio, alCerrar }: Compartible & { alCerrar(): void }) {
   const { usuario } = useEstado();
-  const [con, setCon] = useState(true);
+  const [con, setCon] = useState(!opcion?.apagada);
   const [imagenes, setImagenes] = useState<Record<'con' | 'sin', { blob: Blob; url: string } | undefined>>({ con: undefined, sin: undefined });
   const [error, setError] = useState(false);
   const [enviando, setEnviando] = useState(false);

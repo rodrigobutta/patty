@@ -76,9 +76,11 @@ describe('cada caminata o viaje elegido', () => {
     await userEvent.click(elegir);
     await screen.findByText('Av. Cabildo 2100');
     const hecho = await dibujada();
-    expect(dibujadas[0]).toMatchObject({ tipo: 'actividad', titulo: 'Caminata', camino });
+    // El mapa puede mostrar dónde vive: sale solo si se tilda.
+    expect(dibujadas[0]).toMatchObject({ tipo: 'actividad', titulo: 'Caminata' });
+    expect(dibujadas[0]).not.toHaveProperty('camino', camino);
     expect(hecho).not.toMatch(/Casa|Cabildo|Ana/);
-    expect(screen.getByLabelText('Mostrar el mapa de por dónde fui')).toBeTruthy();
+    expect((screen.getByLabelText('Mostrar el mapa de por dónde fui') as HTMLInputElement).checked).toBe(false);
   });
 
   it('en vehículo es un viaje, y un lector no comparte', async () => {
