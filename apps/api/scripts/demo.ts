@@ -226,6 +226,9 @@ for (let k = -9; k <= 0; k++) {
       tramo(SUPER, CASA, t('19:05'), 8);
     }
   } else {
+    // El fin de semana también hay un viaje en auto (la vuelta por la plaza es a pie y no cuenta como viaje).
+    tramo(CASA, OFICINA, t('08:40'), 16);
+    tramo(OFICINA, CASA, t('09:15'), 16);
     tramo(CASA, PLAZA, t('10:20'), 12);
     tramo(PLAZA, { lat: PLAZA.lat + 0.004, lon: PLAZA.lon + 0.003 }, t('10:35'), 20);
     tramo({ lat: PLAZA.lat + 0.004, lon: PLAZA.lon + 0.003 }, CASA, t('10:58'), 18);
