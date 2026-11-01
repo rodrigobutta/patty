@@ -81,6 +81,43 @@ export const usarEnvioPrueba = (f: typeof enviarPrueba) => {
 /** Si se pueden mandar avisos (Firebase o APNs configurados, o el envío de las pruebas). */
 export const hayEnvio = (): boolean => enviarPrueba !== null || pushDisponible();
 
+/** Para las pruebas: reemplaza el envío real de los mensajes silenciosos. */
+let silenciosoPrueba: ((token: string, datos: Record<string, string>) => Promise<'ok' | 'invalido'>) | null = null;
+export const usarSilenciosoPrueba = (f: typeof silenciosoPrueba) => {
+  silenciosoPrueba = f;
+};
+/** Si se pueden mandar mensajes silenciosos a Android (solo Firebase, o el envío de las pruebas). */
+export const haySilencioso = (): boolean => silenciosoPrueba !== null || cuenta() !== null;
+
+/**
+ * Un mensaje solo de datos: no muestra nada en el teléfono y lo atiende AvisosPushService. Prioridad alta para que llegue
+ * aunque el teléfono esté dormido; si en 10 minutos no llegó, ya no sirve.
+ */
+export const mensajeSilencioso = (token: string, datos: Record<string, string>) => ({
+  message: { token, data: datos, android: { priority: 'high', ttl: '600s', collapse_key: datos.tipo } },
+});
+
+export async function enviarSilencioso(token: string, datos: Record<string, string>): Promise<'ok' | 'invalido' | 'error'> {
+  if (silenciosoPrueba) return silenciosoPrueba(token, datos);
+  const c = cuenta();
+  if (!c) return 'error';
+  try {
+    const r = await fetch(`https://fcm.googleapis.com/v1/projects/${c.project_id}/messages:send`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${await tokenDeAcceso(c)}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(mensajeSilencioso(token, datos)),
+    });
+    if (r.ok) return 'ok';
+    const texto = await r.text();
+    if (r.status === 404 || texto.includes('UNREGISTERED')) return 'invalido';
+    console.error(`Firebase respondió ${r.status}: ${texto.slice(0, 300)}`);
+    return 'error';
+  } catch (e) {
+    console.error('No se pudo mandar el mensaje silencioso:', e);
+    return 'error';
+  }
+}
+
 /**
  * Manda un aviso a un teléfono. "invalido": el token ya no sirve (se desinstaló la app) y hay que olvidarlo. Los
  * iPhone (tokens "ios:…") van directo por APNs; los Android, por Firebase.

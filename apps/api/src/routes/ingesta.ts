@@ -81,10 +81,15 @@ export const rutasIngesta = new Hono<Env>()
   .post('/ubicacion', async (c) => {
     const f = await fuenteDelPedido(c);
     const d = await cuerpo(c);
+    // El seguimiento avisa que sigue vivo, sin punto para mandar (quieto y sin ubicación nueva).
+    if (d.latido === true) {
+      await c.var.db.execute(sql`UPDATE fuentes SET ultimo_uso = now(), ultima_ubicacion = now() WHERE id = ${f.id}`);
+      return c.json({ ok: true });
+    }
     const lista = (Array.isArray(d.puntos) ? d.puntos : [d]).map(puntoDeLaApp);
     const p = { id: f.persona_id, zona_horaria: f.zona_horaria };
     const { ultimo, ...r } = await c.var.db.transaction(async (tx) => {
-      await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now() WHERE id = ${f.id}`);
+      await tx.execute(sql`UPDATE fuentes SET ultimo_uso = now(), ultima_ubicacion = now() WHERE id = ${f.id}`);
       return guardarPuntos(tx, p, lista);
     });
     // Con Patty cerrada nadie pide el clima: lo pide la ubicación, salvo que esté apagado en ese teléfono (?clima=no).

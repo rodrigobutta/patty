@@ -3,6 +3,7 @@
 // queda después de eso (un crónico y una semana sin abrir Patty) lo manda el servidor por push: a la hora de la toma y,
 // si no se marcó, a la media hora. En Android con push, el teléfono no programa nada y los manda todos el servidor, que
 // sabe qué se marcó: así junta en un solo aviso las tomas olvidadas. Corre cada minuto.
+import { revisarDespertar } from './despertar.js';
 import { sql } from 'drizzle-orm';
 import { correr } from '../lib/salud.js';
 import { apodoDe, COMO_ME_SENTI, dosisTexto, ESTADOS, esIdioma, ITEMS_PUNTOS, traducir, type Idioma, type Toma } from 'shared';
@@ -376,13 +377,15 @@ const HORA_PERMISOS = '12:00';
 const PERMISO_VECES = 3;
 const PERMISO_CADA_DIAS = 3;
 
-export type PermisoFaltante = 'ubicacion' | 'telefono' | 'salud';
+export type PermisoFaltante = 'ubicacion' | 'bateria' | 'telefono' | 'salud';
 
 /** Qué le falta a un teléfono, en orden de importancia, según lo que la app contó de él (ver lib/estadoTelefono). */
 export function permisosFaltantes(plataforma: string, p: Record<string, unknown>): PermisoFaltante[] {
   if (plataforma !== 'android' && plataforma !== 'ios') return [];
   const r: PermisoFaltante[] = [];
   if (p.ubicacion && p.ubicacion !== 'siempre') r.push('ubicacion');
+  // Solo importa con la ubicación en segundo plano, y solo lo cuenta una app que lo puede pedir.
+  if (plataforma === 'android' && p.ubicacion === 'siempre' && p.bateria === 'no') r.push('bateria');
   if (plataforma === 'android' && (p.uso_apps === 'no' || p.llamadas === 'no')) r.push('telefono');
   if (p.salud === 0) r.push('salud');
   return r;
@@ -392,6 +395,7 @@ export function avisoDePermiso(permiso: PermisoFaltante, apodo: string, i: Idiom
   const v = { apodo };
   const textos: Record<PermisoFaltante, [string, string]> = {
     ubicacion: ['📍 Activá la ubicación «siempre»', apodo ? '{apodo}, así anoto el clima y tus lugares sola, aunque no abras la app. Tocá y te explico cómo.' : 'Así anoto el clima y tus lugares sola, aunque no abras la app. Tocá y te explico cómo.'],
+    bateria: ['🔋 Que el teléfono no me frene', 'Tu teléfono me cierra cuando no estás mirando, y dejo de anotar tus viajes y lugares. Tocá y te digo cómo evitarlo.'],
     telefono: ['📱 Falta el acceso al uso del teléfono', 'Para contar cuánto usás cada app y las llamadas (nunca números ni nombres). Tocá y te digo cómo.'],
     salud: ['⌚ Conectá el reloj o la salud del teléfono', 'Para sumar tu sueño, pasos y pulso solos. Tocá y te muestro cómo.'],
   };
@@ -454,6 +458,7 @@ export function arrancarRecordatorios(db: Db): void {
     await correr(db, 'Permisos que faltan', async () => void (await revisarPermisos(db)));
     await correr(db, 'Puntos', async () => void (await revisarPuntos(db)));
     await correr(db, 'Encuesta de la noche', async () => void (await revisarEncuesta(db)));
+    await correr(db, 'Despertar teléfonos callados', async () => void (await revisarDespertar(db)));
     // Una vez por día, lo viejo se borra.
     if (vueltas++ % 1440 === 0) {
       await correr(db, 'Limpieza', async () => {

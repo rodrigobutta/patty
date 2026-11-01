@@ -267,6 +267,8 @@ export const fuentes = pgTable('fuentes', {
   token_hash: text('token_hash').notNull().unique(),
   activo: boolean('activo').notNull().default(true),
   ultimo_uso: instante('ultimo_uso'),
+  /** La última vez que el seguimiento de la ubicación de esta fuente dio señales (un punto o un latido): ver push/despertar.ts. */
+  ultima_ubicacion: instante('ultima_ubicacion'),
   creado: creado(),
 });
 

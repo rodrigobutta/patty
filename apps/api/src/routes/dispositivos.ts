@@ -25,7 +25,7 @@ export const rutasDispositivos = new Hono<Env>()
     return c.json({ ok: true });
   })
   .post('/estado', async (c) => {
-    // {instalacion, plataforma, permisos, activos, ultimos}: cómo está configurada la app en este dispositivo.
+    // {instalacion, plataforma, permisos, activos, ultimos, vigia}: cómo está configurada la app en este dispositivo.
     const d = await cuerpo(c);
     const id = texto(d.instalacion);
     if (!/^[a-f0-9]{8,64}$/.test(id)) throw new ErrorApi('Instalación inválida.');
@@ -35,8 +35,9 @@ export const rutasDispositivos = new Hono<Env>()
     // La versión de la web y de la app instalada (para ver en la administración quién está desactualizado).
     const v = (d.version ?? {}) as Record<string, unknown>;
     const version = { web: texto(v.web).slice(0, 20) || null, commit: texto(v.commit).slice(0, 12) || null, app: texto(v.app).slice(0, 20) || null };
-    const estado = { permisos: d.permisos ?? {}, activos: d.activos ?? {}, ultimos: d.ultimos ?? {}, token, version };
-    if (JSON.stringify(estado).length > 4000) throw new ErrorApi('Estado demasiado grande.');
+    // Vigia: si el seguimiento está andando y la bitácora de lo que le pasó (solo lo manda una app que ya sabe despertarse).
+    const estado = { permisos: d.permisos ?? {}, activos: d.activos ?? {}, ultimos: d.ultimos ?? {}, token, version, vigia: d.vigia ?? null };
+    if (JSON.stringify(estado).length > 8000) throw new ErrorApi('Estado demasiado grande.');
     await c.var.db.execute(sql`INSERT INTO instalaciones (id, usuario_id, plataforma, estado) VALUES (${id}, ${c.var.usuario.id}, ${plataforma}, ${JSON.stringify(estado)}::jsonb)
       ON CONFLICT (id) DO UPDATE SET usuario_id = EXCLUDED.usuario_id, plataforma = EXCLUDED.plataforma, estado = EXCLUDED.estado, actualizado = now()`);
     return c.json({ ok: true });

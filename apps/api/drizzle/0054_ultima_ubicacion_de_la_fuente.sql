@@ -1,0 +1,1 @@
+ALTER TABLE "fuentes" ADD COLUMN "ultima_ubicacion" timestamp with time zone;
