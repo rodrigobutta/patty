@@ -115,7 +115,16 @@ export function useOrganizarWidgets({ grilla, ajustes, habilitado, alSoltar, alO
 
   const tragarLoQueSigue = () => {
     tragar.current = true;
-    setTimeout(() => (tragar.current = false), 500);
+    // El click del mismo dedo también puede caer en la hoja que se acaba de abrir, y la cerraría: se traga en todo el documento.
+    const comer = (e: Event) => {
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    window.addEventListener('click', comer, { capture: true, once: true });
+    setTimeout(() => {
+      tragar.current = false;
+      window.removeEventListener('click', comer, { capture: true });
+    }, 500);
   };
   /** Los portales (las hojas de cada widget) también pasan por acá en React: esos toques no son del widget. */
   const esDeAdentro = (e: { currentTarget: EventTarget; target: EventTarget }) => (e.currentTarget as Node).contains(e.target as Node);

@@ -76,6 +76,17 @@ async function hasta(c, condicion, que, ms = 8000) {
 }
 const contiene = (t) => `document.body.innerText.includes(${JSON.stringify(t)})`;
 
+const foto = async (c, n) => {
+  if (process.env.E2E_FOTOS) await captura(c, path.join(process.env.E2E_FOTOS, `${n}.jpg`));
+};
+/** Lleva a la pantalla un elemento y devuelve su centro, para tocarlo con el dedo. */
+const centro = async (c, sel) => {
+  await hasta(c, `!!document.querySelector('${sel}')`, sel);
+  await js(c, `document.querySelector('${sel}').scrollIntoView({ block: 'center' })`);
+  await espera(500);
+  return js(c, `(() => { const r = document.querySelector('${sel}').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+};
+
 const PRUEBAS = {
   async 'el Día abre con lo anotado'(c) {
     await hasta(c, contiene('Hoy'), 'se ve "Hoy"');
@@ -134,6 +145,84 @@ const PRUEBAS = {
     await espera(2800); // el festejo tapa la pantalla un momento
     await tocar(c, 'nav button', 'Día');
     await hasta(c, `!!document.querySelector('.seguimiento-dia')`, 'la tarjeta en el Día');
+  },
+  async 'widgets: mantener apretado abre las opciones'(c) {
+    const p = await centro(c, '.widget-auto');
+    await c.enviar('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [p] });
+    await espera(600);
+    await c.enviar('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await hasta(c, contiene('Ocultar'), 'las opciones del widget');
+    await espera(800);
+    await foto(c, 'widget-opciones');
+  },
+  async 'widgets: arrastrar los reordena'(c) {
+    const nombres = `JSON.stringify([...document.querySelectorAll('.widget-auto')].map((w) => w.getBoundingClientRect().top + ':' + w.innerText))`;
+    await hasta(c, `document.querySelectorAll('.widget-auto').length > 2`, 'varios widgets');
+    const orden = async () => JSON.parse(await js(c, nombres)).sort((x, y) => parseFloat(x) - parseFloat(y)).map((x) => x.split(':').slice(1).join(':'));
+    const antes = await orden();
+    const p = await centro(c, '.widget-auto');
+    const q = await js(c, `(() => { const r = [...document.querySelectorAll('.widget-auto')].at(-1).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    await c.enviar('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [p] });
+    await espera(600);
+    for (let i = 1; i <= 8; i++) {
+      await c.enviar('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p.x + ((q.x - p.x) * i) / 8, y: p.y + ((q.y - p.y) * i) / 8 }] });
+      await espera(60);
+    }
+    await foto(c, 'widget-arrastrando');
+    await c.enviar('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await espera(700);
+    const despues = await orden();
+    if (JSON.stringify(antes) === JSON.stringify(despues)) throw new Error(`No cambió el orden: ${antes.join(' / ')}`);
+  },
+  async 'cómo venís: semana y mes'(c) {
+    await hasta(c, `!!document.querySelector('.tendencias')`, 'la sección');
+    await js(c, `document.querySelector('.tendencias').scrollIntoView()`);
+    await espera(1500);
+    await foto(c, 'tendencias-semana');
+    await tocar(c, '.tendencias button', 'Mes');
+    await espera(1500);
+    await foto(c, 'tendencias-mes');
+  },
+  async 'objetivos: elegir uno y verlo en el Día'(c) {
+    await tocar(c, 'nav button', 'Más');
+    await espera(800);
+    await tocar(c, '.menu-mas li button, .menu-mas li', 'Objetivos');
+    await hasta(c, contiene('Dormir mejor'), 'las sugerencias');
+    await foto(c, 'objetivos-sugerencias');
+    await tocar(c, 'button', 'Dormir mejor');
+    await espera(2500);
+    await foto(c, 'objetivos-plan');
+    await tocar(c, 'nav button', 'Día');
+    await hasta(c, contiene('Dormir mejor'), 'la tarjeta del objetivo en el Día');
+    await espera(1000);
+    await foto(c, 'objetivos-dia');
+  },
+  async 'remedios: efectos y suplementos'(c) {
+    await tocar(c, 'nav button', 'Más');
+    await espera(800);
+    await tocar(c, '.menu-mas li button, .menu-mas li', 'Remedios');
+    await hasta(c, contiene('itamina'), 'la sección de vitaminas');
+    await foto(c, 'remedios');
+  },
+  async 'competencias: crear una'(c) {
+    await tocar(c, 'nav button', 'Más');
+    await espera(800);
+    await tocar(c, '.menu-mas li button, .menu-mas li', 'Competencias');
+    await espera(1200);
+    await foto(c, 'competencias');
+  },
+  async 'alergias: el chip y el editor'(c) {
+    await tocar(c, '.boton-buho');
+    await espera(500);
+    await hasta(c, contiene('Con alergia'), 'el chip');
+    await foto(c, 'chips-alergia');
+  },
+  async 'widgets: elegir cuáles ver'(c) {
+    await tocar(c, 'nav button', 'Más');
+    await espera(800);
+    await tocar(c, '.menu-mas li button, .menu-mas li', 'Widgets del Día');
+    await espera(1000);
+    await foto(c, 'elegir-widgets');
   },
   async 'Descubrir muestra los patrones'(c) {
     await tocar(c, 'nav button', 'Descubrir');

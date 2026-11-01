@@ -14,13 +14,26 @@ const RESPUESTAS: Array<{ clave: RespuestaConsejo; texto: string }> = [
   { clave: 'no', texto: 'No' },
 ];
 
+/**
+ * Un solo pedido a la vez. El servidor arma el consejo una vez por día y, mientras tanto, a otro pedido le contesta que no hay;
+ * si la pantalla se vuelve a montar en el medio, esa respuesta vacía dejaría sin tarjeta hasta la próxima vez.
+ */
+const enCurso = new Map<number, Promise<ConsejoDelDia | null>>();
+function pedirConsejo(personaId: number): Promise<ConsejoDelDia | null> {
+  const ya = enCurso.get(personaId);
+  if (ya) return ya;
+  const p = api<ConsejoDelDia | null>('GET', `/api/metas/dia?persona=${personaId}`).finally(() => enCurso.delete(personaId));
+  enCurso.set(personaId, p);
+  return p;
+}
+
 export function MetaDelDia({ persona, hoy, puedeEscribir }: { persona: Persona; hoy: string; puedeEscribir: boolean }) {
   const [c, setC] = useState<ConsejoDelDia | null>(null);
   useEffect(() => {
     let vivo = true;
     setC(null);
     // Si el de hoy todavía no está, el servidor lo arma (puede tardar unos segundos): mientras, no se muestra nada.
-    api<ConsejoDelDia | null>('GET', `/api/metas/dia?persona=${persona.id}`)
+    pedirConsejo(persona.id)
       .then((x) => vivo && setC(x?.estado === 'nuevo' ? x : null))
       .catch(() => {});
     return () => {
