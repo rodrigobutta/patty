@@ -134,6 +134,15 @@ public class MascotaPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Si el widget de Patty ya está en la pantalla de inicio. */
+    @PluginMethod
+    public void tieneWidget(PluginCall call) {
+        com.getcapacitor.JSObject r = new com.getcapacitor.JSObject();
+        android.appwidget.AppWidgetManager am = android.appwidget.AppWidgetManager.getInstance(getContext());
+        r.put("tiene", am.getAppWidgetIds(new ComponentName(getContext(), WidgetPatty.class)).length > 0);
+        call.resolve(r);
+    }
+
     /** Pide al lanzador que agregue el widget a la pantalla de inicio (el sistema muestra su cartel para ubicarlo). */
     @PluginMethod
     public void agregarWidget(PluginCall call) {

@@ -1050,4 +1050,7 @@ export const PERMISOS: Record<string, string> = {
   "{n} km a pie": "{n} km on foot",
   "A pie": "On foot",
   "En vehículo": "By vehicle",
+  "¿Me ponés en tu pantalla de inicio?": "Want me on your home screen?",
+  "Con un toque me contás cómo te sentís, prendés la voz para contarme tu día o sacás una foto del plato, sin buscar la app.": "With one tap you tell me how you feel, turn on your voice to tell me about your day, or take a photo of your plate, without looking for the app.",
+  "Agregarlo": "Add it",
 };

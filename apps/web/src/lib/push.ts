@@ -17,6 +17,7 @@ const Mascota = registerPlugin<{
   guardarSesion(o: { api: string | null; token: string | null }): Promise<void>;
   guardarWidget(o: { persona_id?: number; categoria_id?: number }): Promise<void>;
   agregarWidget(): Promise<{ pedido: boolean }>;
+  tieneWidget(): Promise<{ tiene: boolean }>;
   addListener(evento: 'avisoTocado', f: (datos: Record<string, string>) => void): Promise<{ remove(): Promise<void> }>;
 }>('Mascota');
 
@@ -162,6 +163,16 @@ export async function agregarWidget(): Promise<boolean> {
   if (plataforma() !== 'android') return false;
   try {
     return (await Mascota.agregarWidget()).pedido;
+  } catch {
+    return false;
+  }
+}
+
+/** Si el widget ya está en la pantalla de inicio (una app vieja no sabe decirlo: como si no estuviera). */
+export async function tieneWidget(): Promise<boolean> {
+  if (plataforma() !== 'android') return false;
+  try {
+    return (await Mascota.tieneWidget()).tiene;
   } catch {
     return false;
   }
