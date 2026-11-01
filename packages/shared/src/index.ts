@@ -4,6 +4,7 @@ export * from './i18n.js';
 export * from './mascota.js';
 export * from './medios.js';
 export * from './avisos.js';
+export * from './competencias.js';
 import type { Medio } from './medios.js';
 
 /**

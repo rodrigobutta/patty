@@ -643,6 +643,47 @@ export const supervisiones = pgTable(
 );
 
 /**
+ * Una competencia entre personas: qué se mide (solo hábitos: shared/competencias.ts), de qué día a qué día (días de Patty)
+ * y el código del link de invitación. Quién participa está en `competencia_participantes`.
+ */
+export const competencias = pgTable('competencias', {
+  id: id(),
+  codigo: text('codigo').notNull().unique(),
+  /** El nombre que le pusieron; null: se arma con la métrica y la duración ("Pasos de la semana"). */
+  nombre: text('nombre'),
+  metrica: text('metrica', { enum: ['pasos', 'racha', 'dias', 'sueno', 'km'] }).notNull(),
+  duracion: text('duracion', { enum: ['semana', 'mes'] }).notNull(),
+  desde: date('desde', { mode: 'string' }).notNull(),
+  hasta: date('hasta', { mode: 'string' }).notNull(),
+  /** La zona de quien la creó: de ahí sale cuándo termina. */
+  zona_horaria: text('zona_horaria').notNull(),
+  creador_id: integer('creador_id').references(() => usuarios.id, { onDelete: 'set null' }),
+  creado: creado(),
+});
+
+/**
+ * Quién aceptó participar en cada competencia (`acepto`: cuándo dijo que sí, después de ver qué se comparte). Es lo único
+ * que deja ver el número de alguien: al salir se borra la fila y su número deja de compartirse. No se guarda ningún
+ * número: se calcula cada vez, solo de los que siguen.
+ */
+export const competenciaParticipantes = pgTable(
+  'competencia_participantes',
+  {
+    competencia_id: integer('competencia_id')
+      .notNull()
+      .references(() => competencias.id, { onDelete: 'cascade' }),
+    usuario_id: integer('usuario_id')
+      .notNull()
+      .references(() => usuarios.id, { onDelete: 'cascade' }),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    acepto: instante('acepto').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.competencia_id, t.usuario_id] }), index('competencia_participantes_usuario_idx').on(t.usuario_id)],
+);
+
+/**
  * Un código corto que muestra en pantalla quien quiere ser supervisado: el supervisor lo escribe y la supervisión queda
  * aceptada, sin invitación. Vence a los 15 minutos y sirve una sola vez.
  */

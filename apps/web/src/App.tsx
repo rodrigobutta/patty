@@ -42,6 +42,8 @@ import { useReportarEstado } from './lib/estadoTelefono';
 import { t } from './lib/idioma';
 import { useMedirUso } from './lib/uso';
 import { alPedirIrAMas } from './lib/navegar';
+import { leerInvitacion, olvidarInvitacion } from './lib/competencias';
+import { InvitacionCompetencia } from './pantallas/InvitacionCompetencia';
 
 type Pestana = 'hoy' | 'patrones' | 'mas';
 
@@ -71,6 +73,8 @@ export function App() {
     if (fase === 'listo' && usuarioId) paginaVista(`/${pestana === 'patrones' ? 'descubrir' : pestana}`, pestana);
   }, [fase, pestana, usuarioId]);
   const [bienvenida, setBienvenida] = useState(() => !bienvenidaVista());
+  // Se llegó por el link de una competencia: la invitación espera a que se entre y se termine la bienvenida.
+  const [invitacion, setInvitacion] = useState(leerInvitacion);
   // En la web, patty.today es siempre la presentación y la app vive en patty.today/app (#admin y #entrar también abren la
   // app). En el teléfono, siempre la app.
   const verPresentacion = !esNativa() && !location.pathname.startsWith('/app') && !['#admin', '#entrar'].includes(location.hash);
@@ -156,7 +160,14 @@ export function App() {
   if (fase === 'arrancando') return <div className="centro suave">{t('Abriendo Patty…')}</div>;
   if (fase === 'error') return <div className="centro"><p className="neg">{error}</p><button className="btn" onClick={() => location.reload()}>{t('Reintentar')}</button></div>;
   if (verPresentacion) return <Presentacion alEntrar={salirDePresentacion} conSesion={fase === 'listo'} />;
-  if (fase === 'entrar' || fase === 'configurar') return <Entrar configurar={fase === 'configurar'} />;
+  if (fase === 'entrar' || fase === 'configurar') {
+    return (
+      <>
+        {invitacion ? <p className="banda-invitacion" role="status">{t('🏆 Te invitaron a una competencia: entrá y te cuento de qué se trata.')}</p> : null}
+        <Entrar configurar={fase === 'configurar'} />
+      </>
+    );
+  }
   if (bienvenida) return <Bienvenida alTerminar={() => { medir('bienvenida_terminada', invitadoPor() ? { ref: invitadoPor()! } : {}); setBienvenida(false); }} />;
   if (!persona) return <NuevaPersona primera />;
   if (!permisosListo && ofrecerPermisos() && (perfilListo || !ofrecerPerfil(persona))) {
@@ -219,6 +230,7 @@ export function App() {
           </button>
         ))}
       </nav>
+      {invitacion ? <InvitacionCompetencia codigo={invitacion} alCerrar={() => { olvidarInvitacion(); setInvitacion(null); }} /> : null}
       {aviso ? <div className="aviso" role="status">{aviso}</div> : null}
       <Festejo />
     </div>

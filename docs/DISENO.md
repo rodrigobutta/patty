@@ -537,6 +537,27 @@ Para auditar qué tan bien se guardan los datos y corregirlos (solo administrado
   `llegada_invitacion` y guarda el código; la bienvenida lo manda en `bienvenida_terminada`. También se miden
   `compartir_ver`, `compartir` (qué y cómo, y si iba con el mapa o lo que dijo Patty) e `invitar`.
 
+## Competencias entre personas
+
+Quien quiere crea una (`POST /api/competencias`): qué se mide y por cuánto (una semana o 30 días, días de Patty en la zona
+de quien la crea). Se invita con `https://patty.today/app/?competir=CODIGO`: la app guarda el código hasta que se entra y
+muestra la hoja de aceptar (también se puede pegar el link en Más → Competencias, porque en el teléfono el link abre el
+navegador).
+
+- **Solo hábitos**: `pasos`, `racha`, `dias`, `sueno`, `km` (`packages/shared/src/competencias.ts`). No hay ni se aceptan
+  métricas de peso, comer menos o ayuno, y el nombre libre tampoco puede ir por ahí.
+- **Topes por día**: 15.000 pasos, 12 km, 8 h de sueño: pasar de eso no da ventaja. Pasos y km: si hay dos aparatos, vale
+  el que más contó ese día, sin sumarlos.
+- **Privacidad**: participar pide `acepto: true` después de ver exactamente qué se muestra (`queVen` de cada métrica). De
+  cada participante viaja el apodo, el puesto y el número (ni foto ni ids; ver la lista blanca en `posiciones`). Los números
+  no se guardan: se calculan en cada pedido y solo de quienes siguen en `competencia_participantes`, así que al salir se
+  deja de compartir. Quien no participa recibe 404; con el código solo ve de qué se trata y quién invita. Ser supervisor no
+  da acceso. Se cuentan los datos de la persona propia, nunca los de alguien supervisado.
+- **Sin dato**: `valor: null`, sin puesto y al final de la tabla; nunca cero.
+- **La placa**: la tarjeta `grande` de siempre, solo con lo propio (puesto, total, nombre de la competencia y, si se deja,
+  el número). En curso va con el link de la competencia al lado de la imagen (no impreso en ella, para que no quede público);
+  al terminar, con la invitación general a Patty.
+
 ## Firma de la app de Android y Google
 
 El APK de la web y el de USB llevan la misma llave (`~/patty-release/`). Su huella SHA-1 es

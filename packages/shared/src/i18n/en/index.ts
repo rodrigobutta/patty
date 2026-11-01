@@ -2,6 +2,7 @@
 import { CICLO } from './ciclo.js';
 import { COMIDA } from './comida.js';
 import { COMPARTIR } from './compartir.js';
+import { COMPETENCIAS } from './competencias.js';
 import { COMPONENTES } from './componentes.js';
 import { CUENTA } from './cuenta.js';
 import { COMUN } from './comun.js';
@@ -19,4 +20,4 @@ import { PATRONES } from './patrones.js';
 import { PATRONES_FINOS } from './patronesfinos.js';
 import { SERVIDOR } from './servidor.js';
 
-export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...PATRONES_FINOS, ...HIPOTESIS, ...COMPONENTES, ...MEDIOS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...COMUN };
+export const EN: Record<string, string> = { ...INFORME, ...PERMISOS, ...CUENTA, ...CICLO, ...DATOS, ...SERVIDOR, ...DIA, ...MAS, ...PATRONES, ...PREVENTIVO, ...COMIDA, ...COMPARTIR, ...COMPETENCIAS, ...PATRONES_FINOS, ...HIPOTESIS, ...COMPONENTES, ...MEDIOS, ...AVISOS_TELEFONO, ...BUEN_DIA, ...COMUN };
