@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ESQUEMA_DESCOMPOSICION, ESQUEMA_ELECCION } from '../src/ia/componentes.js';
 import { ESQUEMA_HIPOTESIS } from '../src/ia/hipotesis.js';
 import { ESQUEMA } from '../src/ia/interpretar.js';
+import { ESQUEMA_CONSEJO, ESQUEMA_PLAN } from '../src/ia/metas.js';
 
 /** Cuántos parámetros aceptan más de un tipo (anyOf o una lista de tipos), que es lo que Anthropic limita. */
 function uniones(x: unknown): number {
@@ -28,5 +29,12 @@ describe('los esquemas de los componentes de lo que se come', () => {
   it('no pasan el límite de Anthropic: ningún parámetro acepta null', () => {
     expect(uniones(ESQUEMA_DESCOMPOSICION)).toBe(0);
     expect(uniones(ESQUEMA_ELECCION)).toBe(0);
+  });
+});
+
+describe('los esquemas de los objetivos', () => {
+  it('no pasan el límite de Anthropic: ningún parámetro acepta null', () => {
+    expect(uniones(ESQUEMA_PLAN)).toBe(0);
+    expect(uniones(ESQUEMA_CONSEJO)).toBe(0);
   });
 });

@@ -7,6 +7,7 @@ import { filas, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, sumarDias } from '../lib/fechas.js';
+import { bloqueMetas, REGLA_METAS } from '../lib/metas.js';
 import { pedirJson } from './cliente.js';
 
 /** Hasta cuánto para atrás se mira si la pregunta no dice cuándo. */
@@ -39,12 +40,13 @@ export async function preguntarDatos(tx: Tx, p: PersonaAcceso, pregunta: string,
   );
   if (!lista.length) return { respuesta: idioma === 'en' ? 'There is nothing logged yet to answer from.' : 'Todavía no hay nada anotado para poder contestarte.', fechas: [], conceptos: [] };
 
+  const metas = await bloqueMetas(tx, p.id);
   const plan = await pedirJson<{ concepto_ids: number[]; desde: string; hasta: string }>({
     sistema:
       `Sos Patty, una app donde una persona anota lo que come, hace y siente. Te hace una pregunta sobre sus propios datos. ` +
       `Elegí de la lista qué cosas hacen falta para contestarla (hasta ${MAX_CONCEPTOS}; incluí sinónimos y variantes: "huevos" → Huevo, Huevos revueltos, Tortilla) ` +
       `y el período (AAAA-MM-DD; vacíos si la pregunta no dice cuándo). Hoy es ${hoy} (${diaDeLaSemana(hoy, 'es')}).`,
-    texto: `Pregunta: ${pregunta}\n\nLo que tiene (id | nombre | categoría | días con datos | último día):\n${lista.map((c) => `${c.id} | ${c.nombre} | ${c.categoria} | ${c.dias} | ${c.ultimo}`).join('\n')}`,
+    texto: `Pregunta: ${pregunta}\n\nLo que tiene (id | nombre | categoría | días con datos | último día):\n${lista.map((c) => `${c.id} | ${c.nombre} | ${c.categoria} | ${c.dias} | ${c.ultimo}`).join('\n')}${metas}`,
     esquema: {
       type: 'object',
       properties: {
@@ -96,8 +98,8 @@ export async function preguntarDatos(tx: Tx, p: PersonaAcceso, pregunta: string,
       `Sos Patty, una app de registro diario. Contestá la pregunta de la persona sobre sus propios datos, en ${lengua}, corto y claro (2 a 5 oraciones), ` +
       `hablándole de vos. Usá solo los datos que te paso: si no alcanzan, decilo. Para fechas usá el día y el mes ("el martes 14 de octubre"), ` +
       `y si son muchas, resumí (cuántas veces, cada cuánto, la última). No des diagnósticos médicos. ` +
-      `En "fechas" poné los días (AAAA-MM-DD) de los que habla la respuesta, los más recientes primero, hasta 40. Hoy es ${hoy}.`,
-    texto: `Pregunta: ${pregunta}\nPeríodo mirado: ${desde} a ${hasta}.\n\nDatos (${datos.length}${datos.length >= MAX_FILAS ? ', cortados a los más recientes' : ''}):\n${datos.join('\n') || '(nada en ese período)'}`,
+      `En "fechas" poné los días (AAAA-MM-DD) de los que habla la respuesta, los más recientes primero, hasta 40. Hoy es ${hoy}.${metas ? `${REGLA_METAS} Si pregunta cómo viene con un objetivo, contestale con los datos.` : ''}`,
+    texto: `Pregunta: ${pregunta}\nPeríodo mirado: ${desde} a ${hasta}.\n\nDatos (${datos.length}${datos.length >= MAX_FILAS ? ', cortados a los más recientes' : ''}):\n${datos.join('\n') || '(nada en ese período)'}${metas}`,
     esquema: {
       type: 'object',
       properties: { respuesta: { type: 'string' }, fechas: { type: 'array', items: { type: 'string' } } },

@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { perfilTexto, type Idioma, type Persona } from 'shared';
 import { filas, una, type Db } from '../db/client.js';
 import { diaDePatty, sumarDias } from '../lib/fechas.js';
+import { bloqueMetas, REGLA_METAS } from '../lib/metas.js';
 import { hayIa, pedirJson } from './cliente.js';
 
 const DIAS_MIRADOS = 7;
@@ -81,6 +82,7 @@ async function armar(
         WHERE m.persona_id = ${p.id} AND m.fecha BETWEEN ${desde} AND ${hoy} AND c.nombre IN ${AUTOMATICOS}
         GROUP BY m.fecha, c.nombre ORDER BY m.fecha DESC`,
   );
+  const metas = await bloqueMetas(db, p.id);
   const lengua = idioma === 'en' ? 'English' : 'castellano rioplatense (voseo)';
   const r = await pedirJson<{ comentarios: Array<{ emoji: string; texto: string }> }>({
     sistema:
@@ -94,7 +96,7 @@ async function armar(
       `se repite los días que dormís menos"). Si hay poco anotado, un solo comentario alcanza. ` +
       `Nunca retes ni hagas sentir culpa, no des diagnósticos ni consejos médicos, no inventes datos ni números que no estén. ` +
       `Mencioná cosas reales de su semana. No repitas ideas de los comentarios anteriores. Un emoji que acompañe cada uno. ` +
-      `Hoy es ${hoy}.`,
+      `Hoy es ${hoy}.${metas ? REGLA_METAS : ''}`,
     texto:
       `Persona: ${p.nombre}${perfil ? ` (${perfil})` : ''}.\n\n` +
       `Lo anotado del ${desde} al ${hoy} (lo más nuevo primero):\n` +
@@ -102,7 +104,8 @@ async function armar(
       (automaticos.length
         ? `\n\nLo que llegó solo (reloj, teléfono, ubicación), por día:\n${automaticos.map((a) => `${a.fecha} · ${a.que}: ${Math.round(a.valor * 10) / 10}${a.unidad ? ' ' + a.unidad : ''}`).join('\n')}`
         : '') +
-      (anteriores.length ? `\n\nComentarios que ya le hiciste (no los repitas):\n${anteriores.map((a) => `- ${a.texto}`).join('\n')}` : ''),
+      (anteriores.length ? `\n\nComentarios que ya le hiciste (no los repitas):\n${anteriores.map((a) => `- ${a.texto}`).join('\n')}` : '') +
+      metas,
     esquema: {
       type: 'object',
       properties: {

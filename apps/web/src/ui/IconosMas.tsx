@@ -154,6 +154,15 @@ export const IconoSeguimientos = () => (
   </Base>
 );
 
+/** Objetivos: un blanco con su centro. */
+export const IconoObjetivos = () => (
+  <Base>
+    <circle cx="16" cy="16" r="12" fill={V} {...T} />
+    <circle cx="16" cy="16" r="7" fill="var(--panel)" {...T} />
+    <circle cx="16" cy="16" r="3" fill={A} {...T} />
+  </Base>
+);
+
 /** Qué patrones buscar: una lupa sobre dos puntos unidos. */
 export const IconoPatrones = () => (
   <Base>

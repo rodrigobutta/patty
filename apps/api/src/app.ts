@@ -30,6 +30,7 @@ import { rutasPreguntar } from './routes/preguntar.js';
 import { rutasComentarios } from './routes/comentarios.js';
 import { rutasFueraDeLoNormal } from './routes/fueraDeLoNormal.js';
 import { rutasObjetivos } from './routes/objetivos.js';
+import { rutasMetas } from './routes/metas.js';
 import { rutasPreguntasConcepto } from './routes/preguntasConcepto.js';
 import { rutasSeguimientos } from './routes/seguimientos.js';
 import { rutasPaseos } from './routes/paseos.js';
@@ -205,6 +206,7 @@ export function crearApp(modo = config.modo): Hono<Env> {
   api.route('/comentarios', rutasComentarios);
   api.route('/fuera-de-lo-normal', rutasFueraDeLoNormal);
   api.route('/objetivos', rutasObjetivos);
+  api.route('/metas', rutasMetas);
   api.route('/preguntas-concepto', rutasPreguntasConcepto);
   api.route('/seguimientos', rutasSeguimientos);
   api.route('/paseos', rutasPaseos);

@@ -11,6 +11,7 @@ import { pedirHipotesis } from '../ia/hipotesis.js';
 import { lunesDe } from '../ia/resumirSemana.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { diasEntre } from '../lib/fechas.js';
+import { lineasMetas } from '../lib/metas.js';
 import { conUso, controlarLimite } from '../lib/usoIa.js';
 import { datosDePersona, primerDiaDe } from './analizar.js';
 import { armarRasgos, type ConceptoInfo, type FilaDiaria } from './motor.js';
@@ -164,6 +165,7 @@ async function proponer(
     r.perfil_caracteres = perfil.texto.length;
     const rasgos = new Set(armarRasgos(d.datos, new Map(d.conceptos.map((c) => [c.id, c])), d.desde, diasEntre(d.desde, o.hasta) + 1).map((x) => `${x.concepto.id}|${x.modo}`));
     const nombreDe = (x: Guardada) => `${x.causa} (${x.causa_modo}) → ${x.efecto} (${x.efecto_modo})${x.tipo === 'cambio' ? `, cambio desde ${x.fecha_desde}` : `, ${x.desfase_dias} días${x.fecha_desde ? `, del ${x.fecha_desde} al ${x.fecha_hasta}` : ''}`}`;
+    const objetivos = await lineasMetas(db, p.id);
     const crudas = await conUso({ usuarioId: dueno?.id ?? null, tipo: 'hipotesis' }, () =>
       pedirHipotesis({
         perfil: perfil.texto,
@@ -171,6 +173,7 @@ async function proponer(
         conocidos: d.delMotor.slice(0, CONOCIDOS_MAX).map((x) => `${x.causa} (${x.causa_modo}) → ${x.efecto} (${x.efecto_modo}), ${x.desfase_dias} días`),
         rechazadas: d.guardadas.filter((x) => x.estado === 'rechazada').slice(0, RECHAZADAS_MAX).map(nombreDe),
         apartados: d.opinadas.map((x) => `${x.causa} → ${x.efecto}`),
+        objetivos,
         idioma: o.idioma,
       }),
     );

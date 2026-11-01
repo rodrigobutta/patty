@@ -34,6 +34,7 @@ import { PreguntaDespertar } from './PreguntaDespertar';
 import { fuenteApagada, HojaActivar, TIPOS_DE, useEstadoPermisos, type Fuente } from './FuenteApagada';
 import { AnimoSemana } from './AnimoSemana';
 import { ObjetivosSemana } from './ObjetivosSemana';
+import { MetaDelDia } from './MetaDelDia';
 import { useCadaTanto } from '../lib/reloj';
 import { SeguimientoDelDia } from './SeguimientoDelDia';
 import { LineaDelDia } from './MalestaresAbiertos';
@@ -564,6 +565,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
       {fecha === hoy && sesion?.ia ? <ComentarioDelDia persona={persona} hoy={hoy} /> : null}
       {fecha === hoy ? <TarjetaSemana persona={persona} /> : null}
       {fecha === hoy && !persona.supervisada ? <ObjetivosSemana persona={persona} hoy={hoy} vuelta={vuelta} /> : null}
+      {fecha === hoy && !persona.supervisada ? <MetaDelDia persona={persona} hoy={hoy} puedeEscribir={sesion?.usuario?.rol !== 'lector'} /> : null}
       {fecha === hoy && !persona.supervisada && sesion?.usuario?.rol !== 'lector' ? (
         <RutinasDelDia persona={persona} hoy={hoy} categorias={categorias} alAnotar={() => void traer()} />
       ) : null}
