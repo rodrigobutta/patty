@@ -37,7 +37,9 @@ describe('ciclo menstrual', () => {
     expect(emoji(hoy)).toBe('🩸');
     expect(emoji(sumarDias(hoy, 11))).toBe('🥚');
     expect(emoji(sumarDias(hoy, 25))).toBe('🔮');
-    expect(cal.dias.filter((d: any) => d.emoji === '🌱')).toHaveLength(6);
+    // Los días fértiles de este ciclo y los del que sigue (que también se ve en el rango).
+    expect(cal.dias.filter((d: any) => d.emoji === '🌱')).toHaveLength(12);
+    expect(emoji(sumarDias(hoy, 39))).toBe('🥚');
 
     const a = await ana.post('/api/analisis', { persona_id: personaId });
     expect(a.status).toBe(200);

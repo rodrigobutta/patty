@@ -708,6 +708,41 @@ main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
 .ciclo-dia .pregunta-ciclo { margin: 4px 0 6px; font-weight: 600; }
 .ciclo-dia .btn.ancho { margin: 4px 0 8px; }
 .datos-ciclo { list-style: none; margin: 10px 0 6px; padding: 0; display: grid; gap: 6px; font-size: 0.92em; }
+/* Lo que Patty pregunta del ciclo ("¿te vino?", "¿ya terminó?"): se ve aunque la tarjeta esté plegada. */
+.pregunta-del-ciclo { margin: 8px 0 2px; padding: 8px 10px 0; border-radius: 12px; background: color-mix(in srgb, var(--rojo) 7%, var(--panel)); }
+.pregunta-del-ciclo .pregunta-ciclo { margin: 4px 0; font-weight: 600; }
+.fila-pregunta-ciclo { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.nota-medico { margin: 10px 0 6px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ambar) 12%, var(--panel)); }
+/* El calendario del ciclo: lo anotado, relleno; lo estimado, punteado o en tono suave. */
+.calendario-ciclo .aviso-modo-ciclo { margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: var(--acento-suave); font-weight: 600; }
+.calendario-ciclo .grilla-mes { gap: 3px; }
+.dia-ciclo { aspect-ratio: 1; border: 2px solid transparent; border-radius: 50%; background: none; color: var(--texto); font: inherit; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; cursor: pointer; }
+.dia-ciclo .num-dia { font-size: 14px; line-height: 1; }
+.dia-ciclo .marca-dia { position: absolute; top: -4px; right: -2px; font-size: 11px; }
+.dia-ciclo.confirmado { background: var(--rojo); color: #fff; font-weight: 800; }
+.dia-ciclo.estimado { border: 2px dashed var(--rojo); color: var(--rojo); }
+.dia-ciclo.fertil { background: color-mix(in srgb, var(--verde) 18%, transparent); }
+.dia-ciclo.ovulacion { border: 2px dotted var(--verde); }
+.dia-ciclo.premenstrual::after { content: ''; position: absolute; bottom: 3px; width: 5px; height: 5px; border-radius: 50%; background: var(--ambar); }
+.dia-ciclo.hoy { box-shadow: 0 0 0 2px var(--texto); }
+.dia-ciclo.futuro { color: var(--suave); }
+.dia-ciclo.futuro.estimado { color: var(--rojo); }
+.dia-ciclo.elegido { outline: 3px solid var(--acento); outline-offset: 1px; }
+.leyenda-ciclo { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 10px 0 4px; color: var(--suave); }
+.leyenda-ciclo span { display: inline-flex; align-items: center; gap: 4px; }
+.leyenda-ciclo .muestra { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid transparent; }
+.leyenda-ciclo .muestra.confirmado { background: var(--rojo); }
+.leyenda-ciclo .muestra.estimado { border: 2px dashed var(--rojo); }
+.leyenda-ciclo .muestra.fertil { background: color-mix(in srgb, var(--verde) 25%, transparent); }
+.leyenda-ciclo .muestra.premenstrual { width: 6px; height: 6px; background: var(--ambar); }
+.panel-dia-ciclo { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--borde); }
+.panel-dia-ciclo .titulo-dia-ciclo { margin: 0 0 2px; font-weight: 700; }
+.acciones-dia-ciclo { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.ayuda-ciclo { text-align: center; margin: 10px 0; }
+.estadisticas-ciclo { margin-top: 12px; }
+.historial-ciclo { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 4px; }
+.historial-ciclo li { display: flex; gap: 8px; align-items: baseline; }
 
 /* En Más no va la barra de arriba (el búho y los puntos): ese lugar es para el contenido. Queda montada, escondida. */
 .app.sin-barra .barra { display: none; }

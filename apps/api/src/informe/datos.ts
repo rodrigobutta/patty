@@ -7,7 +7,7 @@ import { filas, una, type Tx } from '../db/client.js';
 import type { PersonaAcceso } from '../lib/acceso.js';
 import { diaDePatty, localAInstante, sumarDias } from '../lib/fechas.js';
 import { listarHallazgos } from '../patrones/analizar.js';
-import { diasDeMenstruacion } from '../routes/ciclo.js';
+import { datosDelCiclo } from '../routes/ciclo.js';
 import { horaPromedio, horasDeSueno } from '../routes/estadisticas.js';
 import { DESPERTAR } from '../routes/sueno.js';
 import { COLUMNAS, DESDE, tomasDe, type Fila } from '../routes/tratamientos.js';
@@ -212,8 +212,8 @@ export async function datosInforme(tx: Tx, p: PersonaAcceso, dias: number, idiom
   const tendencia = animo.length < 4 || antes === null || despues === null ? null : despues - antes >= 1 ? 'mejora' : antes - despues >= 1 ? 'empeora' : 'estable';
 
   // Ciclo menstrual, si lo anota.
-  const menstruacion = await diasDeMenstruacion(tx, p.id);
-  const ciclo = menstruacion.length ? resumenCiclo(menstruacion, hasta) : null;
+  const datosCiclo = await datosDelCiclo(tx, p.id);
+  const ciclo = datosCiclo.dias.length ? resumenCiclo(datosCiclo.dias, hasta, { fines: datosCiclo.fines }) : null;
 
   // Patrones: los firmes (o los que la persona dijo que le pasan), menos los que marcó como sin sentido.
   const hallazgos = (await listarHallazgos(tx, p.id))

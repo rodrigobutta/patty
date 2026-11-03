@@ -2,7 +2,7 @@
 import { controlarLimite } from '../lib/usoIa.js';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { comidaEn, conceptosDelMedio, conDetalle, limpiarMedio, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type AvisoAlergia, type Concepto, type DatoAutomatico, type Idioma, type NuevoRegistro, type Registro, type Usuario } from 'shared';
+import { comidaEn, conceptosDelMedio, FIN_MENSTRUACION, conDetalle, limpiarMedio, COMO_ME_SENTI, COMO_ME_SIENTO, DONDE_COMIDA, esDonde, esPorcion, esTipoComida, PORCIONES, TIPOS_COMIDA, type AvisoAlergia, type Concepto, type DatoAutomatico, type Idioma, type NuevoRegistro, type Registro, type Usuario } from 'shared';
 import { filas, una, type Db, type Tx } from '../db/client.js';
 import { registros } from '../db/schema.js';
 import { interpretarTexto } from '../ia/interpretar.js';
@@ -12,6 +12,7 @@ import { ErrorApi } from '../lib/errores.js';
 import { diaDePatty, esFecha, leerInstante, minutosDelDia, sumarDias } from '../lib/fechas.js';
 import { rutinasDe, type AnotadoRutina } from '../patrones/rutinas.js';
 import { cuerpo, idParam, numeroONulo, texto, type Env } from '../lib/http.js';
+import { ordenarFin } from './ciclo.js';
 import { obtenerOCrearConcepto } from './conceptos.js';
 import { horasDeSueno } from './estadisticas.js';
 import { vincularToma } from './tratamientos.js';
@@ -187,6 +188,8 @@ export async function guardarRegistro(
                            AND r.inicio > now() - interval '6 hours'`);
   }
   const hecho = (await una<Registro>(tx, sql`SELECT ${COLUMNAS} FROM registros r WHERE r.id = ${r.id}`))!;
+  // El fin de un período (también contado: "ya se me fue") queda como el único de ese período.
+  if (c.nombre === FIN_MENSTRUACION) await ordenarFin(tx, p.id, Number(hecho.id), hecho.fecha);
   // Un remedio con tratamiento: cuenta como la toma programada más cercana.
   if (!opciones.sinVincular) await vincularToma(tx, hecho);
   return hecho;

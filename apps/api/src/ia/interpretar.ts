@@ -326,8 +326,10 @@ export async function interpretarTexto(
     'el enjuague bucal o bañarse van en higiene: "Me lavé los dientes", "Enjuague bucal", "Me bañé". Si vomitó, "Vómitos" ' +
     'en sintoma. ' +
     'Si cuenta que le vino o que está menstruando ("me vino", "estoy indispuesta", "me bajó"), va en la categoría ciclo, ' +
-    'concepto "Menstruación", con intensidad según el flujo (manchado 2, poco 4, normal 6, mucho 9; si no dice, 6). Los ' +
-    'cólicos y otras molestias del ciclo van como sintoma. ' +
+    'concepto "Menstruación", con intensidad según el flujo (manchado 2, poco 4, normal 6, mucho 9; si no dice, 6), en el ' +
+    'día en que le vino ("me vino el martes" va el martes; "sí, me vino" es hoy). Si cuenta que ya terminó ("ya se me ' +
+    'fue", "se me cortó el jueves"), en ciclo, concepto "Fin de la menstruación", en el último día que tuvo (si no lo ' +
+    'dice, hoy). Si dice que todavía no le vino, no anotes nada. Los cólicos y otras molestias del ciclo van como sintoma. ' +
     'Si viene una foto, mirá qué se ve y anotalo: en un plato de comida, cada comida o ingrediente principal que se ' +
     'reconozca (con una cantidad estimada si se puede, por ejemplo 2 empanadas, 1 vaso), una bebida, la caja de un ' +
     'remedio (su nombre). En cada comida (de la foto o del texto), además, la porción (chica, mediana, grande; null si no ' +

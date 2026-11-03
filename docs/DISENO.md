@@ -311,6 +311,20 @@ el día de la persona en su zona horaria, empezando a las 5 de la mañana. "A lo
   que se abre en el navegador del teléfono con `Telefono.abrirAfuera` (si la app instalada es vieja, se copia el enlace).
 - Próximos pasos: leer Health Connect / HealthKit (pasos, sueño, pulso) desde la app nativa.
 
+## Ciclo menstrual y su calendario
+
+- **Fuente de verdad: los registros.** Cada día de menstruación es un registro de «Menstruación» (categoría ciclo, con
+  el flujo como intensidad) y el último día confirmado de un período, uno de «Fin de la menstruación». Los anota igual
+  la tarjeta del Día, el calendario (`/api/ciclo/inicio|fin|mover|borrar`) o contándolo ("me vino el martes", "ya se
+  me fue": el prompt de `ia/interpretar.ts` los propone como registros comunes, sin tocar ESQUEMA). Un fin nuevo
+  reemplaza al anterior del mismo período (`ordenarFin`, llamado desde `guardarRegistro`).
+- Lo único aparte es `ciclo_respuestas`: "todavía no me vino" (corre la próxima 2 días y no vuelve a preguntar hasta
+  entonces), "todavía sigue" y "no preguntar más" por ese ciclo.
+- El cálculo está en `shared/ciclo.ts`: `resumenCiclo` (promedios de sus ciclos y períodos, o los típicos 28 y 5
+  avisando que lo son; regularidad; la pregunta del día; cuándo sugerir consultarlo con su médico) y `diasDelCiclo`
+  (cada día: período anotado o estimado, ventana fértil, ovulación, premenstruales). Todo con el día de Patty (5 a 5)
+  que manda la API en `hoy`.
+
 ## Widgets del Día
 
 Cada persona elige cuáles ve y en qué orden: en Más → Widgets del Día (subir, bajar, prender, apagar) o manteniendo

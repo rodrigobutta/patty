@@ -1,11 +1,14 @@
 // En el Día: el ciclo menstrual. Plegado muestra el día del ciclo, la fase y cuánto falta para la próxima; abierto,
 // "Me vino hoy", cuánto (mientras dura), síntomas típicos con un toque, y lo estimado (próxima, días fértiles,
-// ovulación) con lo que se suele anotar en esta fase. Solo para el día de hoy y si la persona no dijo ser varón.
+// ovulación) con lo que se suele anotar en esta fase. Si hay algo para confirmar ("¿te vino?", "¿ya terminó?") lo
+// pregunta aunque esté plegada, y desde acá se abre el calendario del ciclo. Solo para el día de hoy y si la persona
+// no dijo ser varón.
 import { useCallback, useEffect, useState } from 'react';
 import { FASES_CICLO, FLUJO, MENSTRUACION, SINTOMAS_CICLO, type FaseCiclo, type Persona, type Registro, type ResumenCiclo } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { locale, t } from '../lib/idioma';
+import { CalendarioCiclo, PreguntaDelCiclo, type ModoCalendario } from './CalendarioCiclo';
 
 const CLAVE_ABIERTO = 'ciclo-abierto';
 /** Lo último traído por persona, para que la tarjeta no aparezca de golpe al volver al Día. */
@@ -34,6 +37,7 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
   const { categorias, festejar, avisar, usuario } = useEstado();
   const [ciclo, setCiclo] = useState<Ciclo | null>(() => YA_TRAIDO.get(persona.id) ?? null);
   const [ocupado, setOcupado] = useState(false);
+  const [calendario, setCalendario] = useState<ModoCalendario | null>(null);
   const [abierto, setAbierto] = useState(() => {
     try {
       return localStorage.getItem(CLAVE_ABIERTO) === 'si';
@@ -54,6 +58,11 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
       .catch(() => {});
   }, [persona.id]);
   useEffect(() => traer(), [traer, vuelta]);
+  /** Después de cambiar algo del ciclo: se vuelve a traer el ciclo y se avisa al Día. */
+  const cambio = () => {
+    traer();
+    alCambiar();
+  };
 
   if (!ciclo || !catCiclo || (persona.sexo === 'masculino' && !ciclo.periodos.length)) return null;
 
@@ -66,7 +75,7 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
     try {
       await f();
       festejar(mensaje);
-      alCambiar();
+      cambio();
     } catch (e) {
       avisar((e as Error).message);
     } finally {
@@ -103,7 +112,13 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
     : [
         ciclo.dia && ciclo.dia <= 60 ? t('día {n}', { n: ciclo.dia }) : null,
         fase ? t('fase {fase}', { fase: t(FASES_CICLO[fase].nombre) }) : null,
-        enPeriodo || ciclo.faltan === null ? null : ciclo.faltan > 0 ? t('próxima en ~{n} días', { n: ciclo.faltan }) : ciclo.faltan === 0 ? t('podría venir hoy') : t('{n} días de atraso', { n: -ciclo.faltan }),
+        enPeriodo || ciclo.faltan === null
+          ? null
+          : ciclo.atraso
+            ? t('{n} días de atraso', { n: ciclo.atraso })
+            : ciclo.faltan > 0
+              ? t('próxima en ~{n} días', { n: ciclo.faltan })
+              : t('podría venir hoy'),
       ].filter(Boolean).join(' · ');
   const suele = fase ? [...(ciclo.dia && ciclo.faltan !== null && ciclo.faltan <= 5 && ciclo.faltan >= 0 ? ciclo.por_fase.premenstrual : []), ...ciclo.por_fase[fase]] : [];
   const sueleNombres = [...new Set(suele.map((x) => x.concepto))].slice(0, 4);
@@ -115,6 +130,7 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
         <span className="suave chico resumen-plegable">{resumen}</span>
         <span className="suave" aria-hidden>{abierto ? '▴' : '▾'}</span>
       </button>
+      <PreguntaDelCiclo personaId={persona.id} ciclo={ciclo} alCambiar={cambio} abrirCalendario={setCalendario} />
       {abierto ? (
         <>
           {puede ? (
@@ -148,13 +164,13 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
           {ciclo.periodos.length ? (
             <ul className="datos-ciclo">
               {ciclo.proxima && !enPeriodo ? <li>🔮 {t('Próxima: alrededor del {fecha}', { fecha: corta(ciclo.proxima) })}</li> : null}
-              {ciclo.fertil_desde && ciclo.fertil_hasta && ciclo.fertil_hasta >= hoyDelCiclo(ciclo) ? (
+              {ciclo.fertil_desde && ciclo.fertil_hasta && ciclo.fertil_hasta >= ciclo.hoy ? (
                 <li>🌱 {t('Días fértiles: {rango}', { rango: rango(ciclo.fertil_desde, ciclo.fertil_hasta) })} · 🥚 {t('ovulación ~{fecha}', { fecha: corta(ciclo.ovulacion!) })}</li>
               ) : null}
               <li>
-                🔁 {ciclo.ciclos ? t('Tus ciclos duran ~{n} días', { n: ciclo.duracion_ciclo }) : t('Con un ciclo más anotado calculo cuánto duran los tuyos (por ahora, 28 días).')}
+                🔁 {ciclo.ciclos ? t('Tus ciclos duran ~{n} días', { n: ciclo.duracion_ciclo }) : t('Con un ciclo más anotado calculo cuánto duran los tuyos (por ahora, 28 días, un valor típico).')}
                 {ciclo.regular === true ? ` · ${t('regulares')}` : ciclo.regular === false ? ` · ${t('irregulares')}` : ''}
-                {ciclo.ciclos ? ` · ${t('la menstruación, ~{n} días', { n: ciclo.duracion_periodo })}` : ''}
+                {ciclo.tipico_periodo ? '' : ` · ${t('la menstruación, ~{n} días', { n: ciclo.duracion_periodo })}`}
               </li>
               {sueleNombres.length ? <li>📝 {t('En esta parte del ciclo solés anotar: {lista}', { lista: sueleNombres.map((x) => t(x)).join(', ') })}</li> : null}
             </ul>
@@ -163,20 +179,16 @@ export function CicloDelDia({ persona, registros, vuelta, alCambiar }: {
           {ciclo.periodos.length ? null : (
             <p className="suave chico">{t('Anotá cada menstruación y calculo tu fase, la próxima y los días fértiles, y veo qué cambia en cada fase.')}</p>
           )}
+          {ciclo.consultar.length ? <p className="nota-medico chico">💬 {t('Hay algo de tus ciclos que podrías comentar con tu médica o médico: lo ves en el calendario.')}</p> : null}
+          <button className="btn ancho" onClick={() => setCalendario({ tipo: 'normal' })}>{t('📅 Calendario del ciclo')}</button>
           <p className="suave chico">{t('Son estimaciones según lo anotado: no sirven como método anticonceptivo.')}</p>
         </>
       ) : null}
+      {calendario ? (
+        <CalendarioCiclo personaId={persona.id} ciclo={ciclo} modoInicial={calendario} alCambiar={cambio} cerrar={() => setCalendario(null)} />
+      ) : null}
     </div>
   );
-}
-
-/** El día de hoy según el ciclo (para no mostrar días fértiles que ya pasaron). */
-function hoyDelCiclo(c: ResumenCiclo): string {
-  const ultimo = c.periodos.at(-1);
-  if (!ultimo || c.dia === null) return '';
-  const d = new Date(ultimo.inicio + 'T12:00:00Z');
-  d.setUTCDate(d.getUTCDate() + c.dia - 1);
-  return d.toISOString().slice(0, 10);
 }
 
 /**

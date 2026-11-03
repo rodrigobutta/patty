@@ -25,6 +25,7 @@ export const GRUPO_TABLA: Record<string, 'persona' | 'automatico' | 'ia' | 'cata
   supervisiones: 'persona',
   competencias: 'persona',
   competencia_participantes: 'persona',
+  ciclo_respuestas: 'persona',
   mediciones: 'automatico',
   fuentes: 'automatico',
   puntos: 'automatico',

@@ -1362,3 +1362,25 @@ export const metasDia = pgTable(
   },
   (t) => [uniqueIndex('metas_dia_unico').on(t.persona_id, t.fecha), index('metas_dia_meta_idx').on(t.meta_id, t.fecha)],
 );
+
+/**
+ * Lo que contestó a las preguntas del ciclo que no son un registro: "todavía no me vino" (corre la próxima estimada y
+ * no se vuelve a preguntar por un par de días), "todavía sigo" (el período) o que no le pregunte más por este ciclo.
+ * Los días de menstruación y el fin de cada período son registros (ver shared/ciclo.ts): esto no los duplica.
+ */
+export const cicloRespuestas = pgTable(
+  'ciclo_respuestas',
+  {
+    id: id(),
+    persona_id: integer('persona_id')
+      .notNull()
+      .references(() => personas.id, { onDelete: 'cascade' }),
+    tipo: text('tipo', { enum: ['todavia_no', 'sigue', 'descartar_inicio', 'descartar_fin'] }).notNull(),
+    /** El primer día del último período al contestar: la respuesta vale para ese ciclo. */
+    referencia: date('referencia', { mode: 'string' }).notNull(),
+    /** El día (de Patty, de 5 a 5) en que contestó. */
+    fecha: date('fecha', { mode: 'string' }).notNull(),
+    creado: creado(),
+  },
+  (t) => [index('ciclo_respuestas_persona_idx').on(t.persona_id, t.referencia)],
+);
