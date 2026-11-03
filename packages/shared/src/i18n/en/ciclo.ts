@@ -113,4 +113,5 @@ export const CICLO: Record<string, string> = {
   "Varios de tus ciclos duraron más de 35 días.": "Several of your cycles lasted more than 35 days.",
   "Ya pasaron {n} días de la fecha estimada.": "It's been {n} days since the estimated date.",
   "Tus períodos suelen durar 8 días o más.": "Your periods usually last 8 days or more.",
+  'Tus ciclos duran {n} días.': 'Your cycles last {n} days.',
 };

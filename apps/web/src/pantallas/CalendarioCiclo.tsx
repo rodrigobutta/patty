@@ -261,7 +261,9 @@ export function Estadisticas({ ciclo }: { ciclo: ResumenCiclo }) {
             ? t('Todavía no hay un ciclo completo anotado: uso 28 días, un valor típico.')
             : ciclo.ciclos === 1
               ? t('Tu último ciclo duró {n} días (con uno solo, es aproximado).', { n: ciclo.duracion_ciclo })
-              : t('Tus ciclos duran ~{n} días (entre {min} y {max}).', { n: ciclo.duracion_ciclo, min: ciclo.ciclo_min!, max: ciclo.ciclo_max! })}
+              : ciclo.ciclo_min === ciclo.ciclo_max
+                ? t('Tus ciclos duran {n} días.', { n: ciclo.duracion_ciclo })
+                : t('Tus ciclos duran ~{n} días (entre {min} y {max}).', { n: ciclo.duracion_ciclo, min: ciclo.ciclo_min!, max: ciclo.ciclo_max! })}
         </li>
         <li>
           🩸{' '}

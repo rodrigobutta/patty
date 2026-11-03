@@ -224,6 +224,20 @@ const PRUEBAS = {
     await espera(1000);
     await foto(c, 'elegir-widgets');
   },
+  async 'ciclo: el calendario'(c) {
+    await hasta(c, `!!document.querySelector('.ciclo-dia [aria-expanded]')`, 'la tarjeta del ciclo');
+    await js(c, `document.querySelector('.ciclo-dia').scrollIntoView({ block: 'center' })`);
+    const hayBoton = `[...document.querySelectorAll('.ciclo-dia button')].some((b) => b.innerText.includes('Calendario del ciclo'))`;
+    for (let i = 0; i < 4 && !(await js(c, hayBoton)); i++) {
+      await espera(800);
+      if (!(await js(c, hayBoton))) await js(c, `document.querySelector('.ciclo-dia [aria-expanded]').click()`);
+      await espera(800);
+    }
+    await tocar(c, '.ciclo-dia button', 'Calendario del ciclo');
+    await hasta(c, `!!document.querySelector('[role=dialog]')`, 'el calendario abierto');
+    await espera(1000);
+    await foto(c, 'ciclo-calendario');
+  },
   async 'Descubrir muestra los patrones'(c) {
     await tocar(c, 'nav button', 'Descubrir');
     await hasta(c, `!!document.querySelector('.hallazgo')`, 'hay patrones');
