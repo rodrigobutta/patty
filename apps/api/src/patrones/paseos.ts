@@ -54,6 +54,21 @@ export async function sugerirPaseos(db: Db, ahora = new Date()): Promise<number>
               AND r.inicio BETWEEN ${new Date(v.inicio - 20 * 60000).toISOString()} AND ${new Date(v.fin + 20 * 60000).toISOString()}`,
       );
       if (ya) continue;
+      // El mismo paseo, visto antes en pedazos o con otro comienzo: se agranda el que ya está (si sigue sin contestar) y no se
+      // vuelve a preguntar.
+      const pisado = await una<{ id: number; estado: string; inicio: string; fin: string }>(
+        db,
+        sql`SELECT id, estado, inicio, fin FROM paseos_detectados WHERE persona_id = ${p.id}
+              AND inicio < ${new Date(v.fin).toISOString()} AND fin > ${new Date(v.inicio).toISOString()} ORDER BY inicio LIMIT 1`,
+      );
+      if (pisado) {
+        if (pisado.estado === 'pendiente' && (v.inicio < Date.parse(pisado.inicio) || v.fin > Date.parse(pisado.fin)))
+          await db.execute(
+            sql`UPDATE paseos_detectados SET inicio = LEAST(inicio, ${new Date(v.inicio).toISOString()}), fin = GREATEST(fin, ${new Date(v.fin).toISOString()}),
+                  metros = GREATEST(metros, ${Math.round(v.metros)}) WHERE id = ${pisado.id}`,
+          );
+        continue;
+      }
       const nuevo = await una<{ id: number }>(
         db,
         sql`INSERT INTO paseos_detectados (persona_id, inicio, fin, metros) VALUES (${p.id}, ${new Date(v.inicio).toISOString()}, ${new Date(v.fin).toISOString()}, ${Math.round(v.metros)})

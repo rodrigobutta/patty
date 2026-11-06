@@ -390,6 +390,7 @@ export function clasificarDia(puntosDia: Punto[], lugares: LugarZona[] = [], pas
       i = j + 1;
     }
   }
+  unirPausas(moviendose, lugares);
   // Lo que queda entre medio es estar quieto.
   const r: Tramo[] = [];
   const quieto = (inicio: number, fin: number) => {
@@ -403,6 +404,27 @@ export function clasificarDia(puntosDia: Punto[], lugares: LugarZona[] = [], pas
   }
   quieto(t, finos.at(-1)!.instante);
   return r;
+}
+
+/**
+ * Dos ratos a pie con una pausa corta en el medio son el mismo paseo: frenar unos minutos (los perros, un semáforo, saludar a
+ * alguien) no lo corta. Sí lo corta quedarse 10 minutos, o 5 en un lugar con nombre (pasar por casa).
+ */
+function unirPausas(tramos: Tramo[], lugares: LugarZona[]): void {
+  for (let i = tramos.length - 1; i > 0; i--) {
+    const a = tramos[i - 1];
+    const b = tramos[i];
+    if (a.tipo !== 'a_pie' || b.tipo !== 'a_pie') continue;
+    const donde = a.puntos.at(-1) ?? b.puntos[0];
+    // Lo quieto de verdad: hasta que se aleja de donde frenó (el comienzo del tramo que sigue puede tragarse la espera), sin
+    // contar lo que tarda en caminar esos metros.
+    const sale = donde ? b.puntos.find((p) => distanciaMetros(p, donde) > QUIETO_RADIO_M) : undefined;
+    const hasta = sale ? sale.instante - (distanciaMetros(sale, donde!) / PASO_MS) * 1000 : b.inicio;
+    const pausa = Math.max(b.inicio, hasta) / 60000 - a.fin / 60000;
+    const enLugar = donde ? lugarDe(donde, lugares) : undefined;
+    if (pausa >= PARADA_MIN || (enLugar && pausa >= PASO_DE_LARGO_MIN)) continue;
+    tramos.splice(i - 1, 2, { ...a, fin: b.fin, metros: a.metros + b.metros, puntos: [...a.puntos, ...b.puntos] });
+  }
 }
 
 function armarTramo(l: Pedazo[], tipo: 'a_pie' | 'vehiculo', ultimoDelRato: boolean, finos: Punto[], orden: Punto[]): Tramo {

@@ -177,6 +177,18 @@ describe('a pie', () => {
     expect(paseosDelDia(r.puntos)).toHaveLength(1);
   });
 
+  it('salir de casa con los perros y frenar unos minutos sin puntos: un solo paseo; 10 minutos quieto o 5 en casa, dos', () => {
+    const casa = [{ id: 1, lat: -34.6, lon: -58.4, radio_m: 100 }];
+    const salida = () => seguido().parar(20, 60).ir([90, 0], 1.2, PIE_M).ir([600, 0], 1.2, PIE_M);
+    const corta = salida().parar(4).ir([600, 600], 1.2, PIE_M).parar(3).ir([0, 0], 1.2, PIE_M).parar(20, 60);
+    expect(tipos(clasificarDia(corta.puntos, casa))).toEqual(['a_pie']);
+    expect(paseosDelDia(corta.puntos, casa)).toHaveLength(1);
+    const larga = salida().parar(12, 60).ir([600, 600], 1.2, PIE_M).ir([0, 0], 1.2, PIE_M);
+    expect(tipos(clasificarDia(larga.puntos, casa))).toEqual(['a_pie', 'a_pie']);
+    const porCasa = seguido().ir([600, 0], 1.2, PIE_M).ir([0, 0], 1.2, PIE_M).parar(7, 60).ir([0, 600], 1.2, PIE_M).ir([0, 0], 1.2, PIE_M);
+    expect(tipos(clasificarDia(porCasa.puntos, casa))).toEqual(['a_pie', 'a_pie']);
+  });
+
   it('caminar de A a B no es un viaje: es una actividad, con pocos o muchos puntos', () => {
     for (const paso of [PIE_M, 300]) {
       const puntos = seguido().ir([2000, 0], PIE, paso).puntos;

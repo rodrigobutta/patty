@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { cerrarDb, obtenerDb } from '../src/db/client.js';
 import { sugerirPaseos } from '../src/patrones/paseos.js';
@@ -43,5 +44,21 @@ describe('paseos detectados', () => {
       }
     }
     expect((await ana.get(`/api/paseos?persona=${personaId}`)).body).toMatchObject({ directa: 'Paseo con los perros' });
+  });
+
+  it('el mismo paseo visto con otro comienzo no se pregunta de nuevo: se agranda el que ya estaba', async () => {
+    const { ana, personaId } = await conAdmin();
+    await ana.post('/api/ubicacion/lugares', { persona_id: personaId, nombre: 'Casa', lat: CASA.lat, lon: CASA.lon, radio_m: 100 });
+    usarEnvioPrueba(async () => 'ok');
+    await ana.post('/api/dispositivos', { token: 'tel2', plataforma: 'android' });
+    const db = obtenerDb();
+    const t0 = Date.now() - 60 * 60000;
+    await ana.post('/api/ubicacion', { persona_id: personaId, puntos: vuelta(t0) });
+    // Lo que una vuelta anterior del trabajo vio antes de tiempo: un pedazo del medio.
+    await db.execute(sql`INSERT INTO paseos_detectados (persona_id, inicio, fin, metros) VALUES (${personaId}, ${new Date(t0 + 4 * 60000).toISOString()}, ${new Date(t0 + 12 * 60000).toISOString()}, 500)`);
+    expect(await sugerirPaseos(db, new Date(t0 + 30 * 60000))).toBe(0);
+    const filas = (await db.execute(sql`SELECT inicio, fin FROM paseos_detectados WHERE persona_id = ${personaId}`)) as unknown as Array<{ inicio: string; fin: string }>;
+    expect(filas).toHaveLength(1);
+    expect(Date.parse(filas[0].fin)).toBeGreaterThanOrEqual(t0 + 15 * 60000);
   });
 });
