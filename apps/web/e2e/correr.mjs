@@ -238,6 +238,19 @@ const PRUEBAS = {
     await espera(1000);
     await foto(c, 'ciclo-calendario');
   },
+  async 'paseos sin anotar: una tarjeta, todos iguales'(c) {
+    const DBURL = DB;
+    execSync(`psql ${DBURL} -qc "INSERT INTO paseos_detectados (persona_id, inicio, fin, metros) SELECT id, now() - interval '30 hours', now() - interval '29 hours 50 minutes', 650 FROM personas LIMIT 1; INSERT INTO paseos_detectados (persona_id, inicio, fin, metros) SELECT id, now() - interval '3 hours', now() - interval '2 hours 40 minutes', 1300 FROM personas LIMIT 1;"`);
+    await js(c, 'location.reload()').catch(() => {});
+    await espera(4000);
+    await hasta(c, `document.querySelectorAll('.paseo-item').length >= 2`, 'los paseos en una tarjeta');
+    if ((await js(c, `document.querySelectorAll('.paseo-pendiente').length`)) !== 1) throw new Error('más de una tarjeta');
+    await js(c, `document.querySelector('.paseo-pendiente').scrollIntoView({ block: 'center' })`);
+    await espera(1200);
+    await foto(c, 'paseos');
+    await tocar(c, '.paseo-item .chip', 'No anotar');
+    await hasta(c, `document.querySelectorAll('.paseo-item').length === 1`, 'queda uno');
+  },
   async 'Descubrir muestra los patrones'(c) {
     await tocar(c, 'nav button', 'Descubrir');
     await hasta(c, `!!document.querySelector('.hallazgo')`, 'hay patrones');

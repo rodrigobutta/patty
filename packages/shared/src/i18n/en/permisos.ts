@@ -1111,4 +1111,10 @@ export const PERMISOS: Record<string, string> = {
   "Tu teléfono no deja que una app se vuelva a abrir sola si no se lo permitís a mano. Es un ajuste que Patty no puede prender ni ver.": "Your phone doesn't let an app reopen itself unless you allow it by hand. Patty can't turn this setting on or see it.",
   "Abrir Ajustes": "Open Settings",
   "Ya lo prendí": "I turned it on",
+  "🦉 ¿{que}? Tenés {n} sin anotar": "🦉 {que}? You have {n} to log",
+  "🚶 Saliste a caminar: ¿qué fue?": "🚶 You went for a walk: what was it?",
+  "🚶 {n} caminatas sin anotar: ¿qué fueron?": "🚶 {n} walks to log: what were they?",
+  "Sin recorrido para mostrar": "No route to show",
+  "Hoy": "Today",
+  "Ayer": "Yesterday",
 };
