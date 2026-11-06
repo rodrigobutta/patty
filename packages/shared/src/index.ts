@@ -1371,6 +1371,18 @@ export interface TendenciaDia {
   nombres_malestares: string[];
 }
 
+/** Las últimas dos semanas de sueño, para la hoja del sueño: cada noche y cómo viene contra las dos anteriores. */
+export interface QuincenaSueno {
+  noches: Array<{ fecha: string; horas: number | null; calidad: number | null }>;
+  /** Horas promedio en las noches con dato (null si no hay ninguna). */
+  horas: number | null;
+  /** Lo mismo, en las dos semanas de antes. */
+  antes: number | null;
+  calidad: number | null;
+  /** A qué hora se suele dormir, en minutos desde las 0 (puede pasar de 1440: después de medianoche). */
+  acostarse: number | null;
+}
+
 export interface Tendencias {
   desde: string;
   hasta: string;

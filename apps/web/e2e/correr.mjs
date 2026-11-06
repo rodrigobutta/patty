@@ -251,6 +251,14 @@ const PRUEBAS = {
     await tocar(c, '.paseo-item .paseo-opcion', 'No anotar');
     await hasta(c, `document.querySelectorAll('.paseo-item').length === 1`, 'queda uno');
   },
+  async 'sueño: las últimas dos semanas'(c) {
+    await hasta(c, `[...document.querySelectorAll('.widget-auto')].some((w) => /dormir/.test(w.innerText))`, 'el widget del sueño');
+    await js(c, `[...document.querySelectorAll('.widget-auto')].find((w) => /dormir/.test(w.innerText)).click()`);
+    await hasta(c, `!!document.querySelector('.quincena-sueno')`, 'el resumen de las dos semanas');
+    await js(c, `document.querySelector('.quincena-sueno').scrollIntoView({ block: 'center' })`);
+    await espera(800);
+    await foto(c, 'sueno-quincena');
+  },
   async 'Descubrir muestra los patrones'(c) {
     await tocar(c, 'nav button', 'Descubrir');
     await hasta(c, `!!document.querySelector('.hallazgo')`, 'hay patrones');

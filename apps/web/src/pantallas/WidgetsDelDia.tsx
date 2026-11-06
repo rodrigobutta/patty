@@ -11,7 +11,7 @@ import { ClimaDelDia } from './ClimaDelDia';
 import { EscuchasDelDia, NOMBRE_ESCUCHA } from './EscuchasDelDia';
 import { celdasVisibles, OpcionesWidget, useOrganizarWidgets } from './OrganizarWidgets';
 import { ComidaDelDiaHoja, comidasAnotadas, destacadoDe, lineaComidas, useComidaDelDia } from './ComidaDelDia';
-import { GraficoSueno, ResumenNoche } from './GraficoSueno';
+import { GraficoSueno, QuincenaSueno, ResumenNoche } from './GraficoSueno';
 import { CaminatasDelDia, RecorridoDelDia } from './RecorridoDelDia';
 import { agruparAutomaticos, duracion, reloj, type GrupoAutomatico, type LineaAutomatica } from '../lib/automatico';
 import { appDelUso, useIconosApps } from '../lib/iconosApps';
@@ -440,6 +440,7 @@ export function WidgetsDelDia({ automaticos, registros, categorias, apagadas, al
                     <>
                       <ResumenNoche persona={persona} fecha={fecha} />
                       <GraficoSueno persona={persona} fecha={fecha} />
+                      <QuincenaSueno persona={persona} fecha={fecha} />
                     </>
                   ) : null}
                   {w.lugar === 'clima' ? <ClimaDelDia persona={persona} fecha={fecha} todos={automaticos} /> : null}

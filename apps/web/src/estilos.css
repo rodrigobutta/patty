@@ -1869,3 +1869,13 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .cobertura .lista-simple { margin: 0 0 8px; padding-left: 16px; }
 .cobertura { margin-top: 12px; }
 .suplementos { margin-top: 12px; }
+
+/* El sueño de las últimas dos semanas, debajo de la noche. */
+.quincena-sueno { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--borde); }
+.quincena-sueno h4 { margin: 0 0 8px; }
+.quincena-barras { display: flex; align-items: flex-end; gap: 3px; height: 56px; margin-bottom: 8px; }
+.quincena-barras span { flex: 1; border-radius: 4px 4px 2px 2px; background: color-mix(in srgb, var(--acento) 70%, transparent); }
+.quincena-barras span.poco { background: color-mix(in srgb, var(--acento) 35%, transparent); }
+.quincena-barras span.sin { background: var(--borde); }
+.quincena-datos { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+

@@ -9,6 +9,8 @@ import { diaDePatty, esFecha, sumarDias } from '../lib/fechas.js';
 import { cuerpo, type Env } from '../lib/http.js';
 import { resumenGuardado, resumirNoche } from '../ia/resumirNoche.js';
 import { despertarRepetido, type EtapaNoche } from '../patrones/despertares.js';
+import type { QuincenaSueno } from 'shared';
+import { horasDeSueno } from './estadisticas.js';
 
 const ETAPAS = ['despierto', 'ligero', 'profundo', 'rem', 'dormido'];
 /** El registro que se anota al contestar por qué se despierta (y que hace que no se vuelva a preguntar por un tiempo). */
@@ -60,6 +62,47 @@ export const rutasSueno = new Hono<Env>()
       console.error('Resumen de la noche:', e instanceof Error ? e.message : e);
       return c.json(await resumenGuardado(c.var.db, p.id, fecha));
     }
+  })
+  .get('/quincena', async (c) => {
+    // ?persona=1&fecha=AAAA-MM-DD: las 15 noches que terminan ese día, con las horas y la nota de cada una, y el promedio
+    // contra las 15 de antes. Las noches sin dato van en null: no dormir nada no es lo mismo que no saberlo.
+    const p = await persona(c.var.db, c.var.usuario, Number(c.req.query('persona')), false);
+    const hasta = c.req.query('fecha');
+    if (!esFecha(hasta)) throw new ErrorApi('Fecha inválida.');
+    const desde = sumarDias(hasta, -14);
+    const horas = new Map((await horasDeSueno(c.var.db, p.id, sumarDias(desde, -15), hasta)).map((x) => [x.fecha, x.horas]));
+    const notas = new Map(
+      (await filas<{ noche: string; calidad: number }>(
+        c.var.db,
+        sql`SELECT to_char(noche, 'YYYY-MM-DD') AS noche, calidad FROM resumen_noche WHERE persona_id = ${p.id} AND noche BETWEEN ${desde} AND ${hasta}`,
+      )).map((x) => [x.noche, x.calidad]),
+    );
+    // A qué hora se durmió: el primer tramo dormido del reloj, o "Me acosté" si lo anotó.
+    const acostadas = await filas<{ minutos: number }>(
+      c.var.db,
+      sql`SELECT extract(hour FROM min(inicio) AT TIME ZONE ${p.zona_horaria}) * 60 + extract(minute FROM min(inicio) AT TIME ZONE ${p.zona_horaria}) AS minutos
+          FROM sueno_etapas WHERE persona_id = ${p.id} AND noche BETWEEN ${desde} AND ${hasta} AND etapa <> 'despierto' GROUP BY noche
+          UNION ALL
+          SELECT max(r.valor) AS minutos FROM registros r JOIN conceptos k ON k.id = r.concepto_id
+          WHERE r.persona_id = ${p.id} AND r.borrado IS NULL AND k.nombre = 'Me acosté' AND r.valor IS NOT NULL
+            AND r.fecha BETWEEN ${sumarDias(desde, -1)} AND ${sumarDias(hasta, -1)}
+            AND NOT EXISTS (SELECT 1 FROM sueno_etapas e WHERE e.persona_id = r.persona_id AND e.noche = r.fecha + 1)
+          GROUP BY r.fecha`,
+    );
+    const promedio = (l: number[]) => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : null);
+    const noches = Array.from({ length: 15 }, (_, i) => sumarDias(desde, i)).map((fecha) => ({ fecha, horas: horas.get(fecha) ?? null, calidad: notas.get(fecha) ?? null }));
+    const antes = Array.from({ length: 15 }, (_, i) => horas.get(sumarDias(desde, i - 15))).filter((h): h is number => h !== undefined);
+    // Después de medianoche cuenta como más tarde, no como temprano: las 0:30 son 24:30.
+    const tarde = acostadas.map((x) => Number(x.minutos)).map((m) => (m < 12 * 60 ? m + 1440 : m));
+    const redondo = (x: number | null, d = 10) => (x === null ? null : Math.round(x * d) / d);
+    const r: QuincenaSueno = {
+      noches,
+      horas: redondo(promedio(noches.flatMap((n) => (n.horas === null ? [] : [n.horas])))),
+      antes: antes.length >= 3 ? redondo(promedio(antes)) : null,
+      calidad: redondo(promedio(noches.flatMap((n) => (n.calidad === null ? [] : [n.calidad])))),
+      acostarse: tarde.length >= 3 ? Math.round(promedio(tarde)!) : null,
+    };
+    return c.json(r);
   })
   .get('/despertares', async (c) => {
     // ?persona=1: si en la última semana se despierta varias noches a la misma hora, cuál (para preguntarle por qué).

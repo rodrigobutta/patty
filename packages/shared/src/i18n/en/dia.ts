@@ -262,4 +262,12 @@ export const DIA: Record<string, string> = {
   'Desde': 'From',
   'Hasta': 'To',
   'Todo': 'All',
+  "Las últimas dos semanas": "The last two weeks",
+  "Dormiste {horas} por noche, en promedio": "You slept {horas} a night on average",
+  "{n} de 15 noches con dato": "{n} of 15 nights with data",
+  "Igual que las dos semanas anteriores": "Same as the two weeks before",
+  "{n} min más que las dos semanas anteriores": "{n} min more than the two weeks before",
+  "{n} min menos que las dos semanas anteriores": "{n} min less than the two weeks before",
+  "Te solés dormir cerca de las {hora}": "You usually fall asleep around {hora}",
+  "La nota de tus noches: {n}/10": "Your nights' score: {n}/10",
 };

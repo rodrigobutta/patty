@@ -2,7 +2,7 @@
 // después REM, ligero y profundo abajo — como en las apps de salud. Abajo, el botón para compartir la noche (el
 // gráfico, las horas, la nota y un pedacito de lo que dijo Patty).
 import { useEffect, useState } from 'react';
-import type { Persona } from 'shared';
+import type { Persona, QuincenaSueno as Quincena } from 'shared';
 import { api } from '../api';
 import { useEstado } from '../estado';
 import { horaEn } from '../lib/fechas';
@@ -138,5 +138,59 @@ export function ResumenNoche({ persona, fecha }: { persona: Persona; fecha: stri
         </>
       )}
     </div>
+  );
+}
+
+const horasTexto = (h: number) => {
+  const m = Math.round(h * 60);
+  return m % 60 ? t('{h} h {m} min', { h: Math.floor(m / 60), m: m % 60 }) : t('{h} h', { h: m / 60 });
+};
+const reloj = (minutos: number) => {
+  const m = ((minutos % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+};
+
+/** Debajo de la noche: cómo vienen las últimas dos semanas, en pocas líneas y una barrita por noche. */
+export function QuincenaSueno({ persona, fecha }: { persona: Persona; fecha: string }) {
+  const [q, setQ] = useState<Quincena | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    api<Quincena>('GET', `/api/sueno/quincena?persona=${persona.id}&fecha=${fecha}`)
+      .then((x) => vivo && setQ(x))
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [persona.id, fecha]);
+  const con = q?.noches.filter((n) => n.horas !== null) ?? [];
+  if (!q || con.length < 3 || q.horas === null) return null;
+  const tope = Math.max(9, ...con.map((n) => n.horas!));
+  const dif = q.antes === null ? null : Math.round((q.horas - q.antes) * 60);
+  return (
+    <section className="quincena-sueno" aria-label={t('Las últimas dos semanas')}>
+      <h4>{t('Las últimas dos semanas')}</h4>
+      <div className="quincena-barras" aria-hidden>
+        {q.noches.map((n) => (
+          <span key={n.fecha} className={n.horas === null ? 'sin' : n.horas < 6 ? 'poco' : ''} style={{ height: `${n.horas === null ? 6 : Math.max(8, (n.horas / tope) * 100)}%` }} title={n.horas === null ? n.fecha : `${n.fecha}: ${horasTexto(n.horas)}`} />
+        ))}
+      </div>
+      <ul className="quincena-datos">
+        <li>
+          {t('Dormiste {horas} por noche, en promedio', { horas: horasTexto(q.horas) })}
+          <span className="suave"> · {t('{n} de 15 noches con dato', { n: con.length })}</span>
+        </li>
+        {dif !== null ? (
+          <li>
+            {Math.abs(dif) < 10
+              ? t('Igual que las dos semanas anteriores')
+              : dif > 0
+                ? t('{n} min más que las dos semanas anteriores', { n: dif })
+                : t('{n} min menos que las dos semanas anteriores', { n: -dif })}
+          </li>
+        ) : null}
+        {q.acostarse !== null ? <li>{t('Te solés dormir cerca de las {hora}', { hora: reloj(q.acostarse) })}</li> : null}
+        {q.calidad !== null ? <li>{t('La nota de tus noches: {n}/10', { n: q.calidad.toLocaleString() })}</li> : null}
+      </ul>
+    </section>
   );
 }
