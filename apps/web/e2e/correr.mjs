@@ -248,7 +248,7 @@ const PRUEBAS = {
     await js(c, `document.querySelector('.paseo-pendiente').scrollIntoView({ block: 'center' })`);
     await espera(1200);
     await foto(c, 'paseos');
-    await tocar(c, '.paseo-item .chip', 'No anotar');
+    await tocar(c, '.paseo-item .paseo-opcion', 'No anotar');
     await hasta(c, `document.querySelectorAll('.paseo-item').length === 1`, 'queda uno');
   },
   async 'Descubrir muestra los patrones'(c) {

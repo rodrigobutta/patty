@@ -38,6 +38,9 @@ describe('paseos sin anotar', () => {
     expect(screen.getByText('Ayer')).toBeTruthy();
     // "Otra cosa" abre el campo solo cuando se lo pide.
     expect(container.querySelector('.otro-puntual')).toBeNull();
+    // La más probable va primero, pero sin marcar.
+    expect([...container.querySelectorAll('.paseo-item')][0].querySelector('.paseo-opcion')?.textContent).toBe('Paseo con los perros');
+    expect(container.querySelector('.activa')).toBeNull();
     await userEvent.click(screen.getAllByRole('button', { name: 'Otra cosa' })[0]);
     expect(container.querySelector('.otro-puntual')).not.toBeNull();
     await userEvent.click(screen.getAllByRole('button', { name: 'No anotar' })[0]);

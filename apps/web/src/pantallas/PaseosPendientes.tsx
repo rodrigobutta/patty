@@ -72,12 +72,13 @@ export function PaseosPendientes({ persona, vuelta, alAnotar }: { persona: Perso
                     <strong>{diaCorto(p.inicio, persona.zona_horaria)}</strong> {horaEn(p.inicio, persona.zona_horaria)}–{horaEn(p.fin, persona.zona_horaria)}
                     <span className="suave"> · {t('{n} min', { n: min })} · {(Math.round(p.metros / 100) / 10).toLocaleString()} km</span>
                   </span>
-                  <div className="chips envolver">
-                    {opciones.slice(0, 3).map((o, k) => (
-                      <button key={o} className={`chip${k === 0 && datos.directa ? ' activa' : ''}`} onClick={() => void responder(p, { concepto: o })}>{t(o)}</button>
+                  {/* Una debajo de la otra, la más probable primero; ninguna marcada, para que no parezca ya elegida. */}
+                  <div className="paseo-opciones">
+                    {opciones.slice(0, 3).map((o) => (
+                      <button key={o} className="paseo-opcion" onClick={() => void responder(p, { concepto: o })}>{t(o)}</button>
                     ))}
-                    <button className="chip" onClick={() => setOtro({ ...otro, [p.id]: otro[p.id] ?? '' })}>{t('Otra cosa')}</button>
-                    <button className="chip" onClick={() => void responder(p, { descartar: true })}>{t('No anotar')}</button>
+                    <button className="paseo-opcion suave" onClick={() => setOtro({ ...otro, [p.id]: otro[p.id] ?? '' })}>{t('Otra cosa')}</button>
+                    <button className="paseo-opcion suave" onClick={() => void responder(p, { descartar: true })}>{t('No anotar')}</button>
                   </div>
                   {otro[p.id] !== undefined ? (
                     <form className="otro-puntual" onSubmit={(e) => { e.preventDefault(); if (otro[p.id]?.trim()) void responder(p, { concepto: otro[p.id].trim() }); }}>
