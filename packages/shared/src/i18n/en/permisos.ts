@@ -636,6 +636,7 @@ export const PERMISOS: Record<string, string> = {
   "Empezá hoy: contale cómo te sentís": "Start today: tell Patty how you feel",
   "La primera semana": "The first week",
   "Las pantallas son de una persona de ejemplo.": "The screens show a sample person.",
+  "Desarrollado por": "Built by",
   "Lo que comés, cómo dormís, cómo te sentís, si algo te dolió. Lo contás en segundos, con la voz, una foto o un toque, y Patty te muestra qué cosas van juntas en tu vida.": "What you eat, how you sleep, how you feel, if something hurt. You tell it in seconds, by voice, a photo or a tap, and Patty shows you what goes together in your life.",
   "Lo que descubre de vos": "What it discovers about you",
   "Lo que pasó antes de un dolor de cabeza": "What happened before a headache",

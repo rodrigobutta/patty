@@ -438,6 +438,29 @@ export function Presentacion({ alEntrar, conSesion = false }: { alEntrar(): void
             ))}
           </ul>
         </nav>
+        <div className="pres-autor">
+          <p className="suave chico">{t('Desarrollado por')} <strong>Rodrigo Butta</strong></p>
+          <ul>
+            <li>
+              <a href="https://instagram.com/rodrigobutta" target="_blank" rel="noopener" onClick={() => medir('contacto', { via: 'instagram' })}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" /></svg>
+                @rodrigobutta
+              </a>
+            </li>
+            <li>
+              <a href="mailto:rbutta@gmail.com" onClick={() => medir('contacto', { via: 'mail' })}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+                rbutta@gmail.com
+              </a>
+            </li>
+            <li>
+              <a href="https://wa.me/5493525652298" target="_blank" rel="noopener" onClick={() => medir('contacto', { via: 'whatsapp' })}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3.5 20.5 5 16a8.5 8.5 0 1 1 3.2 3.2Z" /><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8a4 4 0 0 1-2-2l.8-1-1-2Z" /></svg>
+                WhatsApp
+              </a>
+            </li>
+          </ul>
+        </div>
         <p className="suave chico"><a href="privacidad.html" onClick={() => medir('ver_privacidad')}>{t('Privacidad')}</a> · {t('Las pantallas son de una persona de ejemplo.')}</p>
       </footer>
     </div>

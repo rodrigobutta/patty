@@ -1659,6 +1659,12 @@ a.btn.primario { color: var(--sobre-acento); text-decoration: none; }
 .pres-temas ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; list-style: none; padding: 0; margin: 0 0 14px; }
 .pres-temas a { display: inline-block; padding: 6px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--borde); color: var(--texto); text-decoration: none; font-size: 14px; }
 .pres-temas a:hover { border-color: var(--acento); }
+.pres-autor { margin: 4px 0 14px; }
+.pres-autor p { margin: 0 0 8px; }
+.pres-autor ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.pres-autor a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--borde); color: var(--texto); text-decoration: none; font-size: 14px; }
+.pres-autor a:hover { border-color: var(--acento); }
+.pres-autor svg { flex: none; color: var(--acento); }
 /* ---------- Compartir ---------- */
 .hoja-compartir { display: grid; gap: 10px; }
 .hoja-compartir .hoja-cabeza { margin-bottom: 0; }
