@@ -37,7 +37,7 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
   const ahora = useMinuto();
   // Lo abierto de otros días (un dolor de anoche que sigue): se trae aparte.
   const [abiertos, setAbiertos] = useState<Registro[]>([]);
-  const [tocada, setTocada] = useState<number | null>(null);
+  const [tocada, setTocada] = useState<string | null>(null);
   const cada10 = Math.floor(ahora / 600000);
   useEffect(() => {
     if (fecha !== hoy) return setAbiertos([]);
@@ -57,6 +57,16 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
   );
   const lista = [...delDia, ...abiertos.filter((a) => !delDia.some((r) => r.id === a.id))].sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio));
   if (!lista.length && !escuchas.length) return null;
+
+  // La misma actividad anotada varias veces en el día va en una sola fila, con una barra por cada vez (los malestares,
+  // uno por fila: cada uno se sigue aparte).
+  const claveDe = (r: Registro) => (r.categoria_id === actividad ? `a:${r.concepto.toLowerCase()}` : `r:${r.id}`);
+  const filas: Registro[][] = [];
+  for (const r of lista) {
+    const fila = filas.find((f) => claveDe(f[0]) === claveDe(r));
+    if (fila) fila.push(r);
+    else filas.push([r]);
+  }
 
   // El día de Patty va de 5 a 5.
   const a = Date.parse(instanteDelDia(fecha, '05:00', persona.zona_horaria));
@@ -104,49 +114,61 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
   return (
     <div className="tarjeta linea-malestares malestares-abiertos">
       <div className="gantt">
-        {lista.map((r) => {
+        {filas.map((regs) => {
+          const r = regs[0];
+          const clave = claveDe(r);
           const esActividad = r.categoria_id === actividad;
-          const ini = Date.parse(r.inicio);
-          const sigue = Boolean(r.abierto);
-          const fin = r.fin ? Date.parse(r.fin) : sigue ? ahora : ini + 30 * 60000;
-          const abierta = tocada === r.id;
-          const estado = sigue
-            ? t('sigue · {cuanto}', { cuanto: duracion((ahora - ini) / 60000) })
-            : r.fin
-              ? t('terminó · {cuanto}', { cuanto: duracion((fin - ini) / 60000) })
-              : t('a las {hora}', { hora: horaEn(r.inicio, persona.zona_horaria) });
+          const tramos = regs.map((y) => {
+            const ini = Date.parse(y.inicio);
+            const sigue = Boolean(y.abierto);
+            return { y, ini, sigue, fin: y.fin ? Date.parse(y.fin) : sigue ? ahora : ini + 30 * 60000 };
+          });
+          const abierta = tocada === clave;
+          const varias = regs.length > 1;
+          const enCurso = tramos.find((x) => x.sigue);
+          const total = tramos.reduce((n, x) => n + (x.fin - x.ini), 0) / 60000;
+          const estado = enCurso
+            ? t('sigue · {cuanto}', { cuanto: duracion((ahora - enCurso.ini) / 60000) })
+            : varias
+              ? t('{n} veces · {cuanto}', { n: regs.length, cuanto: duracion(total) })
+              : r.fin
+                ? t('terminó · {cuanto}', { cuanto: duracion(total) })
+                : t('a las {hora}', { hora: horaEn(r.inicio, persona.zona_horaria) });
           return (
-            <div key={r.id} className={`gantt-item${abierta ? ' abierta' : ''}`}>
-              <button className={`gantt-fila tocable-gantt${esActividad ? ' actividad' : ''}`} onClick={() => setTocada(abierta ? null : r.id)} aria-expanded={abierta}>
+            <div key={clave} className={`gantt-item${abierta ? ' abierta' : ''}`}>
+              <button className={`gantt-fila tocable-gantt${esActividad ? ' actividad' : ''}`} onClick={() => setTocada(abierta ? null : clave)} aria-expanded={abierta}>
                 <span className="gantt-nombre">
-                  <span className="chico">{t(r.concepto)}</span>
-                  <span className={`gantt-estado${sigue ? ' sigue' : ''}`}>
-                    {sigue ? <span className="pulso" aria-hidden /> : null}
+                  <span className="chico">{t(r.concepto)}{varias ? <span className="gantt-veces"> ×{regs.length}</span> : null}</span>
+                  <span className={`gantt-estado${enCurso ? ' sigue' : ''}`}>
+                    {enCurso ? <span className="pulso" aria-hidden /> : null}
                     {estado}
                   </span>
                 </span>
                 <span className="gantt-pista">
                   {marcas.map((m) => <span key={m.h} className="gantt-tick" style={{ left: x(m.ms) }} aria-hidden />)}
                   {fecha === hoy ? <span className="gantt-ahora" style={{ left: x(ahora) }} aria-hidden /> : null}
-                  {ini < a ? <span className="gantt-antes" aria-hidden>◂</span> : null}
-                  <span className={`gantt-barra${sigue ? ' sigue' : ''}${esActividad ? ' actividad' : ''}`} style={{ left: x(ini), width: `calc(${x(fin)} - ${x(ini)})` }} />
-                  {(r.evolucion ?? []).map((e) => (
+                  {tramos.some((x) => x.ini < a) ? <span className="gantt-antes" aria-hidden>◂</span> : null}
+                  {tramos.map(({ y, ini, fin, sigue }) => (
+                    <span key={y.id} className={`gantt-barra${sigue ? ' sigue' : ''}${esActividad ? ' actividad' : ''}`} style={{ left: x(ini), width: varias ? `max(3px, calc(${x(fin)} - ${x(ini)}))` : `calc(${x(fin)} - ${x(ini)})` }} />
+                  ))}
+                  {regs.flatMap((y) => y.evolucion ?? []).map((e) => (
                     <span key={e.t} className="gantt-punto" style={{ left: x(Date.parse(e.t)), background: COLOR[e.estado] }} />
                   ))}
-                  {(r.remedios ?? []).map((m) => (
+                  {regs.flatMap((y) => y.remedios ?? []).map((m) => (
                     <span key={`${m.t}${m.concepto}`} className="gantt-remedio" style={{ left: x(Date.parse(m.t)) }} title={t(m.concepto)} aria-hidden>
                       <IconoCategoria clave="medicacion" tamano={16} />
                     </span>
                   ))}
                 </span>
               </button>
-              {abierta ? (
-                <div className="gantt-acciones">
+              {abierta ? tramos.map(({ y, sigue }) => (
+                <div key={y.id} className={`gantt-acciones${varias ? ' gantt-vez' : ''}`}>
                   <span className="suave chico">
-                    {horaEn(r.inicio, persona.zona_horaria)}
-                    {r.fin ? `–${horaEn(r.fin, persona.zona_horaria)}` : ` → ${t('ahora')}`}
+                    {horaEn(y.inicio, persona.zona_horaria)}
+                    {y.fin ? `–${horaEn(y.fin, persona.zona_horaria)}` : ` → ${t('ahora')}`}
+                    {varias && y.fin ? ` · ${duracion((Date.parse(y.fin) - Date.parse(y.inicio)) / 60000)}` : ''}
                   </span>
-                  {(r.remedios ?? []).map((m) => (
+                  {(y.remedios ?? []).map((m) => (
                     <span key={`${m.t}${m.concepto}`} className="suave chico remedio-del-malestar">
                       <IconoCategoria clave="medicacion" tamano={16} /> {t(m.concepto)} {horaEn(m.t, persona.zona_horaria)}
                     </span>
@@ -154,24 +176,24 @@ export function LineaDelDia({ persona, fecha, hoy, registros, categorias, vuelta
                   <div className="gantt-botones">
                     {sigue && esActividad ? (
                       <>
-                        {r.fin_sugerido ? (
-                          <button className="btn chico" onClick={() => void responder(r, 'paso', r.fin_sugerido!)}>{t('Terminé a las {hora}', { hora: horaEn(r.fin_sugerido, persona.zona_horaria) })}</button>
+                        {y.fin_sugerido ? (
+                          <button className="btn chico" onClick={() => void responder(y, 'paso', y.fin_sugerido!)}>{t('Terminé a las {hora}', { hora: horaEn(y.fin_sugerido, persona.zona_horaria) })}</button>
                         ) : null}
-                        <button className="btn chico" onClick={() => void responder(r, 'paso')}>{t('Terminé recién')}</button>
-                        <button className="btn chico" onClick={() => void responder(r, 'igual')}>{t('Sigo')}</button>
+                        <button className="btn chico" onClick={() => void responder(y, 'paso')}>{t('Terminé recién')}</button>
+                        <button className="btn chico" onClick={() => void responder(y, 'igual')}>{t('Sigo')}</button>
                       </>
                     ) : sigue ? (
                       <>
-                        <button className="btn chico" onClick={() => void responder(r, 'paso')}>{t('Ya se me pasó')}</button>
-                        <button className="btn chico" onClick={() => void responder(r, 'mejor')}>{t('Mejor')}</button>
-                        <button className="btn chico" onClick={() => void responder(r, 'igual')}>{t('Igual')}</button>
-                        <button className="btn chico" onClick={() => void responder(r, 'peor')}>{t('Peor')}</button>
+                        <button className="btn chico" onClick={() => void responder(y, 'paso')}>{t('Ya se me pasó')}</button>
+                        <button className="btn chico" onClick={() => void responder(y, 'mejor')}>{t('Mejor')}</button>
+                        <button className="btn chico" onClick={() => void responder(y, 'igual')}>{t('Igual')}</button>
+                        <button className="btn chico" onClick={() => void responder(y, 'peor')}>{t('Peor')}</button>
                       </>
                     ) : null}
-                    <button className="btn chico" onClick={() => { setTocada(null); alEditar(r); }}><IconoLapiz tamano={16} /> {t('Editar')}</button>
+                    <button className="btn chico" onClick={() => { setTocada(null); alEditar(y); }}><IconoLapiz tamano={16} /> {t('Editar')}</button>
                   </div>
                 </div>
-              ) : null}
+              )) : null}
             </div>
           );
         })}

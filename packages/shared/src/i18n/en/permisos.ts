@@ -845,6 +845,7 @@ export const PERMISOS: Record<string, string> = {
   "Mandados": "Errands",
   "a las {hora}": "at {hora}",
   "sigue · {cuanto}": "ongoing · {cuanto}",
+  "{n} veces · {cuanto}": "{n} times · {cuanto}",
   "terminó · {cuanto}": "ended · {cuanto}",
   "⏱️ Lo que dura": "⏱️ Ongoing and timed",
   "✏️ Editar": "✏️ Edit",
