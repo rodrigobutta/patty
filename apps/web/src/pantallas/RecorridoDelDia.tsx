@@ -11,15 +11,8 @@ import { locale, t } from '../lib/idioma';
 import { compartibleActividad } from '../lib/tarjetasDelDia';
 import { BotonCompartir } from '../ui/HojaCompartir';
 import { IconoCategoria } from '../ui/IconosPatty';
-import { Mapa, type Ruta } from '../ui/Mapa';
-
-interface Punta {
-  lat: number;
-  lon: number;
-  lugar: string | null;
-}
-
-type RutaDelDia = Ruta & { inicio: string; fin: string; minutos: number; km: number; kmh: number; pasos: number | null; origen: Punta | null; destino: Punta | null };
+import { Mapa } from '../ui/Mapa';
+import { rutasDelRato, type Punta, type RutaDelDia } from '../lib/rutasDelRato';
 
 interface Recorrido {
   rutas: RutaDelDia[];
@@ -89,16 +82,8 @@ export function RecorridoDeRegistro({ persona, fecha, inicio, fin }: { persona: 
   const [elegida, setElegida] = useState<string | null>(null);
   useEffect(() => {
     let vivo = true;
-    const a = Date.parse(inicio) - 10 * 60000;
-    const b = Date.parse(fin) + 10 * 60000;
-    void Promise.all(
-      (['a_pie', 'vehiculo'] as const).map((tipo) =>
-        api<Recorrido>('GET', `/api/ubicacion/recorrido?persona=${persona.id}&fecha=${fecha}&tipo=${tipo}`).then((r) => r.rutas).catch(() => [] as RutaDelDia[]),
-      ),
-    ).then((l) => {
-      if (!vivo) return;
-      // Las que se cruzan con ese rato (con unos minutos de margen: lo anotado suele ir redondeado).
-      setRutas(l.flat().filter((x) => Date.parse(x.inicio) < b && Date.parse(x.fin) > a).sort((x, y) => Date.parse(x.inicio) - Date.parse(y.inicio)));
+    void rutasDelRato(persona.id, fecha, inicio, fin).then((l) => {
+      if (vivo) setRutas(l);
     });
     return () => {
       vivo = false;

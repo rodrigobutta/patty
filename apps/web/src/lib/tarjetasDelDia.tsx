@@ -11,6 +11,7 @@ import { horaEn } from './fechas';
 import { iconoParaTarjeta } from './iconoTarjeta';
 import { locale, t } from './idioma';
 import { caminoPorCalles, faltaCamino } from './rutaPorCalles';
+import { rutasDelRato } from './rutasDelRato';
 import type { Tarjeta } from './tarjetaCompartir';
 
 type Coord = { lat: number; lon: number };
@@ -135,5 +136,65 @@ export function compartibleNoche(o: {
     que: 'sueno',
     tarjeta,
     opcion: comentario ? { rotulo: t('Sumar lo que dijo Patty de la noche'), sin: { ...tarjeta, comentario: undefined }, apagada: true } : undefined,
+  };
+}
+
+/**
+ * Cualquier cosa anotada, desde su resumen: qué fue, a qué hora, cuánto duró y, si en ese rato hubo un recorrido, los km,
+ * la velocidad, los pasos y el mapita; abajo, lo demás del resumen (lo contestado, dónde, con quién) y la nota. Como esta
+ * sí lleva lo anotado, la hoja lo avisa, y el mapa se puede sacar.
+ */
+export async function compartibleRegistro(o: {
+  persona: Persona;
+  concepto: string;
+  claveCategoria?: string;
+  emoji?: string;
+  inicio: string;
+  fin: string | null;
+  /** Lo demás del resumen, ya traducido ("Con quién", "Juli"). */
+  detalles: Array<{ nombre: string; valor: string }>;
+  nota?: string | null;
+  fecha: string;
+}): Promise<Compartible> {
+  const { persona, concepto, inicio, fin } = o;
+  const zona = persona.zona_horaria;
+  const esViaje = o.claveCategoria === 'viaje';
+  const modo = esViaje ? modoDe(concepto) : null;
+  const rutas = await rutasDelRato(persona.id, o.fecha, inicio, fin ?? new Date(Date.parse(inicio) + 30 * 60000).toISOString()).catch(() => []);
+  const min = fin ? Math.round((Date.parse(fin) - Date.parse(inicio)) / 60000) : rutas.reduce((n, r) => n + r.minutos, 0);
+  const kms = rutas.reduce((n, r) => n + r.km, 0);
+  const pasos = rutas.reduce((n, r) => n + (r.pasos ?? 0), 0);
+  const datos: Array<{ valor: string; texto: string }> = [];
+  if (min >= 1) datos.push({ valor: duracion(min), texto: t('duración') });
+  if (kms >= 0.1) {
+    datos.push({ valor: km(kms), texto: esViaje ? t('de viaje') : t('recorridos') });
+    const enMovimiento = rutas.reduce((n, r) => n + r.minutos, 0);
+    if (enMovimiento >= 5) datos.push({ valor: `${Math.round(kms / (enMovimiento / 60))} km/h`, texto: t('promedio') });
+  }
+  if (pasos > 0 && datos.length < 4) datos.push({ valor: pasos.toLocaleString(locale()), texto: t('pasos') });
+  // De dónde a dónde, si los lugares tienen nombre (las direcciones no van en la imagen).
+  const desde = rutas[0]?.origen?.lugar;
+  const hasta = rutas.at(-1)?.destino?.lugar;
+  const tramo = desde && hasta && desde !== hasta ? `${desde} → ${hasta}` : null;
+  const camino = rutas.flatMap((r) => r.puntos);
+  const icono = iconoParaTarjeta(modo ? <IconoModo modo={modo} tamano={96} /> : <IconoCategoria clave={o.claveCategoria} emoji={o.emoji} tamano={96} />);
+  const tarjeta: Tarjeta = {
+    tipo: 'actividad',
+    arriba: diaLargo(inicio, zona),
+    icono,
+    titulo: t(concepto),
+    cuando: fin ? `${horaEn(inicio, zona)} – ${horaEn(fin, zona)}` : horaEn(inicio, zona),
+    datos,
+    camino: camino.length > 1 ? camino : undefined,
+    detalles: [...(tramo ? [{ nombre: t('Recorrido'), valor: tramo }] : []), ...o.detalles],
+    nota: o.nota ?? undefined,
+    cara: 'feliz',
+  };
+  const lleva = o.detalles.length > 0 || !!o.nota;
+  return {
+    que: esViaje ? 'viaje' : 'actividad',
+    tarjeta,
+    opcion: tarjeta.camino ? { rotulo: t('Mostrar el mapa de por dónde fui'), sin: { ...tarjeta, camino: undefined } } : undefined,
+    nota: lleva ? t('Esta imagen lleva lo que anotaste (lo que contestaste, con quién, la nota). Mirala antes de mandarla.') : undefined,
   };
 }

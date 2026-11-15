@@ -50,6 +50,9 @@ export type Tarjeta = {
       camino?: Coord[];
       /** false: el recorrido sobre el fondo lila, sin los cuadraditos del mapa. */
       teselas?: boolean;
+      /** Lo demás de lo anotado (lo contestado, dónde, con quién…), solo si la persona lo comparte desde su resumen. */
+      detalles?: Array<{ nombre: string; valor: string }>;
+      nota?: string;
     }
   | {
       /** Una noche: las horas, de cuándo a cuándo, el gráfico de las etapas, la nota y un pedacito de lo que dijo Patty. */
@@ -282,17 +285,49 @@ function columnas(c: Ctx, datos: Array<{ valor: string; texto: string }>, ancho:
   };
 }
 
+/** Lo demás de lo anotado, debajo de los números: "Con quién: Juli", una por renglón, y la nota entre comillas. */
+function bloqueDetalles(c: Ctx, filas: Array<{ nombre: string; valor: string }>, nota: string | undefined, ancho: number): Bloque | null {
+  const partes = [
+    ...filas.map((f) => texto(c, `${f.nombre}${/[?:]$/.test(f.nombre) ? '' : ':'} ${f.valor}`, { peso: 500, tamano: 34, color: TINTA, ancho, maxLineas: 2 })),
+    ...(nota ? [texto(c, `“${nota}”`, { peso: 500, tamano: 34, color: SUAVE, ancho, maxLineas: 3 })] : []),
+  ];
+  if (!partes.length) return null;
+  const sep = 12;
+  return {
+    alto: partes.reduce((a, b) => a + b.alto, 0) + sep * (partes.length - 1),
+    dibujar(c, x, y, w) {
+      let yy = y;
+      for (const b of partes) {
+        b.dibujar(c, x, yy, w);
+        yy += b.alto + sep;
+      }
+    },
+  };
+}
+
 async function bloquesActividad(c: Ctx, d: Extract<Tarjeta, { tipo: 'actividad' }>, ancho: number, maxAlto: number, icono: HTMLImageElement | null): Promise<Bloque[]> {
   const conMapa = (d.camino?.length ?? 0) > 1;
   const arriba = cabecera(c, icono, d.titulo, d.cuando, ancho, conMapa ? 60 : 72);
   const numeros = d.datos.length ? columnas(c, d.datos, ancho, conMapa ? 64 : 88) : null;
-  if (!conMapa) return [arriba, ...(numeros ? [espacio(56), linea(), espacio(48), numeros] : [])];
-  const fijo = arriba.alto + 36 + (numeros ? 40 + numeros.alto : 0);
-  const altoMapa = Math.round(Math.max(240, Math.min(420, maxAlto - fijo)));
+  // Con detalles, el mapa se achica (hasta 180). Si igual no entra todo, se va primero la nota y después los últimos detalles.
+  let filas = (d.detalles ?? []).slice(0, 6);
+  let nota = d.nota;
+  const minMapa = filas.length || nota ? 180 : 240;
+  const base = arriba.alto + (numeros ? (conMapa ? 40 : 104) + numeros.alto : 0) + (conMapa ? 36 + minMapa : 0);
+  let extra = bloqueDetalles(c, filas, nota, ancho);
+  while (extra && base + 40 + extra.alto > maxAlto) {
+    if (nota) nota = undefined;
+    else filas = filas.slice(0, -1);
+    extra = bloqueDetalles(c, filas, nota, ancho);
+  }
+  const cola = extra ? [espacio(40), extra] : [];
+  if (!conMapa) return [arriba, ...(numeros ? [espacio(56), linea(), espacio(48), numeros] : []), ...cola];
+  const fijo = arriba.alto + 36 + (numeros ? 40 + numeros.alto : 0) + (extra ? 40 + extra.alto : 0);
+  const altoMapa = Math.round(Math.max(minMapa, Math.min(420, maxAlto - fijo)));
   const camino = d.camino!;
   const listo: MapaListo = await prepararMapa(camino, ancho, altoMapa, d.teselas === false ? null : undefined);
   const mapa: Bloque = { alto: altoMapa, dibujar: (c, x, y, w) => dibujarMapa(c, listo, camino, x, y, w, altoMapa) };
-  return [arriba, espacio(36), mapa, ...(numeros ? [espacio(40), numeros] : [])];
+  return [arriba, espacio(36), mapa, ...(numeros ? [espacio(40), numeros] : []), ...cola];
 }
 
 const linea = (): Bloque => ({

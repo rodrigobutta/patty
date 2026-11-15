@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { Persona, Registro } from 'shared';
 import { ResumenRegistro } from './ResumenRegistro';
+import { compartibleRegistro } from '../lib/tarjetasDelDia';
 
 const persona = { id: 1, nombre: 'Ana', zona_horaria: 'UTC' } as Persona;
 const ruta = (ini: string, fin: string, tipo: string) => ({
@@ -10,6 +11,7 @@ const ruta = (ini: string, fin: string, tipo: string) => ({
   puntos: [{ lat: -34.6, lon: -58.4 }, { lat: -34.61, lon: -58.4 }],
   origen: { lat: -34.6, lon: -58.4, lugar: 'Casa' }, destino: { lat: -34.61, lon: -58.4, lugar: 'Plaza' },
 });
+vi.mock('../estado', () => ({ useEstado: () => ({ usuario: { id: 1, rol: 'admin' } }) }));
 vi.mock('../api', () => ({
   api: async (_m: string, r: string) =>
     r.includes('tipo=a_pie')
@@ -52,5 +54,16 @@ describe('El resumen de algo anotado', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByTestId('mapa')).toBeNull();
     expect(screen.queryByRole('button', { name: /Editar/ })).toBeNull();
+  });
+
+  it('la imagen para compartir lleva lo del recorrido de ese rato, lo contestado y la nota, y lo avisa', async () => {
+    const c = await compartibleRegistro({ persona, concepto: paseo.concepto, inicio: paseo.inicio, fin: paseo.fin, fecha: paseo.fecha, detalles: [{ nombre: 'Con quién', valor: 'Juli' }], nota: paseo.nota });
+    if (c.tarjeta.tipo !== 'actividad') throw new Error('tipo');
+    expect(c.tarjeta.datos.map((d) => d.valor)).toEqual(['45 min', '2,5 km', '4 km/h', '3.200']);
+    expect(c.tarjeta.detalles).toEqual([{ nombre: 'Recorrido', valor: 'Casa → Plaza' }, { nombre: 'Con quién', valor: 'Juli' }]);
+    expect(c.tarjeta.nota).toBe('Fuimos hasta la plaza');
+    expect(c.tarjeta.camino?.length).toBe(2);
+    expect(c.opcion?.sin).toMatchObject({ camino: undefined });
+    expect(c.nota).toMatch(/lleva lo que anotaste/);
   });
 });

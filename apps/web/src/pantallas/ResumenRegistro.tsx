@@ -10,6 +10,9 @@ import { detalleDelMedio } from '../lib/medios';
 import { etiquetaDonde } from '../ui/DondeComida';
 import { IconoLapiz } from '../ui/Iconos';
 import { IconoCategoria } from '../ui/IconosPatty';
+import { BotonCompartir } from '../ui/HojaCompartir';
+import { useEstado } from '../estado';
+import { compartibleRegistro } from '../lib/tarjetasDelDia';
 import { RecorridoDeRegistro } from './RecorridoDelDia';
 
 /** Lo que no tiene fin anotado se mira como un rato de media hora para buscarle el recorrido. */
@@ -26,6 +29,7 @@ export function ResumenRegistro({ persona, registro: r, categoria: cat, frase, g
   /** Sin esto (quien solo mira), no hay botón de editar. */
   alEditar?: () => void;
 }) {
+  const { usuario } = useEstado();
   const zona = persona.zona_horaria;
   const min = r.fin ? (Date.parse(r.fin) - Date.parse(r.inicio)) / 60000 : null;
   const finRato = r.fin ?? new Date(Date.parse(r.inicio) + RATO_SIN_FIN).toISOString();
@@ -63,6 +67,26 @@ export function ResumenRegistro({ persona, registro: r, categoria: cat, frase, g
       </ul>
       {r.nota ? <p className="resumen-nota">{r.nota}</p> : null}
       <RecorridoDeRegistro persona={persona} fecha={r.fecha} inicio={r.inicio} fin={finRato} />
+      {usuario?.rol !== 'lector' ? (
+        <div className="fila-compartir">
+          <BotonCompartir
+            armar={() =>
+              compartibleRegistro({
+                persona,
+                concepto: r.concepto,
+                claveCategoria: cat?.clave,
+                emoji: cat?.icono,
+                inicio: r.inicio,
+                fin: r.fin,
+                fecha: r.fecha,
+                // El horario y la duración ya van arriba en la imagen; la categoría no hace falta.
+                detalles: filas.slice(3).flatMap(([nombre, valor]) => (nombre && valor ? [{ nombre, valor }] : [])),
+                nota: r.nota,
+              })
+            }
+          />
+        </div>
+      ) : null}
       {alEditar ? (
         <button className="btn primario ancho resumen-editar" onClick={alEditar}><IconoLapiz tamano={18} /> {t('Editar')}</button>
       ) : null}
