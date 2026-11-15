@@ -22,6 +22,7 @@ import { IconoCamara, IconoLapiz, IconoMicrofono } from '../ui/Iconos';
 import { Cargar, ElegirFoto } from './Cargar';
 import { sacarFoto, type Foto } from '../lib/foto';
 import { Editar } from './Editar';
+import { ResumenRegistro } from './ResumenRegistro';
 import { GloboDelBuho } from './GloboDelBuho';
 import { ComentarioDelDia, FueraDeLoNormal } from './ComentariosDePatty';
 import { RutinasDelDia } from './RutinasDelDia';
@@ -182,6 +183,8 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   }, [registros]);
   /** Lo anotado que se está cambiando (al tocarlo). */
   const [editando, setEditando] = useState<Registro | null>(null);
+  /** Lo que se tocó en la lista: primero se ve su resumen y, desde ahí, se edita. */
+  const [viendo, setViendo] = useState<Registro | null>(null);
   const hoy = hoyEn(persona.zona_horaria);
   /** Para la animación al cambiar de día: de qué lado entra el nuevo. */
   const [direccion, setDireccion] = useState<'atras' | 'adelante' | null>(null);
@@ -199,7 +202,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
   const terminarToque = (e: React.TouchEvent) => {
     const ini = toque.current;
     toque.current = null;
-    if (!ini || cargando || sintiendo || editando) return;
+    if (!ini || cargando || sintiendo || editando || viendo) return;
     const dx = e.changedTouches[0].clientX - ini.x;
     const dy = e.changedTouches[0].clientY - ini.y;
     if (Math.abs(dx) > 70 && Math.abs(dy) < 50) irA(dx > 0 ? -1 : 1);
@@ -618,7 +621,7 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
               <FilaDeslizable
                 className={`tocable ${vistos.current && !vistos.current.has(r.id) ? 'recien' : vistos.current ? '' : 'entra'}`}
                 style={{ ['--n' as string]: Math.min(i, 12) }}
-                alTocar={() => setEditando(r)}
+                alTocar={() => setViendo(r)}
                 alBorrar={() => void quitar(r)}
               >
                 <span className="hora">{horaEn(r.inicio, persona.zona_horaria)}</span>
@@ -683,6 +686,20 @@ export function Hoy({ persona, cara }: { persona: Persona; cara: Cara | null }) 
         <>
           <div className="velo" onClick={() => setActivando(null)} />
           <HojaActivar fuente={activando} persona={persona} alCerrar={() => setActivando(null)} alActivar={mirarPermisos} />
+        </>
+      ) : null}
+      {viendo ? (
+        <>
+          <div className="velo" onClick={() => setViendo(null)} />
+          <ResumenRegistro
+            persona={persona}
+            registro={viendo}
+            categoria={tipoDe(viendo)}
+            frase={<Frase r={viendo} tipo={tipoDe(viendo)?.tipo_valor} categoria={tipoDe(viendo)?.clave} juntos={comidaIds.includes(viendo.categoria_id) ? (registros ?? []).filter((o) => o.id !== viendo.id && comidaIds.includes(o.categoria_id) && mismoMinuto(o, viendo)) : []} sintomas={esSentir(viendo) ? partesDe(viendo, registros ?? [], sintomaId) : []} />}
+            gente={genteId !== undefined && viendo.categoria_id !== genteId ? (registros ?? []).filter((o) => o.categoria_id === genteId && o.inicio === viendo.inicio).map((o) => o.concepto) : []}
+            alCerrar={() => setViendo(null)}
+            alEditar={() => { setEditando(viendo); setViendo(null); }}
+          />
         </>
       ) : null}
       {editando ? (

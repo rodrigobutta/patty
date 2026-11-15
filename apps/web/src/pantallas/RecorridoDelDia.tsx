@@ -80,6 +80,53 @@ export function RecorridoDelDia({ persona, fecha, tipo, titulo }: { persona: Per
   );
 }
 
+/**
+ * En el resumen de algo anotado (un paseo, un viaje, una salida a correr): lo que vio la ubicación en ese mismo rato,
+ * a pie o en vehículo, con su mapa y sus datos. Si no hubo nada en ese horario, no aparece.
+ */
+export function RecorridoDeRegistro({ persona, fecha, inicio, fin }: { persona: Persona; fecha: string; inicio: string; fin: string }) {
+  const [rutas, setRutas] = useState<RutaDelDia[] | null>(null);
+  const [elegida, setElegida] = useState<string | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    const a = Date.parse(inicio) - 10 * 60000;
+    const b = Date.parse(fin) + 10 * 60000;
+    void Promise.all(
+      (['a_pie', 'vehiculo'] as const).map((tipo) =>
+        api<Recorrido>('GET', `/api/ubicacion/recorrido?persona=${persona.id}&fecha=${fecha}&tipo=${tipo}`).then((r) => r.rutas).catch(() => [] as RutaDelDia[]),
+      ),
+    ).then((l) => {
+      if (!vivo) return;
+      // Las que se cruzan con ese rato (con unos minutos de margen: lo anotado suele ir redondeado).
+      setRutas(l.flat().filter((x) => Date.parse(x.inicio) < b && Date.parse(x.fin) > a).sort((x, y) => Date.parse(x.inicio) - Date.parse(y.inicio)));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [persona.id, fecha, inicio, fin]);
+  if (!rutas?.length) return null;
+  const vista = rutas.find((x) => x.inicio === elegida) ?? (rutas.length === 1 ? rutas[0] : null);
+  return (
+    <div className="recorrido-dia">
+      <Mapa rutas={vista ? [vista] : rutas} puntos={[]} alto={200} interactivo />
+      <p className="suave chico leyenda-recorrido">
+        <span className="punto-ini" aria-hidden /> {t('salida')} · <span className="punto-fin" aria-hidden /> {t('llegada')}
+      </p>
+      {rutas.length > 1 ? (
+        <div className="chips envolver recorrido-selector" role="group" aria-label={t('Cuál ver')}>
+          <button className={`chip${vista ? '' : ' activa'}`} aria-pressed={!vista} onClick={() => setElegida(null)}>{t('Todo')}</button>
+          {rutas.map((x) => (
+            <button key={x.inicio} className={`chip${vista === x ? ' activa' : ''}`} aria-pressed={vista === x} onClick={() => setElegida(x.inicio)}>
+              {horaEn(x.inicio, persona.zona_horaria)} · {numero(x.km)} km
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {vista ? <DatosDelRecorrido key={vista.inicio} ruta={vista} persona={persona} /> : null}
+    </div>
+  );
+}
+
 /** Lo de una sola caminata o un solo viaje. Lo que no se sabe (los pasos, dónde empezó) no aparece. */
 function DatosDelRecorrido({ ruta, persona }: { ruta: RutaDelDia; persona: Persona }) {
   const desde = useLugarDe(ruta.origen, persona.id);
