@@ -20,6 +20,19 @@ import { vozDisponible } from './voz.js';
 import { pushDisponible } from '../push/firebase.js';
 import { iaDisponible } from '../ia/cliente.js';
 import { crearUsuario } from './usuarios.js';
+import { correoNuevoUsuario, destinatariosAviso, enviar } from '../lib/correo.js';
+
+/** El mail a Rodrigo (SIGNUP_NOTIFY_TO) de un usuario nuevo, con cuántos hay en total. */
+async function avisarNuevoUsuario(c: C, nombre: string, email: string, metodo: 'google' | 'clave'): Promise<void> {
+  try {
+    const para = destinatariosAviso();
+    if (!para.length) return;
+    const total = (await una<{ n: number }>(c.var.db, sql`SELECT count(*)::int AS n FROM usuarios`))?.n ?? 0;
+    await enviar(correoNuevoUsuario({ nombre, email, metodo, totalUsuarios: total }, para));
+  } catch (e) {
+    console.log('Mails: no se pudo armar el aviso de usuario nuevo:', (e as Error).message);
+  }
+}
 
 const hayUsuarios = async (tx: Tx) => Boolean(await una(tx, sql`SELECT 1 AS x FROM usuarios LIMIT 1`));
 
@@ -95,6 +108,8 @@ export const rutasSesion = new Hono<Env>()
         .returning({ id: usuarios.id });
       return n.id;
     });
+    // Aviso por mail de que se registró alguien: recién con la cuenta guardada y sin esperar (si falla, entra igual).
+    void avisarNuevoUsuario(c, g.nombre, g.email, 'google');
     return conSesion(c, id);
   })
   .delete('/cuenta', async (c) => {

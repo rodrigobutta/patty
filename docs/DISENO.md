@@ -552,6 +552,10 @@ que los cumple, pausa o borra. En el código son `metas` (tablas `metas` y `meta
   `dueno`, `editor` o `lector`); los administradores ven todas.
 - Sesión con cookie en la web, y el mismo token como `Authorization: Bearer` para la app con Capacitor (que corre en
   otro origen y no puede usar la cookie).
+- **Aviso de usuario nuevo**: cuando alguien se crea la cuenta (con Google), sale un mail a `SIGNUP_NOTIFY_TO` (por
+  defecto rbutta@gmail.com) con el nombre, el mail y cuántos usuarios hay (`lib/correo.ts`, con la API de Resend, igual
+  que en Quincho). Sin `RESEND_API_KEY` no se manda nada; con el remitente de prueba de Resend (`onboarding@resend.dev`)
+  solo llega al dueño de la cuenta de Resend, y para otro remitente hay que verificar el dominio y poner `EMAIL_FROM`.
 
 ## Servicios (MODO)
 

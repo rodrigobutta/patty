@@ -79,6 +79,18 @@ export const config = {
     return { entrada: Number(env('IA_PRECIO_ENTRADA') ?? 5), salida: Number(env('IA_PRECIO_SALIDA') ?? 25) };
   },
   /** El ID de medición de Google Analytics (G-…), para la página de presentación. Sin él, no se mide nada. */
+  /** Opcional: mails de aviso con Resend (resend.com). Sin esto no se manda ningún mail. */
+  get resendApiKey() {
+    return env('RESEND_API_KEY');
+  },
+  /** A quién avisar cuando se registra alguien (uno o varios, separados por coma). */
+  get signupNotifyTo() {
+    return env('SIGNUP_NOTIFY_TO') ?? 'rbutta@gmail.com';
+  },
+  /** Remitente de los mails (con un dominio verificado en Resend, por ejemplo "Patty <avisos@patty.today>"). */
+  get emailFrom() {
+    return env('EMAIL_FROM') ?? 'Patty <onboarding@resend.dev>';
+  },
   get analytics() {
     return env('GA_MEASUREMENT_ID');
   },
